@@ -51,6 +51,20 @@ namespace Heddle.Tests
             // Two `static` targets contributing one name.
             new object[] { "AliasNested", new[] { "static Heddle.Tests.AliasNestAlpha.AliasHost",
                 "static Heddle.Tests.AliasNestBeta.AliasHost" } },
+
+            // What a `using` namespace directive imports: the types DECLARED in the namespace, and not the
+            // namespaces nested inside it. Both halves are here, because the rule is only pinned by the pair —
+            // a nested TYPE keeps its outer type's namespace and stays reachable, a nested NAMESPACE does not.
+            new object[] { "TieAlpha.TieProbe", new[] { "Heddle.Tests" } },
+            new object[] { "AliasNestAlpha.AliasHost", new[] { "Heddle.Tests" } },
+            new object[] { "AliasNestAlpha.AliasHost.AliasNested", new[] { "Heddle.Tests" } },
+            new object[] { "Tests.TieAlpha.TieProbe", new[] { "Heddle" } },
+            new object[] { "Text.StringBuilder", new[] { "System" } },
+            new object[] { "AliasHost.AliasNested", new[] { "Heddle.Tests.AliasNestAlpha" } },
+            // A namespace ALIAS names the namespace itself, so it does reach what is nested inside it.
+            new object[] { "X.TieAlpha.TieProbe", new[] { "X = Heddle.Tests" } },
+            // Neither import nor alias is needed for a spelling that is already complete.
+            new object[] { "Heddle.Tests.TieAlpha.TieProbe", new string[0] },
         }.Select(r => r).ToArray();
 
         [Theory]

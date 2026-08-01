@@ -221,8 +221,7 @@ namespace Heddle.Generator.Binding
             int matches = 0;
             foreach (var candidate in candidates)
             {
-                var ns = candidate.ContainingNamespace;
-                var nsName = ns == null || ns.IsGlobalNamespace ? null : ns.ToDisplayString();
+                var nsName = NamespaceNameOf(candidate);
                 if (nsName == null || !Contains(imports, nsName))
                     continue;
                 matches++;
@@ -307,6 +306,13 @@ namespace Heddle.Generator.Binding
             return true;
         }
 
+        /// <summary>
+        /// The runtime's dotted-spelling arm of a <c>using</c> namespace import. A namespace import brings the types
+        /// <b>declared in</b> that namespace into scope and nothing else — not the namespaces nested inside it — so
+        /// a candidate counts only when its own containing namespace <i>is</i> the import. A nested type reports its
+        /// outer type's namespace, which is what keeps <c>using A;</c> + <c>Outer.Inner</c> resolving while
+        /// <c>using A;</c> + <c>Sub.Deep</c> stops.
+        /// </summary>
         private bool TryResolveThroughImports(string name, IReadOnlyList<string> imports,
             out INamedTypeSymbol type, out TypeSpellingFault fault)
         {
@@ -315,9 +321,22 @@ namespace Heddle.Generator.Binding
             {
                 if (!_fullNames.TryGetValue(import + "." + name, out var candidates))
                     continue;
-                if (candidates.Count == 1)
+
+                INamedTypeSymbol declared = null;
+                int matches = 0;
+                foreach (var candidate in candidates)
                 {
-                    type = candidates[0];
+                    if (!string.Equals(NamespaceNameOf(candidate), import, System.StringComparison.Ordinal))
+                        continue;
+                    matches++;
+                    declared = candidate;
+                }
+
+                if (matches == 0)
+                    continue;
+                if (matches == 1)
+                {
+                    type = declared;
                     fault = TypeSpellingFault.None;
                     return true;
                 }
@@ -328,6 +347,14 @@ namespace Heddle.Generator.Binding
 
             fault = TypeSpellingFault.Unresolved;
             return false;
+        }
+
+        /// <summary>The runtime's <c>Type.Namespace</c>: the nearest enclosing namespace, which for a nested type is
+        /// its outer type's, and null for the global namespace.</summary>
+        private static string NamespaceNameOf(INamedTypeSymbol type)
+        {
+            var ns = type.ContainingNamespace;
+            return ns == null || ns.IsGlobalNamespace ? null : ns.ToDisplayString();
         }
 
         /// <summary>The runtime's global-namespace lookup, which consults no import and no alias. The second key is

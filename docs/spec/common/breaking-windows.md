@@ -328,6 +328,29 @@ unrecorded breaking change.
   an alias target with interior whitespace, and an extern-alias qualifier are each left classified as a plain
   namespace body, which is inert.
 
+- **A `using` namespace import stops exposing the namespaces nested inside it** (`ReflectionHelper`,
+  `SymbolTypeIndex.TryResolveThroughImports`, 2026-08-01). Resolving a dotted spelling through an import was a
+  string retry — `import + "." + typeName` looked up in the name index — which reached anything under the import at
+  any depth. C# imports the types *declared in* a namespace and not the namespaces nested in it, so
+  `@using(){{A}}` + `@model(){{Sub.Deep}}` resolved here and is `CS0246` there. The retry now counts a candidate
+  only when its own namespace **is** the import. A nested *type* reports its outer type's namespace on both tiers
+  (`Type.Namespace`, `ITypeSymbol.ContainingNamespace`), so `@using(){{A}}` + `A.Outer`'s `Outer.Inner` keeps
+  resolving; a nested *namespace* does not.
+  **Judgement: defect repair, not window-gated — and the narrowing is stated rather than waved past.** It *is* a
+  narrowing: spellings that resolve today stop resolving, on both tiers at once.
+  (a) **The rule was established by compiling and executing the same spellings, not recalled.** Seven spellings
+  measured divergent (`TieAlpha.TieProbe` under `using Heddle.Tests`, `Text.StringBuilder` under `using System`,
+  and deeper forms); the nested-*type* and namespace-*alias* neighbours measured as agreeing and are unchanged —
+  an alias names the namespace itself, so `@using(){{X = A}}` + `X.Sub.Deep` still binds. The rows are in
+  `NameLookupPrecedenceOracleTests`, which asks Roslyn for each answer rather than asserting a remembered one.
+  (b) **Both tiers move together, so it is not tier drift**; they already agreed on the old behaviour, which is why
+  24 differential cycles scored it green. The arms are mirrored one for one.
+  (c) **The cost is real and is stated, not implied away.** No checked-in template, corpus fixture or sample carries
+  an affected spelling; one integration test did (`@using(){{Heddle.Generator.IntegrationTests}}` +
+  `@model(){{Fixtures.Cart}}`) and now pins the refusal beside a nested-type spelling that still resolves.
+  A host template relying on the old reach recovers by importing the inner namespace, aliasing it, or spelling the
+  type in full — all three of which work on both tiers today.
+
 - **The release line is stated once, and every first-party assembly is signed** (phase 5, Q8.11;
   `Directory.Build.props`, `Directory.Build.targets`, shipped 2.1.0). Not a behavioural change and recorded
   only because it moves a shipped surface: nine per-project `<Version>` elements collapse into one

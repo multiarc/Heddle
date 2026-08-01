@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Heddle.Data;
 using Heddle.Language.Expressions;
 using Heddle.Precompiled;
+using Microsoft.CodeAnalysis;
 
 namespace Heddle.Generator.Binding
 {
@@ -104,8 +105,13 @@ namespace Heddle.Generator.Binding
         /// them instead of letting the bare <c>null</c> conflate them. An ambiguous or inapplicable front over
         /// arguments the estimator typed is a <i>proof</i> that the runtime will refuse the call, and the build
         /// reports <c>HED7025</c>; an argument it could not describe is a generator limitation and still degrades
-        /// silently, because nothing has been proved.</para></summary>
-        public static Binding TryBind(string name, IReadOnlyList<OperandKind> arguments, out BindRefusal refusal)
+        /// silently, because nothing has been proved.</para>
+        /// <para><paramref name="argumentTypes"/> carries the caller's own resolved symbol per argument, which is
+        /// what the engine ranks on — <c>NativeExpressionCompiler</c> hands <c>OverloadRank</c> the compiled
+        /// expression's <c>Type</c>. It is consulted only where the shared descriptor has nothing, and entries may
+        /// be null.</para></summary>
+        public static Binding TryBind(string name, IReadOnlyList<OperandKind> arguments,
+            IReadOnlyList<ITypeSymbol> argumentTypes, out BindRefusal refusal)
         {
             refusal = BindRefusal.Unproven;
             if (!RowsByName.TryGetValue(name, out var rows))
@@ -114,9 +120,10 @@ namespace Heddle.Generator.Binding
             var args = new RankArgument<GenTypeRef>[arguments.Count];
             for (int i = 0; i < arguments.Count; i++)
             {
-                // Unknown arguments have no rank token; returning early keeps it a silent degrade, not a
-                // false ranking against the generator's ignorance.
-                if (!TryDescribe(arguments[i], out var described))
+                // An argument neither the descriptor nor its symbol can name has no rank token; returning early
+                // keeps it a silent degrade, not a false ranking against the generator's ignorance.
+                var symbol = argumentTypes != null && i < argumentTypes.Count ? argumentTypes[i] : null;
+                if (!TryDescribe(arguments[i], symbol, out var described))
                     return null;
                 args[i] = described;
             }
@@ -264,8 +271,9 @@ namespace Heddle.Generator.Binding
 
         /// <summary>Maps an operand estimate to a rank token. Categories the generator cannot name precisely get a
         /// placeholder that can only ever rank as a boxing conversion to <c>object</c> — exactly what the runtime
-        /// scores for the same operand — and <see cref="OperandCategory.Unknown"/> has no token at all.</summary>
-        private static bool TryDescribe(in OperandKind kind, out RankArgument<GenTypeRef> argument)
+        /// scores for the same operand — and <see cref="OperandCategory.Unknown"/> falls through to the argument's
+        /// own symbol.</summary>
+        private static bool TryDescribe(in OperandKind kind, ITypeSymbol type, out RankArgument<GenTypeRef> argument)
         {
             argument = default;
             switch (kind.Category)
@@ -295,8 +303,35 @@ namespace Heddle.Generator.Binding
                     argument = RankArgument<GenTypeRef>.Of(Lift("?struct", true, kind.IsNullable));
                     return true;
                 default:
-                    return false;
+                    return TryDescribeSymbol(type, out argument);
             }
+        }
+
+        /// <summary>
+        /// The rank token for an argument the shared descriptor deliberately refuses to describe. The descriptor
+        /// answers <c>Unknown</c> in five situations, and <c>object</c> is the only one this model can name:
+        /// <list type="bullet">
+        /// <item><description><b><c>object</c></b> — named exactly, and the whole shipped candidate set decides an
+        /// <c>object</c> argument through <c>AreSame</c> and <c>IsObject</c> alone, never through the reference
+        /// conversion this model has to answer false to. So the rank vector here is the one the runtime computes
+        /// from the same <c>Type</c>, and a refusal over it is a proof rather than a guess.</description></item>
+        /// <item><description><b><c>dynamic</c></b> — the engine's compiler refuses the whole expression before any
+        /// call in it is bound, so there is no bind to prove anything about.</description></item>
+        /// <item><description><b>an error type</b> — the consumer's compilation is already broken.</description></item>
+        /// <item><description><b>a type parameter</b> — the engine ranks the closed type the host supplies, which
+        /// is not the open one visible here.</description></item>
+        /// <item><description><b>no symbol at all</b> — nothing was resolved, which is the original "cannot
+        /// say".</description></item>
+        /// </list>
+        /// The last four keep the silent degrade they always had.
+        /// </summary>
+        private static bool TryDescribeSymbol(ITypeSymbol type, out RankArgument<GenTypeRef> argument)
+        {
+            argument = default;
+            if (type == null || type.SpecialType != SpecialType.System_Object)
+                return false;
+            argument = RankArgument<GenTypeRef>.Of(new GenTypeRef(ObjectName, false));
+            return true;
         }
 
         private static GenTypeRef Lift(string name, bool isValueType, bool isNullable) =>

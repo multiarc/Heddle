@@ -16,15 +16,20 @@ namespace Heddle.Generator.IntegrationTests
     /// <c>UnsupportedFunction</c>, is legitimate precisely <i>because</i> the build refused on purpose <b>and</b>
     /// warned <c>HED7014</c> — the refusal is legitimate, the silence was not.
     /// <para>The load-bearing half of the fix is the <b>side condition</b>: the report fires only when the ranker
-    /// reached <c>Ambiguous</c>/<c>None</c> over arguments the estimator could <i>type</i>. A <c>null</c> bind used to
+    /// reached <c>Ambiguous</c>/<c>None</c> over arguments the binder could <i>type</i>. A <c>null</c> bind used to
     /// conflate "provably ambiguous" with "an argument I could not describe", and only the first is a proof about the
-    /// runtime. The Unknown-estimate half is asserted here as its own case, because it is the half a later change is
+    /// runtime. The untypeable half is asserted here as its own case, because it is the half a later change is
     /// most likely to regress — and regressing it breaks the build for templates that are perfectly legal.</para>
+    /// <para>What counts as typeable is the <b>argument's resolved symbol</b>, not the shared operand descriptor.
+    /// Both binders are handed both: the descriptor names the numeric primitives, <c>bool</c> and <c>string</c>, and
+    /// an argument outside that set — a struct, an enum, a class, <c>object</c> — used to arrive indistinguishable
+    /// from an argument nothing had resolved.</para>
     /// </summary>
     public class AmbiguousOverloadDiagnosticTests
     {
         private const string OrderType = "Heddle.Generator.IntegrationTests.Fixtures.Order";
         private const string PayloadType = "Heddle.Generator.IntegrationTests.Fixtures.OverloadPayload";
+        private const string CatalogType = "Heddle.Generator.IntegrationTests.Fixtures.Catalog";
 
         private static string Template(string modelType, string expression) =>
             "@model(){{" + modelType + "}}@\\\nvalue: @(" + expression + ")\n";
@@ -112,35 +117,102 @@ namespace Heddle.Generator.IntegrationTests
         }
 
         /// <summary>
-        /// <b>The side condition.</b> <c>Payload</c> is <c>object</c>-typed, which the estimator classifies as
-        /// <see cref="OperandCategory.Unknown"/> on purpose (an object-typed operand carries no usable static facts).
-        /// The path still <i>writes</i>, so the binder <i>is</i> reached — the ranker simply has nothing to rank.
-        /// No <c>min</c> overload is applicable to a token the generator cannot describe, so a naive implementation
-        /// reaches <c>None</c> here and reports; but the generator has proved nothing about the runtime, which binds
-        /// on the <i>expression</i> type and may well succeed. This must stay a silent degrade.
+        /// <c>Payload</c> is <c>object</c>-typed, which the shared <i>descriptor</i> classifies as
+        /// <see cref="OperandCategory.Unknown"/> on purpose (an object-typed operand carries no usable static facts
+        /// for an <i>operator</i> to key on). That is not the same as having no type: the binder is handed the
+        /// argument's resolved <b>symbol</b> beside the descriptor, and <c>System.Object</c> is the one type the
+        /// descriptor drops that the name-keyed rank model can name exactly.
+        /// <para>It is a proof, not a guess, and the reason is the property
+        /// <see cref="NoBuiltInParameterTypeIsAReferenceTypeTheNameModelCannotDecide"/> pins: every parameter type
+        /// in the shipped table decides an <c>object</c> argument through <c>AreSame</c> or <c>IsObject</c>, never
+        /// through the reference conversion this model must answer false to. So the rank vector here is the one the
+        /// runtime computes from the same <c>Type</c> — asserted below, with the same sentence.</para>
+        /// <para>This used to be a silent degrade, which cost the author the diagnostic entirely: the build said
+        /// nothing and the template met <c>HED1012</c> at its first render.</para>
         /// </summary>
         [Fact]
-        public void AnUnknownArgumentEstimateStaysASilentDegrade()
+        public void AnObjectTypedArgumentIsAProofOnTheBuiltInPathToo()
         {
-            const string key = "overload/unknown-estimate.heddle";
-            var gen = DifferentialHarness.Generate(new[] { (key, Template(PayloadType, "min(1, Payload)")) });
+            const string key = "overload/object-estimate.heddle";
+            var content = Template(PayloadType, "min(1, Payload)");
+            var gen = DifferentialHarness.Generate(new[] { (key, content) });
+
+            var single = Assert.Single(Unbindable(gen));
+            Assert.Equal(DiagnosticSeverity.Error, single.Severity);
+            Assert.Contains("(int, object)", single.GetMessage());
+            DifferentialHarness.ExpectDegrade(gen, key);
+
+            var compiled = new HeddleTemplate(content,
+                new Runtime.CompileContext(new TemplateOptions(), typeof(OverloadPayload)));
+            Assert.False(compiled.CompileResult.Success);
+            Assert.Contains(compiled.CompileResult.ErrorList,
+                e => e.DiagnosticId == HeddleDiagnosticIds.NoFunctionOverload &&
+                     e.Error.Contains("(int, object)"));
+        }
+
+        /// <summary>The same proof one level in, and the boundary of it. The <i>inner</i> call is illegal over an
+        /// argument the binder can name, so it is reported; the <i>outer</i> call's argument is the inner call's
+        /// return, which no overload was chosen for, so the outer call stays the silent degrade an unproven call
+        /// always is. One report, naming the inner function.</summary>
+        [Fact]
+        public void AnObjectTypedArgumentOneCallInReportsThatCallAndNotTheOuterOne()
+        {
+            const string key = "overload/object-nested.heddle";
+            var gen = DifferentialHarness.Generate(new[] { (key, Template(PayloadType, "min(1, max(1, Payload))")) });
+
+            var single = Assert.Single(Unbindable(gen));
+            Assert.Contains("'max'", single.GetMessage());
+            Assert.DoesNotContain("'min'", single.GetMessage());
+        }
+
+        /// <summary>
+        /// <b>The side condition, which is unchanged.</b> An argument neither the descriptor nor a symbol can name
+        /// still reports nothing: an indexed read is a construct this writer neither emits nor types, so the ranker
+        /// reaches <c>None</c> over a token standing for the generator's own ignorance, and that is not a statement
+        /// about the runtime. The runtime types <c>Tags[0]</c> as <c>string</c> and refuses the call for a reason
+        /// the generator never established — asserted here, so the silence is measured against a real refusal
+        /// rather than against nothing happening.
+        /// <para>This is the half a later change is most likely to regress, and regressing it breaks the build for
+        /// templates that are perfectly legal.</para>
+        /// </summary>
+        [Fact]
+        public void AnArgumentNeitherTheDescriptorNorASymbolCanNameStaysASilentDegrade()
+        {
+            const string key = "overload/unnameable-estimate.heddle";
+            var content = Template(CatalogType, "min(1, Tags[0]) > 0");
+            var gen = DifferentialHarness.Generate(new[] { (key, content) });
 
             Assert.Empty(Unbindable(gen));
             Assert.DoesNotContain(gen.Diagnostics, d => d.Severity == DiagnosticSeverity.Error);
             DifferentialHarness.ExpectDegrade(gen, key);
+
+            var compiled = new HeddleTemplate(content,
+                new Runtime.CompileContext(new TemplateOptions(), typeof(Catalog)));
+            Assert.False(compiled.CompileResult.Success);
+            Assert.Contains(compiled.CompileResult.ErrorList,
+                e => e.DiagnosticId == HeddleDiagnosticIds.NoFunctionOverload);
         }
 
-        /// <summary>The same side condition one level in: the <i>outer</i> call's argument estimate is Unknown
-        /// because the inner call's own argument was. Nothing in the chain has been proved, so nothing is
-        /// reported — for either call.</summary>
-        [Fact]
-        public void AnUnknownEstimateInheritedFromANestedCallStaysSilentToo()
+        /// <summary>
+        /// The near-neighbours the proof must not swallow: a built-in that <i>does</i> take the <c>object</c>
+        /// argument binds it, precompiles, and renders the engine's bytes. Without these, "report whenever an
+        /// object-typed argument appears" would pass every assertion above while taking two shipped functions off
+        /// the precompiled tier — which is what the old silent degrade did to them.
+        /// </summary>
+        [Theory]
+        [InlineData("boxed-sole-parameter", "str(Payload)", "value: p\n")]
+        [InlineData("boxed-first-parameter", "format(Payload, \"x\")", "value: p\n")]
+        [InlineData("no-object-argument", "format(Count, \"D3\")", "value: 002\n")]
+        public void AnObjectArgumentTheCandidateSetAcceptsStillPrecompilesAndRendersTheEnginesBytes(
+            string name, string expression, string expected)
         {
-            const string key = "overload/unknown-nested.heddle";
-            var gen = DifferentialHarness.Generate(new[] { (key, Template(PayloadType, "min(1, max(1, Payload))")) });
+            var key = "overload/accepts-" + name + ".heddle";
+            var model = new OverloadPayload { Payload = "p", Count = 2 };
+            var (precompiled, dyn) = DifferentialHarness.Render(key, Template(PayloadType, expression),
+                typeof(OverloadPayload), model);
 
-            Assert.Empty(Unbindable(gen));
-            Assert.DoesNotContain(gen.Diagnostics, d => d.Severity == DiagnosticSeverity.Error);
+            Assert.Equal(expected, dyn);
+            Assert.Equal(dyn, precompiled);
         }
 
         /// <summary>The negative control for the whole feature: a call the ranker <i>resolves</i> is silent and
@@ -196,15 +268,15 @@ namespace Heddle.Generator.IntegrationTests
         }
 
         /// <summary>
-        /// The export path does not take the built-in path's exit here, and the difference is measured rather than
-        /// assumed. <c>Payload</c> is <c>object</c>-typed; the shared <i>descriptor</i> calls that
-        /// <see cref="OperandCategory.Unknown"/> on purpose, but the export binder is handed the resolved
-        /// <b>symbol</b>, which is the same <c>object</c> the engine ranks — <c>NativeExpressionCompiler</c> gives
-        /// <c>OverloadRank</c> the compiled expression's own <c>Type</c>. So the generator has proved what the
-        /// runtime will do, and the runtime is asserted here doing it, with the same sentence.
-        /// <para>The side condition itself is unchanged and still pinned, by the built-in twin above: the
-        /// name-keyed rank model has no symbol to be handed, so <c>min(1, Payload)</c> stays the silent degrade it
-        /// always was.</para>
+        /// The export path over the same argument. <c>Payload</c> is <c>object</c>-typed; the shared
+        /// <i>descriptor</i> calls that <see cref="OperandCategory.Unknown"/> on purpose, but the binder is handed
+        /// the resolved <b>symbol</b>, which is the same <c>object</c> the engine ranks —
+        /// <c>NativeExpressionCompiler</c> gives <c>OverloadRank</c> the compiled expression's own <c>Type</c>. So
+        /// the generator has proved what the runtime will do, and the runtime is asserted here doing it, with the
+        /// same sentence.
+        /// <para>The built-in twin, <see cref="AnObjectTypedArgumentIsAProofOnTheBuiltInPathToo"/>, reaches the same
+        /// verdict through a rank model keyed on type <i>names</i> rather than symbols — <c>System.Object</c> is a
+        /// name it can spell.</para>
         /// </summary>
         [Fact]
         public void AnObjectTypedArgumentIsAProofOnTheExportPathBecauseTheBinderRanksTheSameSymbol()

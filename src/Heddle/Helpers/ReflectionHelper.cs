@@ -249,6 +249,51 @@ namespace Heddle.Helpers
             throw failure ?? ResolveSimpleError(typeName, imports, false);
         }
 
+        /// <summary>
+        /// The dotted-spelling arm of a <c>using</c> namespace import. A namespace import brings the types
+        /// <b>declared in</b> that namespace into scope and nothing else — not the namespaces nested inside it — so
+        /// a candidate counts only when its own namespace <i>is</i> the import. A nested type reports its outer
+        /// type's namespace, which is what keeps <c>using A;</c> + <c>Outer.Inner</c> resolving while
+        /// <c>using A;</c> + <c>Sub.Deep</c> stops: the first is a type in <c>A</c> with a type inside it, the
+        /// second is a type in <c>A.Sub</c>, a namespace nobody imported.
+        /// <para>A namespace <b>alias</b> is the opposite case and does not come through here: <c>using X = A;</c>
+        /// names the namespace itself, so <c>X.Sub.Deep</c> binds — see <see cref="TryResolveThroughAlias"/>.</para>
+        /// </summary>
+        private static bool TryResolveThroughImports(string typeName, ICollection<string> imports, NameMaps maps,
+            out Type type, out bool ambiguous)
+        {
+            type = null;
+            ambiguous = false;
+            foreach (var import in imports)
+            {
+                if (!maps.FullNames.TryGetValue(import + "." + typeName, out var types))
+                    continue;
+
+                Type declared = null;
+                int matches = 0;
+                foreach (var candidate in types)
+                {
+                    if (!string.Equals(candidate.Namespace, import, StringComparison.Ordinal))
+                        continue;
+                    matches++;
+                    declared = candidate;
+                }
+
+                if (matches == 0)
+                    continue;
+                if (matches == 1)
+                {
+                    type = declared;
+                    return true;
+                }
+
+                ambiguous = true;
+                return false;
+            }
+
+            return false;
+        }
+
         /// <summary>Looks a fully-qualified spelling up in the global namespace, consulting no import and no alias.
         /// The second key is how a type with no namespace is stored: the index writes
         /// <c>type.Namespace + "." + name</c> and <c>Type.Namespace</c> is null for it, so its key carries a leading
@@ -387,35 +432,20 @@ namespace Heddle.Helpers
                     {
                         return types[0];
                     }
-                    foreach (var import in imports)
-                    {
-                        var fullName = import + "." + typeName;
-                        if (fullNames.TryGetValue(fullName, out types))
-                        {
-                            if (types.Count == 1)
-                            {
-                                return types[0];
-                            }
-                            throw new InvalidOperationException(
-                                $"Couldn't resolve type <{fullName}> ({string.Join(", ", imports)}), the type name is ambigous");
-                        }
-                    }
+
+                    // Several types answer to the whole spelling; an import may still name one of them by
+                    // re-qualifying it, and nothing else settles it.
+                    if (TryResolveThroughImports(typeName, imports, maps, out var disambiguated, out _))
+                        return disambiguated;
                     throw new InvalidOperationException(
                         $"Couldn't resolve type <{typeName}> ({string.Join(", ", imports)}), the type name is ambigous");
                 }
-                foreach (var import in imports)
-                {
-                    var fullName = import + "." + typeName;
-                    if (fullNames.TryGetValue(fullName, out types))
-                    {
-                        if (types.Count == 1)
-                        {
-                            return types[0];
-                        }
-                        throw new InvalidOperationException(
-                            $"Couldn't resolve type <{fullName}> ({string.Join(", ", imports)}), the type name is ambigous");
-                    }
-                }
+
+                if (TryResolveThroughImports(typeName, imports, maps, out var imported, out var ambiguousInImport))
+                    return imported;
+                if (ambiguousInImport)
+                    throw new InvalidOperationException(
+                        $"Couldn't resolve type <{typeName}> ({string.Join(", ", imports)}), the type name is ambigous");
                 throw new InvalidOperationException($"Couldn't resolve type <{typeName}> ({string.Join(", ", imports)})");
             }
             else
