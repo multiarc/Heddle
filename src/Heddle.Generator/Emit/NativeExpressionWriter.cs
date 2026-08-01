@@ -509,21 +509,43 @@ namespace Heddle.Generator.Emit
             }
         }
 
-        private OperandKind EstimatePath(PathNode path)
+        private OperandKind EstimatePath(PathNode path) => SymbolFacts.Classify(PathType(path));
+
+        /// <summary>The resolved static type of a member path, before the shared descriptor is taken of it. Null
+        /// where nothing resolves — the same condition <see cref="EstimatePath"/> answers <c>Unknown</c> for.</summary>
+        private ITypeSymbol PathType(PathNode path)
         {
             var prop = PropRoot(path);
             if (prop != null)
-            {
-                var propType = PropPathType(prop, path);
-                return propType == null ? OperandKind.Unknown : SymbolFacts.Classify(propType);
-            }
+                return PropPathType(prop, path);
 
             if (path.Target != null || path.RootRef || _modelType == null)
-                return OperandKind.Unknown;
+                return null;
             var resolution = _resolver.ResolvePath(_modelType, path.Segments);
-            return resolution.Kind == SymbolTypeResolver.PathKind.Resolved
-                ? SymbolFacts.Classify(resolution.ResultType)
-                : OperandKind.Unknown;
+            return resolution.Kind == SymbolTypeResolver.PathKind.Resolved ? resolution.ResultType : null;
+        }
+
+        /// <summary>
+        /// The static type of an argument as the <b>engine</b> ranks it: <c>NativeExpressionCompiler</c> hands
+        /// <c>OverloadRank</c> the compiled expression's own <c>Type</c>. Only the shapes this writer resolves a
+        /// symbol for answer — a member path and a call's declared return; everything else is left to the shared
+        /// descriptor, which names exactly the types it can name and says nothing about the rest.
+        /// <para>Handing the descriptor alone to the export binder made every struct, enum, class and
+        /// <c>object</c> argument look like an argument nothing had resolved, and an unresolved argument is what the
+        /// sole-candidate shortcut is allowed to bind past. That wrote a call the consumer's compiler answers with
+        /// CS1503 where the engine answers <c>HED1012</c>.</para>
+        /// </summary>
+        private ITypeSymbol ArgumentType(ExprNode node)
+        {
+            switch (node)
+            {
+                case PathNode path:
+                    return PathType(path);
+                case CallNode call:
+                    return _typeFacts?.Compilation == null ? null : CallReturnType(call, _typeFacts.Compilation);
+                default:
+                    return null;
+            }
         }
 
         /// <summary>Built-in and export calls contribute their return type if the ranker accepts them; otherwise unknown.</summary>
@@ -551,10 +573,15 @@ namespace Heddle.Generator.Emit
             if (_typeFacts != null && _exports != null && _exports.TryGet(call.Name, out var entry))
             {
                 var argKinds = new OperandKind[call.Arguments.Count];
+                var argTypes = new ITypeSymbol[call.Arguments.Count];
                 for (int i = 0; i < argKinds.Length; i++)
+                {
                     argKinds[i] = Estimate(call.Arguments[i]);
-                binding = ExportFunctionBinder.TryBind(_typeFacts, call.Name, entry.Overloads, argKinds,
-                    out var refusal);
+                    argTypes[i] = ArgumentType(call.Arguments[i]);
+                }
+
+                binding = ExportFunctionBinder.TryBind(_typeFacts, _resolver, call.Name, entry.Overloads, argKinds,
+                    argTypes, out var refusal);
                 RecordIfProvenIllegal(call, refusal);
 
                 if (binding != null && !CanWriteCallTo(binding.Overload, out var display))

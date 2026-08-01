@@ -386,13 +386,14 @@ namespace Heddle.Generator.Emit
 
             /// <summary>The model behind a body emitted on the dynamic tier, where <see cref="ModelSymbol"/> is
             /// null but the engine still has a static type in hand.
-            /// <para>Two bodies set it. A <c>:: dynamic</c> definition body carries the model of the one call site
-            /// that built it: the engine compiles such a definition once per call site off the model that call site
-            /// hands it, so the declaration does not mean "untyped", it means "whatever this caller passes". A
-            /// nested <c>@list</c> body carries the <b>element</b> type, which is that body's model for exactly the
-            /// same reason — the reads are emitted dynamically, but the call sites inside the body are typed by it.
-            /// Where the value is the compilation's <c>dynamic</c> the body genuinely has no static model, and that
-            /// is what the <c>@out</c> check reads. Null on the typed tier and in a body with neither source.</para>
+            /// <para>Two bodies set it, and both set it alongside the model they are typed by, so the two never
+            /// disagree. A <c>:: dynamic</c> definition body carries the model of the one call site that built it:
+            /// the engine compiles such a definition once per call site off the model that call site hands it, so
+            /// the declaration does not mean "untyped", it means "whatever this caller passes". A nested
+            /// <c>@list</c> body carries the <b>element</b> type for exactly the same reason. Either is on the
+            /// dynamic tier only when the value <em>is</em> the compilation's <c>dynamic</c> — then the body
+            /// genuinely has no static model, and that is what the <c>@out</c> check reads. Null on the typed tier
+            /// and in a body with neither source.</para>
             /// <para>Two call sites that hand the same <c>:: dynamic</c> definition different models do not get
             /// different bodies — the engine gives them one, and <see cref="TryShareBodyTyping"/> is where that is
             /// decided.</para></summary>
@@ -426,12 +427,19 @@ namespace Heddle.Generator.Emit
         /// <list type="bullet">
         /// <item><description><see cref="BodyModelSource.Parent"/> (the branch trio, <c>@for</c>) — the body keeps
         /// the enclosing typed context, because it executes under <c>scope.Parent()</c>.</description></item>
-        /// <item><description><see cref="BodyModelSource.ElementOfData"/> (<c>@list</c>) — the body's reads are
-        /// emitted on the dynamic tier, because that is what the host's reflected <c>InitStart</c> decides at
-        /// render. What the element type is still known here for is the call sites <i>inside</i> the body whose own
-        /// typing depends on it. The enclosing fill scope, region props, slot mode and — the engine restores the
-        /// prop layout around <b>definition</b> bodies only — the enclosing <b>prop layout</b> all
-        /// propagate.</description></item>
+        /// <item><description><see cref="BodyModelSource.ElementOfData"/> (<c>@list</c>) — the body is typed by the
+        /// element type, because that is the type the engine compiles it against: <c>ListExtension.InitStart</c>
+        /// returns the collection's <c>IEnumerable&lt;T&gt;</c> argument and the body is compiled once, in a scope of
+        /// that type. Only where the host reaches no generic form does it hand back <c>ExType.Dynamic</c>, and only
+        /// then is the body genuinely untyped. The enclosing fill scope, region props, slot mode and — the engine
+        /// restores the prop layout around <b>definition</b> bodies only — the enclosing <b>prop layout</b> all
+        /// propagate.
+        /// <para>Emitting the reads on the dynamic tier regardless cost this both ways. A member the element type
+        /// does <em>not</em> carry is an <c>HED0001</c> the engine raises when it compiles the template; bound
+        /// dynamically it precompiled and threw <c>RuntimeBinderException</c> at render, and over an element type of
+        /// <c>object</c> — a static type, not the absence of one — it precompiled and <b>rendered</b> a page the
+        /// engine refuses outright. And every read the dynamic tier cannot express — a native expression over the
+        /// element's own member, a function call taking one — degraded a template the engine renders.</para></description></item>
         /// </list>
         /// <para>A name with no pinned row, or a row naming a source the emitter has no emission for, returns
         /// <c>false</c>: the caller refuses the body and the template degrades, which is the safe direction.</para>
@@ -448,9 +456,13 @@ namespace Heddle.Generator.Emit
 
             if (source == BodyModelSource.ElementOfData)
             {
-                var dynamicCtx = new BodyContext(null, null, true, props: bctx.Props,
-                    fills: bctx.Fills, regionHostProps: bctx.RegionHostProps, dynamicBodyModel: elementModel);
-                nested = bctx.InSlot ? dynamicCtx.AsSlot(bctx.SlotType) : dynamicCtx;
+                var elementCtx = elementModel == null || elementModel.TypeKind == TypeKind.Dynamic
+                    ? new BodyContext(null, null, true, props: bctx.Props,
+                        fills: bctx.Fills, regionHostProps: bctx.RegionHostProps, dynamicBodyModel: elementModel)
+                    : new BodyContext("(" + SymbolTypeResolver.FullyQualified(elementModel) + ")", elementModel,
+                        false, props: bctx.Props, fills: bctx.Fills, regionHostProps: bctx.RegionHostProps,
+                        dynamicBodyModel: elementModel);
+                nested = bctx.InSlot ? elementCtx.AsSlot(bctx.SlotType) : elementCtx;
                 return true;
             }
 
@@ -760,14 +772,22 @@ namespace Heddle.Generator.Emit
 
             if (name == "list")
             {
-                // Element body on the dynamic tier; the enclosing prop layout, slot mode and fill scope propagate,
-                // and BodyModelRules' ElementOfData row decides the context.
+                // Element body typed by the element type — the type the engine compiles it against; the enclosing
+                // prop layout, slot mode and fill scope propagate, and BodyModelRules' ElementOfData row decides
+                // the context.
                 var elementModel = ListElementModel(cp, bctx, out var elementAmbiguous);
                 if (elementAmbiguous)
                 {
                     reason = "collection reaches IEnumerable<T> at more than one element type";
                     return null;
                 }
+
+                // The element type is now written into the body's own `(T)scope.ModelData`, so it passes the gate
+                // every other spelled name passes before it reaches the file. It is a model position: the host hands
+                // each element to `scope.Model(item, index)` boxed, which a ref struct cannot be.
+                if (elementModel != null && elementModel.TypeKind != TypeKind.Dynamic &&
+                    !CanWriteTypeName(elementModel, item.Position, out reason))
+                    return null;
 
                 if (!TryNestedBodyContext("list", bctx, elementModel, out var itemCtx))
                 {

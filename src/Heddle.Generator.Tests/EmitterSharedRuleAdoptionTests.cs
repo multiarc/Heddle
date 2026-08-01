@@ -148,7 +148,7 @@ namespace Heddle.Generator.Tests
 
         private const string ModelSource =
             "namespace RuleAdoption { public class Person { public string Name { get; set; } " +
-            "public int[] Scores { get; set; } } }";
+            "public int[] Scores { get; set; } public string[] Tags { get; set; } } }";
 
         private const string ModelCast = "(global::RuleAdoption.Person)scope.ModelData";
 
@@ -181,18 +181,33 @@ namespace Heddle.Generator.Tests
         }
 
         /// <summary>The <see cref="BodyModelSource.ElementOfData"/> row, read off the emitted bytes: an
-        /// <c>@list</c> element body is NOT the enclosing model, and its reads are emitted on the dynamic tier
-        /// because what the host iterates is decided by <c>ListExtension.InitStart</c> at render. This is the row
-        /// whose confusion with Parent would silently bind a member of the wrong type.</summary>
+        /// <c>@list</c> element body is typed by the ELEMENT type, not the enclosing model —
+        /// <c>ListExtension.InitStart</c> hands the body the collection's <c>IEnumerable&lt;T&gt;</c> argument and
+        /// the engine compiles it in a scope of that type. This is the row whose confusion with Parent would
+        /// silently bind a member of the wrong type; the two casts are textually unmistakable.</summary>
         [Fact]
-        public void TheEmitterTypesAListElementBodyOnTheDynamicTier()
+        public void TheEmitterTypesAListElementBodyByTheElementType()
         {
-            // The body reads Name — a member of the ENCLOSING model. Under the ElementOfData row the read goes
-            // through the dynamic member router; under Parent it would bind Person.Name statically and cast. The
-            // two emissions are textually unmistakable.
-            var body = NestedBodySource("@list(Scores){{@(Name)}}");
+            // The body reads Length — a member of the ELEMENT type. Under Parent it would be looked for on Person.
+            var body = NestedBodySource("@list(Tags){{@(Length)}}");
             Assert.DoesNotContain(ModelCast, body);
-            Assert.Contains("PrecompiledRuntime.DynamicMember(m, \"Name\")", body);
+            Assert.Contains("(string)scope.ModelData", body);
+        }
+
+        /// <summary>The same row from the refusing side, which is what stops the row above from being satisfied by
+        /// typing the body as anything at all: a member the ELEMENT type does not carry is refused, though the
+        /// enclosing model carries it. The engine raises <c>HED0001</c> on the element type for this template, so
+        /// nothing is emitted here either.</summary>
+        [Fact]
+        public void AMemberOfTheEnclosingModelIsNotFoundOnTheElement()
+        {
+            var run = GeneratorHarness.RunWithSources(
+                new[] { ("views/rule-adoption.heddle", "@model(){{RuleAdoption.Person}}@\\\n@list(Scores){{@(Name)}}") },
+                new[] { ModelSource });
+
+            Assert.Contains(run.GeneratorDiagnostics,
+                d => d.Id == gen::Heddle.Data.HeddleDiagnosticIds.BuildUnresolvableMember);
+            Assert.DoesNotContain(run.GeneratedSourceTexts, s => s.Contains("class Body1"));
         }
 
         /// <summary>The table's key set is the emitter's pinned-host set: exactly the names whose bodies the emitter
