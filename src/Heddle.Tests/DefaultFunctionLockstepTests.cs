@@ -42,8 +42,8 @@ namespace Heddle.Tests
             var registry = RegistrySignatures();
             var table = TableSignatures();
 
-            Assert.Equal(35, DefaultFunctionTable.Rows.Count);
-            Assert.Equal(35, registry.Count);
+            Assert.Equal(43, DefaultFunctionTable.Rows.Count);
+            Assert.Equal(43, registry.Count);
             Assert.Empty(table.Except(registry));   // no table row missing from the registry
             Assert.Empty(registry.Except(table));    // no registry overload missing from the table
         }

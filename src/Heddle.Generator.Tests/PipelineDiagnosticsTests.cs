@@ -163,15 +163,23 @@ namespace Heddle.Generator.Tests
         }
 
         /// <summary>
-        /// Imports resolve by template key here — the generator serves them from the files it was handed, not from
-        /// disk — so `page`, `~/page.heddle` and `/page.heddle` all name one template. The cycle guard identified
-        /// them by file path instead, so it saw six documents where there is one and explored their permutations:
-        /// the import budget ran out before the repeat was recognised, on a file that imports only itself.
+        /// One file spelled six ways is one document to the cycle guard. The guard identified imports by file path
+        /// instead, so it saw six documents where there is one and explored their permutations: the import budget
+        /// ran out before the repeat was recognised, on a file that imports only itself.
+        /// <para>The spellings are the ones the engine also reduces to this file — a `.` names the directory it is
+        /// in and a `..` cancels the segment before it, exactly as `Path.GetFullPath` does. Key-grammar spellings
+        /// (`page`, `~/page.heddle`, `/page.heddle`) are deliberately absent: those name a different file to
+        /// `Path.Combine` than to the key grammar, so both tiers now refuse them, and that refusal is pinned in the
+        /// integration suite alongside the engine's own verdict.</para>
         /// </summary>
         [Fact]
         public void ASelfImportUnderManyKeySpellingsIsOneDocumentToTheCycleGuard()
         {
-            var spellings = new[] { "page", "page.heddle", "~/page.heddle", "/page.heddle", "~/page", "/page" };
+            var spellings = new[]
+            {
+                "page.heddle", "./page.heddle", ".//page.heddle",
+                "x/../page.heddle", "page.heddle/.", "./page.heddle/."
+            };
             var document = string.Concat(spellings.Select(s => "@<<{{" + s + "}}@\\\n"));
 
             var run = GeneratorHarness.Run(new[] { ("/repo/app/page.heddle", document) },

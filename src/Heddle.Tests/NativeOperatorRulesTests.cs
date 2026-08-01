@@ -175,20 +175,14 @@ namespace Heddle.Tests
         }
 
         /// <summary>
-        /// A known runtime defect, deliberately left in place and pinned as a defect.
-        /// `bool &amp; bool?` reaches <c>Expression.And</c> with no guard — the
-        /// bitwise path's bool arm tests the <b>underlying</b> types, so a mismatched lifted pair walks straight
-        /// into the factory — and the throw is contained by the compile-item catch, surfacing as an
-        /// <c>Error while compiling</c> with an exception attached instead of the positioned HED1008 the sibling
-        /// mismatch (<c>bool == bool?</c>) gets.
-        /// <para>What this pin buys: the containment is now a test, not prose. If the blast radius ever widens —
-        /// the throw escaping compilation, or reaching render — this reddens. Fixing the shape (a real HED1008)
-        /// also reddens it, which is the intended prompt to move the row deliberately rather than by accident.
-        /// The table already answers <see cref="OperatorVerdict.NotDefined"/> for the pair, so no generated code
-        /// can reach it.</para>
+        /// A mismatched-nullability bool pair under a bitwise operator is refused with the same positioned
+        /// diagnostic every other illegal operand pair in the tier carries, and with the verdict the shared
+        /// operator table already published for the shape — so the runtime and the table now answer alike.
+        /// <para>Matched nullability on both sides stays legal, which is what keeps this a refusal of the
+        /// mismatch rather than a refusal of nullable bool.</para>
         /// </summary>
         [Fact]
-        public void NullableBoolBitwise_IsAContainedRuntimeDefect_NotAPositionedError()
+        public void NullableBoolBitwise_MismatchedNullability_IsAPositionedBinaryOperatorError()
         {
             var b = OperandKind.Of(OperandCategory.Bool);
             var nb = OperandKind.Of(OperandCategory.Bool, true);
@@ -200,22 +194,39 @@ namespace Heddle.Tests
                 Assert.Equal(OperatorVerdict.NotDefined, NativeOperatorRules.Classify(op, nb, b));
             }
 
-            var result = Compile("B & NB");
-            Assert.False(result.Success);
-            // Contained: the compile-item catch turns it into a collected error, never an escaping throw and never a render.
-            Assert.Contains(result.ErrorList, e => e.Exception != null);
-            Assert.DoesNotContain(result.ErrorList,
-                e => e.DiagnosticId == HeddleDiagnosticIds.BinaryOperatorNotDefined);
-            // Wrong diagnostic, not no diagnostic: the catch-all is classifiable, and says what failed and why.
-            var caught = Assert.Single(result.ErrorList, e => e.Exception != null);
-            Assert.Equal(HeddleDiagnosticIds.CompilationFailed, caught.DiagnosticId);
-            Assert.Contains(caught.Exception.Message, caught.Error);
+            foreach (var expression in new[] { "B & NB", "NB & B", "B | NB", "NB | B", "B ^ NB", "NB ^ B" })
+            {
+                var result = Compile(expression);
+                Assert.False(result.Success);
 
-            // The sibling mismatch the runtime *does* guard, for contrast — same operand pair, real diagnostic.
+                // Positioned and identified, not an escaping throw and not the catch-all.
+                var error = Assert.Single(result.ErrorList);
+                Assert.Equal(HeddleDiagnosticIds.BinaryOperatorNotDefined, error.DiagnosticId);
+                Assert.Null(error.Exception);
+                Assert.DoesNotContain(result.ErrorList,
+                    e => e.DiagnosticId == HeddleDiagnosticIds.CompilationFailed);
+                Assert.Contains("bool", error.Error);
+                Assert.Contains("bool?", error.Error);
+                Assert.True(error.Position.Length > 0);
+            }
+
+            // The sibling mismatch that was already guarded, for contrast — same operand pair, same diagnostic.
             var equality = Compile("B == NB");
             Assert.False(equality.Success);
             Assert.Contains(equality.ErrorList,
                 e => e.DiagnosticId == HeddleDiagnosticIds.BinaryOperatorNotDefined);
+        }
+
+        /// <summary>The near-neighbours the refusal must not take with it: a matched pair on either nullability,
+        /// under every bitwise operator, still compiles and evaluates.</summary>
+        [Fact]
+        public void BitwiseBoolPairsOfMatchingNullability_StillCompile()
+        {
+            foreach (var expression in new[] { "B & B", "B | B", "B ^ B", "NB & NB", "NB | NB", "NB ^ NB" })
+            {
+                var result = Compile(expression);
+                Assert.True(result.Success, expression + " => " + string.Join("; ", result.ErrorList));
+            }
         }
 
         [Fact]

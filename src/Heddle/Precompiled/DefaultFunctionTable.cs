@@ -23,7 +23,7 @@ namespace Heddle.Precompiled
         public string ReturnTypeName { get; }
     }
 
-    /// <summary>The 18 default built-in function names (35 overloads) compiled into both Heddle and Heddle.Generator.
+    /// <summary>The 18 default built-in function names (43 overloads) compiled into both Heddle and Heddle.Generator.
     /// The generator seeds its merged table from these rows and emits PrecompiledFunctions shim calls; the engine
     /// tests the table against FunctionRegistry.Default in both directions.</summary>
     internal static class DefaultFunctionTable
@@ -41,7 +41,7 @@ namespace Heddle.Precompiled
         private const string ObjArr = "System.Object[]";
         private const string Range = "Heddle.Models.Range";
 
-        /// <summary>The 35 default overloads, in <c>BuiltInFunctions.CreateEntries()</c> order.</summary>
+        /// <summary>The 43 default overloads, in <c>BuiltInFunctions.CreateEntries()</c> order.</summary>
         public static readonly IReadOnlyList<DefaultFunctionRow> Rows = new[]
         {
             new DefaultFunctionRow("upper", "Upper", new[] { Str }, Str),
@@ -69,12 +69,20 @@ namespace Heddle.Precompiled
             new DefaultFunctionRow("max", "Max", new[] { Long, Long }, Long),
             new DefaultFunctionRow("max", "Max", new[] { Dbl, Dbl }, Dbl),
             new DefaultFunctionRow("max", "Max", new[] { Dec, Dec }, Dec),
+            new DefaultFunctionRow("round", "Round", new[] { Int }, Int),
+            new DefaultFunctionRow("round", "Round", new[] { Int, Int }, Int),
+            new DefaultFunctionRow("round", "Round", new[] { Long }, Long),
+            new DefaultFunctionRow("round", "Round", new[] { Long, Int }, Long),
             new DefaultFunctionRow("round", "Round", new[] { Dbl }, Dbl),
             new DefaultFunctionRow("round", "Round", new[] { Dbl, Int }, Dbl),
             new DefaultFunctionRow("round", "Round", new[] { Dec }, Dec),
             new DefaultFunctionRow("round", "Round", new[] { Dec, Int }, Dec),
+            new DefaultFunctionRow("floor", "Floor", new[] { Int }, Int),
+            new DefaultFunctionRow("floor", "Floor", new[] { Long }, Long),
             new DefaultFunctionRow("floor", "Floor", new[] { Dbl }, Dbl),
             new DefaultFunctionRow("floor", "Floor", new[] { Dec }, Dec),
+            new DefaultFunctionRow("ceil", "Ceil", new[] { Int }, Int),
+            new DefaultFunctionRow("ceil", "Ceil", new[] { Long }, Long),
             new DefaultFunctionRow("ceil", "Ceil", new[] { Dbl }, Dbl),
             new DefaultFunctionRow("ceil", "Ceil", new[] { Dec }, Dec),
             new DefaultFunctionRow("range", "Range", new[] { Int, Int }, Range),
