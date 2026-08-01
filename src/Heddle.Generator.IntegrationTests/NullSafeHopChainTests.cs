@@ -194,28 +194,20 @@ namespace Heddle.Generator.IntegrationTests
                 new Heddle.Runtime.CompileContext(
                     new TemplateOptions { ValidateModelType = false }, typeof(System.ReadOnlySpan<char>)));
             Assert.True(dynamicTemplate.CompileResult.Success, dynamicTemplate.CompileResult.ToString());
-#if DEBUG
             var error = Assert.Throws<Heddle.Exceptions.TemplateProcessingException>(
                 () => dynamicTemplate.Generate("hello"));
             Assert.Contains("Type mismatch", error.Message, System.StringComparison.OrdinalIgnoreCase);
-#else
-            Assert.Throws<System.InvalidCastException>(() => dynamicTemplate.Generate("hello"));
-#endif
         }
 
         /// <summary>
         /// What the engine's contract says the unguarded path should do, and today does not: a wrong-typed model
         /// reaching the compiled accessor's cast escapes as a raw <see cref="System.InvalidCastException"/> instead
         /// of the wrapped, Heddle-shaped <see cref="Heddle.Exceptions.TemplateProcessingException"/> every other
-        /// render fault produces. The desired contract does not depend on configuration, so there is no
-        /// <c>#if</c> here: in Debug the forced guard happens to satisfy it, in Release the raw cast escapes and
-        /// this is red. When it is fixed, <see cref="ARefStructModelWithoutTheGuardFaultsAtTheCastInstead"/>
-        /// loses its <c>#if</c> split — both configurations then expect the wrapped exception.
+        /// render fault produces. The contract does not depend on configuration and no longer depends on the
+        /// opt-in: the model is refused at the top level before the accessor's cast is reached, which is why this
+        /// still sets <c>ValidateModelType = false</c> — it asserts the unguarded path, not the guard.
         /// </summary>
-        [Fact(Skip = "known defect — dynamic-tier model guard: in Release with ValidateModelType=false a " +
-                     "ref-struct model faults with a raw InvalidCastException instead of the wrapped " +
-                     "TemplateProcessingException; un-skip with that fix and collapse the #if split in " +
-                     "ARefStructModelWithoutTheGuardFaultsAtTheCastInstead")]
+        [Fact]
         public void ARefStructModelFaultsWithTheEnginesOwnExceptionEvenWithoutTheGuard()
         {
             const string template = "@model(){{System.ReadOnlySpan<char>}}@\\\n@(Length)";

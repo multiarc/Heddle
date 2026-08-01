@@ -30,9 +30,10 @@ namespace Heddle.Generator.IntegrationTests
         public static IEnumerable<object[]> ModelLessRenderable() =>
             NamesWithRender(r => r != CorpusRender.ResolveOnly).Select(n => new object[] { n });
 
-        /// <summary>Precompiling entries the table excuses from rendering altogether.</summary>
-        public static IEnumerable<object[]> DeclaredResolveOnly() =>
-            NamesWithRender(r => r == CorpusRender.ResolveOnly).Select(n => new object[] { n });
+        /// <summary>Precompiling entries the table excuses from rendering altogether. Empty today — see
+        /// <see cref="NoPrecompilingEntryIsCurrentlyExcusedFromRendering"/>.</summary>
+        public static IEnumerable<string> DeclaredResolveOnly() =>
+            NamesWithRender(r => r == CorpusRender.ResolveOnly);
 
         private static IEnumerable<string> NamesWithRender(Func<CorpusRender, bool> predicate) =>
             CorpusIntent.Rows
@@ -54,16 +55,29 @@ namespace Heddle.Generator.IntegrationTests
         /// find out: a row that reads <c>ResolveOnly</c> for a template that renders perfectly well has taken it out
         /// of the gate for nothing, and the column drifts one silent row at a time.
         /// </summary>
-        [Theory]
-        [MemberData(nameof(DeclaredResolveOnly))]
-        public void AnEntryDeclaredResolveOnlyGenuinelyDoesNotRender(string name)
+        /// <para>The column is empty today, and that is a property worth asserting rather than a reason to delete
+        /// the check. A template the engine refuses to render is now also one the build tier declines to precompile,
+        /// so the two values cannot currently co-occur. They are not mutually exclusive in principle — a template can
+        /// precompile and still refuse at render for a model reason rather than a branch one — so the day a row does
+        /// appear, the count below reddens and the loop that follows becomes the real gate for it.</para>
+        [Fact]
+        public void AnEntryDeclaredResolveOnlyGenuinelyDoesNotRender()
         {
-            var refusal = Assert.ThrowsAny<Exception>(() => RenderModelLess(name));
+            var declared = DeclaredResolveOnly().ToList();
 
-            // Not merely "something threw". A harness failure — a missing fixture, a build-time degrade where one
-            // was not declared — throws too, and would let a row keep its exemption for a reason that has nothing
-            // to do with the template. What earns the exemption is the engine itself refusing to render it.
-            Assert.IsType<TemplateProcessingException>(refusal);
+            // The cardinality is the guard. Without it the loop is the whole test, and a loop over an empty
+            // self-derived set passes without executing its body — the assertion would be describing nothing.
+            Assert.Empty(declared);
+
+            foreach (var name in declared)
+            {
+                var refusal = Assert.ThrowsAny<Exception>(() => RenderModelLess(name));
+
+                // Not merely "something threw". A harness failure — a missing fixture, a build-time degrade where
+                // one was not declared — throws too, and would let a row keep its exemption for a reason that has
+                // nothing to do with the template. What earns the exemption is the engine itself refusing to render.
+                Assert.IsType<TemplateProcessingException>(refusal);
+            }
         }
 
         /// <summary>

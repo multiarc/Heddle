@@ -131,8 +131,8 @@ namespace Heddle.TestCorpus
 
             new CorpusIntentRow("branch-import-def.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
                 "Branch definition library: supported constructs only; renders empty standalone on both tiers."),
-            new CorpusIntentRow("branch-import-else.heddle", CorpusTier.Precompiles, CorpusRender.ResolveOnly,
-                "A bare @else continuation fragment: it is only meaningful when imported into an opener's scope, and rendering it standalone throws 'branch terminal with no matching opener'. THE entry the blanket render:false existed for."),
+            new CorpusIntentRow("branch-import-else.heddle", CorpusTier.FallsBackSafely, CorpusRender.ResolveOnly,
+                "A bare @else continuation fragment: it is only meaningful when imported into an opener's scope, and rendering it standalone throws 'branch terminal with no matching opener'. The build tier now reads that refusal from the shared branch scan and declines the body rather than precompiling past it, so the entry is a marker instead of a strategy."),
             new CorpusIntentRow("branching-flagship.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
                 "Flagship branch protocol shape; model-less and byte-identical across tiers."),
             new CorpusIntentRow("branching-interleaved.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,

@@ -48,8 +48,6 @@ namespace Heddle
         private System.Text.Encodings.Web.TextEncoder _encoder;
         // Resolved once at compile (or from precompiled-adapter ctor); null = unlimited.
         private RenderBudget _renderBudget;
-        // Resolved once at compile on the store path; read-only on the render path. Always true in DEBUG.
-        private bool _validateModelType;
 #if NET8_0_OR_GREATER
          private volatile int _maxLength;
 #else
@@ -262,11 +260,12 @@ namespace Heddle
                 var doc = _runtimeDocument;
                 var ctx = _context;
                 var strategy = doc != null ? doc.Strategy : _processStrategy;
-                var validateModelType = _validateModelType;
-#if DEBUG
-                validateModelType = true; // DEBUG always validates; Release honors the opt-in
-#endif
-                if (validateModelType && !_precompiled && data != null && !ctx.ScopeType.Type.IsType(data))
+                // A model the template cannot accept is refused here, as a Heddle fault. Without this the value
+                // reaches the compiled accessor's cast and escapes as a raw InvalidCastException, which is not the
+                // shape any other render fault has. One instance check per render — not per processor, so the
+                // recursive path is untouched. The precompiled adapter has no compile-time model type to check
+                // against, so it is skipped there, as it always has been.
+                if (!_precompiled && data != null && !ctx.ScopeType.Type.IsType(data))
                 {
                     throw new TemplateProcessingException
                         (string.Format
@@ -424,7 +423,6 @@ namespace Heddle
                                 _processStrategy = rtdoc?.Strategy;
                                 _encoder = compileScope.CompileContext.Options.Encoder;
                                 _renderBudget = compileScope.CompileContext.Options.RenderBudget;
-                                _validateModelType = compileScope.CompileContext.Options.ValidateModelType;
                                 if (superseded != null)
                                 {
                                     _supersededDocs = _supersededDocs ?? new ConcurrentQueue<RuntimeDocument>();
