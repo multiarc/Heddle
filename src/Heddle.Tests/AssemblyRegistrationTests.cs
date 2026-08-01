@@ -4,7 +4,9 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+#if !NETFRAMEWORK
 using System.Runtime.Loader;
+#endif
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Heddle.Data;
@@ -135,7 +137,12 @@ namespace Heddle.Tests
         /// exact shape of an unloaded collectible context, which is a scenario the engine supports and which the
         /// language service performs on every model reload. The assembly loaded in that window stayed invisible, and
         /// stayed invisible on retry, until some unrelated later load disturbed the count.
+        /// <para>Off .NET Framework only: the window it reproduces is opened by unloading a collectible
+        /// <c>AssemblyLoadContext</c>, and .NET Framework has no such type — collectible isolation there is an
+        /// <c>AppDomain</c> concern the engine does not model. The engine rule being pinned is not
+        /// framework-specific; only this probe's mechanism is.</para>
         /// </summary>
+#if !NETFRAMEWORK
         [Fact]
         public void AnAssemblyLoadedAfterACollectibleUnloadStillResolves()
         {
@@ -163,6 +170,7 @@ namespace Heddle.Tests
 
             Assert.NotNull(ReflectionHelper.ResolveType($"ProbeNamespace{suffix}.{typeName}"));
         }
+#endif
 
         /// <summary>
         /// The engine must not <b>load</b> anything — the half of the promise its siblings do not cover. They pin
@@ -208,7 +216,11 @@ namespace Heddle.Tests
         /// returns before reaching the assembly, and the freed name stays unusable until something unrelated happens
         /// to load. The same assertion catches the other half: an assembly marked classified <i>before</i> the name
         /// was actually taken is skipped for the life of the process, and no unregistration can bring it back.</para>
+        /// <para>Off .NET Framework only, for the same reason as
+        /// <see cref="AnAssemblyLoadedAfterACollectibleUnloadStillResolves"/>: the registered half has to arrive
+        /// out of a private collectible context so observation never sees it, and that type does not exist there.</para>
         /// </summary>
+#if !NETFRAMEWORK
         [Fact]
         public void AFreedNameIsRetakenByTheLoadedAssemblyThatLostIt()
         {
@@ -243,6 +255,7 @@ namespace Heddle.Tests
                 host.Unload();
             }
         }
+#endif
 
         // Two orderings inside ObserveLoadedAssemblies are NOT pinned here, and cannot be from inside this process.
         // That the generation is bumped before the digest is written, and that GetApplicationReferences reads the
@@ -304,6 +317,7 @@ namespace ReferrerNamespace{suffix}
         /// <summary>Loads into a collectible context and unloads it, in its own frame. A debug build keeps every
         /// local of a method rooted until that method returns, so doing this inline leaves the context uncollectable
         /// and the loaded-assembly count never falls.</summary>
+#if !NETFRAMEWORK
         [MethodImpl(MethodImplOptions.NoInlining)]
         private static WeakReference LoadIntoCollectibleContextAndUnload(byte[] assembly)
         {
@@ -313,6 +327,7 @@ namespace ReferrerNamespace{suffix}
             context.Unload();
             return new WeakReference(context);
         }
+#endif
 
         [Fact]
         public void RegisterRejectsNull()
