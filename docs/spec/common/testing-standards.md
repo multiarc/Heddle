@@ -45,6 +45,33 @@ hosts its own runner. Three consequences, all of which bite silently if ignored:
 The runner also randomises test order per run. Order-dependent tests therefore fail intermittently
 rather than never, which is a feature: it found one on the first run after the migration.
 
+## A reported issue becomes a test, whichever way it turns out
+
+Every finding is measured before it is believed, and the measurement decides the test's shape. A
+report is a claim, not a result: findings in this repository have been overturned as often as they
+have been confirmed, and both outcomes are worth the same test.
+
+Write the test first, run it, and then read the outcome:
+
+- **Confirmed red** — the defect reproduces, and the fix is not part of this change. Check the test
+  in **skipped**, with the reason and its owner in the skip string:
+  `[Fact(Skip = "known defect — <owner>: <defect>; un-skip with that fix")]`. Rehearse it red first
+  and check *why* it went red: a test that fails for the wrong reason pins nothing. The skip list is
+  the pending-work list, and un-skipping is the fixer's acceptance evidence.
+- **Overturned, green, and the behaviour is what it should be** — **keep the test open.** There is
+  nothing to fix, so there is nothing to skip. The test stays as a normal running test: it is now
+  the pin that stops the behaviour regressing, and the record that the claim was checked rather
+  than dismissed. Say in its doc comment what was claimed and why it does not hold — that is what
+  stops the same report arriving again next cycle.
+- **Green, but you are not sure the current behaviour is the intended one** — do not guess, and do
+  not quietly pick one. A test asserting the wrong contract is worse than no test, because it makes
+  the wrong behaviour permanent. **Ask the maintainer** what the expected outcome is, then write the
+  test to that answer.
+
+A green test proves nothing on its own. Whichever way it lands, pair it with a near-neighbour that
+must behave the *other* way, so the row cannot be satisfied by a blanket refusal or a blanket
+acceptance — and confirm the assertion is answered by the arm it names, not by a different one.
+
 ## Suite homes
 
 | Home | Framework | Role |

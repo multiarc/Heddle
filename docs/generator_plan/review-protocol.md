@@ -130,6 +130,14 @@ Decide by this tree, in order:
 1. **Fixed** → a green regression test whose reversion was rehearsed red (the
    mutation bullet above already applies). No register entry — the suite is
    the record.
+1b. **Overturned** — you wrote the test and it is green, because the reported
+   defect is not real. **Keep the test, open and running.** There is nothing
+   to fix, so nothing to skip: it is now the pin against a regression and the
+   record that the claim was measured rather than waved away. Its doc comment
+   says what was claimed and why it does not hold, which is what stops the
+   same report returning next cycle. If you are green but unsure the current
+   behaviour is the *intended* one, ASK THE MAINTAINER before asserting it —
+   a test pinning the wrong contract makes the wrong behaviour permanent.
 2. **Real, unfixed, deterministically reproducible in-process** → write the
    red test NOW and check it in skipped:
    `[Fact(Skip = "known defect — <owner>: <defect>; un-skip with that fix")]`.
