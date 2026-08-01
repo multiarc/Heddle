@@ -31,10 +31,27 @@ Before you probe anything:
    table — this is part of your coverage ledger, not optional. A defect that
    returns after being fixed is the most expensive kind, and only you can
    catch it.
-3. **Do not re-report** anything marked KNOWN-OPEN or NOT-A-DEFECT. If you
-   believe an entry is wrong — that a known-open is worse than recorded, or
-   that a not-a-defect is real — say so with the measurement that overturns
-   it. Overturning an entry is a legitimate and valuable finding.
+3. **Do not re-report** anything marked KNOWN-OPEN or NOT-A-DEFECT — but
+   **"do not re-report" does NOT mean "do not re-measure".** These are the
+   two most expensive mistakes this instruction has caused, and both have
+   now happened:
+
+   - A known-open was recorded in cycle 17, fixed incidentally by unrelated
+     work two cycles later, and sat in the register for eight more cycles
+     because every reviewer read "do not re-report" and skipped it. It took
+     233 measured cells to establish it had been closed all along.
+   - Four known-opens were parked on a *stated reason* that measurement
+     later showed to be false — a cure that would not have worked, a
+     documentation contract that governed a different feature on a
+     different code path, and a fingerprint that did not contain the fields
+     it was said to contain.
+
+   **A known-open with no regression check is a claim with an expiry date.**
+   Every entry now carries one; run the ones in your area, exactly as you
+   run a FIXED entry's. If a known-open's check passes, the defect is gone —
+   report that. If its stated *reason* is something you can test, test it.
+   Overturning an entry, in either direction, is a legitimate and valuable
+   finding.
 4. Use it to aim: an area where several findings clustered is where the next
    one lives.
 
