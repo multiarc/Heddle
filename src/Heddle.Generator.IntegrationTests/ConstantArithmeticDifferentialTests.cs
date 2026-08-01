@@ -24,26 +24,24 @@ namespace Heddle.Generator.IntegrationTests
         private static string Template(string expression) => "@model(){{string}}@(Length + (" + expression + "))";
 
         /// <summary>
-        /// C# rejects these outright; the engine renders them (<c>2147483647+1</c> gives <c>-2147483648</c>). The
-        /// expression is declined at build time so the value comes from the tier that can produce one.
+        /// An integral constant that overflows. Both tiers wrap it and produce the same number:
+        /// <c>2147483647+1</c> is <c>-2147483648</c> on each. The emitted expression is written inside an
+        /// <c>unchecked</c> — because the engine's <c>Expression.Add</c> is unchecked and a host's
+        /// <c>&lt;CheckForOverflowUnderflow&gt;</c> must not decide what a template renders — and a constant folded
+        /// there wraps rather than failing the build, so refusing these took working templates off the precompiled
+        /// tier for a build error that can no longer happen.
+        /// <para>The assertion is the rendered bytes and not merely that the template precompiled: what has to hold
+        /// is that the two tiers wrap to the <em>same</em> number, which a "still precompiles" row cannot say.</para>
         /// </summary>
         [Theory]
         [InlineData("2147483647+1")]
         [InlineData("(2147483646+1)+1")]
         [InlineData("(2147483647+0)+(1+0)")]
         [InlineData("+2147483647+1")]
-        [InlineData("0-3000000000")]
         [InlineData("2147483647*2")]
         [InlineData("2000000000+2000000000")]
         [InlineData("4294967295u+1u")]
-        [InlineData("4294967295u+1")]
-        [InlineData("0u-5")]
-        [InlineData("2*3000000000")]
-        [InlineData("2147483648*2")]
-        [InlineData("1u-2")]
         [InlineData("3000000000u*2u")]
-        [InlineData("79228162514264337593543950335m+1m")]
-        [InlineData("-79228162514264337593543950335m-1m")]
         // Shifts, bitwise operators and a constant conditional are constant expressions to C# as much as `+` is,
         // and each of these overflows through one of them.
         [InlineData("(1<<1)+2147483647")]
@@ -55,9 +53,69 @@ namespace Heddle.Generator.IntegrationTests
         [InlineData("(false?0:1)+2147483647")]
         [InlineData("(1<<30)*4")]
         // A negative shift count is masked to the operand width, so this is a large positive number that then
-        // overflows. Folding it as a zero shift instead reports no fault and emits a build error.
+        // overflows. Folding it as a zero shift instead would produce a different number here than at render.
         [InlineData("(1<<(0-2))*4")]
-        public void ConstantOverflowDegradesInsteadOfBreakingTheBuild(string expression)
+        public void AnIntegralConstantOverflowPrecompilesAndWrapsToTheEnginesNumber(string expression)
+        {
+            var generated = DifferentialHarness.Generate(new[] { (Key, Template(expression)) });
+            Assert.Empty(generated.Diagnostics);
+            DifferentialHarness.ExpectPrecompiled(generated, Key);
+
+            var (precompiled, dyn) = DifferentialHarness.Render(Key, Template(expression), typeof(string), "hello");
+            Assert.Equal(dyn, precompiled);
+        }
+
+        /// <summary>
+        /// An <c>int</c> meeting a <c>uint</c>, where the two tiers do not evaluate in the same type at all: C#
+        /// converts a non-negative <b>constant</b> int to <c>uint</c> and computes there, while the engine builds an
+        /// expression tree over two operand types and gets <c>long</c>. While the result fits in a <c>uint</c> the two
+        /// agree and the row below says so; once the unsigned arithmetic wraps they cannot, so the expression belongs
+        /// to the engine.
+        /// </summary>
+        [Theory]
+        [InlineData("0-3000000000")]
+        [InlineData("4294967295u+1")]
+        [InlineData("0u-5")]
+        [InlineData("2*3000000000")]
+        [InlineData("2147483648*2")]
+        [InlineData("1u-2")]
+        public void AnIntMeetingAUintDegradesOnceTheUnsignedArithmeticWraps(string expression)
+        {
+            var generated = DifferentialHarness.Generate(new[] { (Key, Template(expression)) });
+
+            Assert.Empty(generated.Diagnostics);
+            DifferentialHarness.ExpectDegrade(generated, Key);
+        }
+
+        /// <summary>The near neighbour that keeps the row above a rule rather than a refusal of every mixed pair:
+        /// the same <c>int</c>/<c>uint</c> mixing with a result that fits in a <c>uint</c>, which both tiers reach and
+        /// render identically.</summary>
+        [Theory]
+        [InlineData("4294967295u-1")]
+        [InlineData("5-1u")]
+        [InlineData("2u*3")]
+        [InlineData("3000000000u+1")]
+        public void AnIntMeetingAUintThatDoesNotWrapPrecompilesAndMatches(string expression)
+        {
+            var (precompiled, dyn) = DifferentialHarness.Render(Key, Template(expression), typeof(string), "hello");
+
+            Assert.Equal(dyn, precompiled);
+        }
+
+        /// <summary>
+        /// The two overflows <c>unchecked</c> does <b>not</b> settle, which is why the row above is not the whole
+        /// rule. A <c>decimal</c> overflow is never governed by the checked context — <c>CS0463</c> whatever it is
+        /// written inside — and the smallest signed value over <c>-1</c> is folded silently by C# to that same value
+        /// while the engine raises <c>OverflowException</c> at render, so emitting the fold would print a number the
+        /// dynamic tier never produces. Both belong to the engine.
+        /// </summary>
+        [Theory]
+        [InlineData("79228162514264337593543950335m+1m")]
+        [InlineData("-79228162514264337593543950335m-1m")]
+        [InlineData("(0-2147483647-1)/(0-1)")]
+        [InlineData("(0-2147483647-1)%(0-1)")]
+        [InlineData("(0-9223372036854775807L-1L)/(0-1)")]
+        public void AnOverflowUncheckedDoesNotSettleStillDegrades(string expression)
         {
             var generated = DifferentialHarness.Generate(new[] { (Key, Template(expression)) });
 
@@ -159,7 +217,8 @@ namespace Heddle.Generator.IntegrationTests
         /// <summary>
         /// A <c>ulong</c> meeting a <c>char</c>. C# converts a non-negative integer constant to <c>ulong</c>
         /// implicitly, so this is legal C# and folds — and refusing to decide for every signed operand emitted it
-        /// straight into a host build that then failed with <c>CS0220</c>.
+        /// straight into a host build that then failed with <c>CS0220</c>. Since the emission became
+        /// <c>unchecked</c> the fold wraps instead, so what has to hold is that it wraps to the engine's number.
         /// <para>Written without the <c>Length +</c> wrapper the other cases use: <c>int + ulong</c> is refused by
         /// the runtime operator rules before the fold is ever consulted, so the wrapper hid this entire column.</para>
         /// </summary>
@@ -167,14 +226,16 @@ namespace Heddle.Generator.IntegrationTests
         [InlineData("18446744073709551615 + 'a'")]
         [InlineData("'a' + 18446744073709551615")]
         [InlineData("18446744073709551615 * 'a'")]
-        public void AUnsignedLongMeetingACharDegradesInsteadOfBreakingTheBuild(string expression)
+        public void AnUnsignedLongMeetingACharWrapsToTheEnginesNumber(string expression)
         {
             const string key = "views/ulongchar.heddle";
-            var generated = DifferentialHarness.Generate(
-                new[] { (key, "@model(){{string}}@(" + expression + ")|@(Length)") });
-
+            var template = "@model(){{string}}@(" + expression + ")|@(Length)";
+            var generated = DifferentialHarness.Generate(new[] { (key, template) });
             Assert.Empty(generated.Diagnostics);
-            DifferentialHarness.ExpectDegrade(generated, key);
+            DifferentialHarness.ExpectPrecompiled(generated, key);
+
+            var (precompiled, dyn) = DifferentialHarness.Render(key, template, typeof(string), "hello");
+            Assert.Equal(dyn, precompiled);
         }
 
         /// <summary>

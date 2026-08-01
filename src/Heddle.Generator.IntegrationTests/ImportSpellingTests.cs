@@ -23,6 +23,8 @@ namespace Heddle.Generator.IntegrationTests
     {
         private const string LibraryKey = "lib.heddle";
         private const string Library = "@%\n<greet>\n{{[[hello]]}}\n%@\n";
+        private const string SubLibraryKey = "sub/lib.heddle";
+        private const string SubLibrary = "@%\n<greet>\n{{[[sub]]}}\n%@\n";
         private const string TargetKey = "views/target.heddle";
 
         private readonly string _root;
@@ -31,7 +33,9 @@ namespace Heddle.Generator.IntegrationTests
         {
             _root = Path.Combine(Path.GetTempPath(), "heddle-import-spelling-" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(_root);
+            Directory.CreateDirectory(Path.Combine(_root, "sub"));
             File.WriteAllText(Path.Combine(_root, LibraryKey), Library);
+            File.WriteAllText(Path.Combine(_root, "sub", "lib.heddle"), SubLibrary);
         }
 
         public void Dispose()
@@ -64,6 +68,13 @@ namespace Heddle.Generator.IntegrationTests
         [InlineData("x/../lib.heddle")]
         [InlineData("sub/../lib.heddle")]
         [InlineData("sub/./../lib.heddle")]
+        // A `.` names the directory it is in, so GetFullPath drops it whether or not a `..` follows. Applying `..`
+        // dropped these only as a side effect of the walk it took to do it, so a spelling carrying only `.`
+        // never reached the walk at all and became a build error over a file the engine reads.
+        [InlineData("./lib.heddle")]
+        [InlineData(".//lib.heddle")]
+        [InlineData("./lib.heddle/.")]
+        [InlineData("lib.heddle/.")]
         public void AnImportSpellingTheEngineResolvesToAnIncludedFilePrecompiles(string spelling)
         {
             var engine = Engine(spelling);
@@ -83,6 +94,11 @@ namespace Heddle.Generator.IntegrationTests
         [InlineData("./../outside/lib.heddle")]
         [InlineData("LIB.heddle")]
         [InlineData("x/../../lib.heddle")]
+        // A trailing separator survives GetFullPath, so the read lands on a directory and fails. `lib.heddle/.`,
+        // three rows up, is the same file spelled one character differently and is read by both tiers.
+        [InlineData("lib.heddle/")]
+        // A `..` that cancels the whole spelling leaves the root itself, which is a directory on both tiers.
+        [InlineData("sub/..")]
         public void AnImportSpellingTheEngineResolvesToNothingIsRefusedByBothTiers(string spelling)
         {
             var engine = Engine(spelling);
@@ -94,6 +110,63 @@ namespace Heddle.Generator.IntegrationTests
             Assert.Equal(DiagnosticSeverity.Error, missing.Severity);
             Assert.Contains(spelling, missing.GetMessage());
             DifferentialHarness.ExpectDegrade(gen, TargetKey);
+        }
+
+        /// <summary>
+        /// A directory in a subdirectory, so that a spelling reaching it through <c>.</c> is a different file from
+        /// the one at the root. Without it, a rule that dropped every segment it did not understand would pass the
+        /// rows above by landing on the right file for the wrong reason.
+        /// </summary>
+        [Theory]
+        [InlineData("sub/./lib.heddle")]
+        [InlineData("sub/././lib.heddle")]
+        [InlineData("./sub/./lib.heddle")]
+        [InlineData("sub/lib.heddle/.")]
+        public void AnImportSpellingWithInteriorDotsResolvesToTheFileTheEngineReads(string spelling)
+        {
+            var engine = Engine(spelling);
+            Assert.True(engine.CompileResult.Success, engine.CompileResult.ToString());
+            Assert.Equal("[[sub]]\n", engine.Generate(null));
+
+            var corpus = new[] { (LibraryKey, Library), (SubLibraryKey, SubLibrary), (TargetKey, Target(spelling)) };
+            var (precompiled, dyn) = DifferentialHarness.RenderInCorpus(corpus, TargetKey, Target(spelling), null,
+                null, _root);
+            Assert.Equal("[[sub]]\n", dyn);
+            Assert.Equal(dyn, precompiled);
+        }
+
+        /// <summary>
+        /// A backslash, which is a separator on Windows and an ordinary file-name character everywhere else — so
+        /// there is no single right outcome to assert, only that the two tiers reach the same one. The build tier
+        /// used to replace every backslash with a slash unconditionally, which made <c>x\..\lib.heddle</c> resolve to
+        /// <c>lib.heddle</c> on a host where the engine looks for a file whose name contains backslashes and finds
+        /// none. What the assertion pins is the agreement; the rows above pin the outcomes that do not vary.
+        /// </summary>
+        [Theory]
+        [InlineData("x\\..\\lib.heddle")]
+        [InlineData("x\\../lib.heddle")]
+        [InlineData("x/..\\lib.heddle")]
+        [InlineData("x\\lib.heddle")]
+        public void ABackslashIsReadTheSameWayByBothTiers(string spelling)
+        {
+            var engine = Engine(spelling);
+            var gen = DifferentialHarness.Generate(Corpus(spelling));
+            bool engineResolved = engine.CompileResult.Success;
+
+            if (engineResolved)
+            {
+                Assert.Equal("[[hello]]\n", engine.Generate(null));
+                Assert.Empty(gen.Diagnostics.Where(d => d.Id == "HED7011"));
+                var (precompiled, dyn) = DifferentialHarness.RenderInCorpus(Corpus(spelling), TargetKey,
+                    Target(spelling), null, null, _root);
+                Assert.Equal(dyn, precompiled);
+            }
+            else
+            {
+                Assert.Contains(engine.CompileResult.Errors, e => e.DiagnosticId == "HED4009");
+                Assert.Single(gen.Diagnostics.Where(d => d.Id == "HED7011"));
+                DifferentialHarness.ExpectDegrade(gen, TargetKey);
+            }
         }
     }
 }

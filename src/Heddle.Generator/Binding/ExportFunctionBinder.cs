@@ -61,11 +61,39 @@ namespace Heddle.Generator.Binding
             if (facts?.Compilation == null || overloads == null || overloads.Count == 0)
                 return null;
 
-            // One candidate — no choice to make, so no ranking is needed and none is imposed. This keeps the
-            // ordinary single-overload export in reach (its arguments the estimator often cannot type, e.g.
-            // `this`) while the ranker governs exactly the case it exists for: a merged or overloaded name where
-            // the runtime and C# betterness could disagree.
-            if (overloads.Count == 1 && overloads[0].Method.Parameters.Length == argKinds.Count)
+            var model = new SymbolRankModel(facts);
+            var args = new RankArgument<ITypeSymbol>[argKinds.Count];
+            var typed = new bool[argKinds.Count];
+            bool allTyped = true;
+            for (int i = 0; i < argKinds.Count; i++)
+            {
+                if (argKinds[i].Category == OperandCategory.NullLiteral)
+                {
+                    args[i] = RankArgument<ITypeSymbol>.Null();
+                    typed[i] = true;
+                    continue;
+                }
+
+                var type = ToSymbol(facts.Compilation, argKinds[i]);
+                if (type == null)
+                {
+                    allTyped = false;
+                    continue;
+                }
+
+                args[i] = RankArgument<ITypeSymbol>.Of(type);
+                typed[i] = true;
+            }
+
+            // One candidate — no overload to choose, so no ranking is imposed, and the ordinary single-overload
+            // export stays in reach with arguments the estimator often cannot type at all (`this`, a member path
+            // to a model type). What is NOT skipped with the choice is whether the candidate is applicable: the
+            // engine runs the ranker over one candidate as over ten, so `only("ab")` against a sole `only(int)`
+            // is HED1012 there, while binding it here emitted CS1503 into the consumer's build. An argument the
+            // estimator did type and that converts to nothing rules the candidate out on its own, whatever the
+            // others turn out to be, because applicability is decided argument by argument.
+            if (overloads.Count == 1 && overloads[0].Method.Parameters.Length == argKinds.Count &&
+                !ExcludedByTypedArguments(model, overloads[0].Method, args, typed))
             {
                 refusal = BindRefusal.Bound;
                 return new Binding
@@ -76,21 +104,9 @@ namespace Heddle.Generator.Binding
                 };
             }
 
-            var args = new RankArgument<ITypeSymbol>[argKinds.Count];
-            for (int i = 0; i < argKinds.Count; i++)
-            {
-                if (argKinds[i].Category == OperandCategory.NullLiteral)
-                {
-                    args[i] = RankArgument<ITypeSymbol>.Null();
-                    continue;
-                }
-
-                var type = ToSymbol(facts.Compilation, argKinds[i]);
-                if (type == null)
-                    // Untypeable argument: degrade before ranking, so front describes host registry only.
-                    return null;
-                args[i] = RankArgument<ITypeSymbol>.Of(type);
-            }
+            if (!allTyped)
+                // Untypeable argument: degrade before ranking, so front describes host registry only.
+                return null;
 
             var candidates = new RankCandidate<ITypeSymbol>[overloads.Count];
             for (int i = 0; i < overloads.Count; i++)
@@ -112,7 +128,7 @@ namespace Heddle.Generator.Binding
                 candidates[i] = new RankCandidate<ITypeSymbol>(parameterTypes, hasParams, elementType);
             }
 
-            var binding = OverloadRank.Bind(new SymbolRankModel(facts), candidates, args);
+            var binding = OverloadRank.Bind(model, candidates, args);
             if (binding.Outcome != BindOutcome.Bound)
             {
                 refusal = Refuse(name, binding.Outcome, overloads, args);
@@ -135,6 +151,35 @@ namespace Heddle.Generator.Binding
 
             refusal = BindRefusal.Bound;
             return new Binding { Overload = winner, ArgumentCasts = casts, ReturnType = winner.Method.ReturnType };
+        }
+
+        /// <summary>
+        /// Whether an argument the estimator could type rules <paramref name="method"/> out. A candidate is
+        /// applicable only if every argument converts to its parameter, and the shared ranker decides that argument
+        /// by argument, so one that converts to nothing settles the candidate without the untyped arguments being
+        /// known. Both tiers of the ranker's two-tier bind have to say no: an argument at or past the fixed count of
+        /// a <c>params</c> signature may convert to the element type instead.
+        /// </summary>
+        private static bool ExcludedByTypedArguments(IRankModel<ITypeSymbol> model, IMethodSymbol method,
+            RankArgument<ITypeSymbol>[] args, bool[] typed)
+        {
+            var parameters = method.Parameters;
+            var paramsElement = parameters.Length > 0 && parameters[parameters.Length - 1].IsParams
+                ? (parameters[parameters.Length - 1].Type as IArrayTypeSymbol)?.ElementType
+                : null;
+
+            for (int i = 0; i < args.Length; i++)
+            {
+                if (!typed[i] ||
+                    OverloadRank.ConversionRank(model, args[i], parameters[i].Type) >= 0)
+                    continue;
+                if (paramsElement != null && i >= parameters.Length - 1 &&
+                    OverloadRank.ConversionRank(model, args[i], paramsElement) >= 0)
+                    continue;
+                return true;
+            }
+
+            return false;
         }
 
         /// <summary>Formats <c>HED7025</c> payload to match the runtime's verdict message. Candidates are every

@@ -5,6 +5,7 @@ using Heddle.Language.Binding;
 using Heddle.Language.Members;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace Heddle.Generator.Binding
 {
@@ -152,22 +153,31 @@ namespace Heddle.Generator.Binding
         /// <summary>
         /// Whether <paramref name="text"/> names a namespace this compilation can see, walked segment by segment
         /// from the merged global namespace, which already spans the source and every reference.
-        /// <para>Asked of a <c>@using</c> body, which is free text on the engine's side: its only effect there is to
-        /// be compared against a namespace when a model type name has to be resolved, so a body naming nothing — or
-        /// not being a name at all — is simply never consulted and the template renders. Anything the generated file
-        /// could do with such a text is worse than doing nothing with it.</para>
+        /// <para>Asked of a <c>@using</c> body, and the engine's answer to the same question is what it is measured
+        /// against: the engine writes every collected body into a C# <c>using</c> directive of the code it compiles
+        /// for an embedded expression, so the body has to be a name C# accepts <b>there</b>. It is therefore parsed
+        /// as a C# name rather than split on <c>.</c> — <c>global::System.Linq</c> and <c>System . Linq</c> both name
+        /// <c>System.Linq</c> to the compiler and neither survives a split, and dropping them cost the generated file
+        /// the very directive its embedded C# needed.</para>
         /// </summary>
         public bool NamespaceExists(string text)
         {
-            if (string.IsNullOrEmpty(text) || _compilation == null)
+            if (string.IsNullOrWhiteSpace(text) || _compilation == null)
+                return false;
+
+            var parsed = SyntaxFactory.ParseName(text);
+            // ParseName stops at the first token that cannot continue a name, so a trailing remainder is a text that
+            // is not one name — as is anything the parser had to invent a token for.
+            if (parsed.ContainsDiagnostics || parsed.FullSpan.Length != text.Length)
+                return false;
+
+            var segments = new List<string>();
+            if (!TryFlattenName(parsed, segments))
                 return false;
 
             var current = _compilation.GlobalNamespace;
-            foreach (var segment in text.Split('.'))
+            foreach (var segment in segments)
             {
-                if (segment.Length == 0)
-                    return false;
-
                 INamespaceSymbol next = null;
                 foreach (var child in current.GetNamespaceMembers())
                 {
@@ -182,7 +192,28 @@ namespace Heddle.Generator.Binding
                 current = next;
             }
 
-            return true;
+            return segments.Count != 0;
+        }
+
+        /// <summary>The identifiers of a plain dotted name, left to right, optionally rooted at <c>global::</c>.
+        /// Anything else is not a namespace spelling: a generic name, an <c>extern alias</c> qualifier the compiled
+        /// code never declares, or a fragment the parser turned into some other node.</summary>
+        private static bool TryFlattenName(NameSyntax name, List<string> segments)
+        {
+            switch (name)
+            {
+                case IdentifierNameSyntax identifier:
+                    segments.Add(identifier.Identifier.ValueText);
+                    return true;
+                case QualifiedNameSyntax qualified:
+                    return TryFlattenName(qualified.Left, segments) && TryFlattenName(qualified.Right, segments);
+                case AliasQualifiedNameSyntax aliased:
+                    return string.Equals(aliased.Alias.Identifier.ValueText, "global",
+                               System.StringComparison.Ordinal) &&
+                           TryFlattenName(aliased.Name, segments);
+                default:
+                    return false;
+            }
         }
 
         /// <summary>

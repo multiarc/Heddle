@@ -83,8 +83,13 @@ namespace Heddle.Generator.Binding
                 AddType(nested);
         }
 
+        /// <summary>The full-name key, which is the runtime's <c>type.Namespace + "." + shortName</c> — and
+        /// <c>Type.Namespace</c> is <b>null</b> for a type in the global namespace, so its key carries a leading dot
+        /// and nothing answers to the undotted spelling. Both directions of dropping that dot were divergences:
+        /// <c>.Global</c> is a name the engine resolves and the build called a typo, and <c>Global.Inner</c> is one
+        /// the engine refuses and the build resolved.</summary>
         private static string Qualify(string namespaceName, string name) =>
-            namespaceName == null ? name : namespaceName + "." + name;
+            namespaceName == null ? "." + name : namespaceName + "." + name;
 
         private static void Add(Dictionary<string, List<INamedTypeSymbol>> map, string key, INamedTypeSymbol type)
         {
@@ -96,19 +101,45 @@ namespace Heddle.Generator.Binding
             list.Add(type);
         }
 
-        /// <summary>The runtime's <c>ResolveSimpleType</c> rule over the build-time universe.</summary>
+        /// <summary>
+        /// The runtime's <c>ResolveSimpleType</c> rule over the build-time universe, arm for arm: an
+        /// assembly-qualified spelling first, then a dotted one, then a bare short name. The three arms disambiguate
+        /// differently and swapping one for another changes the answer — the dotted arm re-qualifies the whole
+        /// spelling with each import, where the short-name arm asks which candidate's own namespace was imported.
+        /// </summary>
         internal bool TryResolve(string name, IReadOnlyList<string> imports, out INamedTypeSymbol type,
             out TypeSpellingFault fault)
         {
             type = null;
             imports = imports ?? new string[0];
 
-            var map = name.IndexOf('.') >= 0 ? _fullNames : _shortNames;
-            if (!map.TryGetValue(name, out var candidates))
+            if (name.IndexOf(',') >= 0)
+                return TryResolveAssemblyQualified(name, out type, out fault);
+
+            if (name.IndexOf('.') >= 0)
             {
-                // A dotted spelling may also be a bare name qualified by an import (the runtime's second arm).
-                if (name.IndexOf('.') >= 0)
-                    return TryResolveThroughImports(name, imports, out type, out fault);
+                if (_fullNames.TryGetValue(name, out var qualified))
+                {
+                    if (qualified.Count == 1)
+                    {
+                        type = qualified[0];
+                        fault = TypeSpellingFault.None;
+                        return true;
+                    }
+
+                    // Several types answer to the whole spelling. An import may still name one of them by
+                    // re-qualifying it; nothing else settles it, and the runtime raises its "ambigous" error.
+                    if (TryResolveThroughImports(name, imports, out type, out fault))
+                        return true;
+                    fault = TypeSpellingFault.Ambiguous;
+                    return false;
+                }
+
+                return TryResolveThroughImports(name, imports, out type, out fault);
+            }
+
+            if (!_shortNames.TryGetValue(name, out var candidates))
+            {
                 fault = TypeSpellingFault.Unresolved;
                 return false;
             }
@@ -120,8 +151,8 @@ namespace Heddle.Generator.Binding
                 return true;
             }
 
-            // Several candidates — the imports resolve it, or the name is ambiguous.
-            // Both tiers raise ambiguity instead of using assembly-order matching.
+            // A short-name tie is settled by whether a candidate's own namespace was imported. Both tiers raise
+            // ambiguity instead of using assembly-order matching.
             INamedTypeSymbol single = null;
             int matches = 0;
             foreach (var candidate in candidates)
@@ -143,6 +174,70 @@ namespace Heddle.Generator.Binding
 
             fault = matches > 1 ? TypeSpellingFault.Ambiguous : TypeSpellingFault.Unresolved;
             return false;
+        }
+
+        /// <summary>
+        /// The runtime's <c>Type.GetType(spelling)</c> arm, over this compilation's references instead of the loaded
+        /// assemblies. A template spells a nested type with dots because the lexer rejects <c>+</c>, and the runtime
+        /// retries the CLR name one <c>.</c>-to-<c>+</c> conversion at a time; the index already carries the dotted
+        /// alias beside the metadata form, so both spellings are looked up by the one map read.
+        /// <para>The assembly half is parsed by Roslyn's own display-name parser rather than by cutting the string,
+        /// and every component the spelling states has to match: a version or a public key token it does not state
+        /// binds to any, which is what the CLR's own load does with it.</para>
+        /// </summary>
+        private bool TryResolveAssemblyQualified(string name, out INamedTypeSymbol type, out TypeSpellingFault fault)
+        {
+            type = null;
+            fault = TypeSpellingFault.Unresolved;
+
+            int comma = name.IndexOf(',');
+            var typeName = name.Substring(0, comma).Trim();
+            if (typeName.Length == 0 ||
+                !AssemblyIdentity.TryParseDisplayName(name.Substring(comma + 1).Trim(), out var wanted))
+                return false;
+
+            // The second spelling is how a type in the global namespace is keyed here: the index carries the
+            // runtime's `Namespace + "." + name`, and `Type.GetType` — which has no namespace to prefix — sees the
+            // same type under the undotted name.
+            if (!_fullNames.TryGetValue(typeName, out var candidates) &&
+                !_fullNames.TryGetValue("." + typeName, out candidates))
+                return false;
+
+            foreach (var candidate in candidates)
+            {
+                var identity = candidate.ContainingAssembly?.Identity;
+                if (identity == null ||
+                    !string.Equals(identity.Name, wanted.Name, System.StringComparison.OrdinalIgnoreCase))
+                    continue;
+                if (wanted.Version != NoVersionStated && identity.Version != wanted.Version)
+                    continue;
+                if (!wanted.PublicKeyToken.IsDefaultOrEmpty &&
+                    !SameToken(identity.PublicKeyToken, wanted.PublicKeyToken))
+                    continue;
+
+                type = candidate;
+                fault = TypeSpellingFault.None;
+                return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>What <see cref="AssemblyIdentity.TryParseDisplayName"/> leaves the version at when the display
+        /// name states none.</summary>
+        private static readonly System.Version NoVersionStated = new System.Version(0, 0, 0, 0);
+
+        /// <summary>Byte-wise, because <c>ImmutableArray&lt;byte&gt;.Equals</c> compares the underlying array
+        /// reference and two identities never share one.</summary>
+        private static bool SameToken(System.Collections.Immutable.ImmutableArray<byte> left,
+            System.Collections.Immutable.ImmutableArray<byte> right)
+        {
+            if (left.IsDefaultOrEmpty || left.Length != right.Length)
+                return false;
+            for (int i = 0; i < left.Length; i++)
+                if (left[i] != right[i])
+                    return false;
+            return true;
         }
 
         private bool TryResolveThroughImports(string name, IReadOnlyList<string> imports,

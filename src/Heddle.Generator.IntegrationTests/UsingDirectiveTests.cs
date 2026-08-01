@@ -99,5 +99,88 @@ namespace Heddle.Generator.IntegrationTests
             Assert.Empty(gen.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
             DifferentialHarness.ExpectDegrade(gen, key);
         }
+
+        private const string CatalogType = "Heddle.Generator.IntegrationTests.Fixtures.Catalog";
+
+        private static readonly System.Collections.Generic.Dictionary<string, string> FullCSharpBuild =
+            new System.Collections.Generic.Dictionary<string, string>
+                { ["build_property.HeddleExpressionMode"] = "FullCSharp" };
+
+        private static string LinqTemplate(string import) =>
+            "@using(){{" + import + "}}@\\\n@model(){{" + CatalogType + "}}@\\\n" +
+            "@list(@model.Products.Where(p => p.Name.Length > 5)){{<i>@(Name)</i>}}\n";
+
+        private static Catalog TwoProducts() => new Catalog
+        {
+            Products = new System.Collections.Generic.List<Product>
+            {
+                new Product { Name = "Cheap" },
+                new Product { Name = "Pricey" },
+            }
+        };
+
+        /// <summary>
+        /// The directive is what makes an embedded expression bind, so the question asked of a <c>@using</c> body has
+        /// to be the one C# asks of it: <c>global::System.Linq</c> and <c>System . Linq</c> both name
+        /// <c>System.Linq</c> to the compiler, and neither survives being split on <c>.</c> and matched segment by
+        /// segment. Dropped, the generated file lost the directive its pasted C# needed and the consumer's build
+        /// stopped on two <c>CS1061</c> for a <c>Where</c> that was right there.
+        /// </summary>
+        [Theory]
+        [InlineData("System.Linq")]
+        [InlineData("global::System.Linq")]
+        [InlineData("System . Linq")]
+        public void AUsingSpelledAnyWayCSharpAcceptsReachesTheEmbeddedExpression(string import)
+        {
+            var key = "views/using-linq-" + import.GetHashCode() + ".heddle";
+            var runtime = new TemplateOptions { ExpressionMode = ExpressionMode.FullCSharp };
+
+            var (precompiled, dyn) = DifferentialHarness.Render(key, LinqTemplate(import), typeof(Catalog),
+                TwoProducts(), FullCSharpBuild, runtime);
+            Assert.Equal("<i>Pricey</i>\n", dyn);
+            Assert.Equal(dyn, precompiled);
+        }
+
+        /// <summary>
+        /// The other half of the same rule, and the direction the first fix went wrong in: a <c>@using</c> is
+        /// <b>not</b> inert once the template has an embedded expression. The engine writes every collected body into
+        /// a C# <c>using</c> directive of the code it compiles for one, so a body naming no namespace — or not being
+        /// a name at all — makes the <em>engine</em> refuse the whole template. Omitting the directive here and
+        /// pre-compiling anyway rendered a template the dynamic tier will not compile.
+        /// </summary>
+        [Theory]
+        [InlineData("no-such-namespace", "Zork.Nope")]
+        [InlineData("not-a-name", "1 + 2")]
+        public void AUsingTheEnginesCSharpTierWillNotCompileTakesTheTemplateWithIt(string name, string import)
+        {
+            var key = "views/using-bad-with-csharp-" + name + ".heddle";
+            var template = "@using(){{" + import + "}}@\\\n@model(){{" + CatalogType + "}}@\\\n" +
+                           "Count: @(@model.Products.Count)\n";
+
+            var gen = DifferentialHarness.Generate(new[] { (key, template) }, FullCSharpBuild);
+            Assert.Empty(gen.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
+            DifferentialHarness.ExpectDegrade(gen, key);
+
+            var engine = new HeddleTemplate(template,
+                new CompileContext(new TemplateOptions { ExpressionMode = ExpressionMode.FullCSharp },
+                    new ExType(typeof(Catalog))));
+            Assert.False(engine.CompileResult.Success);
+        }
+
+        /// <summary>The near neighbour that keeps the rule about the C# tier rather than about <c>@using</c>: the
+        /// same unusable body with no embedded expression anywhere compiles the collected namespace into nothing, so
+        /// the engine renders and so must the build tier. The first two cases of this class are the same shape with
+        /// their own bodies.</summary>
+        [Fact]
+        public void TheSameUnusableUsingWithNoEmbeddedExpressionStillPrecompiles()
+        {
+            const string key = "views/using-bad-no-csharp.heddle";
+            const string template = "@using(){{Zork.Nope}}@\\\n@model(){{" + CatalogType + "}}@\\\nCount: 2\n";
+
+            var (precompiled, dyn) = DifferentialHarness.Render(key, template, typeof(Catalog), TwoProducts(),
+                FullCSharpBuild, new TemplateOptions { ExpressionMode = ExpressionMode.FullCSharp });
+            Assert.Equal("Count: 2\n", dyn);
+            Assert.Equal(dyn, precompiled);
+        }
     }
 }

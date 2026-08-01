@@ -526,26 +526,29 @@ namespace Heddle.Generator.Emit
 
         /// <summary>
         /// Whether generated code may write a call to this export at all. The emitted call spells two names — the
-        /// container type and the method — and reflection ignores <c>[Obsolete]</c> where the consumer's compiler
-        /// does not: an export declared <c>[Obsolete(…, error: true)]</c> renders perfectly well on the dynamic
-        /// tier and stops the <em>consumer's</em> build with CS0619, off a <c>.g.cs</c> no one can edit. That is a
-        /// build the template's author did not break and cannot fix, so the template degrades instead.
+        /// container type and the method — and reflection ignores both <c>[Obsolete]</c> and accessibility where the
+        /// consumer's compiler does not: an export declared <c>[Obsolete(…, error: true)]</c>, or one whose
+        /// container this assembly may not name, renders perfectly well on the dynamic tier and stops the
+        /// <em>consumer's</em> build with CS0619 or CS0122, off a <c>.g.cs</c> no one can edit. That is a build the
+        /// template's author did not break and cannot fix, so the template degrades instead.
         /// <para>Warning-level <c>[Obsolete]</c> is deliberately not one of these: the generated file opens with a
         /// blanket <c>#pragma warning disable</c>, so it raises nothing there, and refusing it would take every
         /// deprecated helper in a host's codebase off the precompiled tier to prevent a message no one would see.
         /// Neither is a signature the call site does not spell — an export whose <b>return</b> type the consumer
         /// may not name compiles and renders identically, because what is written here is the method, not what it
         /// hands back.</para>
-        /// <para>The container arm has no reachable path and is kept only so the two names the call spells are
-        /// guarded alike: naming an obsolete-error type in the <c>[ExportFunctions]</c> attribute is CS0619 in the
-        /// assembly that declares the export, which no pragma there suppresses, so such a container never reaches
-        /// a resolver.</para>
+        /// <para>Accessibility is asked of the container rather than through the value-position classifier: the
+        /// container is a static class, which may not hold a value and is perfectly writable as a call receiver. It
+        /// is a reachable arm — the registry accepts a public container nested in an <c>internal</c> one, exactly
+        /// as reflection's <c>IsNestedPublic</c> does, and from a referenced assembly that name is CS0122 here.
+        /// From the compilation's own source it is nameable, and those exports keep pre-compiling.</para>
         /// </summary>
-        private static bool CanWriteCallTo(FunctionExportResolver.ExportOverloadInfo overload, out string display)
+        private bool CanWriteCallTo(FunctionExportResolver.ExportOverloadInfo overload, out string display)
         {
             display = null;
             if (!SymbolTypeResolver.IsObsoleteError(overload.Method) &&
-                !SymbolTypeResolver.IsObsoleteError(overload.Container))
+                !SymbolTypeResolver.IsObsoleteError(overload.Container) &&
+                (_resolver == null || _resolver.IsAccessibleFromCompilation(overload.Container)))
                 return true;
 
             display = overload.Method.ToDisplayString();

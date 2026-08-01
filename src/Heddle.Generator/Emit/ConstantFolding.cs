@@ -7,10 +7,16 @@ namespace Heddle.Generator.Emit
     /// Whether C# would refuse to compile an expression that the dynamic engine accepts.
     /// <para>The two tiers disagree about when an arithmetic fault is discovered. The engine builds a
     /// <c>System.Linq.Expressions</c> tree and finds out at render time — <c>@(1/0)</c> compiles and throws when
-    /// rendered, and <c>@(2147483647+1)</c> compiles and renders <c>-2147483648</c>. C# decides both at compile time
-    /// and rejects them outright, so writing the operator through verbatim turned a template the engine renders into
-    /// a build error in the host's project, reported against the <c>.heddle</c> file with no Heddle diagnostic
-    /// attached.</para>
+    /// rendered — while C# decides at compile time, so writing the operator through verbatim turned a template the
+    /// engine renders into a build error in the host's project, reported against the <c>.heddle</c> file with no
+    /// Heddle diagnostic attached.</para>
+    /// <para><b>An overflow is not one of those, and has not been since the emission became
+    /// <c>unchecked</c>.</b> <c>unchecked(2147483647+1)</c> is a legal constant that folds to
+    /// <c>-2147483648</c> — the very number the engine's unchecked <c>Expression.Add</c> renders — so refusing it
+    /// took a working template off the precompiled tier for a build error that can no longer happen. What
+    /// <c>unchecked</c> does <i>not</i> settle is still refused: a division by constant zero, a
+    /// <c>decimal</c> overflow (never governed by the checked context), and the smallest signed value divided by
+    /// <c>-1</c>, which C# folds silently to a value the engine raises on instead of producing.</para>
     /// <para>Rather than guess a value, an expression identified here is left unwritten, which degrades it to the
     /// dynamic tier — the tier whose behaviour is the contract.</para>
     /// <para><b>Both directions of error matter.</b> Missing a fault breaks the host's build; reporting one that is
@@ -105,7 +111,7 @@ namespace Heddle.Generator.Emit
             if (node.Operator == ExprOperator.LeftShift || node.Operator == ExprOperator.RightShift)
                 return FoldShift(left.Value, right.Value, node.Operator);
 
-            if (!Numeric.Unify(left.Value, right.Value, out var a, out var b))
+            if (!Numeric.Unify(left.Value, right.Value, out var a, out var b, out var tiersDiffer))
                 return Folded.Unknown;
 
             switch (node.Operator)
@@ -117,11 +123,18 @@ namespace Heddle.Generator.Emit
                     // divisor's own — 1/0.0 is a double divide by a zero double, and legal.
                     if (b.IsZero && (a.IsIntegral || a.Kind == NumericKind.Decimal))
                         return Folded.Refused;
-                    return Apply(a, b, node.Operator);
+                    // The one integral division that overflows: the smallest value of the type over -1. Unlike the
+                    // other operators, `unchecked` does not settle this one in the tiers' favour — C# folds it
+                    // silently to the smallest value again, where the engine's Expression.Divide raises
+                    // OverflowException at render. Emitting the fold would print a number the dynamic tier never
+                    // produces.
+                    if (Numeric.DivisionOverflows(a, b))
+                        return Folded.Refused;
+                    return Apply(a, b, node.Operator, tiersDiffer);
                 case ExprOperator.Add:
                 case ExprOperator.Subtract:
                 case ExprOperator.Multiply:
-                    return Apply(a, b, node.Operator);
+                    return Apply(a, b, node.Operator, tiersDiffer);
                 case ExprOperator.And:
                 case ExprOperator.Or:
                 case ExprOperator.ExclusiveOr:
@@ -144,12 +157,18 @@ namespace Heddle.Generator.Emit
             return Folded.Constant(Numeric.Shift(value, places, op));
         }
 
-        /// <summary>Evaluates in the unified type, checked, so an overflow C# would report becomes a refusal here.</summary>
-        private static Folded Apply(Numeric a, Numeric b, ExprOperator op)
+        /// <summary>
+        /// Evaluates in the unified type. Integral arithmetic wraps, because the emitted expression is written
+        /// inside an <c>unchecked</c> and C# folds a constant there by wrapping too — the same value the engine's
+        /// <c>Expression.Add</c> produces at render. <c>decimal</c> is the exception and still refuses: its overflow
+        /// is not governed by the checked context at all, so a constant that overflows one is a compile error in the
+        /// consumer's build whatever it is wrapped in.
+        /// </summary>
+        private static Folded Apply(Numeric a, Numeric b, ExprOperator op, bool tiersPromoteDifferently = false)
         {
             try
             {
-                return Folded.Constant(Numeric.Evaluate(a, b, op));
+                return Folded.Constant(Numeric.Evaluate(a, b, op, wrap: !tiersPromoteDifferently));
             }
             catch (OverflowException)
             {
@@ -217,6 +236,17 @@ namespace Heddle.Generator.Emit
             }
 
             internal static Numeric Zero(NumericKind kind) => new Numeric(kind, 0, 0, 0m, 0d);
+
+            /// <summary>Whether dividing <paramref name="a"/> by <paramref name="b"/> overflows — the smallest value
+            /// of a signed integral type over <c>-1</c>, and nothing else. The two operands have already been
+            /// unified, so an unsigned kind cannot meet a negative divisor at all.</summary>
+            internal static bool DivisionOverflows(Numeric a, Numeric b)
+            {
+                if (b._signed != -1)
+                    return false;
+                return a.Kind == NumericKind.Int && a._signed == int.MinValue ||
+                       a.Kind == NumericKind.Long && a._signed == long.MinValue;
+            }
 
             private static Numeric Signed(NumericKind kind, long value) => new Numeric(kind, value, 0, 0m, 0d);
             private static Numeric Unsigned(NumericKind kind, ulong value) => new Numeric(kind, 0, value, 0m, 0d);
@@ -299,11 +329,22 @@ namespace Heddle.Generator.Emit
             /// <c>uint</c>, else <c>int</c>. A pairing C# genuinely rejects — <c>ulong</c> with a negative signed
             /// constant — falls out of <see cref="Convert"/>'s checked cast, which overflows and reports the pair as
             /// undecidable. An explicit guard for it here was dead code: the cast already covered every case.            /// </summary>
-            internal static bool Unify(Numeric x, Numeric y, out Numeric a, out Numeric b)
+            internal static bool Unify(Numeric x, Numeric y, out Numeric a, out Numeric b) =>
+                Unify(x, y, out a, out b, out _);
+
+            /// <summary><paramref name="tiersPromoteDifferently"/> marks the one pairing where the two tiers do not
+            /// evaluate in the same type at all: an <c>int</c> meeting a <c>uint</c>. C# converts a non-negative
+            /// <b>constant</b> int to <c>uint</c> and computes there, while the engine builds an expression tree over
+            /// two operand types and gets <c>long</c> — so the same pair wraps on one tier and does not on the other,
+            /// and only a result that fits in <c>uint</c> comes out the same on both.</summary>
+            internal static bool Unify(Numeric x, Numeric y, out Numeric a, out Numeric b,
+                out bool tiersPromoteDifferently)
             {
                 a = default;
                 b = default;
                 var kind = Wider(x, y);
+                tiersPromoteDifferently = kind == NumericKind.UInt &&
+                                          (x.Kind != NumericKind.UInt || y.Kind != NumericKind.UInt);
                 return Convert(x, kind, out a) && Convert(y, kind, out b);
             }
 
@@ -391,7 +432,7 @@ namespace Heddle.Generator.Emit
                 }
             }
 
-            internal static Numeric Evaluate(Numeric a, Numeric b, ExprOperator op)
+            internal static Numeric Evaluate(Numeric a, Numeric b, ExprOperator op, bool wrap = true)
             {
                 switch (a.Kind)
                 {
@@ -400,15 +441,15 @@ namespace Heddle.Generator.Emit
                     case NumericKind.Decimal:
                         return new Numeric(a.Kind, 0, 0, Decimals(a._decimal, b._decimal, op), 0d);
                     case NumericKind.UInt:
-                        // Complement narrows deliberately rather than checked: ~5u is 4294967290u, and computing it
-                        // in ulong then narrowing under check made every complement look like an overflow.
                         return op == ExprOperator.OnesComplement
                             ? Unsigned(a.Kind, ~(uint)a._unsigned)
-                            : Unsigned(a.Kind, checked((uint)Unsigneds(a._unsigned, b._unsigned, op)));
+                            : Unsigned(a.Kind, wrap
+                                ? unchecked((uint)Unsigneds(a._unsigned, b._unsigned, op))
+                                : checked((uint)Unsigneds(a._unsigned, b._unsigned, op)));
                     case NumericKind.ULong:
                         return Unsigned(a.Kind, Unsigneds(a._unsigned, b._unsigned, op));
                     case NumericKind.Int:
-                        return Signed(a.Kind, checked((int)Signeds(a._signed, b._signed, op)));
+                        return Signed(a.Kind, unchecked((int)Signeds(a._signed, b._signed, op)));
                     default:
                         return Signed(a.Kind, Signeds(a._signed, b._signed, op));
                 }
@@ -442,13 +483,15 @@ namespace Heddle.Generator.Emit
                 }
             }
 
+            /// <summary>Wrapping, in the widest unsigned type: the narrowing back to the operand's own width is the
+            /// caller's, and the low bits of a wider wrap are the ones a narrower wrap would have produced.</summary>
             private static ulong Unsigneds(ulong a, ulong b, ExprOperator op)
             {
                 switch (op)
                 {
-                    case ExprOperator.Add: return checked(a + b);
-                    case ExprOperator.Subtract: return checked(a - b);
-                    case ExprOperator.Multiply: return checked(a * b);
+                    case ExprOperator.Add: return unchecked(a + b);
+                    case ExprOperator.Subtract: return unchecked(a - b);
+                    case ExprOperator.Multiply: return unchecked(a * b);
                     case ExprOperator.Divide: return a / b;
                     case ExprOperator.Modulo: return a % b;
                     case ExprOperator.OnesComplement: return ~a;
@@ -464,12 +507,12 @@ namespace Heddle.Generator.Emit
             {
                 switch (op)
                 {
-                    case ExprOperator.Add: return checked(a + b);
-                    case ExprOperator.Subtract: return checked(a - b);
-                    case ExprOperator.Multiply: return checked(a * b);
+                    case ExprOperator.Add: return unchecked(a + b);
+                    case ExprOperator.Subtract: return unchecked(a - b);
+                    case ExprOperator.Multiply: return unchecked(a * b);
                     case ExprOperator.Divide: return a / b;
                     case ExprOperator.Modulo: return a % b;
-                    case ExprOperator.Negate: return checked(-a);
+                    case ExprOperator.Negate: return unchecked(-a);
                     case ExprOperator.OnesComplement: return ~a;
                     case ExprOperator.And: return a & b;
                     case ExprOperator.Or: return a | b;

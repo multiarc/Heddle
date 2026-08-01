@@ -295,6 +295,44 @@ namespace Heddle.Generator.IntegrationTests
         }
 
         /// <summary>
+        /// A <b>sole</b> exported overload, and an argument that converts to nothing. Having one candidate settles
+        /// which overload is meant; it settles nothing about whether the call is legal, and the engine draws that
+        /// line by running the ranker unconditionally — one candidate or ten — so <c>titlecase(5)</c> against
+        /// <c>titlecase(string)</c> is <c>HED1012</c> there. Binding it on arity alone wrote
+        /// <c>TitleCase(5)</c> into the consumer's assembly, where the answer was two <c>CS1503</c> against a
+        /// <c>.g.cs</c> nobody can edit.
+        /// </summary>
+        [Theory]
+        [InlineData("titlecase(5)", "titlecase")]
+        [InlineData("twice(5)", "twice")]
+        public void ASoleExportedOverloadThatTakesNoneOfTheseArgumentsIsABuildError(string call, string name)
+        {
+            var key = "overload/sole-" + name + ".heddle";
+            var gen = DifferentialHarness.Generate(new[] { (key, Template(OrderType, call)) });
+
+            var single = Assert.Single(Unbindable(gen));
+            Assert.Equal(DiagnosticSeverity.Error, single.Severity);
+            Assert.Contains("'" + name + "'", single.GetMessage());
+            Assert.Contains(HeddleDiagnosticIds.NoFunctionOverload, single.GetMessage());
+            DifferentialHarness.ExpectDegrade(gen, key);
+        }
+
+        /// <summary>The near neighbours that keep the row above an applicability check rather than a refusal of
+        /// single-overload exports: the same sole overload with a literal that fits, and with a member path that
+        /// fits.</summary>
+        [Theory]
+        [InlineData("string-literal", "titlecase(\"ab\")")]
+        [InlineData("member-path", "titlecase(Name)")]
+        public void ASoleExportedOverloadTheArgumentsDoNotRuleOutStillPrecompiles(string name, string call)
+        {
+            var key = "overload/sole-ok-" + name + ".heddle";
+            var gen = DifferentialHarness.Generate(new[] { (key, Template(OrderType, call)) });
+
+            Assert.Empty(Unbindable(gen));
+            DifferentialHarness.ExpectPrecompiled(gen, key);
+        }
+
+        /// <summary>
         /// The generator's name-keyed rank model answers <c>IsReferenceAssignable</c> <b>false</b> by construction —
         /// it cannot decide a reference conversion from a metadata name alone — and its <c>?reference</c>/
         /// <c>?enum</c>/<c>?struct</c> placeholders are deliberate under-rankings. Under-ranking is harmless while it
