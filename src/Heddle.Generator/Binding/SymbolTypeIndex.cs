@@ -25,7 +25,11 @@ namespace Heddle.Generator.Binding
         private readonly Dictionary<string, List<INamedTypeSymbol>> _fullNames =
             new Dictionary<string, List<INamedTypeSymbol>>(System.StringComparer.Ordinal);
 
-        private SymbolTypeIndex() { }
+        /// <summary>Held only so an alias to a predefined type (<c>using X = int;</c>) can be answered — the
+        /// keyword table is the one spelling this index does not carry.</summary>
+        private readonly Compilation _compilation;
+
+        private SymbolTypeIndex(Compilation compilation) => _compilation = compilation;
 
         /// <summary>One index per compilation, cached in <see cref="SymbolTypeIndexCache"/>.</summary>
         internal static SymbolTypeIndex For(Compilation compilation) => SymbolTypeIndexCache.Shared.Get(compilation);
@@ -34,7 +38,7 @@ namespace Heddle.Generator.Binding
         /// with no compilation resolves nothing rather than throwing.</summary>
         internal static SymbolTypeIndex Build(Compilation compilation)
         {
-            var index = new SymbolTypeIndex();
+            var index = new SymbolTypeIndex(compilation);
             if (compilation == null)
                 return index;
 
@@ -106,12 +110,63 @@ namespace Heddle.Generator.Binding
         /// assembly-qualified spelling first, then a dotted one, then a bare short name. The three arms disambiguate
         /// differently and swapping one for another changes the answer — the dotted arm re-qualifies the whole
         /// spelling with each import, where the short-name arm asks which candidate's own namespace was imported.
+        /// <para>Then the runtime's directive arms, in the runtime's order: an alias, and a <c>using static</c>
+        /// target's nested types. Both come <b>after</b> the index, so neither can move a spelling the index already
+        /// answers; <c>global::</c> comes before it, being a qualifier no index key carries.</para>
         /// </summary>
         internal bool TryResolve(string name, IReadOnlyList<string> imports, out INamedTypeSymbol type,
             out TypeSpellingFault fault)
         {
-            type = null;
             imports = imports ?? new string[0];
+
+            if (UsingDirectives.TryStripGlobalQualifier(name, out var globalName))
+            {
+                if (TryLookupQualified(globalName, out type, out var globalAmbiguity))
+                {
+                    fault = TypeSpellingFault.None;
+                    return true;
+                }
+
+                fault = globalAmbiguity ? TypeSpellingFault.Ambiguous : TypeSpellingFault.Unresolved;
+                return false;
+            }
+
+            if (TryResolveIndexed(name, imports, out type, out fault))
+                return true;
+
+            var directives = UsingDirectives.Parse(imports);
+            if (directives.IsEmpty)
+                return false;
+
+            if (TryResolveThroughAlias(name, directives, out type, out var aliasAmbiguity))
+            {
+                fault = TypeSpellingFault.None;
+                return true;
+            }
+
+            if (aliasAmbiguity)
+            {
+                fault = TypeSpellingFault.Ambiguous;
+                return false;
+            }
+
+            if (TryResolveThroughStaticImport(name, directives, out type, out var staticAmbiguity))
+            {
+                fault = TypeSpellingFault.None;
+                return true;
+            }
+
+            if (staticAmbiguity)
+                fault = TypeSpellingFault.Ambiguous;
+            return false;
+        }
+
+        /// <summary>The name-index arms, unchanged. Kept apart from the directive arms so the directive arms can
+        /// only fire where these already had no answer — the property that makes them additive.</summary>
+        private bool TryResolveIndexed(string name, IReadOnlyList<string> imports, out INamedTypeSymbol type,
+            out TypeSpellingFault fault)
+        {
+            type = null;
 
             if (name.IndexOf(',') >= 0)
                 return TryResolveAssemblyQualified(name, out type, out fault);
@@ -263,6 +318,92 @@ namespace Heddle.Generator.Binding
             }
 
             fault = TypeSpellingFault.Unresolved;
+            return false;
+        }
+
+        /// <summary>The runtime's global-namespace lookup, which consults no import and no alias. The second key is
+        /// how a type with no namespace is stored here — see <see cref="Qualify"/>.</summary>
+        private bool TryLookupQualified(string name, out INamedTypeSymbol type, out bool ambiguous)
+        {
+            ambiguous = false;
+            type = null;
+            if (!_fullNames.TryGetValue(name, out var candidates) &&
+                !_fullNames.TryGetValue("." + name, out candidates))
+                return false;
+
+            if (candidates.Count != 1)
+            {
+                ambiguous = true;
+                return false;
+            }
+
+            type = candidates[0];
+            return true;
+        }
+
+        /// <summary>The runtime's <c>X = Some.Target</c> arm: the alias stands for its target wherever a spelling
+        /// starts with it, which is one substitution for a type alias used alone, a namespace alias qualifying a
+        /// type, and a type alias reaching a nested type.</summary>
+        private bool TryResolveThroughAlias(string name, UsingDirectives directives, out INamedTypeSymbol type,
+            out bool ambiguous)
+        {
+            type = null;
+            ambiguous = false;
+            if (directives.Aliases.Count == 0)
+                return false;
+
+            var dot = name.IndexOf('.');
+            var head = dot < 0 ? name : name.Substring(0, dot);
+            if (!directives.Aliases.TryGetValue(head, out var target))
+                return false;
+
+            UsingDirectives.TryStripGlobalQualifier(target, out var qualified);
+            if (dot < 0)
+            {
+                // `using X = int;` is a legal alias, and a keyword is the one spelling this index does not carry.
+                if (SymbolTypeResolver.Keywords.TryGetValue(qualified, out var special))
+                {
+                    type = _compilation?.GetSpecialType(special);
+                    if (type != null)
+                        return true;
+                }
+            }
+            else
+            {
+                qualified = qualified + name.Substring(dot);
+            }
+
+            return TryLookupQualified(qualified, out type, out ambiguous);
+        }
+
+        /// <summary>The runtime's <c>static Some.Target</c> arm, which for type resolution contributes the target's
+        /// nested types under their own names. Two targets contributing one name is the ambiguity C# reports as
+        /// CS0104.</summary>
+        private bool TryResolveThroughStaticImport(string name, UsingDirectives directives, out INamedTypeSymbol type,
+            out bool ambiguous)
+        {
+            type = null;
+            ambiguous = false;
+
+            var matches = 0;
+            foreach (var target in directives.StaticTargets)
+            {
+                UsingDirectives.TryStripGlobalQualifier(target, out var qualified);
+                if (!TryLookupQualified(qualified + "." + name, out var candidate, out var targetAmbiguity))
+                {
+                    ambiguous |= targetAmbiguity;
+                    continue;
+                }
+
+                matches++;
+                type = candidate;
+            }
+
+            if (matches == 1 && !ambiguous)
+                return true;
+
+            ambiguous |= matches > 1;
+            type = null;
             return false;
         }
 
