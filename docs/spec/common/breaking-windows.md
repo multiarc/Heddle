@@ -301,6 +301,30 @@ unrecorded breaking change.
   lines of this change and nothing else, and `FallbackGuard` (generator integration suite) collapses the two
   carriers for *display and matching only*, which is a test-side choice — the engine keeps them apart.
 
+- **A `@using` alias, a `using static` and `global::` start binding types** (`ReflectionHelper.ResolveSimpleType`,
+  `SymbolTypeIndex.TryResolve`, `UsingDirectives`, 2026-08-01). A `@using` body is the header of a C# using
+  directive, and two of its three forms bind a name rather than open a namespace. Both tiers collected every body
+  into one list of namespace strings and then looked for a match in it, so an alias and a `using static` were legal
+  and completely inert: `@using(){{X = System.Linq}}` + `@model(){{X.Enumerable}}` threw on the engine and was
+  `HED7007` on the build. Four spellings now resolve — a namespace alias qualifying a type, a type alias used alone
+  or reaching a nested type, `using static` contributing the target's nested types, and the `global::` qualifier.
+  **Judgement: additive, not window-gated — and the widening question is answered rather than waved past.** It *is* a
+  widening: spellings that were refused now bind, and that acceptance cannot be withdrawn later without a window.
+  (a) **Nothing that resolved before can move, structurally rather than by testing for it.** The directive arms are
+  ordered *after* the assembly/symbol index, so they run only where the index already had no answer; `global::` is
+  ordered before it, and is a qualifier no index key carries, so it has never resolved to anything either. The one
+  visible consequence is that where a spelling answers to both an alias and an ordinary import the **import** keeps
+  it, which is the opposite of C#'s precedence — see the [candidate register](#next-window-candidate-register).
+  (b) **No rendered byte changes for any template that renders today**, on either tier: every affected template was
+  refused by both.
+  (c) **The two tiers reach the same answer or the build degrades.** The arms are mirrored one for one and pinned by
+  `TypeSpellingLockstepTests` / `TypeSpellingSymbolLockstepTests` over the same spelling set, and end to end by
+  `AliasTypeResolutionTests`, which renders each new spelling through both tiers and compares bytes.
+  **Deliberately not covered, and recorded so the gap is a choice:** static *member* access (`using static
+  System.Math;` then `Max(a, b)`) is a different subsystem and is untouched; an alias target carrying type arguments,
+  an alias target with interior whitespace, and an extern-alias qualifier are each left classified as a plain
+  namespace body, which is inert.
+
 - **The release line is stated once, and every first-party assembly is signed** (phase 5, Q8.11;
   `Directory.Build.props`, `Directory.Build.targets`, shipped 2.1.0). Not a behavioural change and recorded
   only because it moves a shipped surface: nine per-project `<Version>` elements collapse into one
@@ -324,4 +348,5 @@ them (recording the withdrawal in the ledger).
 | **Member-visibility widening** — accept a `protected internal` getter (the plain-English reading of the sandbox's "public-or-internal" contract), surface inherited non-public and base-interface members | Phase 4 WI6 pinned today's narrow runtime behavior as normative (OQ1/Q3.1) and encoded it in one function (`MemberVisibility.IsAccessible`), so any of these becomes a one-line policy change plus a conformance-corpus row flip. Trigger: a ratified window, landed jointly on both tiers with a spec-wording update to `native-expressions.md`'s sandbox section | [phase 4 — expression-writers](../../generator_plan/phase-4-expression-writers.md) (D7 / OQ1) |
 | **Dynamic-vs-typed visibility asymmetry** — the typed member tier accepts an `internal` getter regardless of assembly while the dynamic tier (binding in `Heddle`'s context) cannot see a foreign `internal` member | Phase 4 WI9 made the dynamic-tier binder context exist exactly once (`PrecompiledRuntime.DynamicMember`), so harmonizing the two tiers is now a single decision rather than two. Trigger: a spec clarification deciding *which* tier is right, then a window | [phase 4 — expression-writers](../../generator_plan/phase-4-expression-writers.md) (D11 / OQ3) |
 | **Extension-name collision between unrelated types** — the runtime's `TemplateFactory.AddExtensions` throws `TemplateOverrideException`; the build tier degrades the call to dynamic with a recorded reason instead of erroring | Phase 3 landed the full runtime precedence in one shared rule-core (`ExtensionRegistrationRules`), so making the build tier error too is a one-line verdict change. Deliberately *not* done now: it is a host wiring error the build has no business failing on before the host is even assembled, and the runtime already surfaces it at first render | [phase 3 — binding-layer](../../generator_plan/phase-3-binding-layer.md) (Q3.3 / OQ3) |
+| **C# name-lookup precedence for a spelling an alias and the index both answer** — a `@using` alias whose name is also reachable through an ordinary import currently loses to the import; C# gives the alias precedence (measured: `using Probe; using Marker = Probe2.Marker;` binds `Probe2.Marker`). The same ordering question covers head-first scope walking for `A.B.C` and nearest-enclosing-scope resolution generally | The alias/`static`/`global::` arms landed additively by being ordered *after* the name index, which is exactly what forces this deviation — matching C# means letting a directive move a spelling that resolves today onto a different type, on both tiers, so it is breaking by construction. Trigger: a ratified window, landed jointly on both tiers (the arms are already mirrored), with the deviation's pins flipped in one commit | `ReflectionHelper.ResolveSimpleType` / `SymbolTypeIndex.TryResolve`; the deviation is pinned by the precedence rows in `TypeSpellingLockstepTests` and `TypeSpellingSymbolLockstepTests` |
 | Must-surface precompiled mismatches stop degrading silently under the **default** policy (`ExtensionBindingMismatch`, `FunctionBindingMismatch` per-request; `SchemaVersionUnsupported`, `EngineVersionIncompatible` at registration), with an explicit opt-out policy value preserving today's blanket degrade | The fallback taxonomy ships first (done — [precompilation.md](../../precompilation.md#which-fallbacks-are-legitimate)); the two binding classes are provisional until phase 3 finishes its binding work, since a residual mismatch is only conclusive evidence of skew once the generator binds through the full runtime replacement precedence | [phase 5 — pipeline-config](../../generator_plan/phase-5-pipeline-config.md) (D12b), from the Q2.2 fallback-legitimacy ruling |

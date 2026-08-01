@@ -176,11 +176,174 @@ namespace Heddle.Helpers
         private static Type ResolveCsharpType(string typeName) =>
             CSharpTypeNames.TryGetType(typeName, out var result) ? result : null;
 
+        /// <summary>
+        /// The name-index arms — assembly-qualified, dotted, bare — over one snapshot of the maps. Every one of them
+        /// answers exactly as it always has; where they all miss the throw is handed back rather than raised, so the
+        /// directive arms can try and the original message still reaches the caller when they do not.
+        /// </summary>
+        private static Type ResolveIndexedType(string typeName, ICollection<string> imports, NameMaps maps,
+            out InvalidOperationException failure)
+        {
+            failure = null;
+            try
+            {
+                return ResolveIndexedTypeCore(typeName, imports, maps);
+            }
+            catch (InvalidOperationException e)
+            {
+                failure = e;
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Resolves <paramref name="typeName"/> using the collected <c>@using</c> bodies that bind a name rather
+        /// than open a namespace, plus the <c>global::</c> qualifier.
+        /// <para>Ordered after <see cref="ResolveIndexedType"/> on purpose, so these arms can only fire where the
+        /// index already had no answer: a template whose spelling resolves today keeps the type it resolves to,
+        /// whatever directives sit beside it. The one exception is <c>global::</c>, which is handled before the
+        /// index because it is a qualifier no index key carries and so has never resolved to anything.</para>
+        /// </summary>
         private static Type ResolveSimpleType(string typeName, ICollection<string> imports)
         {
             // One read of the published snapshot: both maps must come from the same rebuild, or a resolve racing a
-            // Register can consult a new short-name map against an old full-name one.
+            // Register can consult a new short-name map against an old full-name one. The directive arms are handed
+            // that same read for the same reason.
             var maps = CurrentMaps();
+
+            if (UsingDirectives.TryStripGlobalQualifier(typeName, out var globalName))
+            {
+                if (TryLookupQualified(globalName, maps, out var fromGlobal, out var globalAmbiguity))
+                    return fromGlobal;
+                throw ResolveSimpleError(typeName, imports, globalAmbiguity);
+            }
+
+            var resolved = ResolveIndexedType(typeName, imports, maps, out var failure);
+            if (resolved != null)
+                return resolved;
+
+            var directives = UsingDirectives.Parse(imports);
+            if (!directives.IsEmpty)
+            {
+                if (TryResolveThroughAlias(typeName, directives, maps, out var aliased, out var aliasAmbiguity))
+                    return aliased;
+                if (aliasAmbiguity)
+                    throw ResolveSimpleError(typeName, imports, true);
+
+                if (TryResolveThroughStaticImport(typeName, directives, maps, out var nested,
+                        out var staticAmbiguity))
+                    return nested;
+                if (staticAmbiguity)
+                    throw ResolveSimpleError(typeName, imports, true);
+            }
+
+            throw failure ?? ResolveSimpleError(typeName, imports, false);
+        }
+
+        /// <summary>Looks a fully-qualified spelling up in the global namespace, consulting no import and no alias.
+        /// The second key is how a type with no namespace is stored: the index writes
+        /// <c>type.Namespace + "." + name</c> and <c>Type.Namespace</c> is null for it, so its key carries a leading
+        /// dot that no spelling has.</summary>
+        private static bool TryLookupQualified(string name, NameMaps maps, out Type type, out bool ambiguous)
+        {
+            ambiguous = false;
+            type = null;
+            if (!maps.FullNames.TryGetValue(name, out var types) &&
+                !maps.FullNames.TryGetValue("." + name, out types))
+                return false;
+
+            if (types.Count != 1)
+            {
+                ambiguous = true;
+                return false;
+            }
+
+            type = types[0];
+            return true;
+        }
+
+        /// <summary>
+        /// The <c>X = Some.Target</c> arm. The alias stands for its target wherever the spelling starts with it, so
+        /// one substitution covers all three things C# allows through one: the alias alone naming a type
+        /// (<c>X = System.Linq.Enumerable</c>, <c>X</c>), a namespace alias qualifying a type
+        /// (<c>X = System.Linq</c>, <c>X.Enumerable</c>), and a type alias reaching a nested type
+        /// (<c>X = Outer</c>, <c>X.Inner</c>) — the index keys a nested type under its dotted chain, so the last two
+        /// are the same lookup.
+        /// </summary>
+        private static bool TryResolveThroughAlias(string typeName, UsingDirectives directives, NameMaps maps,
+            out Type type, out bool ambiguous)
+        {
+            type = null;
+            ambiguous = false;
+            if (directives.Aliases.Count == 0)
+                return false;
+
+            var dot = typeName.IndexOf('.');
+            var head = dot < 0 ? typeName : typeName.Substring(0, dot);
+            if (!directives.Aliases.TryGetValue(head, out var target))
+                return false;
+
+            UsingDirectives.TryStripGlobalQualifier(target, out var qualified);
+            if (dot < 0)
+            {
+                // `using X = int;` is a legal alias, and the keyword is the one spelling the index does not carry.
+                type = ResolveCsharpType(qualified);
+                if (type != null)
+                    return true;
+            }
+            else
+            {
+                qualified = qualified + typeName.Substring(dot);
+            }
+
+            return TryLookupQualified(qualified, maps, out type, out ambiguous);
+        }
+
+        /// <summary>
+        /// The <c>static Some.Target</c> arm, which for type resolution contributes the target's nested types under
+        /// their own names — <c>using static Outer;</c> makes <c>Outer.Inner</c> answer to <c>Inner</c>. Two targets
+        /// contributing the same name is the ambiguity C# reports as CS0104, not a pick.
+        /// <para>Static <b>member</b> access is a different question and is not asked here.</para>
+        /// </summary>
+        private static bool TryResolveThroughStaticImport(string typeName, UsingDirectives directives, NameMaps maps,
+            out Type type, out bool ambiguous)
+        {
+            type = null;
+            ambiguous = false;
+
+            var matches = 0;
+            foreach (var target in directives.StaticTargets)
+            {
+                UsingDirectives.TryStripGlobalQualifier(target, out var qualified);
+                if (!TryLookupQualified(qualified + "." + typeName, maps, out var candidate, out var targetAmbiguity))
+                {
+                    ambiguous |= targetAmbiguity;
+                    continue;
+                }
+
+                matches++;
+                type = candidate;
+            }
+
+            if (matches == 1 && !ambiguous)
+                return true;
+
+            ambiguous |= matches > 1;
+            type = null;
+            return false;
+        }
+
+        private static InvalidOperationException ResolveSimpleError(string typeName, ICollection<string> imports,
+            bool ambiguous)
+        {
+            return ambiguous
+                ? new InvalidOperationException(
+                    $"Couldn't resolve type <{typeName}> ({string.Join(", ", imports)}), the type name is ambigous")
+                : new InvalidOperationException($"Couldn't resolve type <{typeName}> ({string.Join(", ", imports)})");
+        }
+
+        private static Type ResolveIndexedTypeCore(string typeName, ICollection<string> imports, NameMaps maps)
+        {
             var shortNames = maps.ShortNames;
             var fullNames = maps.FullNames;
 

@@ -554,6 +554,30 @@ resolve unqualified identifiers.
 @using(){{MyBlog.Models}}
 ```
 
+The body is the **header of a C# `using` directive**, and all three of its forms work — the
+engine writes each one into the C# it compiles for an embedded expression, and type names are
+resolved through them too:
+
+```heddle
+@using(){{Models = MyBlog.Models}}          @* namespace alias  → @model(){{Models.Post}}   *@
+@using(){{Post = MyBlog.Models.Post}}       @* type alias       → @model(){{Post}}          *@
+@using(){{static MyBlog.Models.Catalog}}    @* nested types of Catalog answer to their own name *@
+```
+
+A type name may also carry the `global::` qualifier, which names the global namespace and
+consults no import and no alias — `@model(){{global::MyBlog.Models.Post}}`.
+
+Three limits, each because the spelling means something the resolver does not model rather than
+because it was overlooked: an alias target carrying type arguments (`X = List<int>`), an alias
+target with whitespace inside it (`X = My . Ns`), and an extern-alias qualifier (`A::B`). Each is
+treated as an ordinary namespace body, so a spelling that needs it does not resolve. And where a
+name answers to **both** an alias and an ordinary import, the import wins here where C# gives the
+alias precedence; spell the type out to be certain which you get.
+
+For **static members** — `using static System.Math;` then `Max(a, b)` — the directive contributes
+nothing: `@using(){{static …}}` reaches that type's nested *types* only. Register a
+[function](custom-extensions.md) instead.
+
 ### `import` — removed
 [ImportExtension.cs](../src/Heddle/Extensions/Archived/ImportExtension.cs) · name: `import`
 

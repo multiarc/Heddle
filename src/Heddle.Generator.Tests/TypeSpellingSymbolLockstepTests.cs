@@ -21,7 +21,13 @@ namespace Probe { public class TieProbe { } }
 namespace Probe.Alpha { public class TieProbe { } }
 namespace Probe.Beta { public class TieProbe { } }
 namespace Probe.Only { public class UniqueProbe { } }
-namespace Probe.Nest { public class Outer { public class Inner { } } }";
+namespace Probe.Nest { public class Outer { public class Inner { } } }
+// Two hosts of one nested name, so the nested name alone answers to two types and the short-name index therefore
+// answers to neither — without the pair, a uniquely-named nested type resolves off the index with no directive at
+// all and an arm that reads the directives could never be reached.
+namespace Probe.NestAlpha { public class AliasHost { public class AliasNested { } } }
+namespace Probe.NestBeta { public class AliasHost { public class AliasNested { } } }
+public class GlobalProbe { public class Inner { } }";
 
         private static readonly SymbolTypeResolver Resolver = BuildResolver();
 
@@ -78,6 +84,61 @@ namespace Probe.Nest { public class Outer { public class Inner { } } }";
         public void SpellingsResolveAsTheRuntimeResolvesThem(string spelling, string expected)
         {
             Assert.Equal(expected, Resolve(spelling));
+        }
+
+        /// <summary>
+        /// The <c>@using</c> bodies that bind a name instead of opening a namespace, and the <c>global::</c>
+        /// qualifier — resolved here exactly as the runtime resolves them, over this compilation's universe.
+        /// <para>Every spelling below is one both tiers refused before the arms existed, so no row can be evidence
+        /// that a resolution moved; what each pins is the C# meaning of the directive beside it, and that this side
+        /// reaches the same answer the reflection side does.</para>
+        /// </summary>
+        [Theory]
+        // A namespace alias qualifies a type through it, and names no type on its own.
+        [InlineData("X.TieProbe", "Probe.Alpha.TieProbe", new[] { "X = Probe.Alpha" })]
+        [InlineData("X", "UNRESOLVED", new[] { "X = Probe.Alpha" })]
+        // A type alias is the type, and reaches the target's nested types.
+        [InlineData("X", "Probe.Alpha.TieProbe", new[] { "X = Probe.Alpha.TieProbe" })]
+        [InlineData("X.AliasNested", "Probe.NestAlpha.AliasHost.AliasNested",
+            new[] { "X = Probe.NestAlpha.AliasHost" })]
+        // An alias to a predefined type — the one target spelling the index does not carry.
+        [InlineData("X", "int", new[] { "X = int" })]
+        // The arity rewrite happens before the name is resolved, so the alias arm sees `X.List`1`.
+        [InlineData("X.List<int>", "System.Collections.Generic.List<int>",
+            new[] { "X = System.Collections.Generic" })]
+        [InlineData("X.TieProbe", "Probe.Alpha.TieProbe", new[] { "X = global::Probe.Alpha" })]
+        // One name, two targets: C# refuses the duplicate, and neither is picked here.
+        [InlineData("X", "UNRESOLVED", new[] { "X = Probe.Alpha.TieProbe", "X = Probe.Beta.TieProbe" })]
+        // The control for every alias row: the same spelling with no alias declared binds nothing.
+        [InlineData("X.TieProbe", "UNRESOLVED", new string[0])]
+        [InlineData("X.TieProbe", "UNRESOLVED", new[] { "Probe.Alpha" })]
+        // `using static` contributes the target's nested types under their own names; two targets contributing one
+        // name is the ambiguity C# reports as CS0104.
+        [InlineData("AliasNested", "Probe.NestAlpha.AliasHost.AliasNested",
+            new[] { "static Probe.NestAlpha.AliasHost" })]
+        [InlineData("AliasNested", "AMBIGUOUS",
+            new[] { "static Probe.NestAlpha.AliasHost", "static Probe.NestBeta.AliasHost" })]
+        [InlineData("AliasNested", "UNRESOLVED", new string[0])]
+        // Importing the host's namespace does not reach into the host, which is what makes the row above a rule
+        // about `static` rather than about the namespace being visible.
+        [InlineData("AliasNested", "UNRESOLVED", new[] { "Probe.NestAlpha" })]
+        // `global::` names the global namespace, consulting no import and no alias.
+        [InlineData("global::Probe.Alpha.TieProbe", "Probe.Alpha.TieProbe", new string[0])]
+        [InlineData("global::GlobalProbe", "GlobalProbe", new string[0])]
+        [InlineData("global::GlobalProbe.Inner", "GlobalProbe.Inner", new string[0])]
+        [InlineData("global::System.String[]", "string[]", new string[0])]
+        [InlineData("global::System.Collections.Generic.List<int>", "System.Collections.Generic.List<int>",
+            new string[0])]
+        [InlineData("global::TieProbe", "UNRESOLVED", new[] { "Probe.Alpha" })]
+        [InlineData("global::X.TieProbe", "UNRESOLVED", new[] { "X = Probe.Alpha" })]
+        // Where a spelling answers to BOTH the index and an alias, the index keeps it. C# decides this the other way
+        // — an alias wins over a type reached through an imported namespace — and matching C# here would move a
+        // spelling that resolves today onto a different type. Pinned so the deviation is visible.
+        [InlineData("TieProbe", "Probe.Alpha.TieProbe", new[] { "Probe.Alpha", "TieProbe = Probe.Beta.TieProbe" })]
+        public void ADirectiveThatBindsANameResolvesAsTheRuntimeResolvesIt(string spelling, string expected,
+            string[] usings)
+        {
+            Assert.Equal(expected, Resolve(spelling, usings));
         }
 
         /// <summary>
