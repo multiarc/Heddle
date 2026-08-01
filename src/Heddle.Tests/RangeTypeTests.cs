@@ -45,7 +45,7 @@ namespace Heddle.Tests
             Assert.Equal("range(5, 2)", new Heddle.Models.Range(5, 2).ToString());
         }
 
-#if NET6_0_OR_GREATER
+#if NET8_0_OR_GREATER
         [Fact]
         public void FromSystemRangeMapsFromStartEndpoints()
         {

@@ -43,7 +43,7 @@ namespace Heddle.Data
         {
             if (data.IsEmpty)
                 return;
-#if NET6_0_OR_GREATER
+#if NET8_0_OR_GREATER
             Render(new string(data));
 #else
             Render(data.ToString());

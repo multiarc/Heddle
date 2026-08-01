@@ -45,7 +45,7 @@ namespace Heddle.Extensions
 
             if (scope.ModelData is DateTime date)
             {
-#if NET6_0_OR_GREATER
+#if NET8_0_OR_GREATER
                 scope.Renderer.Render(date, dateFormat, CultureInfo.InvariantCulture);
 #else
                 scope.Renderer.Render(date.ToString(dateFormat, CultureInfo.InvariantCulture));

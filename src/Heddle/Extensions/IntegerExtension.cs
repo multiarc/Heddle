@@ -78,7 +78,7 @@ namespace Heddle.Extensions
             // downlevel keeps the string-based form (ISpanFormattable does not exist there).
             if (model is int data)
             {
-#if NET6_0_OR_GREATER
+#if NET8_0_OR_GREATER
                 scope.Renderer.Render(data, format, CultureInfo.InvariantCulture);
 #else
                 scope.Renderer.Render(!string.IsNullOrEmpty(format) ? data.ToString(format, CultureInfo.InvariantCulture) : data.ToString(CultureInfo.InvariantCulture));
@@ -88,7 +88,7 @@ namespace Heddle.Extensions
 
             if (model is long longData)
             {
-#if NET6_0_OR_GREATER
+#if NET8_0_OR_GREATER
                 scope.Renderer.Render(longData, format, CultureInfo.InvariantCulture);
 #else
                 scope.Renderer.Render(!string.IsNullOrEmpty(format)
@@ -115,7 +115,7 @@ namespace Heddle.Extensions
                 return;
             }
 
-#if NET6_0_OR_GREATER
+#if NET8_0_OR_GREATER
             scope.Renderer.Render(longData, format, CultureInfo.InvariantCulture);
 #else
             scope.Renderer.Render(!string.IsNullOrEmpty(format)

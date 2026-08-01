@@ -20,7 +20,7 @@ namespace Heddle.Data
                 renderer.Render(data.ToString());
         }
 
-#if NET6_0_OR_GREATER
+#if NET8_0_OR_GREATER
         /// <summary>
         /// Formats <paramref name="value"/> directly into the renderer with no intermediate string on the fast tiers:
         /// <c>IUtf8SpanFormattable</c> into a UTF-8 sink (net8+ builds), else <c>ISpanFormattable</c> into a stackalloc

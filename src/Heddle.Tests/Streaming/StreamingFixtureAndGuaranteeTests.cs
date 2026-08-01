@@ -129,7 +129,7 @@ namespace Heddle.Tests.Streaming
 
         public class DownModel { public int N { get; set; } public decimal P { get; set; } public string U { get; set; } }
 
-#if NET6_0_OR_GREATER
+#if NET8_0_OR_GREATER
         [Fact]
         public void LargeOutputByteSinkAllocatesBounded()
         {

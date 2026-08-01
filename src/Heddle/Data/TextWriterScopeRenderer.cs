@@ -35,7 +35,7 @@ namespace Heddle.Data
         {
             if (data.IsEmpty)
                 return;
-#if NET6_0_OR_GREATER
+#if NET8_0_OR_GREATER
             // TextWriter.Write(ReadOnlySpan<char>) is netcoreapp2.1+; StreamWriter/HttpResponseStreamWriter override
             // it with true span paths.
             _writer.Write(data);
