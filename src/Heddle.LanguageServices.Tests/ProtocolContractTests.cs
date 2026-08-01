@@ -41,7 +41,7 @@ namespace Heddle.LanguageServices.Tests
             return value;
         }
 
-        public Task InitializeAsync()
+        public ValueTask InitializeAsync()
         {
             var pair = FullDuplexStream.CreatePair();
             _server = new LspServer();
@@ -58,14 +58,14 @@ namespace Heddle.LanguageServices.Tests
             _clientRpc = new JsonRpc(new HeaderDelimitedMessageHandler(pair.Item2, pair.Item2, clientFormatter));
             _clientRpc.AddLocalRpcTarget(_sink, new JsonRpcTargetOptions { AllowNonPublicInvocation = false });
             _clientRpc.StartListening();
-            return Task.CompletedTask;
+            return default;
         }
 
-        public Task DisposeAsync()
+        public ValueTask DisposeAsync()
         {
             _clientRpc?.Dispose();
             _serverRpc?.Dispose();
-            return Task.CompletedTask;
+            return default;
         }
 
         private static JsonElement EmptyObject() => JsonSerializer.Deserialize<JsonElement>("{}");

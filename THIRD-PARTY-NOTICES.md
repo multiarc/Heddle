@@ -66,7 +66,7 @@ artifact.
 | --- | --- | --- |
 | ANTLR 4 tool (`antlr-4.13.1-complete.jar`) | BSD-3-Clause | Grammar code generation |
 | Java / JDK | (vendor-dependent) | Running the ANTLR tool |
-| xunit, xunit.runner.visualstudio | Apache-2.0 | Unit tests |
+| xunit.v3 | Apache-2.0 | Unit tests |
 | Microsoft.NET.Test.Sdk, coverlet.collector | MIT | Test host / coverage |
 | BenchmarkDotNet | MIT | Performance benchmarks |
 | Microsoft.AspNetCore.Mvc.* (Razor) | MIT | Benchmark comparison baseline |

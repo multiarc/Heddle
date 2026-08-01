@@ -25,11 +25,31 @@ Every work item in every spec runs the same loop:
 Each spec carries its **TDD verdict** (which parts are test-first versus test-with) and
 must not weaken it.
 
+## Running the suites
+
+Test projects are xUnit v3 on Microsoft Testing Platform: each one is a stand-alone executable that
+hosts its own runner. Three consequences, all of which bite silently if ignored:
+
+- **`dotnet test` needs `--project` or `--solution`.** The directory form (`dotnet test src/Foo`) is
+  rejected outright, so it fails loudly rather than testing nothing.
+- **Filters are MTP syntax** — `--filter-method`, `--filter-class`, `--filter-namespace`,
+  `--filter-trait`, after a `--` separator. A VSTest-style `--filter FullyQualifiedName~X` is not
+  understood. A filter that matches nothing exits **8**, so a stale filter can no longer pass by
+  running nothing, which is how several checks in this repo came to be documented as pinned while
+  nothing executed them.
+- **Every CI leg passes a floor.** `.github/scripts/dotnet-test-guarded.sh <minimum> <project>` wraps
+  `--minimum-expected-tests`, which exits **9** when fewer tests ran than the suite really has. The
+  floor is the suite's true size, not 1 — a suite that loses half its rows still ran "some" tests.
+  When a suite legitimately grows or shrinks, update the floor in the same commit.
+
+The runner also randomises test order per run. Order-dependent tests therefore fail intermittently
+rather than never, which is a feature: it found one on the first run after the migration.
+
 ## Suite homes
 
 | Home | Framework | Role |
 | --- | --- | --- |
-| [src/Heddle.Tests](../../../src/Heddle.Tests) | xUnit, `dotnet test` | Unit, integration, golden-file, negative/security, and concurrency tests. Multi-targets `net8.0;net10.0` (+ `net48` on Windows) — new tests must pass on **all** TFMs. |
+| [src/Heddle.Tests](../../../src/Heddle.Tests) | xUnit v3 (MTP), `dotnet test --project` | Unit, integration, golden-file, negative/security, and concurrency tests. Multi-targets `net8.0;net10.0` (+ `net48` on Windows) — new tests must pass on **all** TFMs. |
 | [src/Heddle.Performance](../../../src/Heddle.Performance) | BenchmarkDotNet (`[MemoryDiagnoser]`) | Render/compile benchmarks incl. the Razor head-to-head. Hot-path changes add or extend benchmarks here. |
 | [`samples/` gallery](../../../samples/README.md) | Per-sample CI jobs with golden assertions | The demo/integration item of each user-visible change. The harness (comparer, workflow, conventions) exists; each spec owns its sample per the gallery conventions. |
 
@@ -69,8 +89,9 @@ must not weaken it.
 The gate every spec runs before merge, in one combined invocation:
 
 1. `dotnet build -c Release` — whole solution, all TFMs.
-2. `dotnet test src/Heddle.Tests` — full suite, all TFMs, zero failures; golden
-   comparisons byte-identical for templates the change does not intentionally touch.
+2. `dotnet test --project src/Heddle.Tests/Heddle.Tests.csproj` — full suite, all TFMs, zero
+   failures; golden comparisons byte-identical for templates the change does not intentionally
+   touch. Run the suites serially: they share process-global engine state.
 3. **Grammar-stability check** for specs that declare no grammar change (the default):
    `src/Heddle.Language/generated/` has no diff. A spec licensed to change grammar instead commits exactly one regen
    alongside the `.g4` change and diff-reviews it.
@@ -91,7 +112,7 @@ table says so rather than leaving the reader to infer coverage that is not there
 
 | Suite | Debug | Release |
 | --- | --- | --- |
-| `src/Heddle.Tests` | [`dotnet.yml`](../../../.github/workflows/dotnet.yml), solution-wide `dotnet test -c Debug`, Linux **and** Windows | [`lsp.yml`](../../../.github/workflows/lsp.yml), Windows only |
+| `src/Heddle.Tests` | [`dotnet.yml`](../../../.github/workflows/dotnet.yml), its own named leg with a test-count floor, Linux **and** Windows | [`lsp.yml`](../../../.github/workflows/lsp.yml), Windows only |
 | `src/Heddle.LanguageServices.Tests` | same | [`lsp.yml`](../../../.github/workflows/lsp.yml), Windows only |
 | `src/Heddle.Generator.Tests` | same | [`dotnet.yml`](../../../.github/workflows/dotnet.yml), Linux **and** Windows |
 | `src/Heddle.Generator.IntegrationTests` | same | [`dotnet.yml`](../../../.github/workflows/dotnet.yml), Linux **and** Windows |
