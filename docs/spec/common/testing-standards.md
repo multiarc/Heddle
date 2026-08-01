@@ -82,6 +82,39 @@ The gate every spec runs before merge, in one combined invocation:
 5. Docs build when docs pages changed: `cd docs && npm run docs:build` (run from an
    uppercase-drive cwd on Windows; `preserveSymlinks` is already configured).
 
+**Both configurations, not just Debug.** The engine carries `#if DEBUG` arms that change *runtime*
+behaviour rather than only diagnostics — the model-type guard is unconditional under `DEBUG` and
+opt-in under `Release` — so a Debug-only run is structurally unable to see a Release-only failure.
+One survived in the generator integration suite for exactly that reason: every suite in that series
+was verified in Debug. Each suite therefore carries **both legs**, all TFMs — where one is missing the
+table says so rather than leaving the reader to infer coverage that is not there:
+
+| Suite | Debug | Release |
+| --- | --- | --- |
+| `src/Heddle.Tests` | [`dotnet.yml`](../../../.github/workflows/dotnet.yml), solution-wide `dotnet test -c Debug`, Linux **and** Windows | [`lsp.yml`](../../../.github/workflows/lsp.yml), Windows only |
+| `src/Heddle.LanguageServices.Tests` | same | [`lsp.yml`](../../../.github/workflows/lsp.yml), Windows only |
+| `src/Heddle.Generator.Tests` | same | [`dotnet.yml`](../../../.github/workflows/dotnet.yml), Linux **and** Windows |
+| `src/Heddle.Generator.IntegrationTests` | same | [`dotnet.yml`](../../../.github/workflows/dotnet.yml), Linux **and** Windows |
+| `src/Heddle.Tool.Tests` | same | **not covered** — a known gap, recorded rather than implied away |
+
+A test whose expectation genuinely differs by configuration writes **both** arms behind `#if DEBUG` /
+`#if !DEBUG`, so each configuration's behaviour is pinned and neither is left to whichever build the
+author happened to run. Making the expectation explicit — asking for the option the assertion needs —
+is the fix; deleting the assertion is not.
+
+**Rendered numbers are culture-dependent, and a golden is not.** The default value-to-text render is
+the value's own `ToString()`, so decimal separators, group separators, digit substitution and the
+negative sign all come from `CultureInfo.CurrentCulture` (ar-SA prefixes U+061C to a negative sign;
+de-DE and tr-TR use a decimal comma). Both tiers reach text through that same call, so they do not
+diverge — but a committed golden or an inline expected-text literal is written in one culture and
+compares byte-for-byte. A test asserting rendered numeric text either **pins the culture it renders
+under** (the right answer wherever the expectation is a committed golden this suite may not
+regenerate) or **builds its expectation under the ambient culture** from typed literals (the right
+answer wherever the culture is not the subject and pinning it would discard coverage — notably a
+cross-tier differential, where agreeing under the host's own culture is the thing only that test can
+observe). Changing the render to make such a test pass is a golden/engine change and goes through
+review, never through the test.
+
 ## Test authoring conventions
 
 - Descriptive PascalCase test names reading as sentences

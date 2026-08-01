@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Reflection;
 using Heddle.Data;
 using Heddle.Runtime;
@@ -28,7 +29,21 @@ namespace Heddle.Tests
             var t = new HeddleTemplate(template,
                 new CompileContext(new TemplateOptions(), model?.GetType() ?? typeof(Model)));
             Assert.True(t.CompileResult.Success, t.CompileResult.ToString());
-            return t.Generate(model);
+
+            // These smoke assertions spell their expected text as literals — "10.0" pins that multiplying a decimal
+            // by an int keeps the decimal's scale, which is a claim about the arithmetic and not about the host's
+            // number formatting. The render goes through the value's own ToString(), so the culture is fixed here
+            // to keep the literals exact.
+            var previous = CultureInfo.CurrentCulture;
+            CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
+            try
+            {
+                return t.Generate(model);
+            }
+            finally
+            {
+                CultureInfo.CurrentCulture = previous;
+            }
         }
 
         [Fact]

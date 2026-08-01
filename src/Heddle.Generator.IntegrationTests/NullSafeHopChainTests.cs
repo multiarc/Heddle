@@ -145,7 +145,10 @@ namespace Heddle.Generator.IntegrationTests
         /// parameter is refused where the strategy hands it over and the cast is refused outright, so the consumer's
         /// build broke on a template that had nothing wrong with its syntax.
         /// <para>The engine <em>compiles</em> this one and refuses it at render, with a catchable exception naming
-        /// the mismatch. That is a far better answer than a broken build, and only the dynamic tier can give it.</para>
+        /// the mismatch. That is a far better answer than a broken build, and only the dynamic tier can give it.
+        /// The naming is what <see cref="TemplateOptions.ValidateModelType"/> buys, so this test asks for it: the
+        /// option defaults to off, and only a <c>DEBUG</c> build turns it on regardless. Left unset, the assertion
+        /// below would be pinning the build configuration instead of the engine.</para>
         /// </summary>
         [Fact]
         public void ARefStructModelDegradesInsteadOfBreakingTheBuild()
@@ -161,11 +164,38 @@ namespace Heddle.Generator.IntegrationTests
             // The engine's own answer, which the degrade exists to let through: it compiles, and says what is wrong
             // when asked to render.
             var dynamicTemplate = new Heddle.HeddleTemplate(template,
-                new Heddle.Runtime.CompileContext(typeof(System.ReadOnlySpan<char>)));
+                new Heddle.Runtime.CompileContext(
+                    new TemplateOptions { ValidateModelType = true }, typeof(System.ReadOnlySpan<char>)));
             Assert.True(dynamicTemplate.CompileResult.Success, dynamicTemplate.CompileResult.ToString());
             var error = Assert.ThrowsAny<Heddle.Exceptions.TemplateProcessingException>(
                 () => dynamicTemplate.Generate("hello"));
             Assert.Contains("Type mismatch", error.Message, System.StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
+        /// The other half of the same rule, so both halves are pinned rather than one: with
+        /// <see cref="TemplateOptions.ValidateModelType"/> left at its default the engine does not look at the model
+        /// at all, and the wrong-typed data reaches the cast the compiled accessor performs. That cast's
+        /// <see cref="System.InvalidCastException"/> is what opting out of the check costs — still a render-time
+        /// answer the host can catch, just without the Heddle-shaped message. Written per configuration because
+        /// <c>DEBUG</c> validates whatever the option says.
+        /// </summary>
+        [Fact]
+        public void ARefStructModelWithoutTheGuardFaultsAtTheCastInstead()
+        {
+            const string template = "@model(){{System.ReadOnlySpan<char>}}@\\\n@(Length)";
+
+            var dynamicTemplate = new Heddle.HeddleTemplate(template,
+                new Heddle.Runtime.CompileContext(
+                    new TemplateOptions { ValidateModelType = false }, typeof(System.ReadOnlySpan<char>)));
+            Assert.True(dynamicTemplate.CompileResult.Success, dynamicTemplate.CompileResult.ToString());
+#if DEBUG
+            var error = Assert.ThrowsAny<Heddle.Exceptions.TemplateProcessingException>(
+                () => dynamicTemplate.Generate("hello"));
+            Assert.Contains("Type mismatch", error.Message, System.StringComparison.OrdinalIgnoreCase);
+#else
+            Assert.Throws<System.InvalidCastException>(() => dynamicTemplate.Generate("hello"));
+#endif
         }
 
         /// <summary>A ref struct as a <b>definition's</b> model type — the same refusal one level down, where the
