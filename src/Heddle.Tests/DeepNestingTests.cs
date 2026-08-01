@@ -30,6 +30,10 @@ namespace Heddle.Tests
         /// </summary>
         private const int ParseDepthGuardLimit = 250;
 
+        /// <summary>The shape both flat-run tests use, so the depth they are argued about at is one depth.</summary>
+        private static readonly string FlatRun =
+            "@(" + string.Join("+", Enumerable.Repeat("1", PastTheLimit)) + ")";
+
         /// <summary>
         /// The limit is not an arbitrary round number: it is chosen to sit below the depth at which the smallest
         /// stack the engine can be hosted on runs out, so the bound is reached before the process dies. Moving it
@@ -62,7 +66,27 @@ namespace Heddle.Tests
         [Fact]
         public void AFlatRunPastTheLimitIsReported()
         {
-            AssertReportsDepth("@(" + string.Join("+", Enumerable.Repeat("1", PastTheLimit)) + ")");
+            AssertReportsDepth(FlatRun);
+        }
+
+        /// <summary>
+        /// The same depth, plus the half-typed block an editor's document has open most of the time. A syntax error
+        /// ends the parse early — the document's text is handed back for the errors to be positioned against — and
+        /// the bound has to have been applied before that return, because rendering that text recurses over the tree
+        /// just as the walk does. Applied after it instead, this shape is not reported at all, and deeper it takes
+        /// the process with it: with the bound moved past the return a flat run of 20000 survives and one of 60000
+        /// ends the test host, in <c>RuleContext.GetText</c> rather than in the walk, which is why the depths in the
+        /// note above do not describe this path. The depth used here stays the sibling test's, so a regression is a
+        /// red test rather than a dead test host.
+        /// </summary>
+        [Fact]
+        public void ADeepTemplateThatAlsoHasASyntaxErrorIsStillBounded()
+        {
+            var context = AssertReportsDepth(FlatRun + "@if(true){{");
+
+            // Both diagnostics, because without the syntax error the document is merely deep and this test is the
+            // one above wearing a different name.
+            Assert.Contains(context.Errors, e => e.DiagnosticId == HeddleDiagnosticIds.SyntaxError);
         }
 
         /// <summary>
@@ -70,7 +94,7 @@ namespace Heddle.Tests
         /// own bound — so the id alone tells a reader nothing about which happened or what to shorten. The message
         /// is the only thing that distinguishes them, and it carries the limit that was hit.
         /// </summary>
-        private static void AssertReportsDepth(string document)
+        private static ParseContext AssertReportsDepth(string document)
         {
             var context = DocumentParser.Parse(document, new ParserSettings { RootPath = "<none>" }, out _);
 
@@ -80,6 +104,7 @@ namespace Heddle.Tests
                 reported.Error);
             Assert.Contains("expression, chain, or block nesting", reported.Error);
             Assert.DoesNotContain("@<<", reported.Error);
+            return context;
         }
     }
 }
