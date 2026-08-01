@@ -178,6 +178,12 @@ root‑relative path maps onto a registered key is served precompiled instead of
 order beats location order, which is how the cache tier has always behaved (a cached template at
 the second location already won over a first‑location file on disk).
 
+The hosted arms' candidate locations (`views/{controller}/{view}` and its `partial`/`base`
+siblings) are root‑relative and `/`‑separated, joined to the resolver's root with
+`Path.Combine`. They were previously written with backslashes and a leading separator, which is a
+path shape only Windows reads — and there only from the current drive's root — so on Linux and
+macOS the disk tier of the ladder matched nothing and those arms served registry hits only.
+
 On a hit the per‑request validation gauntlet runs against the arm's *real* effective options —
 including the hosted arms' `ExpressionMode.FullCSharp`, so a manifest built under `Native` is
 refused by the fingerprint check with no special‑casing anywhere. All pass → a `HeddleTemplate`

@@ -56,6 +56,11 @@ using Heddle.Runtime;
     typeof(Heddle.Generator.IntegrationTests.Fixtures.EnumIntDefaultExtension),
     typeof(Heddle.Generator.IntegrationTests.Fixtures.InternalEnumDefaultExtension),
     typeof(Heddle.Generator.IntegrationTests.Fixtures.NarrowDefaultsExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.EscapedPropNamesExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.UnspellablePropNamesExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.NonFiniteDoubleDefaultExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.NonFiniteFloatDefaultExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.FiniteDoubleDefaultExtension),
     typeof(Heddle.Generator.IntegrationTests.Fixtures.SecretExtension),
     typeof(Heddle.Generator.IntegrationTests.Fixtures.BoxedExtension),
     typeof(Heddle.Generator.IntegrationTests.Fixtures.AgingExtension))]

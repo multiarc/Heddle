@@ -394,7 +394,13 @@ namespace Heddle.Generator
             // were imports nobody had included, and the build failed over a working template. The raw spelling is
             // still what a miss is reported with, so the message names what the author wrote.
             Func<string, string> identity = importPath =>
-                TemplateKey.TryNormalize(CanonicalizeImportPath(importPath), out var key) ? key : importPath;
+            {
+                var canonical = CanonicalizeImportPath(importPath);
+                return !SpellingSurvivesKeyDerivation(canonical) ||
+                       !TemplateKey.TryNormalize(canonical, out var key)
+                    ? importPath
+                    : key;
+            };
 
             var settings = new ParserSettings
             {
@@ -498,6 +504,23 @@ namespace Heddle.Generator
         /// where the engine finds no file either, so key derivation refuses the spelling instead of quietly resolving
         /// it to something inside.</para>
         /// </summary>
+        /// <summary>
+        /// Whether the shared key normalizer would read a character of <paramref name="canonical"/> as a segment
+        /// separator that this platform does not.
+        /// <para><c>TemplateKey</c> unifies <c>\</c> to <c>/</c> on every host, and that is its contract rather than
+        /// an oversight: a key is <c>/</c>-joined and a host may spell a registry lookup <c>Views\Home\Index</c>. An
+        /// import spelling is not a key — it is resolved against disk, and off Windows a backslash is an ordinary
+        /// file-name character that <c>Path.GetFullPath</c>, which is what the engine resolves the same spelling
+        /// through, keeps. Handed over regardless, <c>sub\lib.heddle</c> became the key <c>sub/lib.heddle</c> and
+        /// bound a file the engine never reads, with no diagnostic on either side. Refusing to derive a key leaves
+        /// the raw spelling as the identity, which names nothing in the import map — the verdict the engine reaches
+        /// by finding no file.</para>
+        /// </summary>
+        private static bool SpellingSurvivesKeyDerivation(string canonical) =>
+            string.IsNullOrEmpty(canonical) ||
+            canonical.IndexOf('\\') < 0 ||
+            System.Array.IndexOf(PathSeparators, '\\') >= 0;
+
         private static string CanonicalizeImportPath(string importPath)
         {
             if (string.IsNullOrEmpty(importPath))

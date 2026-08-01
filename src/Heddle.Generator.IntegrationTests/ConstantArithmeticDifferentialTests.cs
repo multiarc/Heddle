@@ -89,7 +89,8 @@ namespace Heddle.Generator.IntegrationTests
 
         /// <summary>The near neighbour that keeps the row above a rule rather than a refusal of every mixed pair:
         /// the same <c>int</c>/<c>uint</c> mixing with a result that fits in a <c>uint</c>, which both tiers reach and
-        /// render identically.</summary>
+        /// render identically — and still on the precompiled tier, which is the half the byte comparison alone
+        /// cannot say.</summary>
         [Theory]
         [InlineData("4294967295u-1")]
         [InlineData("5-1u")]
@@ -97,8 +98,102 @@ namespace Heddle.Generator.IntegrationTests
         [InlineData("3000000000u+1")]
         public void AnIntMeetingAUintThatDoesNotWrapPrecompilesAndMatches(string expression)
         {
+            var generated = DifferentialHarness.Generate(new[] { (Key, Template(expression)) });
+            Assert.Empty(generated.Diagnostics);
+            DifferentialHarness.ExpectPrecompiled(generated, Key);
+
             var (precompiled, dyn) = DifferentialHarness.Render(Key, Template(expression), typeof(string), "hello");
 
+            Assert.Equal(dyn, precompiled);
+        }
+
+        /// <summary>
+        /// The mixed pair again, this time as the operand of a <b>second</b> operator. Agreeing on the number is not
+        /// agreeing on the type: <c>(0-0u)</c> is a <c>uint</c> zero to C# and a <c>long</c> zero to the engine, and
+        /// subtracting <c>1u</c> from each gives 4294967295 and -1. The template rendered a number 4294967296 too
+        /// large with no diagnostic on either side — the folded pair reported its own agreement and the difference
+        /// that produced it did not travel with the value.
+        /// </summary>
+        [Theory]
+        [InlineData("(0-0u)-(1u)")]
+        [InlineData("(0+0u)-(1u)")]
+        [InlineData("(0*1u)-(1u)")]
+        [InlineData("(1u-1)-(1u)")]
+        [InlineData("(0&0u)-(1u)")]
+        [InlineData("((0-0u)-(0u))-(1u)")]
+        [InlineData("(0|0u)-(1u)")]
+        [InlineData("(0^0u)-(1u)")]
+        [InlineData("(true?0u:0)-(1u)")]
+        // The complement is the unary operator that does not re-promote both tiers onto one type: `~(uint)0` is
+        // 4294967295 where `~(long)0` is -1.
+        [InlineData("~(0-0u)")]
+        // A shift keeps its left operand's type, so it carries the difference straight into the number: shifting a
+        // uint 4294967295 left by 31 gives 2147483648 and shifting the long by 31 gives 9223372034707292160.
+        [InlineData("(4294967295u-0)<<31")]
+        public void AMixedPairFeedingASecondOperatorDegrades(string expression)
+        {
+            var generated = DifferentialHarness.Generate(new[] { (Key, Template(expression)) });
+
+            Assert.Empty(generated.Diagnostics);
+            DifferentialHarness.ExpectDegrade(generated, Key);
+        }
+
+        /// <summary>
+        /// The near neighbours of the row above, so that it reads as a rule about the mixed promotion rather than a
+        /// refusal of every nested constant. None of these mixes an <c>int</c> with a <c>uint</c> anywhere, or the
+        /// operator that consumes the mixed pair re-promotes both tiers onto <c>long</c> — and every one still
+        /// precompiles and renders the engine's bytes.
+        /// </summary>
+        [Theory]
+        [InlineData("(0u-0u)-(1u)")]
+        [InlineData("(4294967295u-0u)<<31")]
+        [InlineData("(0-0)-(1)")]
+        [InlineData("(0L-0)-(1u)")]
+        // A signed partner puts both tiers in `long`, which is why the mixed pair may still be written here.
+        [InlineData("(5-1u)-(1)")]
+        [InlineData("(5-1u)+Length")]
+        [InlineData("-(0-0u)")]
+        public void AMixedPairWhoseSecondOperatorReconvergesStillPrecompiles(string expression)
+        {
+            var generated = DifferentialHarness.Generate(new[] { (Key, Template(expression)) });
+            Assert.Empty(generated.Diagnostics);
+            DifferentialHarness.ExpectPrecompiled(generated, Key);
+
+            var (precompiled, dyn) = DifferentialHarness.Render(Key, Template(expression), typeof(string), "hello");
+            Assert.Equal(dyn, precompiled);
+        }
+
+        /// <summary>
+        /// The same difference reaching a <b>member</b> rather than another constant, which is where the fold has no
+        /// second operand to compare against and the writer has to ask what the member's type is. Against
+        /// <c>Ticks</c> — a <c>uint</c> — C# stays in <c>uint</c> while the engine is already in <c>long</c>;
+        /// against <c>Count</c> and <c>Label</c> both tiers land on the same type and the expression stays
+        /// precompiled.
+        /// </summary>
+        [Theory]
+        [InlineData("Ticks - (0-0u)", false)]
+        [InlineData("Ticks + (5-1u)", false)]
+        [InlineData("Count - (0-0u)", true)]
+        [InlineData("Count + (5-1u)", true)]
+        [InlineData("Label + (5-1u)", true)]
+        public void AMixedPairMeetingAMemberFollowsThatMembersType(string expression, bool precompiles)
+        {
+            const string key = "views/arith-member.heddle";
+            var template = "@model(){{Heddle.Generator.IntegrationTests.Fixtures.UnsignedMemberModel}}@(" +
+                           expression + ")";
+            var model = new Fixtures.UnsignedMemberModel { Ticks = 0, Count = 0, Label = "n" };
+
+            var generated = DifferentialHarness.Generate(new[] { (key, template) });
+            Assert.Empty(generated.Diagnostics);
+            if (!precompiles)
+            {
+                DifferentialHarness.ExpectDegrade(generated, key);
+                return;
+            }
+
+            DifferentialHarness.ExpectPrecompiled(generated, key);
+            var (precompiled, dyn) = DifferentialHarness.Render(key, template,
+                typeof(Fixtures.UnsignedMemberModel), model);
             Assert.Equal(dyn, precompiled);
         }
 

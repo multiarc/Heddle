@@ -627,6 +627,47 @@ namespace Heddle.Generator.Tests
             Assert.DoesNotContain("\"banner.heddle\"", source);
         }
 
+        /// <summary>
+        /// A template path carrying a character a <c>#line</c> file name cannot hold. That name is a
+        /// <c>pp_string</c>, not a string literal: it ends at the first quote or line terminator and no escape is
+        /// processed inside it, so writing the path through verbatim produced an unterminated directive and the
+        /// consumer's build stopped — over a template the engine renders. Both characters are ordinary file-name
+        /// characters on Linux and macOS. The mapping is dropped; the build is not.
+        /// </summary>
+        [Theory]
+        [InlineData("/repo/shared/o\"k.heddle")]
+        [InlineData("/repo/shared/o\nk.heddle")]
+        public void ATemplatePathWithNoLineDirectiveSpellingLosesTheMappingNotTheBuild(string path)
+        {
+            var run = GeneratorHarness.Run(new[] { (path, "@model(){{System.String}}@\\\nx @(this) y\n") },
+                globalOptions: RootOption);
+
+            var source = run.GeneratedSourceTexts.First(s => !s.Contains("__HeddleManifest"));
+            Assert.DoesNotContain("#line (", source);
+            Assert.Contains("#line hidden", source);
+            Assert.Empty(Microsoft.CodeAnalysis.CSharp.CSharpSyntaxTree.ParseText(source)
+                .GetDiagnostics()
+                .Where(d => d.Severity == DiagnosticSeverity.Error));
+        }
+
+        /// <summary>The near neighbour: a backslash is <b>not</b> one of those characters. A <c>pp_string</c> does
+        /// not process it, so a Windows path is already correct written through verbatim and must stay
+        /// untouched.</summary>
+        [Fact]
+        public void ABackslashInATemplatePathKeepsItsLineMapping()
+        {
+            const string path = "/repo/shared/o\\k.heddle";
+            var run = GeneratorHarness.Run(new[] { (path, "@model(){{System.String}}@\\\nx @(this) y\n") },
+                globalOptions: RootOption);
+
+            var source = run.GeneratedSourceTexts.First(s => !s.Contains("__HeddleManifest"));
+            Assert.Contains("#line (", source);
+            Assert.Contains("\"" + path + "\"", source);
+            Assert.Empty(Microsoft.CodeAnalysis.CSharp.CSharpSyntaxTree.ParseText(source)
+                .GetDiagnostics()
+                .Where(d => d.Severity == DiagnosticSeverity.Error));
+        }
+
         /// <summary>One compilation containing both rooted and out-of-root templates records a different form for each.</summary>
         [Fact]
         public void TheTwoLineFormsAreRecordedDistinctlyInOneCompilation()

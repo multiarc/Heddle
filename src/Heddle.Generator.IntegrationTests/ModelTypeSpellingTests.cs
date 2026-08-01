@@ -238,6 +238,29 @@ namespace Heddle.Generator.IntegrationTests
             Assert.Equal(dyn, precompiled);
         }
 
+        /// <summary>
+        /// A stated <c>Version</c> the assembly does not carry. The engine goes to <c>Type.GetType</c>, whose
+        /// default load context matches an already-loaded assembly by simple name and treats the rest of the
+        /// identity as advice — so it resolves, strong-named or not. The build tier compared the version exactly and
+        /// quietly left the template on the dynamic tier, which is what a host bumping an assembly version without
+        /// editing its templates would have got.
+        /// </summary>
+        [Theory]
+        [InlineData("99.0.0.0")]
+        [InlineData("0.0.0.1")]
+        public void AStatedVersionAnUnsignedAssemblyDoesNotCarryBindsOnBothTiers(string version)
+        {
+            var key = "views/aqn-model-version-" + version + ".heddle";
+            var assembly = typeof(Article).Assembly.GetName().Name;
+            var template = "@model(){{" + ArticleType + ", " + assembly + ", Version=" + version +
+                           "}}@\\\n[@(Title)]\n";
+
+            var (precompiled, dyn) = DifferentialHarness.Render(key, template, typeof(Article),
+                new Article { Title = "T" });
+            Assert.Equal("[T]\n", dyn);
+            Assert.Equal(dyn, precompiled);
+        }
+
         /// <summary>The cost control for the arm above: an assembly-qualified spelling naming an assembly that is
         /// not there binds on neither tier, so the arm is a lookup and not a way of ignoring the qualifier.</summary>
         [Fact]

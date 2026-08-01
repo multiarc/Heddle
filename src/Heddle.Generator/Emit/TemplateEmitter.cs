@@ -43,6 +43,17 @@ namespace Heddle.Generator.Emit
         /// (<c>PrecompiledTemplateInfo.LinePathForm</c>) rather than the generated file.</summary>
         private readonly bool _lineDirectiveFileIsRootRelative;
 
+        /// <summary>
+        /// Whether <see cref="_lineDirectiveFile"/> has a <c>#line</c> spelling at all. The file name of a
+        /// <c>#line</c> is a <c>pp_string</c>, not a string literal: it ends at the first <c>"</c> or line
+        /// terminator and no escape sequence is processed inside it. A template whose path carries either — both
+        /// are ordinary file-name characters off Windows — has no writable form, and the mapping is dropped rather
+        /// than the consumer's build being broken by an unterminated directive.
+        /// <para>A backslash is deliberately <b>not</b> in that set. <c>pp_string</c> does not process it, so a
+        /// Windows path is already correct written through verbatim.</para>
+        /// </summary>
+        private readonly bool _lineDirectiveFileIsWritable;
+
         /// <summary>The template's optional registered <c>Name</c>, already normalized, or null. Emitted onto
         /// the manifest row so the runtime registry can answer to it; it affects nothing else the emitter produces —
         /// not the entry-class identifier, not the <c>#line</c> file, not the key.</summary>
@@ -119,6 +130,7 @@ namespace Heddle.Generator.Emit
             _key = key;
             _lineDirectiveFile = lineDirectiveFile ?? key;
             _lineDirectiveFileIsRootRelative = lineDirectiveFileIsRootRelative;
+            _lineDirectiveFileIsWritable = IsWritableLineDirectiveFile(_lineDirectiveFile);
             _registeredName = registeredName;
             _sanitizedName = sanitizedName;
             _namespace = generatedNamespace;
@@ -982,7 +994,7 @@ namespace Heddle.Generator.Emit
         private string EmitParameterNamesField(PropLayoutInfo layout)
         {
             var field = "ParamNames" + _paramNamesCounter++;
-            var names = layout.Slots.Select(s => "\"" + s.Name.Replace("\"", "\\\"") + "\"");
+            var names = layout.Slots.Select(s => CSharpEscape.StringLiteral(s.Name));
             _fieldDecls.Append("        private static readonly string[] ").Append(field)
                 .Append(" = new string[] { ").Append(string.Join(", ", names)).Append(" };\n");
             return field;
@@ -2928,9 +2940,10 @@ namespace Heddle.Generator.Emit
             }
 
             // References to the chained/root parameters need their runtime static types, which the emitter cannot
-            // reproduce here — fall back rather than paste an untyped/ill-typed reference.
-            if (System.Text.RegularExpressions.Regex.IsMatch(csharp, @"\b" + EmbeddedCSharpNames.Chained + @"\b") ||
-                System.Text.RegularExpressions.Regex.IsMatch(csharp, @"\b" + EmbeddedCSharpNames.Root + @"\b"))
+            // reproduce here — fall back rather than paste an untyped/ill-typed reference. Which identifiers are
+            // those two parameters is the binder's answer, not a word search's: a lambda parameter of the same name
+            // shadows them, a member can be called either, and a string literal is not an identifier at all.
+            if (_csharpTyper.ReferencesChainedOrRoot(csharp, bctx.ModelSymbol, _usings))
             {
                 reason = "embedded C# references chained/root";
                 return false;
@@ -2943,9 +2956,20 @@ namespace Heddle.Generator.Emit
             // contract instead of pre-compiling something the engine would never run.
             foreach (var ns in _usings)
             {
-                if (_resolver.NamespaceExists(ns))
+                if (_resolver.UsingDirectiveCompiles(ns))
                     continue;
                 reason = "embedded C# under a @using naming no namespace ('" + ns + "')";
+                return false;
+            }
+
+            // Does the expression compile at all? The engine asks Roslyn exactly this and refuses the template on
+            // any error, and nothing here asked: a misspelt member, an unbalanced expression, a wrong argument
+            // count, a `Where` with no `@using System.Linq` and an `[Obsolete(error: true)]` reference were all
+            // pasted straight into the generated file, where they became the consumer's build errors against a
+            // `.heddle` file with no Heddle diagnostic on them.
+            if (!_csharpTyper.Compiles(csharp, bctx.ModelSymbol, _usings))
+            {
+                reason = "embedded C# the engine's compiler rejects";
                 return false;
             }
 
@@ -2958,8 +2982,13 @@ namespace Heddle.Generator.Emit
             // only a syntactic unchecked makes the two tiers fold it the same way.
             paramExpr = "(object)(unchecked(" + csharp + "))";
             usesCSharpModel = true;
+            _wroteEmbeddedCSharp = true;
             return true;
         }
+
+        /// <summary>Whether any embedded C# text was pasted into this file, which is what decides whether the
+        /// model's namespaces are worth importing into it.</summary>
+        private bool _wroteEmbeddedCSharp;
 
         private bool BuildChainItemExpr(OutputItem inner, BodyContext bctx, out string paramExpr, out bool usesModel,
             out bool usesCSharpModel, out string reason)
@@ -3215,6 +3244,15 @@ namespace Heddle.Generator.Emit
                 : new EmitDiagnostic(GeneratorDiagnostics.UnresolvableMember, failure.Position,
                     failure.ReceiverType, failure.Member, failure.Path);
 
+        /// <summary>
+        /// One HED7030 per (subject, position). Two key shapes share this set: a function call's signature display,
+        /// and a type's fully-qualified name. They cannot collide for the reason that matters — a subject of one
+        /// shape and a subject of the other at the same position would have to be the same string, and a method
+        /// display always carries its parameter list while a type name does not. <b>A tuple type is the exception
+        /// worth knowing about:</b> its fully-qualified form contains parentheses too, so the separation rests on
+        /// the two never being reported at one position rather than on the spelling alone. Both arms report about
+        /// the same construct, so a merge would suppress a duplicate rather than the wrong diagnostic.
+        /// </summary>
         private readonly HashSet<string> _seenInaccessibleTypes = new HashSet<string>(System.StringComparer.Ordinal);
 
         /// <summary>
@@ -3322,8 +3360,18 @@ namespace Heddle.Generator.Emit
             // is fully qualified, and a template that did need the namespace is turned down where the expression is
             // built, because the engine's own compile of the same text is what fails.
             foreach (var ns in _usings)
-                if (_resolver.NamespaceExists(ns))
+                if (_resolver.UsingDirectiveCompiles(ns))
                     w.Raw("using " + ns + ";");
+            // The engine imports the model's own namespace — and each type argument's, when it is generic — into the
+            // unit it compiles for an embedded expression. Pasted C# is the only thing here that reads a directive
+            // at all, so these are written only where some expression was pasted, and only alongside it.
+            if (_wroteEmbeddedCSharp && _modelSymbol != null)
+            {
+                foreach (var ns in Binding.CSharpExpressionTyper.ModelNamespaces(_modelSymbol))
+                    if (!_usings.Contains(ns))
+                        w.Raw("using " + ns + ";");
+            }
+
             w.Line();
             w.Line("namespace " + _namespace);
             w.Line("{");
@@ -3487,13 +3535,38 @@ namespace Heddle.Generator.Emit
                    ", () => " + resolve + ")";
         }
 
+        /// <summary>The line terminators C# recognises, which end a <c>#line</c> file name early, together with the
+        /// quote that closes it. None of them can be escaped inside a <c>pp_string</c>.</summary>
+        private static bool IsWritableLineDirectiveFile(string path)
+        {
+            foreach (var c in path)
+            {
+                if (c == '"' || c == '\n' || c == '\r' || c == '\u0085' || c == '\u2028' || c == '\u2029')
+                    return false;
+            }
+
+            return true;
+        }
+
         private void EmitLineSpanRaw(CodeWriter w, int sl, int sc, int el, int ec)
         {
+            if (!_lineDirectiveFileIsWritable)
+            {
+                w.Raw("#line hidden");
+                return;
+            }
+
             w.Raw($"#line ({sl}, {sc}) - ({el}, {ec}) \"{_lineDirectiveFile}\"");
         }
 
         private void EmitLineSpan(CodeWriter w, Call c)
         {
+            if (!_lineDirectiveFileIsWritable)
+            {
+                w.Raw("#line hidden");
+                return;
+            }
+
             w.Raw($"#line ({c.SpanStartLine}, {c.SpanStartCol}) - ({c.SpanEndLine}, {c.SpanEndCol}) \"{_lineDirectiveFile}\"");
         }
 

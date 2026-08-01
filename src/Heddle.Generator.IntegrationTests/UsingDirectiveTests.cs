@@ -167,6 +167,72 @@ namespace Heddle.Generator.IntegrationTests
             Assert.False(engine.CompileResult.Success);
         }
 
+        /// <summary>
+        /// Bodies whose C# meaning the guard has to get right, in both directions. A body ending in a <c>//</c>
+        /// comment parses as a name with trailing trivia — the guard that measured the parsed span including trivia
+        /// waved it through, and the comment then swallowed the semicolon of the emitted directive and stopped the
+        /// consumer's build. A <c>using static</c> and a using-alias are legal directives the engine compiles, and
+        /// the same guard refused both, taking the template off the tier for nothing.
+        /// <para>Every row renders the same bytes on both tiers; what the parameter says is whether the build tier
+        /// keeps the template.</para>
+        /// </summary>
+        [Theory]
+        [InlineData("System.Linq //c", false)]
+        // The near neighbour of the row above: a block comment does not run to end of line, so the semicolon
+        // survives and the directive is written. The rule is the directive's, not the comment's.
+        [InlineData("System.Linq /*c*/", true)]
+        [InlineData("Zork.Nope", false)]
+        [InlineData("1 + 2", false)]
+        // A body carrying its own semicolon parses as a directive followed by a declaration, and copying it out
+        // would put a type of the template author's choosing into the consumer's assembly.
+        [InlineData("System.Linq; delegate void Injected()", false)]
+        [InlineData("static System.Math", true)]
+        [InlineData("X = System.Linq", true)]
+        [InlineData("Alias = global::System.Linq", true)]
+        [InlineData("System.Linq", true)]
+        public void AUsingBodyIsJudgedByWhetherItsDirectiveCompiles(string import, bool writesTheDirective)
+        {
+            var key = "views/using-shape-" + import.GetHashCode() + ".heddle";
+            var template = "@using(){{" + import + "}}@\\\nhello\n";
+
+            var gen = DifferentialHarness.Generate(new[] { (key, template) });
+            Assert.Empty(gen.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
+            DifferentialHarness.ExpectPrecompiled(gen, key);
+            Assert.Equal(writesTheDirective,
+                gen.TemplateSources.Values.Any(s => s.Contains("using " + import + ";")));
+
+            var (precompiled, dyn) = DifferentialHarness.Render(key, template, null, null);
+            Assert.Equal("hello\n", dyn);
+            Assert.Equal(dyn, precompiled);
+        }
+
+        /// <summary>The same bodies with an embedded expression, where the directive is what decides whether the
+        /// engine compiles the template at all. The two tiers have to reach the same verdict, and the rows the
+        /// guard used to refuse are ones the engine renders.</summary>
+        [Theory]
+        [InlineData("System.Linq", true)]
+        [InlineData("static System.Math", true)]
+        [InlineData("Alias = global::System.Linq", true)]
+        [InlineData("System.Linq //c", false)]
+        public void AUsingBodyWithEmbeddedCSharpFollowsTheEnginesVerdict(string import, bool bothCompile)
+        {
+            var key = "views/using-shape-csharp-" + import.GetHashCode() + ".heddle";
+            var template = "@using(){{" + import + "}}@\\\n@model(){{" + CatalogType + "}}@\\\n" +
+                           "Count: @(@model.Products.Count)\n";
+
+            var engine = new HeddleTemplate(template,
+                new CompileContext(new TemplateOptions { ExpressionMode = ExpressionMode.FullCSharp },
+                    new ExType(typeof(Catalog))));
+            Assert.Equal(bothCompile, engine.CompileResult.Success);
+
+            var gen = DifferentialHarness.Generate(new[] { (key, template) }, FullCSharpBuild);
+            Assert.Empty(gen.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
+            if (bothCompile)
+                DifferentialHarness.ExpectPrecompiled(gen, key);
+            else
+                DifferentialHarness.ExpectDegrade(gen, key);
+        }
+
         /// <summary>The near neighbour that keeps the rule about the C# tier rather than about <c>@using</c>: the
         /// same unusable body with no embedded expression anywhere compiles the collected namespace into nothing, so
         /// the engine renders and so must the build tier. The first two cases of this class are the same shape with

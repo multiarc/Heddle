@@ -209,6 +209,10 @@ namespace Heddle.Generator.Emit
             var args = new string[call.Arguments.Count];
             for (int i = 0; i < args.Length; i++)
             {
+                // An argument the two tiers evaluate in different types picks a different overload on each of them,
+                // so it degrades here even though the number it carries is the same.
+                if (ConstantFolding.TiersEvaluateDifferently(call.Arguments[i]))
+                    return null;
                 args[i] = Write(call.Arguments[i]);
                 if (args[i] == null)
                     return null;
@@ -390,6 +394,8 @@ namespace Heddle.Generator.Emit
             // is the contract is the one that renders.
             if (ConstantFolding.CompilerWouldReject(node))
                 return null;
+            if (TierPromotionEscapes(node.Left, node.Right) || TierPromotionEscapes(node.Right, node.Left))
+                return null;
             var left = Write(node.Left);
             var right = Write(node.Right);
             if (left == null || right == null)
@@ -398,6 +404,44 @@ namespace Heddle.Generator.Emit
                 OperatorVerdict.Supported)
                 return null;
             return "(" + left + " " + op + " " + right + ")";
+        }
+
+        /// <summary>
+        /// Whether a constant operand the two tiers evaluated in different types can still meet
+        /// <paramref name="partner"/> here. C# reached the constant in <c>uint</c> and the engine in <c>long</c>;
+        /// promoting either against a signed integral, a real or a string lands both on the same type, so the
+        /// operator produces the same bytes. An unsigned or sub-<c>int</c> partner does not — it leaves C# in
+        /// <c>uint</c> while the engine stays in <c>long</c>, and <c>0u - (0-0u)</c> is 0 on one tier and
+        /// 4294967296 short of it on the other — and neither does a partner this writer cannot type.
+        /// </summary>
+        private bool TierPromotionEscapes(ExprNode operand, ExprNode partner)
+        {
+            if (!ConstantFolding.TiersEvaluateDifferently(operand))
+                return false;
+
+            var kind = Estimate(partner);
+            switch (kind.Category)
+            {
+                case OperandCategory.String:
+                    return false;
+                case OperandCategory.Numeric:
+                    switch (kind.Kind)
+                    {
+                        case NumericKind.SByte:
+                        case NumericKind.Int16:
+                        case NumericKind.Int32:
+                        case NumericKind.Int64:
+                        case NumericKind.Single:
+                        case NumericKind.Double:
+                        case NumericKind.Decimal:
+                            return false;
+                        default:
+                            return true;
+                    }
+
+                default:
+                    return true;
+            }
         }
 
         private string WriteTernary(TernaryNode node)

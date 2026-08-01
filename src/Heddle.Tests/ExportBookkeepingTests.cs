@@ -1,6 +1,8 @@
 using System;
 using System.Linq;
+using System.Reflection;
 using Heddle.Language.Binding;
+using Heddle.Runtime.Expressions;
 using Xunit;
 
 namespace Heddle.Tests
@@ -144,6 +146,40 @@ namespace Heddle.Tests
             Assert.False(ExportRules.SameSignature(null, new[] { "a" }));
             Assert.False(ExportRules.SameSignature(new[] { "a" }, null));
             Assert.True(ExportRules.SameSignature(Array.Empty<string>(), Array.Empty<string>()));
+        }
+
+        private static class PackFirst
+        {
+            public static string Pack((int a, int b) pair) => string.Empty;
+            public static string Loose(object o) => string.Empty;
+        }
+
+        private static class PackSecond
+        {
+            public static string Pack((int x, int y) pair) => string.Empty;
+            public static string Loose(dynamic d) => string.Empty;
+            public static string Wider((long a, long b) pair) => string.Empty;
+        }
+
+        /// <summary>
+        /// What the runtime's signature key can and cannot tell apart, measured rather than reasoned about. Tuple
+        /// element names are not in metadata and <c>dynamic</c> is <c>System.Object</c>, so <c>Type.FullName</c>
+        /// gives one key for each of these pairs and <see cref="ExportRules.SameSignature"/> calls them one
+        /// signature — which is what the build tier's own key has to agree with, because the manifest carries a
+        /// count the gauntlet compares exactly.
+        /// </summary>
+        [Theory]
+        [InlineData("Pack", "Pack", true)]
+        [InlineData("Loose", "Loose", true)]
+        [InlineData("Pack", "Wider", false)]
+        public void TheRuntimeSignatureKeyLosesWhatMetadataDoesNotCarry(string first, string second, bool same)
+        {
+            var a = FunctionRegistry.DescribeMethod(
+                typeof(PackFirst).GetMethod(first, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static));
+            var b = FunctionRegistry.DescribeMethod(
+                typeof(PackSecond).GetMethod(second, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static));
+
+            Assert.Equal(same, ExportRules.SameSignature(a.ParameterTypeKeys, b.ParameterTypeKeys));
         }
     }
 }

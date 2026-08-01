@@ -82,6 +82,60 @@ namespace Probe
     }
 }";
 
+        private const string CollapsingSignaturesSource = @"
+[assembly: Heddle.Attributes.ExportFunctions(typeof(Probe.First), typeof(Probe.Second))]
+namespace Probe
+{
+    public static class First
+    {
+        public static string Pack((int a, int b) pair) => """";
+        public static string Loose(object o) => """";
+    }
+
+    public static class Second
+    {
+        public static string Pack((int x, int y) pair) => """";
+        public static string Loose(dynamic d) => """";
+    }
+}";
+
+        /// <summary>
+        /// Two containers exporting a signature the <b>runtime</b> cannot tell apart. Tuple element names are not in
+        /// metadata and <c>dynamic</c> is <c>System.Object</c> there, so <c>Type.FullName</c> gives one key for each
+        /// pair and the registry keeps one registration; the symbol side spelled both distinctions out and counted
+        /// two, which the gauntlet compares against the live count and fails the template over.
+        /// <para>Both sides run the same <c>ExportRules.SameSignature</c> over their own keys, so what has to match
+        /// is which pairs of types the keys tell apart — not the text of the keys.</para>
+        /// </summary>
+        [Theory]
+        [InlineData("pack")]
+        [InlineData("loose")]
+        public void ASignatureTheRuntimeCannotTellApartIsOneOverloadHereToo(string name)
+        {
+            var resolver = Resolve(CollapsingSignaturesSource);
+
+            Assert.True(resolver.TryGet(name, out var entry));
+            Assert.Equal(1, entry.Overloads.Count);
+            Assert.Equal(1, entry.ManifestRows.Sum(r => r.OverloadCount));
+        }
+
+        /// <summary>The near neighbour: a distinction both sides can make is still two overloads, so the row above
+        /// is about the ones only one side can see rather than about merging across containers.</summary>
+        [Fact]
+        public void ASignatureTheRuntimeCanTellApartIsStillTwoOverloads()
+        {
+            var resolver = Resolve(@"
+[assembly: Heddle.Attributes.ExportFunctions(typeof(Probe.First), typeof(Probe.Second))]
+namespace Probe
+{
+    public static class First { public static string Pack((int a, int b) pair) => """"; }
+    public static class Second { public static string Pack((long a, long b) pair) => """"; }
+}");
+
+            Assert.True(resolver.TryGet("pack", out var entry));
+            Assert.Equal(2, entry.Overloads.Count);
+        }
+
         [Fact]
         public void IneligibleMethodsAreReportedRatherThanQuietlyExcluded()
         {

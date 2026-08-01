@@ -8,10 +8,17 @@ using Heddle.Precompiled;
 namespace Heddle.Runtime {
     public class TemplateResolver : ITemplateResolver
     {
-        private readonly string[] _viewPath = { @"\views\{1}\{0}", @"\views\{0}" };
-        private readonly string[] _masterPath = { @"\views\base\{1}\{0}", @"\views\base\{0}" };
+        // Root-relative and separator-neutral. These were written with backslashes and a leading one, which made a
+        // location a path only Windows reads — and only from the current drive's root, since a leading separator
+        // makes Path.Combine discard the root it was given. Off Windows a backslash is an ordinary file-name
+        // character, so every candidate was one long file name that File.Exists never found: the hosted arms served
+        // precompiled templates and nothing else. `/` is a separator on every host, and Path.Combine joins these to
+        // the root the resolver was constructed with, the way the TemplatePathType.None arm always has.
+        private readonly string[] _viewPath = { "views/{1}/{0}", "views/{0}" };
+        private readonly string[] _masterPath = { "views/base/{1}/{0}", "views/base/{0}" };
 
-        private readonly string[] _partialPath = {@"\views\partial\{1}\{0}", @"\views\partial\{0}", @"\views\{1}\{0}", @"\views\{0}"};
+        private readonly string[] _partialPath =
+            { "views/partial/{1}/{0}", "views/partial/{0}", "views/{1}/{0}", "views/{0}" };
 
 
         private Dictionary<string, HeddleTemplate> TemplatesCache { get; }
@@ -169,7 +176,9 @@ namespace Heddle.Runtime {
             }
             if (viewName.Contains(".."))
                 throw new ArgumentException("The view path cannot contain parent directory specifier ..");
-            viewName = viewName.Replace("~/", "/").Replace('/', '\\');
+            // `~/` is the host idiom for "from the root", and the locations below are already root-relative, so it
+            // is dropped rather than turned into a leading separator that would root the candidate elsewhere.
+            viewName = viewName.Replace("~/", "/").TrimStart('/', '\\');
             switch (searchType)
             {
                 case TemplatePathType.None:
@@ -225,7 +234,9 @@ namespace Heddle.Runtime {
                     searchedLocations = null;
                     return fullPath;
                 }
-                searched.Add(Path.Combine(path, viewName));
+                // The path that was probed, not the pattern it came from: the un-substituted form reported
+                // `views/{1}/{0}/index.heddle` as a location nobody had looked in.
+                searched.Add(fullPath);
             }
             cached = null;
             searchedLocations = searched;

@@ -273,7 +273,26 @@ namespace Heddle.Generator.Binding
             .WithGlobalNamespaceStyle(SymbolDisplayGlobalNamespaceStyle.Omitted)
             .WithMiscellaneousOptions(SymbolDisplayMiscellaneousOptions.EscapeKeywordIdentifiers);
 
-        internal static string SignatureKey(ITypeSymbol type) => type.ToDisplayString(SignatureFormat);
+        /// <summary>
+        /// The signature identity of one parameter type, spelled so that two types the <b>runtime</b> cannot tell
+        /// apart are not told apart here either. Overload identity is decided by the same
+        /// <c>ExportRules.SameSignature</c> on both sides, so a distinction only one side can make is a disagreement
+        /// about how many overloads a container exports.
+        /// <para>Two distinctions only this side can make. Tuple element names are not in metadata, so
+        /// <c>(int a, int b)</c> and <c>(int x, int y)</c> are one signature to reflection; and <c>dynamic</c> is
+        /// <c>System.Object</c> there. Keeping either made the build count two overloads where the registry holds
+        /// one, and the gauntlet's count check then failed the template at run time.</para>
+        /// <para>A tuple <i>inside</i> another type argument — <c>List&lt;(int a, int b)&gt;</c> — still carries its
+        /// names here; rebuilding a nested type without them needs a compilation this resolver is not handed.</para>
+        /// </summary>
+        internal static string SignatureKey(ITypeSymbol type)
+        {
+            if (type.TypeKind == TypeKind.Dynamic)
+                return "System.Object";
+            if (type is INamedTypeSymbol named && named.IsTupleType)
+                type = named.TupleUnderlyingType ?? named;
+            return type.ToDisplayString(SignatureFormat);
+        }
 
         /// <summary>The build-time position an <c>HED7021</c> is reported at is the template whose compilation
         /// consulted the resolver; the resolver itself is template-independent, so the pipeline supplies it.</summary>

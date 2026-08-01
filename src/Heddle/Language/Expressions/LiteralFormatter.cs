@@ -22,8 +22,15 @@ namespace Heddle.Language.Expressions
                 case uint ui: return ui.ToString(CultureInfo.InvariantCulture) + "U";
                 case long l: return l.ToString(CultureInfo.InvariantCulture) + "L";
                 case ulong ul: return ul.ToString(CultureInfo.InvariantCulture) + "UL";
-                case float f: return f.ToString("G9", CultureInfo.InvariantCulture) + "F";
-                case double d: return d.ToString("G17", CultureInfo.InvariantCulture) + "D";
+                // C# has no literal for a non-finite real: `G9`/`G17` spell these `Infinity`, `-Infinity` and `NaN`,
+                // which with the suffix appended are identifiers the consumer's compiler does not know. There is no
+                // literal form, so the caller degrades — which is what this method's null already means.
+                case float f: return float.IsNaN(f) || float.IsInfinity(f)
+                    ? null
+                    : f.ToString("G9", CultureInfo.InvariantCulture) + "F";
+                case double d: return double.IsNaN(d) || double.IsInfinity(d)
+                    ? null
+                    : d.ToString("G17", CultureInfo.InvariantCulture) + "D";
                 case decimal m: return m.ToString(CultureInfo.InvariantCulture) + "M";
                 default: return null;
             }

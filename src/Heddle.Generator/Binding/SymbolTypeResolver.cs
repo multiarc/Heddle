@@ -150,70 +150,63 @@ namespace Heddle.Generator.Binding
             }
         }
 
+        private readonly Dictionary<string, bool> _usingBodies = new Dictionary<string, bool>(System.StringComparer.Ordinal);
+
         /// <summary>
-        /// Whether <paramref name="text"/> names a namespace this compilation can see, walked segment by segment
-        /// from the merged global namespace, which already spans the source and every reference.
-        /// <para>Asked of a <c>@using</c> body, and the engine's answer to the same question is what it is measured
-        /// against: the engine writes every collected body into a C# <c>using</c> directive of the code it compiles
-        /// for an embedded expression, so the body has to be a name C# accepts <b>there</b>. It is therefore parsed
-        /// as a C# name rather than split on <c>.</c> — <c>global::System.Linq</c> and <c>System . Linq</c> both name
-        /// <c>System.Linq</c> to the compiler and neither survives a split, and dropping them cost the generated file
-        /// the very directive its embedded C# needed.</para>
+        /// Whether <paramref name="text"/> is a <c>@using</c> body that becomes a working C# <c>using</c> directive
+        /// here.
+        /// <para>The engine writes every collected body into <c>using &lt;body&gt;;</c> in the unit it compiles for
+        /// an embedded expression, so the question is not "is this a namespace" but "does that directive compile" —
+        /// and the compiler is asked it rather than a hand-written name walk answering something narrower. A walk
+        /// over dotted segments said no to <c>using static System.Math;</c> and to a using-alias, both of which the
+        /// engine compiles, and said yes to a body with a trailing <c>//</c> comment, which swallows the semicolon
+        /// and stops the consumer's build.</para>
+        /// <para>The directive is compiled in this compilation, whose references are the ones the generated file
+        /// will be compiled against, so a namespace nothing here declares is refused for the same reason the engine
+        /// refuses it: <c>CS0246</c>.</para>
         /// </summary>
-        public bool NamespaceExists(string text)
+        public bool UsingDirectiveCompiles(string text)
         {
             if (string.IsNullOrWhiteSpace(text) || _compilation == null)
                 return false;
+            if (_usingBodies.TryGetValue(text, out var memoized))
+                return memoized;
 
-            var parsed = SyntaxFactory.ParseName(text);
-            // ParseName stops at the first token that cannot continue a name, so a trailing remainder is a text that
-            // is not one name — as is anything the parser had to invent a token for.
-            if (parsed.ContainsDiagnostics || parsed.FullSpan.Length != text.Length)
-                return false;
-
-            var segments = new List<string>();
-            if (!TryFlattenName(parsed, segments))
-                return false;
-
-            var current = _compilation.GlobalNamespace;
-            foreach (var segment in segments)
-            {
-                INamespaceSymbol next = null;
-                foreach (var child in current.GetNamespaceMembers())
-                {
-                    if (!string.Equals(child.Name, segment, System.StringComparison.Ordinal))
-                        continue;
-                    next = child;
-                    break;
-                }
-
-                if (next == null)
-                    return false;
-                current = next;
-            }
-
-            return segments.Count != 0;
+            var resolved = UsingDirectiveCompilesCore(text);
+            _usingBodies[text] = resolved;
+            return resolved;
         }
 
-        /// <summary>The identifiers of a plain dotted name, left to right, optionally rooted at <c>global::</c>.
-        /// Anything else is not a namespace spelling: a generic name, an <c>extern alias</c> qualifier the compiled
-        /// code never declares, or a fragment the parser turned into some other node.</summary>
-        private static bool TryFlattenName(NameSyntax name, List<string> segments)
+        private bool UsingDirectiveCompilesCore(string text)
         {
-            switch (name)
+            var source = "using " + text + ";";
+            var tree = CSharpSyntaxTree.ParseText(source);
+            foreach (var diagnostic in tree.GetDiagnostics())
             {
-                case IdentifierNameSyntax identifier:
-                    segments.Add(identifier.Identifier.ValueText);
-                    return true;
-                case QualifiedNameSyntax qualified:
-                    return TryFlattenName(qualified.Left, segments) && TryFlattenName(qualified.Right, segments);
-                case AliasQualifiedNameSyntax aliased:
-                    return string.Equals(aliased.Alias.Identifier.ValueText, "global",
-                               System.StringComparison.Ordinal) &&
-                           TryFlattenName(aliased.Name, segments);
-                default:
+                if (diagnostic.Severity == DiagnosticSeverity.Error)
                     return false;
             }
+
+            // One directive and nothing else. A body carrying its own `;` parses cleanly and declares whatever
+            // follows it into the consumer's assembly, which a `@using` has no business doing; a trailing `//`
+            // comment swallows the semicolon and brings an invented one back in its place.
+            var root = tree.GetCompilationUnitRoot();
+            if (root.Usings.Count != 1 || root.Members.Count != 0 || root.ToFullString() != source)
+                return false;
+            foreach (var token in root.DescendantTokens())
+            {
+                if (token.IsMissing)
+                    return false;
+            }
+
+            var probe = _compilation.AddSyntaxTrees(tree);
+            foreach (var diagnostic in probe.GetSemanticModel(tree, false).GetDiagnostics())
+            {
+                if (diagnostic.Severity == DiagnosticSeverity.Error)
+                    return false;
+            }
+
+            return true;
         }
 
         /// <summary>
