@@ -82,9 +82,7 @@ namespace Heddle.Performance
             public override void Write(char value) => Count++;
             public override void Write(string value) { if (value != null) Count += value.Length; }
             public override void Write(char[] buffer, int index, int count) => Count += count;
-#if NET6_0_OR_GREATER
             public override void Write(ReadOnlySpan<char> buffer) => Count += buffer.Length;
-#endif
         }
 
         private sealed class ResettableBufferWriter : IBufferWriter<byte>

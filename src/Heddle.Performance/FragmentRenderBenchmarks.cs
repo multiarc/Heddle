@@ -19,9 +19,7 @@ public class FragmentRenderBenchmarks
 {
     private FragmentHeddleTest _heddleTest;
     private FragmentFluidTest _fluidTest;
-#if !NET6_0
     private FragmentScribanTest _scribanTest;
-#endif
     private FragmentDotLiquidTest _dotLiquidTest;
     private FragmentHandlebarsTest _handlebarsTest;
 
@@ -30,9 +28,7 @@ public class FragmentRenderBenchmarks
     {
         _heddleTest = new FragmentHeddleTest();
         _fluidTest = new FragmentFluidTest();
-#if !NET6_0
         _scribanTest = new FragmentScribanTest();
-#endif
         _dotLiquidTest = new FragmentDotLiquidTest();
         _handlebarsTest = new FragmentHandlebarsTest();
 
@@ -50,10 +46,8 @@ public class FragmentRenderBenchmarks
     [Benchmark]
     public string RenderFluid() => _fluidTest.Render();
 
-#if !NET6_0
     [Benchmark]
     public string RenderScriban() => _scribanTest.Render();
-#endif
 
     [Benchmark]
     public string RenderDotLiquid() => _dotLiquidTest.Render();

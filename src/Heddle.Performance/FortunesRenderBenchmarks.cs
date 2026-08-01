@@ -20,9 +20,7 @@ public class FortunesRenderBenchmarks
 {
     private FortunesHeddleTest _heddleTest;
     private FortunesFluidTest _fluidTest;
-#if !NET6_0
     private FortunesScribanTest _scribanTest;
-#endif
     private FortunesDotLiquidTest _dotLiquidTest;
     private FortunesHandlebarsTest _handlebarsTest;
 
@@ -31,9 +29,7 @@ public class FortunesRenderBenchmarks
     {
         _heddleTest = new FortunesHeddleTest();
         _fluidTest = new FortunesFluidTest();
-#if !NET6_0
         _scribanTest = new FortunesScribanTest();
-#endif
         _dotLiquidTest = new FortunesDotLiquidTest();
         _handlebarsTest = new FortunesHandlebarsTest();
 
@@ -51,10 +47,8 @@ public class FortunesRenderBenchmarks
     [Benchmark]
     public string RenderFluid() => _fluidTest.Render();
 
-#if !NET6_0
     [Benchmark]
     public string RenderScriban() => _scribanTest.Render();
-#endif
 
     [Benchmark]
     public string RenderDotLiquid() => _dotLiquidTest.Render();

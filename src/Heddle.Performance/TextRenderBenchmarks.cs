@@ -16,9 +16,7 @@ public class TextRenderBenchmarks
     private HeddleTest _heddleTest;
     private RazorTest _razorTest;
     private FluidTest _fluidTest;
-#if !NET6_0
     private ScribanTest _scribanTest;
-#endif
     private DotLiquidTest _dotLiquidTest;
     private HandlebarsTest _handlebarsTest;
 
@@ -31,9 +29,7 @@ public class TextRenderBenchmarks
         _heddleTest = new HeddleTest();
         _razorTest = new RazorTest(_host.Services);
         _fluidTest = new FluidTest();
-#if !NET6_0
         _scribanTest = new ScribanTest();
-#endif
         _dotLiquidTest = new DotLiquidTest();
         _handlebarsTest = new HandlebarsTest();
 
@@ -72,12 +68,10 @@ public class TextRenderBenchmarks
         await _fluidTest.Run();
     }
 
-#if !NET6_0
     [Benchmark]
     public async Task RenderScriban() {
         await _scribanTest.Run();
     }
-#endif
 
     [Benchmark]
     public async Task RenderDotLiquid() {

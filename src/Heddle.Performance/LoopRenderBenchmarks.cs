@@ -19,9 +19,7 @@ public class LoopRenderBenchmarks
 {
     private LoopHeddleTest _heddleTest;
     private LoopFluidTest _fluidTest;
-#if !NET6_0
     private LoopScribanTest _scribanTest;
-#endif
     private LoopDotLiquidTest _dotLiquidTest;
     private LoopHandlebarsTest _handlebarsTest;
 
@@ -30,9 +28,7 @@ public class LoopRenderBenchmarks
     {
         _heddleTest = new LoopHeddleTest();
         _fluidTest = new LoopFluidTest();
-#if !NET6_0
         _scribanTest = new LoopScribanTest();
-#endif
         _dotLiquidTest = new LoopDotLiquidTest();
         _handlebarsTest = new LoopHandlebarsTest();
 
@@ -56,13 +52,11 @@ public class LoopRenderBenchmarks
         await _fluidTest.Run();
     }
 
-#if !NET6_0
     [Benchmark]
     public async Task RenderScriban()
     {
         await _scribanTest.Run();
     }
-#endif
 
     [Benchmark]
     public async Task RenderDotLiquid()

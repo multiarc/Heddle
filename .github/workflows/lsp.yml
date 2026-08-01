@@ -24,12 +24,10 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v6
         with:
-          # The multi-targeted test suite runs net6.0/net8.0/net10.0/net48; the runner image
-          # no longer ships the EOL .NET 6 (and may drop 8) runtime, so install them explicitly
-          # alongside the global.json SDK — otherwise the net6.0 test host aborts (NETCore.App 6 missing).
-          dotnet-version: |
-            6.0.x
-            8.0.x
+          # The multi-targeted test suite runs net8.0/net10.0/net48; the runner image may drop the
+          # .NET 8 runtime, so install it explicitly alongside the global.json SDK — otherwise the
+          # net8.0 test host aborts (NETCore.App 8 missing).
+          dotnet-version: 8.0.x
           global-json-file: global.json
       - name: Build (Release)
         run: dotnet build -c Release Heddle.sln

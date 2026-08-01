@@ -21,9 +21,7 @@ public class EncodedLoopRenderBenchmarks
 {
     private EncodedLoopHeddleTest _heddleTest;
     private EncodedLoopFluidTest _fluidTest;
-#if !NET6_0
     private EncodedLoopScribanTest _scribanTest;
-#endif
     private EncodedLoopDotLiquidTest _dotLiquidTest;
     private EncodedLoopHandlebarsTest _handlebarsTest;
 
@@ -32,9 +30,7 @@ public class EncodedLoopRenderBenchmarks
     {
         _heddleTest = new EncodedLoopHeddleTest();
         _fluidTest = new EncodedLoopFluidTest();
-#if !NET6_0
         _scribanTest = new EncodedLoopScribanTest();
-#endif
         _dotLiquidTest = new EncodedLoopDotLiquidTest();
         _handlebarsTest = new EncodedLoopHandlebarsTest();
 
@@ -52,10 +48,8 @@ public class EncodedLoopRenderBenchmarks
     [Benchmark]
     public string RenderFluid() => _fluidTest.Render();
 
-#if !NET6_0
     [Benchmark]
     public string RenderScriban() => _scribanTest.Render();
-#endif
 
     [Benchmark]
     public string RenderDotLiquid() => _dotLiquidTest.Render();

@@ -1,6 +1,5 @@
 // Scriban 7.2.5 (the only release with the 2026 GHSA fixes) no longer supports net6.0, so the
 // Scriban twin exists only on net8.0+ legs; see Heddle.Performance.csproj.
-#if !NET6_0
 using System.Threading.Tasks;
 using Scriban;
 using Scriban.Runtime;
@@ -66,4 +65,3 @@ namespace Heddle.Performance.Runners
         }
     }
 }
-#endif
