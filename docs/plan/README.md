@@ -64,9 +64,16 @@ for byte.
 
 **Two consequences worth knowing before the next run.** The .NET leg now measures both fairness
 tracks, which discharges Phase 1 D15 and retires the standing limitation that .NET had no idiomatic
-row for the idiomatic tables to anchor to — and roughly doubles the .NET measure phase, so the
-per-ecosystem budget figures in [ledger E6](../spec/records.md#cross-spec-amendments-ledger) are now
-low for this leg.
+row for the idiomatic tables to anchor to.
+
+And the measurement budget changed unit.
+[Ledger E13](../spec/records.md#cross-spec-amendments-ledger) makes it **per engine** rather than per
+ecosystem: five legs carry two or three engines, .NET carries six, and holding its leg total to the
+same figure would have sampled every .NET cell about a third as well as a Rust cell. The .NET leg
+therefore runs **66 min short / ~175 min baseline** — 11 and ~29 min *per engine* — spending its
+budget on launches, which is the term a single-launch job never samples at all. The other five legs
+are still sized per ecosystem, so they sit at roughly 3–5 min per engine; making the program uniform
+means roughly doubling each of them, which E13 records as a maintainer decision rather than taking.
 
 ### 2. The generator gaps that cap precompiled coverage
 

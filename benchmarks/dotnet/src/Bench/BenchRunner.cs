@@ -67,15 +67,29 @@ namespace Heddle.Benchmarks.Dotnet.Bench
         }
 
         /// <summary>
-        /// The default job, supplied as configuration rather than as a <c>[ShortRunJob]</c> attribute
-        /// on every suite. Both spellings give a bare invocation the ~10-minute-per-ecosystem short
-        /// measurement budget, but an attribute cannot be replaced from the command line — BenchmarkDotNet
-        /// ADDS the CLI job to it — so <c>--job Dry</c> would have produced a smoke pass that ran the
-        /// full measurement as well as the dry one, which is the opposite of a smoke pass. Supplying
-        /// it here means a caller that names a job gets exactly that job.
+        /// The committed default job: the <c>short</c> measurement budget, spent where .NET's
+        /// variance actually lives.
+        ///
+        /// <para><b>Two launches, not one.</b> BenchmarkDotNet's <c>ShortRun</c> is
+        /// <c>LaunchCount 1</c>, and a single launch samples the within-process term only — the
+        /// cross-process term is never sampled at all. That is the same gap JMH closes with plural
+        /// forks and the JS harness with repeat passes, and it is the term most likely to move a
+        /// .NET number: one process, one JIT, one heap layout. Measured on this repo, wall clock is
+        /// very nearly linear in <c>LaunchCount</c> (~13.2 s per cell per launch, one suite of 12
+        /// cells: 139 s at 1 launch, 316 s at 2), so the second launch is also exactly the budget
+        /// increment that brings each engine's share up to the other ecosystems'.</para>
+        ///
+        /// <para><b>Supplied as configuration, not as a <c>[SimpleJob]</c> attribute.</b> An
+        /// attribute job cannot be replaced from the command line — BenchmarkDotNet ADDS the CLI job
+        /// to it — so <c>--job Dry</c> would run the full measurement as well as the dry one, which
+        /// is the opposite of a smoke pass. Supplying it here means a caller that names a job, or
+        /// that overrides the counts (the <c>baseline</c> budget does), gets exactly that.</para>
         /// </summary>
         private static IConfig Config(string[] args)
-            => Has(args, "--job") ? null : ManualConfig.Create(DefaultConfig.Instance).AddJob(Job.ShortRun);
+        {
+            if (Has(args, "--job")) return null;
+            return ManualConfig.Create(DefaultConfig.Instance).AddJob(Job.ShortRun.WithLaunchCount(2));
+        }
 
         private static bool Has(IEnumerable<string> args, string option)
             => args.Any(a => string.Equals(a, option, StringComparison.OrdinalIgnoreCase)

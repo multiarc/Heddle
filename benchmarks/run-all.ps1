@@ -48,15 +48,27 @@ param(
 
 $ErrorActionPreference = 'Continue'
 
-# --- Measurement budget profiles (ledger E6) -------------------------------------------------
+# --- Measurement budget profiles (ledger E6, per-engine basis per E13) -----------------------
 #
 # Nothing here changes WHAT is measured, only how many times. The committed source/script
 # defaults are the 'short' shape; 'baseline' layers CLI overrides for roughly 3x the capture
-# samples plus one extra warmup run. .NET is the exception to that ratio: it is overhead-bound
-# (one process per method, plus JIT and MemoryDiagnoser), so its baseline values are simply
-# BenchmarkDotNet's own adaptive-default shape -- the regime the protocol pinned before E6.
+# samples plus one extra warmup run.
+#
+# The budget unit is ONE ENGINE, not one ecosystem (E13). Five ecosystems carry two or three
+# engines, so their leg totals and their per-engine shares are nearly the same number; .NET
+# carries SIX, so budgeting its leg total the same way would give each of its engines a third of
+# the sampling every other ecosystem's engines get. The .NET leg total therefore floats -- it is
+# six engines' worth of measurement, and it is longer than the other legs by construction.
+#
+# .NET spends its increment on LAUNCHES, and only on launches. It is overhead-bound (one process
+# per benchmark case, plus JIT and MemoryDiagnoser), so wall clock is very nearly linear in
+# LaunchCount -- which makes the knob predictable -- while raising the iteration counts instead
+# runs through BenchmarkDotNet's pilot stage and does not. More to the point, a single launch
+# never samples the cross-process term AT ALL: one process, one JIT, one heap layout. That is the
+# same gap JMH closes with plural forks and JS with repeat passes, and the .NET leg was the one
+# that had never bought it.
 if ($Budget -eq 'baseline') {
-    $dotnetProfileArgs = ' --warmupCount 7 --iterationCount 15'
+    $dotnetProfileArgs = ' --launchCount 6'
     $rustProfileArgs   = ' --warm-up-time 4 --measurement-time 30'
     $jmhProfileArgs    = ' -wi 2 -i 9'
     $pyValuesArgs      = ' --values 9 --warmups 2'
@@ -65,7 +77,7 @@ if ($Budget -eq 'baseline') {
     $profileJsPasses   = 54
 }
 else {
-    $dotnetProfileArgs = ''            # [ShortRunJob] in source: LaunchCount 1 / W3 / I3
+    $dotnetProfileArgs = ''            # harness default job: LaunchCount 2 / W3 / I3
     $rustProfileArgs   = ''            # source: warmup 3 s, measurement 10 s
     $jmhProfileArgs    = ''            # annotations: Fork 3, W 1x2s, M 3x1s
     $pyValuesArgs      = ''            # pyperf default 3 values

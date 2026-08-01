@@ -85,15 +85,21 @@ done
 if [ "$DO_TUNE" = "1" ] && [ "$DO_TUNE_NO_ISOLATION" = "1" ]; then
   bench_die "--tune and --tune-no-isolation are mutually exclusive"
 fi
-# --- Measurement budget (ledger E6) ---------------------------------------------------------
+# --- Measurement budget (ledger E6, per-engine basis per E13) --------------------------------
 #
 # Every harness's committed source/script default IS the short profile, so a bare invocation of
 # any single harness is the ~10 min shape. `--budget baseline` layers CLI overrides on top --
 # roughly 3x the capture samples and one extra warmup run -- for the ~30 min shape. Nothing
 # below changes what is measured, only how many times.
+#
+# The budget unit is ONE ENGINE, not one ecosystem (E13). Five ecosystems carry two or three
+# engines, so their leg totals and their per-engine shares are nearly the same number; .NET
+# carries SIX, so budgeting its leg total the same way would give each of its engines a third of
+# the sampling every other ecosystem's engines get. The .NET leg total therefore floats -- it is
+# six engines' worth of measurement, and it is longer than the other legs by construction.
 case "$BUDGET" in
   short)
-    DOTNET_PROFILE_ARGS=()                                   # [ShortRunJob] in source: L1/W3/I3
+    DOTNET_PROFILE_ARGS=()                                   # harness default job: L2/W3/I3
     RUST_PROFILE_ARGS=()                                     # source: warmup 3 s, measure 10 s
     JMH_PROFILE_ARGS=()                                      # annotations: F3, W 1x2s, M 3x1s
     PY_VALUES_ARGS=()                                         # pyperf default 3 values
@@ -102,10 +108,14 @@ case "$BUDGET" in
     BUDGET_JS_PASSES=18
     ;;
   baseline)
-    # .NET is overhead-bound (one process per method, plus JIT and MemoryDiagnoser), so sample
-    # count alone cannot stretch it far; these values are BenchmarkDotNet's own adaptive-default
-    # shape, i.e. the regime the protocol pinned before E6.
-    DOTNET_PROFILE_ARGS=(--warmupCount 7 --iterationCount 15)
+    # .NET spends its increment on LAUNCHES, and only on launches. It is overhead-bound (one
+    # process per benchmark case, plus JIT and MemoryDiagnoser), so wall clock is very nearly
+    # linear in LaunchCount -- which makes the knob predictable -- while raising the iteration
+    # counts instead runs through BenchmarkDotNet's pilot stage and does not. More to the point,
+    # a single launch never samples the cross-process term AT ALL: one process, one JIT, one heap
+    # layout. That is the same gap JMH closes with plural forks and JS with repeat passes, and
+    # the .NET leg was the one that had never bought it.
+    DOTNET_PROFILE_ARGS=(--launchCount 6)
     RUST_PROFILE_ARGS=(--warm-up-time 4 --measurement-time 30)
     JMH_PROFILE_ARGS=(-wi 2 -i 9)
     PY_VALUES_ARGS=(--values 9 --warmups 2)
