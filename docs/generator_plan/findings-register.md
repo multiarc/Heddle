@@ -7,7 +7,7 @@ from two sources that disagree in places:
 - `docs/generator_plan/phase-8-docs-sweep.md` — the per-cycle prose record, written after each cycle.
   Believed over a commit message wherever the two conflict: several commit messages were later
   measured wrong and corrected there, and a future reader may hit the uncorrected message first.
-- the commit messages of the review series, `cd3a665 .. cde2a29` on this branch.
+- the commit messages of the review series, `cd3a665 .. 801dfde` on this branch.
 
 Test names and their doc comments (`src/Heddle.Tests`, `src/Heddle.Generator.Tests`,
 `src/Heddle.Generator.IntegrationTests`, `src/Heddle.LanguageServices.Tests`) and
@@ -99,7 +99,7 @@ fixed and the other is deferred; that is why that table has twelve rows.
 
 ## Contents, by status
 
-### FIXED (78 entries, holding 175 ids)
+### FIXED (80 entries, holding 178 ids)
 
 | id | absorbs | severity | title |
 | --- | --- | --- | --- |
@@ -180,16 +180,17 @@ fixed and the other is deferred; that is why that table has twelve rows.
 | F-195 | — | 3 | The hosted resolver could not read a template from disk on Linux or macOS |
 | F-196 | — | 4 | The build tier's signature key told apart what reflection cannot |
 | F-197 | — | 4 | The refusal of `chained` and `root` was a word-boundary regex over raw text |
+| F-202 | — | 2 | A probe tree parsed with the defaults cannot be grafted onto a consumer compilation that sets parse options |
+| F-203 | F-081 | 6 | A test filter that matches nothing exits 0, so every stale regression check passed |
 | F-200 | — | 3 and 2 | A `@using` alias and a `using static` bound nothing, because the resolver read every body as a namespace |
 
-### KNOWN-OPEN — do not re-report (16)
+### KNOWN-OPEN — do not re-report (15)
 
 | id | severity | title |
 | --- | --- | --- |
 | F-027 | 3 | A run of several thousand prefix operators exhausts ANTLR's own lookahead |
 | F-079 | 3 | `Path.Combine` rejects characters on .NET Framework that .NET Core accepts |
 | F-080 | 3 | On `netstandard2.0` an assembly with no file yields no metadata reference |
-| F-081 | 6 | A declared target framework runs zero tests and the run still exits 0 |
 | F-140 | 6 | Two verdict rows that cannot be honestly pinned |
 | F-147 | 4 and 3 | A native expression reading the element's own member inside an `@list` body degrades — and a plain path to a member it lacks throws at render |
 | F-154 | 4 | Three caller-content shapes degrade under a `:: dynamic` callee |
@@ -2842,6 +2843,83 @@ in the second column holds its repro, its citations and its regression check as 
 - **notes:** class D's sub-class — a language question (is this identifier bound to that parameter?) restated
   as text matching. The probe compilation F-191 built is what made the real question askable.
 
+### F-202 — A probe tree parsed with the defaults cannot be grafted onto a consumer compilation that sets parse options
+
+- **status:** FIXED
+- **severity:** 2 (generated code breaks the consumer's build)
+- **found:** cycle 25, from a sample that would not build — not from a review
+- **symptom:** `samples/codegen-t4-successor` and `samples/precompiled-app` failed `dotnet build` with
+  `error HED7020: … ArgumentException: Inconsistent syntax tree features (Parameter 'trees')`, followed by
+  `error CS0234: 'Templates_Report' does not exist in namespace 'Heddle.Generated'` — the entry-point type the
+  consumer's own source names, gone because every template in the project left the precompiled tier.
+- **root cause:** two probe compilations parsed a tree with DEFAULT options and grafted it onto the consumer's
+  compilation — `SymbolTypeResolver.UsingDirectiveCompilesCore` and `CSharpExpressionTyper.Resolve`, each a
+  `CSharpSyntaxTree.ParseText(source)` followed by `_compilation.AddSyntaxTrees(tree)`. Roslyn requires every
+  tree in a compilation to have been parsed alike.
+- **reach, and it is much wider than the two samples:** a plain `dotnet build` on SDK 10.0.110 passes
+  `/features:"InterceptorsNamespaces=…"` **unasked**, so *every* consumer's compilation has non-empty
+  `ParseOptions.Features`. Every consumer with a `@using` or an embedded C# expression was affected; the other
+  eight samples survived only because no template in them reaches a probe.
+- **introduced by this review series:** `ec613c2` (the typer graft) and `08872ff` (the directive-check graft).
+  Bisected by building the sample per commit: clean at `ec613c2` and `703567d`, broken from `08872ff` onward,
+  because the samples carry a `@using` and no embedded C# so only the second site is reachable from them. **Both
+  sites break independently** — reverting either alone reddens exactly its own rows.
+- **fixed by:** cycle 25 (`801dfde`) — `Binding/ProbeParseOptions.For(compilation)` returns the options of a
+  tree the compilation already holds, falling back to defaults only when it holds none; both probes parse
+  through it. Not `context.ParseOptionsProvider`: the invariant Roslyn enforces is among the trees of the
+  compilation being added to, so reading the options off one of them makes the graft legal **by construction**
+  rather than by coinciding with the driver's configuration. It is also the only reading that asks the probe's
+  question under the language version and preprocessor symbols the consumer's own compiler will use.
+- **class expansion:** every construction of a syntax tree or compilation across `src/`, by grep for
+  `AddSyntaxTrees` / `ParseText` / `CSharpSyntaxTree.` / `CSharpCompilation.Create` / `ParseSyntaxTree` /
+  `WithParseOptions` / `SyntaxFactory.Parse*`. Two defects, both fixed. Three clean:
+  `SymbolTypeResolver.cs:697` creates a compilation with **no trees at all**; `CSharpContext.cs:189-191` and
+  `ContextCompilation.cs:141-142` each create a fresh compilation whose only tree is their own — and at run time
+  no host parse options exist to agree with. `Heddle.LanguageServices`, `Heddle.LanguageServer`,
+  `Heddle.Language` and `Heddle.Tool` construct no tree or compilation at all.
+- **pinned by:** `ConsumerParseOptionsTests` (4) — a consumer compilation carrying `LanguageVersion.Latest`,
+  a feature flag and preprocessor symbols, applied to the trees **and to the driver** as a real build does.
+  Two rows redden without the resolver fix, two without the typer fix; one is the near-neighbour proving the
+  options change only legality and not output, and one is the degrade neighbour so a "fix" that stopped the
+  probe asking cannot pass.
+- **regression check:** `dotnet test src/Heddle.Generator.Tests -f net8.0 --filter FullyQualifiedName~ConsumerParseOptionsTests`.
+- **notes:** **why no suite could see it — class G and class H together.** Every generator harness built its
+  compilation from zero trees or from trees parsed with `CSharpParseOptions.Default`, so the one thing that
+  triggers the fault was the one thing no test varied. `GeneratorHarness` now accepts parse options and hands
+  the same ones to the driver. The emitter's catch-and-report is what turned a probe fault into a hard build
+  error rather than a silent degrade — that behaviour is correct and unchanged, and it is the only reason this
+  surfaced at all.
+
+### F-203 — A test filter that matches nothing exits 0, so every stale regression check passed
+
+- **status:** FIXED
+- **absorbs:** F-081, whose recorded instances were the wrong ones
+- **severity:** 6, but it is the instrument every other entry's regression check runs on
+- **found:** cycle 25
+- **symptom:** `dotnet test src/Heddle.Tests -f net8.0 --filter "Name~ThisTestDoesNotExistAnywhere"` ran zero
+  tests, printed nothing at quiet verbosity, and **exited 0**.
+- **why it matters more than its severity:** every regression check in this register is a `--filter` command.
+  A filter naming a test that has been renamed or deleted reported success while executing nothing. That is
+  exactly how two shipped fixes came to be documented as pinned with nothing running them (the parse-depth
+  bound and the unbalanced-closer guard, both found only when the register was consolidated), and how
+  `ec613c2` silently disarmed a third by renaming `AUnsignedLongMeetingACharDegrades…` to
+  `AnUnsignedLongMeetingACharWraps…`. Making an empty run an error retroactively converts all 106 checks from
+  "green if the name still exists" into checks that are actually executed.
+- **F-081's recorded instances were both wrong, and are corrected here.** It cited a declared target framework
+  running zero tests and a wrong-TFM invocation. Measured on SDK 10.0.110: `-f net6.0` with no .NET 6 runtime
+  aborts and exits **1**; `-f net8.0` against the net10.0-only LanguageServices project fails `NETSDK1005` and
+  exits **1**. Neither is the defect. The live instance is the filter, and it was never written down.
+- **fixed by:** cycle 25 — `tests.runsettings` at the repository root sets
+  `RunConfiguration.TreatNoTestsAsError`, wired to every project through `RunSettingsFilePath` in
+  `Directory.Build.props`. Verified both ways: a stale filter now exits 1; a filter matching real tests exits 0
+  and runs them.
+- **regression check:** `dotnet test src/Heddle.Tests -f net8.0 --filter "Name~ThisTestDoesNotExistAnywhere"`
+  must exit **non-zero**. (This is the one check in the register that passes by failing.)
+- **notes:** the first attempt at the settings file broke every run — an XML comment containing `--filter`,
+  which XML forbids, so the settings file was rejected and a real filter also exited 1. Caught because the
+  positive control was run beside the negative one. **A guard is not verified until both of its answers are
+  measured** — the same rule this register keeps applying to production code applies to the harness.
+
 ### F-200 — A `@using` alias and a `using static` bound nothing, because the type resolver read every body as a namespace
 
 - **status:** FIXED
@@ -3343,7 +3421,6 @@ entry first, because several were deliberately not fixed rather than missed.
 | F-027 | prefix-operator runs of several thousand exhaust ANTLR's own lookahead | 3 | upstream (antlr/antlr4#744); no fixed count can see it, and neither a listener nor the grammar can reach it. Published numbers are indicative, not contractual |
 | F-079 | `Path.Combine` rejects characters on .NET Framework that .NET Core accepts | 3 | the development box cannot make it throw; the mitigation in place is reasoning, not evidence |
 | F-080 | on `netstandard2.0` an assembly with no file yields no metadata reference | 3 | there is no API to fix it with (`TryGetRawMetadata` does not exist there); no `netstandard2.0` path executes on this box at all |
-| F-081 | a declared target framework runs zero tests and the run exits 0 | 6 | build wiring, not engine code; named the highest-value item on the platform page and still not done |
 | F-140 | two type-kind verdict rows that cannot be honestly pinned (`Structure`, `Extension`) | 6 | `Structure` is a Roslyn alias no change here can move; `Extension` is not declared by the Roslyn the generator compiles against, so a case for it is `CS0117` |
 | F-147 | a native expression reading the element's own member inside an `@list` body degrades, and a plain path to a member the element lacks throws at render where the engine refuses | 4 and 3 | typing the writer off `DynamicBodyModel` is a change of a different shape; left for a later cycle. Cycle 21 measured the severity-3 face and raised the entry's value |
 | F-154 | three caller-content shapes under a `:: dynamic` callee degrade where the engine renders (a native expression, a function call, an `@if`) | 4 | reported rather than hidden; not attempted |
@@ -3353,7 +3430,7 @@ entry first, because several were deliberately not fixed rather than missed.
 | F-178 (open half) | an import spelled `/lib.heddle`, `~/lib.heddle` or `lib` precompiles and renders where the engine refuses all three (`HED4009`+`HED1001`) | 3 | closing it means refusing spellings the documentation teaches — `@partial(){{child}}` already spells a template without its extension, and `~/` is a documented host idiom in `TemplateKey`'s own contract — so the fix would take working precompiled templates off the tier to match a refusal. Measured over 13 spellings; the `..` direction, which broke the build over a template the engine renders, is FIXED |
 | F-186 | an argument the operand estimator cannot type still binds a sole exported overload, and the emitted call is `error CS1503` ×2 | 2 | the cure is not the shortcut. Deleting it degrades every `f(this)` and every `f(ModelMember)` — a broad severity-4 across ordinary host functions — and sends a single `params` overload down the expanded tier this writer does not emit. The real cure is to stop the estimator being lossy at this seam: `ExportFunctionBinder` is handed `OperandKind` where the emitter already holds an `ITypeSymbol` for a resolved member path (`ComputedValueType` / `ResolvedTypeOf`). Handing it symbols shrinks "cannot say" instead of widening what it may mean, which is what class E prescribes — and it is a change of a different shape from cycle 23's. **Measured:** `@model(){{…Order}}` + `@(rokstr(Total))` over a `Money` struct with a sole `ROkStr(int)` — engine `HED1012`, generator `CS1503` ×2; the control `@(rokstr(Count))` renders `os3` on both |
 | F-201 | a `ref struct` model throws a raw `InvalidCastException` where the test asserts a `TemplateProcessingException` — **in Release only, and only in a full-suite run** | 6 for the pin, 3 for the behaviour underneath | measured at `cde2a29` and at its parent `672ab71`, so it is not this cycle's: Debug 1016/1016 green, Release 1015/1016; the same test passes ALONE in Release. `ModelParameter.GetParameter` casts a `string` to `ReadOnlySpan<char>` through a compiled lambda and the raw `InvalidCastException` escapes instead of being wrapped. Order-dependent, so something earlier in the suite changes the path taken. **Not fixed because the instrument finding matters more than the row** — see class H: every baseline in this series was taken in Debug for this suite, so a Release-only failure was invisible to ~25 cycles of verification |
-| F-198 | the embedded-C# probe compiles INSIDE the consumer's compilation, so consumer internals are visible to it where the engine's standalone compile cannot see them | 3 | `CSharpExpressionTyper` adds its probe tree via `_compilation.AddSyntaxTrees`; `CSharpContext.Preparse` builds a fresh `CSharpCompilation.Create(null, {tree}, refs)` in which the consumer is a metadata reference. An expression naming a consumer `internal` therefore compiles for the build tier and would not for the engine. **Unmeasured** — `DifferentialHarness` seeds no consumer source, so the shape cannot be constructed there — and not fixable by adding a standalone compilation, because the model type lives in the consumer's SOURCE, not its references. Recorded in the source at the probe rather than inherited silently. Opened by F-191's fix |
+| F-198 | the embedded-C# probe compiles INSIDE the consumer's compilation, so consumer internals are visible to it where the engine's standalone compile cannot see them | 3 | `CSharpExpressionTyper` adds its probe tree via `_compilation.AddSyntaxTrees`; `CSharpContext.Preparse` builds a fresh `CSharpCompilation.Create(null, {tree}, refs)` in which the consumer is a metadata reference. An expression naming a consumer `internal` therefore compiles for the build tier and would not for the engine. **Unmeasured** — `DifferentialHarness` seeds no consumer source, so the shape cannot be constructed there — and not fixable by adding a standalone compilation, because the model type lives in the consumer's SOURCE, not its references. Recorded in the source at the probe rather than inherited silently. Opened by F-191's fix **Amended cycle 25: the reasoning is now MEASURED, not argued.** Rebuilding the typer's probe as a standalone `CSharpCompilation.Create` over `_compilation.References` — the construction that would close this gap — makes a model type declared in the consumer's SOURCE invisible, so every expression over it stops compiling and the template silently leaves the precompiled tier. `Heddle.Generator.IntegrationTests` stays green under that mutation for exactly the reason recorded here (`DifferentialHarness` seeds no consumer source); `ConsumerParseOptionsTests` catches it, and is the first test in the repository that can observe the constraint. |
 | F-199 | a hosted `GetTemplate` cannot load the file its own search just found | 3 | `TemplateResolver.GetTemplate`'s hosted arms build `TemplateOptions(Path.GetFileNameWithoutExtension(path))` with `RootPath = _rootPath`, so `FullPath` composes `<root>/<filename>` rather than the path the search returned. Found while fixing F-195 and deliberately not fixed with it: the answer turns on what `TemplateName` and `RootPath` mean for a hosted view, and changing them moves the options fingerprint `PrecompiledGauntlet` compares. Needs a ruling, not an edit |
 | F-179 | an **import-only** library file is compiled standalone, so an error it only ever raises in isolation becomes a build error (`HED7012`) | 3 | **not drift** — both tiers refuse the file when it is compiled on its own, so there is nothing to diverge. It is a trap because the engine never compiles that file standalone in production: it only ever reaches the compiler expanded into an importer. The documented opt-out is `Precompile="false"` on the `<HeddleTemplate>` item, which keeps the file in the import map and out of the standalone pass. Recorded so a future cycle does not report it as a divergence |
 

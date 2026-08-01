@@ -1,0 +1,15 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Applied to every test project through RunSettingsFilePath in Directory.Build.props.
+
+  A test filter whose pattern matches nothing exits 0 and prints nothing at quiet verbosity, so a
+  filter naming a test that has been renamed or deleted reports success while running no code at
+  all. That is how several fixes in this repository came to be documented as pinned while nothing
+  executed them, and how a rename in one commit silently disarmed a check written in another.
+  Treating an empty run as an error makes a stale filter fail loudly instead.
+-->
+<RunSettings>
+  <RunConfiguration>
+    <TreatNoTestsAsError>true</TreatNoTestsAsError>
+  </RunConfiguration>
+</RunSettings>
