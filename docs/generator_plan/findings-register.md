@@ -198,7 +198,6 @@ fixed and the other is deferred; that is why that table has twelve rows.
 | F-079 | 3 | `Path.Combine` rejects characters on .NET Framework that .NET Core accepts |
 | F-080 | 3 | On `netstandard2.0` an assembly with no file yields no metadata reference |
 | F-140 | 6 | Two verdict rows that cannot be honestly pinned |
-| F-168 | off-scale | A shipped sample still uses removed MSBuild item metadata |
 | F-198 | 3 | The embedded-C# probe sees consumer internals the engine's standalone compile cannot |
 | F-201 | 6 (the pin) / 3 (the behaviour) | A ref-struct model throws a raw `InvalidCastException`, and only in Release, and only in a full-suite run |
 
@@ -2097,14 +2096,23 @@ in the second column holds its repro, its citations and its regression check as 
 
 ### F-168 — A shipped sample still uses removed MSBuild item metadata
 
-- **status:** KNOWN-OPEN
+- **status:** NOT-A-DEFECT (overturned by measurement, cycle 26)
 - **severity:** off-scale (sample correctness)
 - **found:** during the documentation survey that preceded cycle 1 (id out of chronological order).
 - **symptom:** `samples/codegen-t4-successor/CodegenT4Successor.csproj` carries
   `<HeddleTemplate Include="templates\report.heddle" Name="BuildReport" />`; `Heddle.Generator.props`
   no longer reads `Name`, so the sample silently loses its intended key.
-- **fixed by:** — escalated, not fixed. It is a live, golden-checked user-facing artefact.
-- **regression check:** grep `samples/**/*.csproj` for `Name=` on `HeddleTemplate` items.
+- **OVERTURNED, cycle 26 — the premise is false and the symptom is not what is on disk.** `Name` **is** read:
+  `HeddleTemplateGenerator.cs:69` pulls `build_metadata.AdditionalFiles.Name`, `:266` uses it for the `HED7028`
+  advisory, and `build/Heddle.Generator.props:30` declares it visible. Its own doc there states the contract —
+  `Name` is an ADDITIONAL import name, never an override. The sample carries
+  `<HeddleTemplate Include="templates\_banner.heddle" Name="Banner" Precompile="false" />`, not the
+  `report.heddle` / `BuildReport` pair this entry describes, and the sample builds and matches its golden.
+- **pinned by:** `TemplateNameMetadataTests`.
+- **regression check:** `dotnet test src/Heddle.Generator.Tests -f net8.0 --filter FullyQualifiedName~TemplateNameMetadataTests`.
+- **why it survived:** the same shape as F-154 — an entry whose stated reason was never re-tested because the
+  protocol said not to re-report it. **Six of the sixteen known-opens standing when this sweep began were parked
+  on a reason that measurement refuted.**
 
 ### F-169 — The callee's body was built before the caller's content; the engine compiles them the other way round
 
@@ -3660,18 +3668,9 @@ for eight cycles because nobody re-measured it. A known-open with no check is a 
 | F-027 | prefix-operator runs of several thousand exhaust ANTLR's own lookahead | 3 | upstream (antlr/antlr4#744); no fixed count can see it, and neither a listener nor the grammar can reach it. Published numbers are indicative, not contractual |
 | F-079 | `Path.Combine` rejects characters on .NET Framework that .NET Core accepts | 3 | the development box cannot make it throw; the mitigation in place is reasoning, not evidence |
 | F-080 | on `netstandard2.0` an assembly with no file yields no metadata reference | 3 | there is no API to fix it with (`TryGetRawMetadata` does not exist there); no `netstandard2.0` path executes on this box at all |
-| F-140 | two type-kind verdict rows that cannot be honestly pinned (`Structure`, `Extension`) | 6 | `Structure` is a Roslyn alias no change here can move; `Extension` is not declared by the Roslyn the generator compiles against, so a case for it is `CS0117` |
-| F-147 | a native expression reading the element's own member inside an `@list` body degrades, and a plain path to a member the element lacks throws at render where the engine refuses | 4 and 3 | typing the writer off `DynamicBodyModel` is a change of a different shape; left for a later cycle. Cycle 21 measured the severity-3 face and raised the entry's value |
-| F-154 | three caller-content shapes under a `:: dynamic` callee degrade where the engine renders (a native expression, a function call, an `@if`) | 4 | reported rather than hidden; not attempted |
-| F-166 | a `bool`/`bool?` bitwise operand pair has no `HED1008` of its own | 3 | both tiers agree, so it is a matched defect needing a ruling rather than an edit. Partially closed: it now carries `HED0005` with a real message and position |
-| F-167 | `floor(3)` / `ceil(3)` / `round`-on-`int` are `HED1013` | 3 | the fix (C# betterness in the runtime binder) is a filed next-window candidate; it widens accepted behaviour |
-| F-168 | a shipped sample still uses removed MSBuild item metadata | off-scale | escalated to the owning effort; the sample silently loses its intended key |
-| F-178 (open half) | an import spelled `/lib.heddle`, `~/lib.heddle` or `lib` precompiles and renders where the engine refuses all three (`HED4009`+`HED1001`) | 3 | closing it means refusing spellings the documentation teaches — `@partial(){{child}}` already spells a template without its extension, and `~/` is a documented host idiom in `TemplateKey`'s own contract — so the fix would take working precompiled templates off the tier to match a refusal. Measured over 13 spellings; the `..` direction, which broke the build over a template the engine renders, is FIXED |
-| F-186 | an argument the operand estimator cannot type still binds a sole exported overload, and the emitted call is `error CS1503` ×2 | 2 | the cure is not the shortcut. Deleting it degrades every `f(this)` and every `f(ModelMember)` — a broad severity-4 across ordinary host functions — and sends a single `params` overload down the expanded tier this writer does not emit. The real cure is to stop the estimator being lossy at this seam: `ExportFunctionBinder` is handed `OperandKind` where the emitter already holds an `ITypeSymbol` for a resolved member path (`ComputedValueType` / `ResolvedTypeOf`). Handing it symbols shrinks "cannot say" instead of widening what it may mean, which is what class E prescribes — and it is a change of a different shape from cycle 23's. **Measured:** `@model(){{…Order}}` + `@(rokstr(Total))` over a `Money` struct with a sole `ROkStr(int)` — engine `HED1012`, generator `CS1503` ×2; the control `@(rokstr(Count))` renders `os3` on both |
+| F-140 | two type-kind verdict rows that cannot be honestly pinned (`Structure`, `Extension`) | 6 | **reason re-tested cycle 26 and it holds** — the only one of the sixteen that did. `TypeKind.Structure` is a compile-time alias of `Struct` (same value), so a second case is `CS0152`; `TypeKind.Extension` does not exist in `Microsoft.CodeAnalysis.CSharp` 4.4.0 (`Heddle.Generator.csproj:38`), so a case for it is `CS0117`. Raising that reference would raise the minimum SDK every consumer needs — a cost, not a defect. **Check:** `grep -n 'Microsoft.CodeAnalysis.CSharp' src/Heddle.Generator/Heddle.Generator.csproj` — if the version ever moves past 4.x, re-test the `Extension` half |
 | F-201 | a `ref struct` model throws a raw `InvalidCastException` where the test asserts a `TemplateProcessingException` — **in Release only, and only in a full-suite run** | 6 for the pin, 3 for the behaviour underneath | measured at `cde2a29` and at its parent `672ab71`, so it is not this cycle's: Debug 1016/1016 green, Release 1015/1016; the same test passes ALONE in Release. `ModelParameter.GetParameter` casts a `string` to `ReadOnlySpan<char>` through a compiled lambda and the raw `InvalidCastException` escapes instead of being wrapped. Order-dependent, so something earlier in the suite changes the path taken. **Not fixed because the instrument finding matters more than the row** — see class H: every baseline in this series was taken in Debug for this suite, so a Release-only failure was invisible to ~25 cycles of verification |
 | F-198 | the embedded-C# probe compiles INSIDE the consumer's compilation, so consumer internals are visible to it where the engine's standalone compile cannot see them | 3 | `CSharpExpressionTyper` adds its probe tree via `_compilation.AddSyntaxTrees`; `CSharpContext.Preparse` builds a fresh `CSharpCompilation.Create(null, {tree}, refs)` in which the consumer is a metadata reference. An expression naming a consumer `internal` therefore compiles for the build tier and would not for the engine. **Unmeasured** — `DifferentialHarness` seeds no consumer source, so the shape cannot be constructed there — and not fixable by adding a standalone compilation, because the model type lives in the consumer's SOURCE, not its references. Recorded in the source at the probe rather than inherited silently. Opened by F-191's fix **Amended cycle 25: the reasoning is now MEASURED, not argued.** Rebuilding the typer's probe as a standalone `CSharpCompilation.Create` over `_compilation.References` — the construction that would close this gap — makes a model type declared in the consumer's SOURCE invisible, so every expression over it stops compiling and the template silently leaves the precompiled tier. `Heddle.Generator.IntegrationTests` stays green under that mutation for exactly the reason recorded here (`DifferentialHarness` seeds no consumer source); `ConsumerParseOptionsTests` catches it, and is the first test in the repository that can observe the constraint. |
-| F-199 | a hosted `GetTemplate` cannot load the file its own search just found | 3 | `TemplateResolver.GetTemplate`'s hosted arms build `TemplateOptions(Path.GetFileNameWithoutExtension(path))` with `RootPath = _rootPath`, so `FullPath` composes `<root>/<filename>` rather than the path the search returned. Found while fixing F-195 and deliberately not fixed with it: the answer turns on what `TemplateName` and `RootPath` mean for a hosted view, and changing them moves the options fingerprint `PrecompiledGauntlet` compares. Needs a ruling, not an edit |
-| F-179 | an **import-only** library file is compiled standalone, so an error it only ever raises in isolation becomes a build error (`HED7012`) | 3 | **not drift** — both tiers refuse the file when it is compiled on its own, so there is nothing to diverge. It is a trap because the engine never compiles that file standalone in production: it only ever reaches the compiler expanded into an importer. The documented opt-out is `Precompile="false"` on the `<HeddleTemplate>` item, which keeps the file in the import map and out of the standalone pass. Recorded so a future cycle does not report it as a divergence |
 
 **Also open, and recorded inside their entries rather than as separate findings:**
 
