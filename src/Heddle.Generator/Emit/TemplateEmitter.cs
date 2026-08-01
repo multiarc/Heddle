@@ -112,6 +112,9 @@ namespace Heddle.Generator.Emit
         // time and reported under the runtime's own id, message and fix so one authoring mistake reads the same
         // on both tiers. Filled by whichever shared scan produced them, then drained by DrainLints.
         private readonly List<HeddleCompileWarning> _lints = new List<HeddleCompileWarning>();
+        // The same shared scan's error arm. The engine refuses a template that raises one of these, so a body
+        // that collects any is left to the dynamic tier rather than precompiled past the refusal.
+        private readonly List<HeddleCompileError> _lintErrors = new List<HeddleCompileError>();
 
         // A body is walked more than once (a definition emitted for several call sites, a region filled twice),
         // and the second walk rediscovers the first walk's warnings at the same source offset. One mistake is one
@@ -120,6 +123,17 @@ namespace Heddle.Generator.Emit
 
         /// <summary>Moves everything the shared scans collected into the reported set, in the order the shared
         /// passes produced it.</summary>
+        /// <summary>The first error the shared branch scan raised, if any, and clears the channel. The engine
+        /// refuses these outright, so the build tier declines the template instead of emitting past them.</summary>
+        private string TakeLintRefusal()
+        {
+            if (_lintErrors.Count == 0)
+                return null;
+            var first = _lintErrors[0].Error;
+            _lintErrors.Clear();
+            return first;
+        }
+
         private void DrainLints()
         {
             foreach (var lint in _lints)
@@ -565,8 +579,15 @@ namespace Heddle.Generator.Emit
                 chain => IsZeroOutput(chain), ctx.DefenitionExists, RoleOf, HasScopeChannel, _lints,
                 chain => profileByChain != null && profileByChain.TryGetValue(chain, out var chainProfile)
                     ? chainProfile
-                    : inheritedProfile);
+                    : inheritedProfile,
+                _lintErrors);
             DrainLints();
+            var lintRefusal = TakeLintRefusal();
+            if (lintRefusal != null)
+            {
+                reason = lintRefusal;
+                return false;
+            }
             var working = shape.WorkingDocument;
 
             // The piece walk itself is shared with RuntimeDocument.GetDocumentPieces, so the

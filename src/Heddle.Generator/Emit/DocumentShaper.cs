@@ -59,7 +59,8 @@ namespace Heddle.Generator.Emit
             System.Func<string, BranchRole?> roleOf = null,
             System.Func<string, bool> hasScopeChannel = null,
             ICollection<HeddleCompileWarning> lints = null,
-            System.Func<OutputChain, bool> isHtmlProfileAt = null)
+            System.Func<OutputChain, bool> isHtmlProfileAt = null,
+            ICollection<HeddleCompileError> lintErrors = null)
         {
             var workingDocument = cleanDocument;
 
@@ -74,7 +75,7 @@ namespace Heddle.Generator.Emit
             DocumentShaping.StripBranchSets(parseContext, ref workingDocument,
                 ClassifierFor(isDefinition ?? (_ => false), roleOf ?? (_ => null),
                     hasScopeChannel ?? (_ => false)),
-                lints == null ? null : new BranchSetLint(lints, null, hasScopeChannel ?? (_ => false)));
+                lints == null ? null : new BranchSetLint(lints, lintErrors, hasScopeChannel ?? (_ => false)));
 
             var elements = new List<Element>();
             // Earlier rendering blocks' source spans, excised before the HTML-context classification reads the

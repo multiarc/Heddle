@@ -136,10 +136,10 @@ namespace Heddle.Generator.IntegrationTests
 
         /// <summary>The orphan terminal is the one entry on the branch-set event stream that is an <b>error</b>:
         /// the engine refuses the template outright. The build tier classifies the same block with the same shared
-        /// machine but drains only the warning arm, so it precompiles an entry class for bytes the engine will not
-        /// compile — and says nothing. Either half of a fix satisfies this: surface the refusal, or leave the
-        /// template on the dynamic tier where the engine's own error reaches the caller.</summary>
-        [Fact(Skip = "known defect — build tier: an orphan branch terminal is precompiled and unreported while the engine refuses the template; un-skip with that fix")]
+        /// machine but drained only the warning arm, so it precompiled an entry class for bytes the engine will not
+        /// compile. It now takes the error arm too and declines the body, leaving the template on the dynamic tier
+        /// where the engine's own error reaches the caller.</summary>
+        [Fact]
         public void ATemplateTheEngineRefusesIsNotSilentlyPrecompiled()
         {
             const string template = "@else(){{1}}";

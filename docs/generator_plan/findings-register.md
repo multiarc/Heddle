@@ -112,7 +112,6 @@ finding. Six former known-opens died exactly that way.
 | F-080 | on `netstandard2.0` an assembly with no file yields no metadata reference | 3 | no API exists there to fix it; pinned both ways by `NetFrameworkDegradePathTests.AnAssemblyWithNoFileYieldsAReferenceOnlyWhereTheRuntimeExposesItsMetadata` — empty on net48, served on modern TFMs |
 | F-140 | two type-kind verdict rows cannot be honestly pinned (`Structure`, `Extension`) | 6 | `grep -n 'Microsoft.CodeAnalysis.CSharp' src/Heddle.Generator/Heddle.Generator.csproj` — re-test if the version moves past 4.x |
 | F-198 | the embedded-C# probe compiles inside the consumer's compilation, so it sees consumer internals the engine cannot | 3 | measured; `ConsumerParseOptionsTests` is the one test that observes the constraint |
-| F-201 | a ref-struct model throws raw `InvalidCastException` where the engine's contract is the wrapped `TemplateProcessingException` | 6 / 3 | red test checked in skipped: `NullSafeHopChainTests.ARefStructModelFaultsWithTheEnginesOwnExceptionEvenWithoutTheGuard` — deterministic in Release with `ValidateModelType=false`, no full-suite ordering needed; un-skip is the fix's acceptance evidence |
 
 Also open, without their own ids:
 
