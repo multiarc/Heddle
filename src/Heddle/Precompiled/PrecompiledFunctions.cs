@@ -44,14 +44,22 @@ namespace Heddle.Precompiled
         public static double Max(double a, double b) => BuiltInFunctions.Max(a, b);
         public static decimal Max(decimal a, decimal b) => BuiltInFunctions.Max(a, b);
 
+        public static int Round(int value) => BuiltInFunctions.Round(value);
+        public static int Round(int value, int digits) => BuiltInFunctions.Round(value, digits);
+        public static long Round(long value) => BuiltInFunctions.Round(value);
+        public static long Round(long value, int digits) => BuiltInFunctions.Round(value, digits);
         public static double Round(double value) => BuiltInFunctions.Round(value);
         public static double Round(double value, int digits) => BuiltInFunctions.Round(value, digits);
         public static decimal Round(decimal value) => BuiltInFunctions.Round(value);
         public static decimal Round(decimal value, int digits) => BuiltInFunctions.Round(value, digits);
 
+        public static int Floor(int value) => BuiltInFunctions.Floor(value);
+        public static long Floor(long value) => BuiltInFunctions.Floor(value);
         public static double Floor(double value) => BuiltInFunctions.Floor(value);
         public static decimal Floor(decimal value) => BuiltInFunctions.Floor(value);
 
+        public static int Ceil(int value) => BuiltInFunctions.Ceil(value);
+        public static long Ceil(long value) => BuiltInFunctions.Ceil(value);
         public static double Ceil(double value) => BuiltInFunctions.Ceil(value);
         public static decimal Ceil(decimal value) => BuiltInFunctions.Ceil(value);
 

@@ -220,13 +220,17 @@ namespace Heddle.Tests
 
             // Findings pinned for executable quantification (spec change moves these deliberately):
             // 1. Pure widening: differentWinner = ZERO (no existing call binds differently)
-            // 2. 82 combinations: ambiguous today but bind under betterness (sub-int/unsigned patterns)
-            // 3. 62 stay ambiguous (double/decimal non-convertible); adoption still needs ambiguity error
+            // 2. 100 combinations: ambiguous today but bind under betterness (sub-int/unsigned patterns)
+            // 3. 38 stay ambiguous (double/decimal non-convertible); adoption still needs ambiguity error
+            // The rounding built-ins gaining their integral tiers moved (3) down by 24 and (2) up by 18: an
+            // integral argument to floor/ceil/round now has an exact candidate, so it neither ties on the flat
+            // rank nor needs betterness to settle it. `total` counts argument combinations per name+arity group
+            // and so is unmoved by adding overloads to a group that already existed.
             Assert.Equal(480, total);
             Assert.Equal(0, differentWinner);
-            Assert.Equal(82, wouldBindUnderBetterness);
-            Assert.Equal(62, ambiguousToday);
-            Assert.Equal(220, bothBind - differentWinner);
+            Assert.Equal(100, wouldBindUnderBetterness);
+            Assert.Equal(38, ambiguousToday);
+            Assert.Equal(226, bothBind - differentWinner);
         }
 
         private static string Describe(NumericKind[] kinds) => string.Join(", ", kinds);

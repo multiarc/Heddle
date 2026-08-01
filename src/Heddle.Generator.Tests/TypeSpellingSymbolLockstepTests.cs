@@ -131,10 +131,18 @@ public class GlobalProbe { public class Inner { } }";
             new string[0])]
         [InlineData("global::TieProbe", "UNRESOLVED", new[] { "Probe.Alpha" })]
         [InlineData("global::X.TieProbe", "UNRESOLVED", new[] { "X = Probe.Alpha" })]
-        // Where a spelling answers to BOTH the index and an alias, the index keeps it. C# decides this the other way
-        // — an alias wins over a type reached through an imported namespace — and matching C# here would move a
-        // spelling that resolves today onto a different type. Pinned so the deviation is visible.
-        [InlineData("TieProbe", "Probe.Alpha.TieProbe", new[] { "Probe.Alpha", "TieProbe = Probe.Beta.TieProbe" })]
+        // Where a spelling answers to BOTH the index and an alias, the ALIAS takes it — an alias binds the head
+        // before the namespaces the scope imports are consulted, which is the order C# reads a namespace-or-type-name
+        // in. Mirrored arm for arm with the runtime.
+        [InlineData("TieProbe", "Probe.Beta.TieProbe", new[] { "Probe.Alpha", "TieProbe = Probe.Beta.TieProbe" })]
+        // Order of declaration does not decide it: an alias is not a positional rule.
+        [InlineData("TieProbe", "Probe.Beta.TieProbe", new[] { "TieProbe = Probe.Beta.TieProbe", "Probe.Alpha" })]
+        // Claiming the head COMMITS: an alias whose target names nothing does not fall back to the import that
+        // would otherwise have answered.
+        [InlineData("TieProbe", "UNRESOLVED", new[] { "Probe.Alpha", "TieProbe = Probe.Nope.TieProbe" })]
+        [InlineData("X.TieProbe", "UNRESOLVED", new[] { "Probe.Alpha", "X = Probe.Nope" })]
+        // A spelling whose head no alias claims is untouched by the reordering: the index still answers it.
+        [InlineData("TieProbe", "Probe.Alpha.TieProbe", new[] { "Probe.Alpha", "Other = Probe.Beta.TieProbe" })]
         public void ADirectiveThatBindsANameResolvesAsTheRuntimeResolvesIt(string spelling, string expected,
             string[] usings)
         {

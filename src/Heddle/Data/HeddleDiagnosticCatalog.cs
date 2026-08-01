@@ -295,7 +295,8 @@ namespace Heddle.Data
                 "Import '{0}' is not included in this compilation. Add it as a <HeddleTemplate> item (use " +
                 "Precompile=\"false\" for import-only files), or correct the spelling: an import is matched " +
                 "against the item's key, which is case-sensitive, separated by '/', and cannot reach above the " +
-                "template root.");
+                "template root. An import path is not a template key — write the extension, and do not spell it " +
+                "'~/name' or '/name'.");
             Add(HeddleDiagnosticIds.BuildForwardedError, "Heddle template error", error, "{0}");
             Add(HeddleDiagnosticIds.BuildForwardedWarning, "Heddle template warning", warning, "{0}");
             Add(HeddleDiagnosticIds.BuildUnresolvableFunction, "Unresolvable function in precompiled template",

@@ -158,13 +158,37 @@ namespace Heddle.Tests
             yield return new object[] { "global::X.TieProbe", new[] { "X = Heddle.Tests.TieAlpha" }, "UNRESOLVED" };
             yield return new object[] { "global::Heddle.Tests.TieProbe", new string[0], "Heddle.Tests.TieProbe" };
 
-            // Where a spelling answers to BOTH the assembly index and an alias, the index keeps it. C# decides this
-            // the other way — an alias wins over a type reached through an imported namespace — and matching C# here
-            // would move a spelling that resolves today onto a different type, which is the one thing this rule may
-            // not do. Pinned so the deviation is visible rather than incidental.
+            // Where a spelling answers to BOTH the assembly index and an alias, the ALIAS takes it — an alias
+            // binds the head before the namespaces the scope imports are consulted, which is the order C# reads a
+            // namespace-or-type-name in.
             yield return new object[]
             {
                 "TieProbe", new[] { "Heddle.Tests.TieAlpha", "TieProbe = Heddle.Tests.TieBeta.TieProbe" },
+                "Heddle.Tests.TieBeta.TieProbe"
+            };
+            // Order of declaration does not decide it: an alias is not a positional rule.
+            yield return new object[]
+            {
+                "TieProbe", new[] { "TieProbe = Heddle.Tests.TieBeta.TieProbe", "Heddle.Tests.TieAlpha" },
+                "Heddle.Tests.TieBeta.TieProbe"
+            };
+            // Claiming the head COMMITS: an alias whose target names nothing does not fall back to the import that
+            // would otherwise have answered.
+            yield return new object[]
+            {
+                "TieProbe", new[] { "Heddle.Tests.TieAlpha", "TieProbe = Heddle.Tests.NoSuchNamespace.TieProbe" },
+                "UNRESOLVED"
+            };
+            // The same commit on a dotted spelling, where the alias claims only the head.
+            yield return new object[]
+            {
+                "X.TieProbe", new[] { "Heddle.Tests.TieAlpha", "X = Heddle.Tests.NoSuchNamespace" },
+                "UNRESOLVED"
+            };
+            // A spelling whose head no alias claims is untouched by the reordering: the index still answers it.
+            yield return new object[]
+            {
+                "TieProbe", new[] { "Heddle.Tests.TieAlpha", "Other = Heddle.Tests.TieBeta.TieProbe" },
                 "Heddle.Tests.TieAlpha.TieProbe"
             };
         }
