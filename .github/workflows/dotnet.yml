@@ -38,8 +38,20 @@ jobs:
       run: dotnet restore
     - name: Build
       run: dotnet build --no-restore -c Release
+    # xUnit drops a theory row whose arguments duplicate another row's, logging
+    # "Skipping test case with duplicate ID" and leaving the run green at a lower count.
+    # Skipped: still reads 0, because the row is dropped rather than skipped, and the
+    # empty-run guard in tests.runsettings cannot see it — the filter still matches tests.
+    # The log line is the only signal, so fail on it.
     - name: Test
-      run: dotnet test -c Debug --no-restore
+      run: |
+        set -o pipefail
+        dotnet test -c Debug --no-restore 2>&1 | tee test.log
+        if grep -q "duplicate ID" test.log; then
+          echo "::error::A test case was dropped as a duplicate; a theory row is not a test until the count says so."
+          grep "duplicate ID" test.log
+          exit 1
+        fi
     # The generator suites had no Release leg, and the engine's `#if DEBUG` arms are reachable from them:
     # a Release-only failure in the integration suite survived because every run above it was Debug.
     # Reuses the Release build already produced by the Build step, the same way the LSP workflow does.

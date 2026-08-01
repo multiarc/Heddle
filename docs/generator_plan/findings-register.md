@@ -7,7 +7,7 @@ from two sources that disagree in places:
 - `docs/generator_plan/phase-8-docs-sweep.md` — the per-cycle prose record, written after each cycle.
   Believed over a commit message wherever the two conflict: several commit messages were later
   measured wrong and corrected there, and a future reader may hit the uncorrected message first.
-- the commit messages of the review series, `cd3a665 .. 6655879` on this branch.
+- the commit messages of the review series, `cd3a665 .. 34cb3ee` on this branch.
 
 Test names and their doc comments (`src/Heddle.Tests`, `src/Heddle.Generator.Tests`,
 `src/Heddle.Generator.IntegrationTests`, `src/Heddle.LanguageServices.Tests`) and
@@ -99,7 +99,7 @@ fixed and the other is deferred; that is why that table has twelve rows.
 
 ## Contents, by status
 
-### FIXED (83 entries, holding 183 ids)
+### FIXED (86 entries, holding 186 ids)
 
 | id | absorbs | severity | title |
 | --- | --- | --- | --- |
@@ -185,9 +185,12 @@ fixed and the other is deferred; that is why that table has twelve rows.
 | F-204 | F-186 | 2 | The export binder was told an argument's shape where the engine is told its type |
 | F-205 | F-199 | 3 | A hosted template could not be loaded from the path its own search returned |
 | F-206 | — | 3 | Name resolution did not follow C# precedence |
+| F-207 | — | 4 | `this` as an operand had no arm, because `this` as a passthrough already had one |
+| F-208 | — | 4 | The built-in binder degraded silently where the engine refuses, and where it renders |
+| F-209 | — | 3 | A `using` namespace import exposed nested namespaces, which C# does not |
 | F-200 | — | 3 and 2 | A `@using` alias and a `using static` bound nothing, because the resolver read every body as a namespace |
 
-### KNOWN-OPEN — re-report no, RE-MEASURE yes (9)
+### KNOWN-OPEN — re-report no, RE-MEASURE yes (6)
 
 | id | severity | title |
 | --- | --- | --- |
@@ -197,9 +200,6 @@ fixed and the other is deferred; that is why that table has twelve rows.
 | F-140 | 6 | Two verdict rows that cannot be honestly pinned |
 | F-168 | off-scale | A shipped sample still uses removed MSBuild item metadata |
 | F-198 | 3 | The embedded-C# probe sees consumer internals the engine's standalone compile cannot |
-| F-207 | 4 | A `this` argument inside a native expression degrades where the engine renders |
-| F-208 | 4 | The built-in binder degrades silently where the engine refuses |
-| F-209 | 3 | A `using` namespace import exposes nested namespaces, which C# does not |
 | F-201 | 6 (the pin) / 3 (the behaviour) | A ref-struct model throws a raw `InvalidCastException`, and only in Release, and only in a full-suite run |
 
 ### SUPERSEDED — the fix or guard was later replaced, removed or reversed (6 ids)
@@ -3021,6 +3021,89 @@ in the second column holds its repro, its citations and its regression check as 
 - **notes:** the breaking-windows candidate row was deleted and the decision record amended. **Both deviation
   pins were flipped** — a test that asserted the deviation now asserts C#.
 
+### F-207 — `this` as an operand had no arm, because `this` as a passthrough already had one
+
+- **status:** FIXED
+- **severity:** 4
+- **found:** cycle 25 as the last cell of a 233-cell sweep; fixed cycle 26 (`34cb3ee`)
+- **symptom:** `@list(Tags){{[@upper(this)]}}` over `string[]` — engine renders `[XY]`, generator degraded.
+  7 of 8 measured shapes degraded, and `@(this)` alone already worked. Not an `@list` matter: it degraded
+  identically in a fully typed top-level body, and `this.Title` degraded with it.
+- **root cause, and it is why the shape looked inconsistent:** **two constructs share one spelling and only one
+  had a rule.** `this` as a WHOLE call parameter is the model passthrough — the engine compiles it to
+  `EmptyParameter`, which needs no static type — and the emitter handled it. `this` as an OPERAND is a typed
+  operand: `VisitThis` converts the model parameter to the scope type. `NativeExpressionWriter` had no arm for
+  it at all, and a `this.` target was refused along with every other targeted path.
+- **class expansion:** every site dispatching on `ExprNode` shape — `Write`, `EstimateCore`, `ArgumentType`,
+  `WritePath`, `PathType`, and `TemplateEmitter.ComputedValueType`. Two were already correct (the passthrough
+  sites). `ConstantFolding.Fold` is correct untouched: `this` is not constant and the engine sets
+  `_foldable = false`.
+- **the predicate:** the engine refuses iff `ScopeType.IsDynamic`; the writer refuses iff `_modelType == null` —
+  the same state, because `BodyContext` upholds `IsDynamic ⇒ ModelSymbol is null`. `this.Foo` skips the prop
+  layout on both tiers, since the engine consults the layout only for a target-less path.
+- **pinned by:** `NativeThisOperandTests` (15) across every body context, byte-compared against the engine.
+  Mutations: no `Write` arm → 4 red; no `UsedModel` → 3 red with `CS0103` in the consumer's build; a `this.`
+  target out of reach → 7 red.
+- **regression check:** `dotnet test src/Heddle.Generator.IntegrationTests -f net8.0 --filter FullyQualifiedName~NativeThisOperandTests`.
+- **a golden recorded the defect:** `GeneratorSnapshotTests.Example7_FunctionShimCall` pinned an **empty
+  manifest** for `@(upper(this))` under a name promising a shim call. Class G — a golden asserts whatever it was
+  captured over, including a bug, and its name is not evidence.
+- **two guards kept but not reddenable, stated rather than implied:** `WriteThis`'s null-model guard and
+  `ComputedValueType`'s `this` arm are upheld by construction but unobservable — every route to them is stopped
+  by an earlier guard. Measured both ways and kept, because without them the safety rests on three unrelated
+  downstream guards.
+
+### F-208 — The built-in binder degraded silently where the engine refuses, and where it renders
+
+- **status:** FIXED
+- **severity:** 4, and a second severity-4 the register had not recorded
+- **found:** cycle 25; fixed cycle 26 (`34cb3ee`)
+- **symptom:** `min(1, Payload)` over an `object` member — engine `HED1012 No overload of function 'min' takes
+  (int, object)`, generator silent. Found beside it and **not recorded anywhere**: `str(Payload)` and
+  `format(Payload, "x")` degraded where the engine RENDERS.
+- **root cause:** the seam F-204 closed for exported functions, one tier over. `DefaultFunctionBinder` was fed
+  only `OperandKind`, and `SymbolFacts.Classify` answers `Unknown` for `object` **on purpose** — correct for an
+  operator, wrong for a binder, because the engine hands `OverloadRank` the compiled expression's own `Type`.
+- **class expansion:** `Classify` answers `Unknown` in five situations and the `default:` arm dropped all five.
+  `object` is now named exactly; dynamic, an error type, a type parameter and no-symbol-at-all keep the silent
+  degrade, each with the reason stated beside the arm.
+- **why it is a proof and not a guess:** `NoBuiltInParameterTypeIsAReferenceTypeTheNameModelCannotDecide` already
+  pins that every parameter type in the shipped table decides an `object` argument through `AreSame`/`IsObject`,
+  never through the reference conversion this name-keyed model must answer `false` to.
+- **two tests flipped, and the side condition kept a LIVE pin.** Both tests that asserted the silent degrade now
+  assert the diagnostic. The side condition moved to a shape that still genuinely has it — `min(1, Tags[0]) > 0`,
+  an indexed read the writer neither emits nor types — asserted beside the engine's real refusal, so silence is
+  measured against something rather than assumed.
+- **pinned by:** `AmbiguousOverloadDiagnosticTests` (25), including three near-neighbours that must precompile
+  and render the engine's bytes. Two mutations, 4 red each.
+- **regression check:** `dotnet test src/Heddle.Generator.IntegrationTests -f net8.0 --filter FullyQualifiedName~AmbiguousOverloadDiagnosticTests`.
+
+### F-209 — A `using` namespace import exposed nested namespaces, which C# does not
+
+- **status:** FIXED
+- **severity:** 3
+- **found:** cycle 25; fixed cycle 26 (`34cb3ee`)
+- **detail:** `using Na;` + `Sb.Deep` resolved on **both** tiers and is `CS0246` in C#. Not tier drift — a
+  deviation from the language, which is exactly why 24 differential cycles scored it green.
+- **the rule, compiled and executed rather than recalled:** 7 divergent rows measured against Roslyn, including
+  `TieAlpha.TieProbe` under `using Heddle.Tests`, `Text.StringBuilder` under `using System`, and
+  `Generic.List<int>` under `using System.Collections`. **A namespace import brings in the types DECLARED in the
+  namespace, not the namespaces nested in it.** A nested TYPE reports its outer type's namespace and stays
+  reachable; a namespace ALIAS names the namespace itself and does reach through it, so the alias arm was
+  measured as agreeing and left alone.
+- **class:** three sites from `grep -rn 'import + "." +'` — two duplicated loops in
+  `ReflectionHelper.ResolveIndexedTypeCore`, now one helper carrying the rule once, and
+  `SymbolTypeIndex.TryResolveThroughImports`. LanguageServices inherits it through `ReflectionHelper.ResolveType`.
+- **pinned by:** `NameLookupPrecedenceOracleTests` (+8 rows, 22 total), which asks Roslyn rather than asserting a
+  memory, and `UsingDirectiveTests.AUsingDoesNotBringItsNestedNamespacesIntoScope` end to end. Three mutations
+  red **including the over-narrowing direction** — also excluding nested types reddens the positive row.
+- **regression check:** `dotnet test src/Heddle.Tests -f net8.0 --filter FullyQualifiedName~NameLookupPrecedenceOracleTests`.
+- **the narrowing's cost, counted rather than absorbed:** 0 checked-in templates, corpus fixtures or samples;
+  1 integration test, whose spelling moved to a nested TYPE through an import so it keeps making the same claim.
+  Recorded as a not-window-gated ruling in `breaking-windows.md`.
+- **caught in passing:** `built-in-extensions.md` still claimed the import beats an alias — the deviation F-206
+  had closed a cycle earlier, and the doc never moved.
+
 ### F-203 — A test filter that matches nothing exits 0, so every stale regression check passed
 
 - **status:** FIXED
@@ -3423,6 +3506,13 @@ closes.** Both of cycle 22's headline fixes would have been caught by that one q
 
 **Sub-patterns, with members as merged. This is the largest class in the register — now 27 ids.**
 
+**A mechanism found in cycle 26 that the empty-run guard does NOT catch: xUnit silently SKIPS a theory row
+whose arguments duplicate another row's.** It prints `Skipping test case with duplicate ID` at normal verbosity
+and the suite stays green at a lower count — and `Skipped:` still reads 0, because the row is dropped rather than
+skipped. `TreatNoTestsAsError` cannot see it: the filter still matches tests, so the run is not empty. **A theory
+row is not a test until the count says so.** Found when an agent introduced such a row itself and caught it by
+reading a Release log line by line.
+
 **Cycle 24 added three, and all three are the same shape: a guard nothing executes.** Deleting
 `TemplateEmitter.cs:985`'s hand-rolled escape entirely reddened **0 of 554 + 0 of 939** (F-190). Cycle 23's
 `ParseName` guard on a `@using` body reddened **0 of 11** (F-192) — which is why its `//`-comment face
@@ -3579,9 +3669,6 @@ for eight cycles because nobody re-measured it. A known-open with no check is a 
 | F-178 (open half) | an import spelled `/lib.heddle`, `~/lib.heddle` or `lib` precompiles and renders where the engine refuses all three (`HED4009`+`HED1001`) | 3 | closing it means refusing spellings the documentation teaches — `@partial(){{child}}` already spells a template without its extension, and `~/` is a documented host idiom in `TemplateKey`'s own contract — so the fix would take working precompiled templates off the tier to match a refusal. Measured over 13 spellings; the `..` direction, which broke the build over a template the engine renders, is FIXED |
 | F-186 | an argument the operand estimator cannot type still binds a sole exported overload, and the emitted call is `error CS1503` ×2 | 2 | the cure is not the shortcut. Deleting it degrades every `f(this)` and every `f(ModelMember)` — a broad severity-4 across ordinary host functions — and sends a single `params` overload down the expanded tier this writer does not emit. The real cure is to stop the estimator being lossy at this seam: `ExportFunctionBinder` is handed `OperandKind` where the emitter already holds an `ITypeSymbol` for a resolved member path (`ComputedValueType` / `ResolvedTypeOf`). Handing it symbols shrinks "cannot say" instead of widening what it may mean, which is what class E prescribes — and it is a change of a different shape from cycle 23's. **Measured:** `@model(){{…Order}}` + `@(rokstr(Total))` over a `Money` struct with a sole `ROkStr(int)` — engine `HED1012`, generator `CS1503` ×2; the control `@(rokstr(Count))` renders `os3` on both |
 | F-201 | a `ref struct` model throws a raw `InvalidCastException` where the test asserts a `TemplateProcessingException` — **in Release only, and only in a full-suite run** | 6 for the pin, 3 for the behaviour underneath | measured at `cde2a29` and at its parent `672ab71`, so it is not this cycle's: Debug 1016/1016 green, Release 1015/1016; the same test passes ALONE in Release. `ModelParameter.GetParameter` casts a `string` to `ReadOnlySpan<char>` through a compiled lambda and the raw `InvalidCastException` escapes instead of being wrapped. Order-dependent, so something earlier in the suite changes the path taken. **Not fixed because the instrument finding matters more than the row** — see class H: every baseline in this series was taken in Debug for this suite, so a Release-only failure was invisible to ~25 cycles of verification |
-| F-207 | a `this` argument inside a native expression degrades where the engine renders | 4 | measured: `@list(Tags){{[@upper(this)]}}` over `string[]` — engine renders `[XY]`, generator degrades. `NativeExpressionWriter.Write` has no `ThisNode` arm. It degrades identically in a fully typed top-level body, so it is **not** an `@list` matter. Found while sweeping F-154; it is the last cell in a 233-cell sweep that still degrades where the engine renders. Needs its own `UsedModel`/null-model reasoning. **Check:** `dotnet test src/Heddle.Generator.IntegrationTests -f net8.0 --filter FullyQualifiedName~ListElementBodyTypingTests` (the neighbours pass; this shape is not yet pinned — pin it when fixed) |
-| F-208 | the built-in binder degrades silently where the engine refuses | 4 | measured: `min(1, Payload)` over an `object` member — engine `HED1012 No overload of function 'min' takes (int, object)`, generator degrades with no diagnostic. Not a rendered-behaviour divergence (the degraded template meets the same `HED1012` at render), but the same seam F-204 just closed, one tier over: `DefaultFunctionBinder` is fed only `OperandKind` and its `GenTypeRef` model is name-keyed, so it is never given `System.Object`. **Check:** `dotnet test src/Heddle.Generator.IntegrationTests -f net8.0 --filter FullyQualifiedName~AmbiguousOverloadDiagnosticTests` — `AnUnknownArgumentEstimateStaysASilentDegrade` currently pins this as intended, and must be flipped when it is fixed |
-| F-209 | a `using` namespace import exposes nested **namespaces**, which C# does not | 3 | measured: `using Na;` + `Sb.Deep` resolves in Heddle; the same spelling is `CS0246` in C#. `TryResolveThroughImports` resolves it via `import + "." + name`. **Both tiers agree**, so it is not drift — it is a deviation from the language, on the axis the maintainer named ("this is a language, not a metadata storage"). Distinct from F-206: that was precedence, this is *what a using-namespace imports*. Fixing it is a pure narrowing that takes working templates off both tiers, so it needs the same treatment F-206 got — establish C#'s rule with an executed snippet, then follow it. **Check:** `dotnet test src/Heddle.Tests -f net8.0 --filter FullyQualifiedName~NameLookupPrecedenceOracleTests` — the oracle exists; add the nested-namespace rows when fixed |
 | F-198 | the embedded-C# probe compiles INSIDE the consumer's compilation, so consumer internals are visible to it where the engine's standalone compile cannot see them | 3 | `CSharpExpressionTyper` adds its probe tree via `_compilation.AddSyntaxTrees`; `CSharpContext.Preparse` builds a fresh `CSharpCompilation.Create(null, {tree}, refs)` in which the consumer is a metadata reference. An expression naming a consumer `internal` therefore compiles for the build tier and would not for the engine. **Unmeasured** — `DifferentialHarness` seeds no consumer source, so the shape cannot be constructed there — and not fixable by adding a standalone compilation, because the model type lives in the consumer's SOURCE, not its references. Recorded in the source at the probe rather than inherited silently. Opened by F-191's fix **Amended cycle 25: the reasoning is now MEASURED, not argued.** Rebuilding the typer's probe as a standalone `CSharpCompilation.Create` over `_compilation.References` — the construction that would close this gap — makes a model type declared in the consumer's SOURCE invisible, so every expression over it stops compiling and the template silently leaves the precompiled tier. `Heddle.Generator.IntegrationTests` stays green under that mutation for exactly the reason recorded here (`DifferentialHarness` seeds no consumer source); `ConsumerParseOptionsTests` catches it, and is the first test in the repository that can observe the constraint. |
 | F-199 | a hosted `GetTemplate` cannot load the file its own search just found | 3 | `TemplateResolver.GetTemplate`'s hosted arms build `TemplateOptions(Path.GetFileNameWithoutExtension(path))` with `RootPath = _rootPath`, so `FullPath` composes `<root>/<filename>` rather than the path the search returned. Found while fixing F-195 and deliberately not fixed with it: the answer turns on what `TemplateName` and `RootPath` mean for a hosted view, and changing them moves the options fingerprint `PrecompiledGauntlet` compares. Needs a ruling, not an edit |
 | F-179 | an **import-only** library file is compiled standalone, so an error it only ever raises in isolation becomes a build error (`HED7012`) | 3 | **not drift** — both tiers refuse the file when it is compiled on its own, so there is nothing to diverge. It is a trap because the engine never compiles that file standalone in production: it only ever reaches the compiler expanded into an importer. The documented opt-out is `Precompile="false"` on the `<HeddleTemplate>` item, which keeps the file in the import map and out of the standalone pass. Recorded so a future cycle does not report it as a divergence |
