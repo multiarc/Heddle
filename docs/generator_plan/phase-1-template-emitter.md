@@ -959,13 +959,23 @@ staying green. Recorded because it locates the blind spots, not because the kill
 
 ### Residual gaps and inaccuracies, recorded
 
-- **The value-path coercion rail has no byte-level fixture.** `strategy-nonstring-value` asserts the
-  rail against the **emitted source**, and `strategy-boxed-index` covers the render path; nothing
-  drives a boxed non-string through the *value* path on both tiers. The normative §4 asymmetry is
-  therefore pinned as shape plus render-path behaviour, not as the value-path drop. Closing it needs
-  a host extension whose `ProcessData` consumes its body's `Execute` result and returns a non-string.
-  The rail itself is verified identical on both sides (`RuntimeDocument`'s four strategies vs
-  `EmitBodyClass`) — see Q1.2 below.
+- ~~**The value-path coercion rail has no byte-level fixture.**~~ (**closed 2026-08-01** — though not
+  by the closure this bullet prescribed, which cannot be built.) `strategy-nonstring-value-bytes`
+  puts one `@for` index on both paths of a single document and
+  `TheValuePathDropsTheNonStringInAllThreeCasesOfTheRail` walks the three-case shape, both
+  byte-compared across tiers; new `ValueRailCoercionDifferentialTests` adds the host-extension half
+  and the bounds below. Every one of them was rehearsed red against the rail mutated on each tier in
+  turn, in Debug and Release. A **host** extension cannot be the vehicle: `AbstractExtension`
+  hard-codes `typeof(string)` as the declared return of everything that leaves `InitStart` alone,
+  overriding `InitStart` is `HED7015` for a roleless non-engine extension, and a bodied custom call —
+  the "consumes its body's `Execute` result" half — degrades unconditionally. Engine-assembly
+  extensions are the only vehicle, and that is what the fixtures use.
+- **The engine's return-type check is `#if DEBUG`; the emitted `Execute` has no counterpart.**
+  `TemplateItem.ProcessData` faults a non-string against the declared type *before* the rail coerces
+  it, so a host extension leaning on the coercion `AbstractExtension.ProcessData` documents renders
+  empty in Release and throws in Debug, while the precompiled tier coerces in both. Pinned both ways
+  in `ValueRailCoercionDifferentialTests`. Not a rail mismatch — the rail agrees wherever it is
+  reached — but it is why the host-extension fixture compares tiers on the Release leg only.
 - **The matrix's WI1 `scope-nested-participant` byte fixture cannot exist** and the plan's success
   criterion that names it is superseded by the record's own "Correction to the plan": the shape is
   refused by the emitter for an unrelated pre-existing reason. The criterion should be read as

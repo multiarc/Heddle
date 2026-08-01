@@ -77,20 +77,20 @@ across tiers; fixtures under the `strategy-` stem:
 | `strategy-single-processor.heddle` | single-part `Execute` (no concat) == runtime single-element strategy |
 | `strategy-empty-body.heddle` | empty body returns `string.Empty` on both tiers |
 | `strategy-alternation.heddle` | head piece / interleaved processors / tail piece ordering (the offset-walk contract) |
-| `strategy-nonstring-value.heddle` | **corrected 2026-07-26** — the implemented row asserts the rail against the **emitted source**: every `Execute` part is `…ProcessData(scope.Model(…)) as string ?? string.Empty` and multi-part bodies `string.Concat`. It is a *shape* pin, not a byte comparison of a boxed non-string; the stem is kept because the joint-land rule (OQ2/Q1.2) names this test as the tripwire the rail change must consciously edit. The value path *dropping* a boxed non-string to `string.Empty` is asserted nowhere as rendered bytes — see the note below |
+| `strategy-nonstring-value.heddle` | **corrected 2026-07-26** — the implemented row asserts the rail against the **emitted source**: every `Execute` part is `…ProcessData(scope.Model(…)) as string ?? string.Empty` and multi-part bodies `string.Concat`. It is a *shape* pin, not a byte comparison of a boxed non-string; the stem is kept because the joint-land rule (OQ2/Q1.2) names this test as the tripwire the rail change must consciously edit. The rendered-byte companions landed later and are named in the note below |
 | `strategy-boxed-index.heddle` | the render-path companion (not in the original matrix): a boxed `int` on the chained channel — the `@for` index a non-slot `@out()` returns — is stringified identically on both tiers. This is the observable half of the render/value asymmetry §4 of the plan's normative section pins |
 | `strategy-adjacent-processors.heddle` | zero-length pieces between adjacent processors: no empty-piece divergence between `GetDocumentPieces` and the emitted shape |
 
-**Residual, recorded rather than papered over.** The plan's normative §4 ("a boxed non-string reaching
-the value path is dropped to empty while the render path stringifies it") has coverage on the render
-side (`strategy-boxed-index`) and on the emitted-shape side (`strategy-nonstring-value`), but no
-fixture drives a boxed non-string through the **value** path on both tiers and compares bytes. The
-value path is reached only when a body's result is consumed as a string by an enclosing host, and
-every construct that does so on the precompiled tier stringifies before the rail. Closing it needs a
-host extension whose `ProcessData` consumes its body's `Execute` result and returns a non-string —
-new fixture machinery, not a missing assertion. The rail is identical on both tiers today (verified
-against `RuntimeDocument`'s four strategies and `EmitBodyClass`), so this is a coverage gap, not a
-divergence.
+**Residual closed 2026-08-01.** The value-path half of normative §4 is byte-compared on both tiers by
+`strategy-nonstring-value-bytes.heddle` (one `@for` index, both paths, one document) and by the
+three-case `TheValuePathDropsTheNonStringInAllThreeCasesOfTheRail`, with
+`ValueRailCoercionDifferentialTests` carrying the host-extension half. The residue's own
+prescription — a host extension returning a non-string — is **not buildable**: `AbstractExtension`
+hard-codes `typeof(string)` as the declared return of every extension that leaves `InitStart` alone,
+overriding `InitStart` is `HED7015` for a roleless non-engine extension, and a bodied custom call
+degrades unconditionally, so only engine-assembly extensions reach the value path with a non-string.
+`TemplateItem`'s return-type fault is `#if DEBUG`, which is why the host-extension row compares tiers
+on its Release leg and pins the fault on its Debug one. The rail itself agrees on both tiers.
 
 ## Corpus guardrail entries — corrected 2026-07-26
 
