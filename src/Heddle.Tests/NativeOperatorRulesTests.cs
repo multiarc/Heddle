@@ -24,6 +24,9 @@ namespace Heddle.Tests
         public int? NI32 { get; set; }
         public bool? NB { get; set; }
         public DayOfWeek E { get; set; }
+        public DayOfWeek? NE { get; set; }
+        public Uri R { get; set; }
+        public Guid O { get; set; }
     }
 
     /// <summary>
@@ -47,6 +50,12 @@ namespace Heddle.Tests
             ("NI32", OperandKind.Numeric(NumericKind.Int32, true)),
             ("NB", OperandKind.Of(OperandCategory.Bool, true)),
             ("E", OperandKind.Of(OperandCategory.Enum)),
+            ("NE", OperandKind.Of(OperandCategory.Enum, true)),
+            // A reference and a user struct WITHOUT user-defined operators: the rows that prove the
+            // NotDefined flips for the engine sites that never consult user operators (shift, bitwise,
+            // logical, unary), and the Supported adapter rows for the equality tail.
+            ("R", OperandKind.Of(OperandCategory.Reference)),
+            ("O", OperandKind.Of(OperandCategory.Other)),
             ("null", OperandKind.Null),
         };
 
@@ -113,10 +122,18 @@ namespace Heddle.Tests
             var reference = OperandKind.Of(OperandCategory.Reference);
             foreach (var op in new[] { ExprOperator.Equal, ExprOperator.NotEqual })
             {
-                // A non-nullable value side can still reach the engine's HED1008, so it stays runtime-owned…
-                Assert.Equal(OperatorVerdict.RequiresRuntimeSemantics, NativeOperatorRules.Classify(op, i32, str));
-                Assert.Equal(OperatorVerdict.RequiresRuntimeSemantics,
+                // A non-nullable value side between BCL-shaped operands IS the engine's HED1008 — no user
+                // operator can exist between two primitives, so the verdict matches the refusal outright…
+                Assert.Equal(OperatorVerdict.NotDefined, NativeOperatorRules.Classify(op, i32, str));
+                Assert.Equal(OperatorVerdict.NotDefined,
                     NativeOperatorRules.Classify(op, OperandKind.Of(OperandCategory.Enum), i32));
+                // …a user type beside that non-nullable side may carry an equality operator, so THAT pair
+                // stays runtime-owned…
+                Assert.Equal(OperatorVerdict.RequiresRuntimeSemantics,
+                    NativeOperatorRules.Classify(op, i32, reference));
+                Assert.Equal(OperatorVerdict.RequiresRuntimeSemantics,
+                    NativeOperatorRules.Classify(op, OperandKind.Of(OperandCategory.Enum),
+                        OperandKind.Of(OperandCategory.Enum)));
                 // …while a pair that is null-assignable on BOTH sides runs the engine's total fallback chain,
                 // replayed by RuntimeOperators over the same static types.
                 Assert.Equal(OperatorVerdict.Supported, NativeOperatorRules.Classify(op, reference, reference));

@@ -36,6 +36,8 @@ namespace Heddle.Tests
             public int Flags { get; set; } = 6;
             public Color EnumA { get; set; } = Color.Red | Color.Green;
             public Color EnumB { get; set; } = Color.Green;
+            public Color? NEnum { get; set; } = null;
+            public Color? NEnumV { get; set; } = Color.Green;
             public object Obj { get; set; } = "ab";
             public DateTime Date { get; set; } = new DateTime(2020, 1, 1);
             public DateTime Date2 { get; set; } = new DateTime(2020, 1, 2);
@@ -68,6 +70,15 @@ namespace Heddle.Tests
             yield return R("@(EnumA & EnumB)", (Color.Red | Color.Green) & Color.Green);
             yield return R("@(EnumA | EnumB)", (Color.Red | Color.Green) | Color.Green);
             yield return R("@(~EnumA)", ~(Color.Red | Color.Green));
+            // Mismatched nullability lifts to the NULLABLE enum on both sides of the pair — a null operand
+            // propagates instead of throwing on the Convert back to the bare enum (the defect this row
+            // regression-pins was a render-time InvalidOperationException for the non-nullable-left shape).
+            yield return R("@(EnumA & NEnum)", (Color.Red | Color.Green) & (Color?)null);
+            yield return R("@(EnumA & NEnumV)", (Color.Red | Color.Green) & (Color?)Color.Green);
+            yield return R("@(NEnum | EnumB)", (Color?)null | Color.Green);
+            yield return R("@(NEnumV ^ EnumB)", (Color?)Color.Green ^ Color.Green);
+            yield return R("@(~NEnum)", ~(Color?)null);
+            yield return R("@(~NEnumV)", ~(Color?)Color.Green);
             yield return R("@(I < L)", 3 < 10L);
             yield return R("@(I == 3)", 3 == 3);
             yield return R("@(I != 3)", 3 != 3);

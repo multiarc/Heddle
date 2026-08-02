@@ -68,14 +68,12 @@ where C# has a lifted operator this tier has none:
 | Expression | C# | Here |
 | --- | --- | --- |
 | `@(FlagNullable == Flag)` (`bool?` vs `bool`) | lifted, compiles | `HED1008` |
-| `@(FlagNullable & Flag)` (`bool?` vs `bool`) | lifted, compiles | `HED0005`, the compile-item catch-all |
+| `@(FlagNullable & Flag)` (`bool?` vs `bool`) | lifted, compiles | `HED1008` |
 | `@(N < 3)` (`int?` vs `int`) | lifted, compiles | lifted, compiles |
 
-The bitwise row is a **known defect, not a deviation**: every comparable illegality in this tier is a
-positioned `HED1008`, and that one shape reaches `Expression.And` unguarded. Both tiers agree on
-refusing it, so it is not drift — it is the wrong diagnostic rather than a wrong answer, and it is
-filed rather than papered over here. `NativeOperatorRules.ClassifyBitwise` carries the same verdict at
-build time.
+Both tiers agree on refusing the bitwise row with the same positioned id — the bool arm of the
+bitwise visitor guards mismatched nullability explicitly, and `NativeOperatorRules.ClassifyBitwise`
+carries the same verdict at build time.
 
 The `null` **literal** is separate from a `null`-valued `Nullable<T>`: `@(x < null)` and
 `@(3 == null)` are `HED1008`, exactly as C# rejects them.
@@ -293,6 +291,13 @@ A member‑path segment that fails resolution is **`HED0001`**, not a `HED1xxx`:
 shared with the C# tier and the dynamic path, so its diagnostic is shared too. It fires when a segment
 is missing, non‑readable, `[Hidden]`, or has an inaccessible getter — see
 [Exposing models to untrusted templates](patterns.md#exposing-models-to-untrusted-templates).
+
+An expression that faults the compiler itself for a reason no other diagnostic covers is
+**`HED0005`**, the compile‑item catch‑all — positioned at the call and carrying the exception. The
+canonical case is a member path *ending on* a `ref struct` (an expression operand must box, and a
+`ref struct` cannot): the engine refuses it at compile time on modern TFMs, and the build tier
+degrades the same path so the reader gets this positioned id rather than a consumer‑build `CS0030`.
+Reading *through* a `ref struct` to an ordinary member stays legal on both tiers.
 
 ## The sandbox
 

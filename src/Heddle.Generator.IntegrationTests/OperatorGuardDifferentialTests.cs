@@ -156,11 +156,30 @@ namespace Heddle.Generator.IntegrationTests
             AssertBothTiersReject("guard/unary-struct.heddle", "-Total", HeddleDiagnosticIds.UnaryOperatorNotDefined);
         }
 
+        /// <summary>The no-machinery closures: shapes the shared table now emits verbatim (or as one spelled
+        /// constant/cast) because C# and the engine are provably byte-identical there — the engine's constant
+        /// <c>null == null</c>, C#'s lifted <c>!</c> on <c>bool?</c>, <c>~</c> over an enum at either
+        /// nullability (the engine converts the complement back to the operand's own type), and
+        /// <c>null ?? x</c>, which the engine evaluates as the right operand boxed to object.</summary>
         [Fact]
-        public void UnaryNotOnANullableBool_DegradesAndRendersTheRuntimeResult()
+        public void VerbatimClosures_NowPrecompileAndMatchTheRuntime()
         {
-            AssertDegradesAndRenders("guard/unary-lifted-not.heddle", "!Approved",
-                new Order { Approved = true }, "value: False\n");
+            foreach (var (key, expression, model) in new[]
+            {
+                ("guard/null-eq-null.heddle", "null == null", new Order()),
+                ("guard/null-neq-null.heddle", "null != null", new Order()),
+                ("guard/unary-lifted-not.heddle", "!Approved", new Order { Approved = true }),
+                ("guard/unary-lifted-not-null.heddle", "!Approved", new Order { Approved = null }),
+                ("guard/complement-enum.heddle", "~Flags", new Order { Flags = OrderFlags.Rush }),
+                ("guard/complement-lifted-enum.heddle", "~FlagsMaybe", new Order { FlagsMaybe = OrderFlags.Gift }),
+                ("guard/complement-lifted-enum-null.heddle", "~FlagsMaybe", new Order { FlagsMaybe = null }),
+                ("guard/null-coalesce-value.heddle", "null ?? Count", new Order { Count = 7 }),
+                ("guard/null-coalesce-ref.heddle", "null ?? Name", new Order { Name = "x" }),
+            })
+            {
+                var (precompiled, dyn) = DifferentialHarness.Render(key, Template(expression), typeof(Order), model);
+                Assert.Equal(dyn, precompiled);
+            }
         }
 
         /// <summary>String concatenation with an enum or user-typed operand now emits the engine's exact

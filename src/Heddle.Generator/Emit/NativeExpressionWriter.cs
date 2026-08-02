@@ -384,8 +384,10 @@ namespace Heddle.Generator.Emit
                 return Refuse("a member path that does not resolve statically");
             }
 
-            // An expression's operands are boxed, and a ref struct cannot be. Left to the dynamic tier, which reads
-            // it reflectively; emitted here it was CS0030 in the consumer's build over a template that renders.
+            // An expression's operands are boxed, and a ref struct cannot be. On modern TFMs the engine
+            // refuses the same path when IT compiles the template (Expression.Convert to object throws →
+            // HED0005), so degrading hands the reader the engine's positioned id instead of a CS0030 in a
+            // .g.cs; only .NET Framework expression trees box a ref struct and render it.
             if (SymbolTypeResolver.EndsOnRefStruct(resolution))
                 return Refuse("a member path ending on a ref struct, which an expression operand cannot box");
 
@@ -492,6 +494,15 @@ namespace Heddle.Generator.Emit
                 OperatorVerdict.Supported)
                 return Refuse("operator '" + op + "' over operand kinds the shared table does not emit");
 
+            // 'null == null' / 'null != null' fold to a constant on the engine; the same constant is
+            // spelled here so C#'s null-literal comparison rules (and their warnings) never run.
+            if (node.Operator == ExprOperator.Equal || node.Operator == ExprOperator.NotEqual)
+            {
+                if (Estimate(node.Left).Category == OperandCategory.NullLiteral &&
+                    Estimate(node.Right).Category == OperandCategory.NullLiteral)
+                    return node.Operator == ExprOperator.Equal ? "true" : "false";
+            }
+
             // Mixed/unrelated equality emits through the adapter that replays the engine's own fallback
             // chain over the call site's static types — a user operator where the pair binds one, null-safe
             // object.Equals for the rest. Verbatim C# is either CS0019 or a bare reference comparison here.
@@ -533,6 +544,10 @@ namespace Heddle.Generator.Emit
             {
                 var leftKind = Estimate(node.Left);
                 var rightKind = Estimate(node.Right);
+                // 'null ?? x' is x boxed: the engine coalesces a typed object null, and the result is
+                // always the right operand as object. The constant-null left arm is never spelled.
+                if (leftKind.Category == OperandCategory.NullLiteral)
+                    return "((object)(" + right + "))";
                 if (leftKind.Category == OperandCategory.Numeric && rightKind.Category == OperandCategory.Numeric &&
                     leftKind.Kind != rightKind.Kind)
                 {
