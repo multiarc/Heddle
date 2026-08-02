@@ -35,7 +35,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Heddle.Demo.Models", "src\H
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Heddle.Demo.Wasm", "src\Heddle.Demo.Wasm\Heddle.Demo.Wasm.csproj", "{81A72F09-FFB8-4967-AB08-141C56A72DE1}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Heddle.Generator", "Heddle.Generator", "{FF8FF1A0-2F37-3C8A-D386-BFD4180F0F43}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Generator Roslyn Variants", "Generator Roslyn Variants", "{FF8FF1A0-2F37-3C8A-D386-BFD4180F0F43}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Heddle.Generator.Roslyn411", "src\Heddle.Generator\Heddle.Generator.Roslyn411.csproj", "{33D8C18A-AA25-40C5-8DAC-6BC0664EFF08}"
 EndProject
