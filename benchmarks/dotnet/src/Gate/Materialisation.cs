@@ -15,8 +15,17 @@ namespace Heddle.Benchmarks.Dotnet.Gate
     /// a benchmark's sink has to touch every unit of output, or the measurement is of the plumbing.
     ///
     /// The writers here fold every char and every byte into a rolling FNV-1a hash. Reading each unit
-    /// is what makes elision impossible; the hash is also the cheapest useful thing to do with the
-    /// data, so it does not distort what is being timed the way, say, appending to a list would.
+    /// is what makes elision impossible.
+    ///
+    /// <para><b>These are GATE writers and are no longer used by any timed path.</b> The hash is
+    /// cheap per unit but not free: the TextWriter one reads through a per-char virtual call and the
+    /// buffer one allocates 64 KB per render, which is fine for a correctness pass and ruinous for a
+    /// measurement — no competitor row pays anything comparable, and because both Heddle backends
+    /// paid the same constant it compressed the runtime-vs-precompiled ratio toward 1.0. The bench
+    /// suites use the deliberately dumb sinks in <c>Bench/BenchSinks.cs</c> instead. That is safe
+    /// because the property these writers establish — the engine really produced every unit — is a
+    /// per-process fact, proven here and in each suite's <c>[GlobalSetup]</c> before anything is
+    /// timed, not something that needs re-proving on every iteration.</para>
     /// </summary>
     public static class Materialisation
     {
@@ -36,7 +45,9 @@ namespace Heddle.Benchmarks.Dotnet.Gate
 
             public void Reset() { _hash = FnvOffset; Count = 0; }
 
-            public override Encoding Encoding => Encoding.UTF8;
+            // UTF-16: this writer consumes chars. Reporting UTF8 here was simply untrue, and nothing
+            // reads it -- but a gate writer that misdescribes itself is the wrong thing to leave.
+            public override Encoding Encoding => Encoding.Unicode;
 
             public override void Write(char value)
             {

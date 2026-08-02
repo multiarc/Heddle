@@ -1,5 +1,7 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using BenchmarkDotNet.Attributes;
 using Heddle.Benchmarks.Dotnet.Corpus;
 using Heddle.Benchmarks.Dotnet.Engines;
@@ -19,11 +21,11 @@ namespace Heddle.Benchmarks.Dotnet.Bench
     /// Mixing them into the sweep would let one engine occupy six rows of a table every other
     /// ecosystem gets one row in.</para>
     ///
-    /// <para><b>Every technique is measured through a checksum, never a materialised string.</b> The
-    /// streaming sinks genuinely never allocate the full output; returning one would destroy the
-    /// property being measured. The checksum is folded from the characters and bytes the engine
-    /// actually produced, so a sink cannot win by eliding work — see <c>Gate/Materialisation.cs</c>,
-    /// and the differential in <c>Gate/SelfTest.cs</c> that proves all six agree byte for byte.</para>
+    /// <para><b>The streaming sinks are pre-sized and reused; the model is hoisted.</b> Both suites
+    /// time exactly one engine call, into a sink that does nothing but advance an offset or perform
+    /// one bulk copy — see <c>Bench/BenchSinks.cs</c>. Content is proven once per process, untimed,
+    /// by the gate and by each suite's <c>[GlobalSetup]</c>, not re-proven on every iteration; the
+    /// differential in <c>Gate/SelfTest.cs</c> shows all six paths agree byte for byte.</para>
     /// </summary>
     [MemoryDiagnoser]
     public class TechniqueRuntimeBenchmarks
@@ -34,6 +36,10 @@ namespace Heddle.Benchmarks.Dotnet.Bench
         [ParamsSource(nameof(Workloads))]
         public string Workload { get; set; }
 
+        private object _model;
+        private BenchSinks.BenchBufferWriter _buffer;
+        private BenchSinks.BenchTextWriter _writer;
+
         [GlobalSetup]
         public void Setup()
         {
@@ -41,16 +47,37 @@ namespace Heddle.Benchmarks.Dotnet.Bench
             // against the corpus, and the technique differential proves the other two agree with it.
             var output = HeddleEngine.Render("controlled", Workload, HeddleEngine.Sink.String);
             Controlled.AssertCell(HeddleEngine.Name, Workload, output);
+
+            // Hoisted so the timed region is the render alone. Previously ModelFor ran inside every
+            // timed iteration here while the precompiled suite below hoisted it — an asymmetry that
+            // handed the runtime side extra per-iteration work and understated its advantage.
+            _model = HeddleEngine.ModelFor(Workload);
+            _buffer = new BenchSinks.BenchBufferWriter(output.Length * 4 + 4096);
+            _writer = new BenchSinks.BenchTextWriter(output.Length + 1024);
+            TechniqueSetup.AssertSinks(output, _buffer, _writer,
+                b => HeddleEngine.RenderToBuffer("controlled", Workload, b, _model),
+                w => HeddleEngine.RenderToWriter("controlled", Workload, w, _model),
+                Workload, "runtime");
         }
 
         [Benchmark(Baseline = true)]
-        public ulong Utf8() => HeddleEngine.RenderToSink("controlled", Workload, HeddleEngine.Sink.Utf8);
+        public int Utf8()
+        {
+            _buffer.Reset();
+            HeddleEngine.RenderToBuffer("controlled", Workload, _buffer, _model);
+            return _buffer.WrittenCount;
+        }
 
         [Benchmark]
-        public ulong TextWriter() => HeddleEngine.RenderToSink("controlled", Workload, HeddleEngine.Sink.TextWriter);
+        public int TextWriter()
+        {
+            _writer.Reset();
+            HeddleEngine.RenderToWriter("controlled", Workload, _writer, _model);
+            return _writer.Length;
+        }
 
         [Benchmark]
-        public ulong String() => HeddleEngine.RenderToSink("controlled", Workload, HeddleEngine.Sink.String);
+        public int String() => HeddleEngine.RenderToString("controlled", Workload, _model).Length;
     }
 
     /// <summary>
@@ -74,6 +101,8 @@ namespace Heddle.Benchmarks.Dotnet.Bench
         public string Workload { get; set; }
 
         private object _model;
+        private BenchSinks.BenchBufferWriter _buffer;
+        private BenchSinks.BenchTextWriter _writer;
 
         [GlobalSetup]
         public void Setup()
@@ -81,15 +110,59 @@ namespace Heddle.Benchmarks.Dotnet.Bench
             _model = HeddleEngine.ModelFor(Workload);
             var output = Engines.Precompiled.Render("controlled", Workload, HeddleEngine.Sink.String);
             Controlled.AssertCell("Heddle (precompiled/string)", Workload, output);
+
+            _buffer = new BenchSinks.BenchBufferWriter(output.Length * 4 + 4096);
+            _writer = new BenchSinks.BenchTextWriter(output.Length + 1024);
+            TechniqueSetup.AssertSinks(output, _buffer, _writer,
+                b => Engines.Precompiled.RenderToBuffer(Workload, b, _model),
+                w => Engines.Precompiled.RenderToWriter(Workload, w, _model),
+                Workload, "precompiled");
         }
 
         [Benchmark(Baseline = true)]
-        public ulong Utf8() => Engines.Precompiled.RenderToSink("controlled", Workload, HeddleEngine.Sink.Utf8, _model);
+        public int Utf8()
+        {
+            _buffer.Reset();
+            Engines.Precompiled.RenderToBuffer(Workload, _buffer, _model);
+            return _buffer.WrittenCount;
+        }
 
         [Benchmark]
-        public ulong TextWriter() => Engines.Precompiled.RenderToSink("controlled", Workload, HeddleEngine.Sink.TextWriter, _model);
+        public int TextWriter()
+        {
+            _writer.Reset();
+            Engines.Precompiled.RenderToWriter(Workload, _writer, _model);
+            return _writer.Length;
+        }
 
         [Benchmark]
-        public ulong String() => Engines.Precompiled.RenderToSink("controlled", Workload, HeddleEngine.Sink.String, _model);
+        public int String() => Engines.Precompiled.RenderToString(Workload, _model).Length;
+    }
+
+    /// <summary>
+    /// The once-per-process proof that the bench sinks see the whole output, shared by both technique
+    /// suites. Runs in <c>[GlobalSetup]</c>, so it costs a timed iteration nothing.
+    /// </summary>
+    internal static class TechniqueSetup
+    {
+        public static void AssertSinks(string oracle,
+            BenchSinks.BenchBufferWriter buffer, BenchSinks.BenchTextWriter writer,
+            Action<BenchSinks.BenchBufferWriter> renderBuffer,
+            Action<BenchSinks.BenchTextWriter> renderWriter,
+            string workload, string backend)
+        {
+            renderBuffer(buffer);
+            if (!string.Equals(Encoding.UTF8.GetString(buffer.WrittenSpan), oracle, StringComparison.Ordinal))
+                throw new GateFailure(
+                    $"[FAIL] {backend}/{workload}: the utf8 bench sink disagrees with the gated string render.");
+
+            renderWriter(writer);
+            if (!writer.WrittenSpan.SequenceEqual(oracle.AsSpan()))
+                throw new GateFailure(
+                    $"[FAIL] {backend}/{workload}: the textwriter bench sink disagrees with the gated string render.");
+
+            buffer.Reset();
+            writer.Reset();
+        }
     }
 }

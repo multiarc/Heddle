@@ -1,5 +1,7 @@
 using System;
+using System.Buffers;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using Heddle.Benchmarks.Dotnet.Gate;
@@ -103,30 +105,20 @@ namespace Heddle.Benchmarks.Dotnet.Engines
             }
         }
 
-        /// <summary>The bench path: a checksum, never a materialised string. See HeddleEngine.RenderToSink.</summary>
-        public static ulong RenderToSink(string track, string workload, HeddleEngine.Sink sink, object model)
-        {
-            var root = Root(workload);
-            switch (sink)
-            {
-                case HeddleEngine.Sink.String:
-                    return Materialisation.HashOf(PrecompiledRuntime.GenerateString(root, model, null, null));
-                case HeddleEngine.Sink.TextWriter:
-                {
-                    var writer = new Materialisation.ChecksumTextWriter();
-                    PrecompiledRuntime.GenerateToWriter(root, model, null, null, writer);
-                    return writer.Hash;
-                }
-                case HeddleEngine.Sink.Utf8:
-                {
-                    var buffer = new Materialisation.ChecksumBufferWriter();
-                    PrecompiledRuntime.GenerateUtf8(root, model, null, null, buffer);
-                    return buffer.Hash;
-                }
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(sink), sink, null);
-            }
-        }
+        /// <summary>The bench path: render into a caller-owned sink. See
+        /// <see cref="HeddleEngine.RenderToBuffer"/> for why the model and the sink are both the
+        /// caller's. No <c>track</c> parameter: this backend is controlled-track only, and accepting
+        /// one it then ignored invited idiomatic-track rows that were silently controlled numbers.</summary>
+        public static void RenderToBuffer(string workload, IBufferWriter<byte> buffer, object model)
+            => PrecompiledRuntime.GenerateUtf8(Root(workload), model, null, null, buffer);
+
+        /// <inheritdoc cref="RenderToBuffer"/>
+        public static void RenderToWriter(string workload, TextWriter writer, object model)
+            => PrecompiledRuntime.GenerateToWriter(Root(workload), model, null, null, writer);
+
+        /// <inheritdoc cref="RenderToBuffer"/>
+        public static string RenderToString(string workload, object model)
+            => PrecompiledRuntime.GenerateString(Root(workload), model, null, null);
 
         /// <summary>
         /// Gate cells for the covered workloads, controlled track only. Never in the cross-stack
