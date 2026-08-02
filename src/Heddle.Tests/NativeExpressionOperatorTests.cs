@@ -70,9 +70,8 @@ namespace Heddle.Tests
             yield return R("@(EnumA & EnumB)", (Color.Red | Color.Green) & Color.Green);
             yield return R("@(EnumA | EnumB)", (Color.Red | Color.Green) | Color.Green);
             yield return R("@(~EnumA)", ~(Color.Red | Color.Green));
-            // Mismatched nullability lifts to the NULLABLE enum on both sides of the pair — a null operand
-            // propagates instead of throwing on the Convert back to the bare enum (the defect this row
-            // regression-pins was a render-time InvalidOperationException for the non-nullable-left shape).
+            // Mismatched-nullability enum bitwise lifts to the nullable enum; the non-nullable-left shape
+            // used to throw at render on a null operand.
             yield return R("@(EnumA & NEnum)", (Color.Red | Color.Green) & (Color?)null);
             yield return R("@(EnumA & NEnumV)", (Color.Red | Color.Green) & (Color?)Color.Green);
             yield return R("@(NEnum | EnumB)", (Color?)null | Color.Green);

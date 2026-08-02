@@ -57,6 +57,11 @@ namespace Heddle.Generator.Binding
             }
         }
 
+        /// <summary>The generator's <see cref="OperandKind.TypeIdentity"/> spelling — any deterministic,
+        /// collision-free display works, since identities are only compared within one producer.</summary>
+        private static string Identity(ITypeSymbol underlying) =>
+            underlying.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+
         /// <summary>Strips a <c>Nullable&lt;T&gt;</c> wrapper, reporting whether one was present.</summary>
         public static ITypeSymbol Unwrap(ITypeSymbol type, out bool isNullable)
         {
@@ -85,7 +90,7 @@ namespace Heddle.Generator.Binding
                 return OperandKind.Unknown;
 
             if (underlying.TypeKind == TypeKind.Enum)
-                return OperandKind.Of(OperandCategory.Enum, isNullable);
+                return OperandKind.Of(OperandCategory.Enum, isNullable, Identity(underlying));
 
             var kind = ToNumericKind(underlying.SpecialType);
             if (kind != NumericKind.None)
@@ -104,9 +109,9 @@ namespace Heddle.Generator.Binding
             }
 
             if (underlying.IsReferenceType)
-                return OperandKind.Of(OperandCategory.Reference);
+                return OperandKind.Of(OperandCategory.Reference, false, Identity(underlying));
             if (underlying.IsValueType)
-                return OperandKind.Of(OperandCategory.Other, isNullable);
+                return OperandKind.Of(OperandCategory.Other, isNullable, Identity(underlying));
             return OperandKind.Unknown;
         }
     }

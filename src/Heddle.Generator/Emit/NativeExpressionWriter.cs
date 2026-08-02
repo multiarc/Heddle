@@ -384,10 +384,9 @@ namespace Heddle.Generator.Emit
                 return Refuse("a member path that does not resolve statically");
             }
 
-            // An expression's operands are boxed, and a ref struct cannot be. On modern TFMs the engine
-            // refuses the same path when IT compiles the template (Expression.Convert to object throws →
-            // HED0005), so degrading hands the reader the engine's positioned id instead of a CS0030 in a
-            // .g.cs; only .NET Framework expression trees box a ref struct and render it.
+            // An expression's operands are boxed, and a ref struct cannot be. The modern-TFM engine refuses
+            // the same path at template compile (HED0005); degrading surfaces that positioned id instead of
+            // a CS0030 in a .g.cs.
             if (SymbolTypeResolver.EndsOnRefStruct(resolution))
                 return Refuse("a member path ending on a ref struct, which an expression operand cannot box");
 
@@ -490,12 +489,15 @@ namespace Heddle.Generator.Emit
             var right = Write(node.Right);
             if (left == null || right == null)
                 return null;
-            if (NativeOperatorRules.Classify(node.Operator, Estimate(node.Left), Estimate(node.Right)) !=
-                OperatorVerdict.Supported)
+            string coalesceWiderFq = null;
+            var coalesceRelation = node.Operator == ExprOperator.Coalesce
+                ? RelateOperands(node.Left, node.Right, out coalesceWiderFq)
+                : TypeRelation.Unknown;
+            if (NativeOperatorRules.Classify(node.Operator, Estimate(node.Left), Estimate(node.Right),
+                    coalesceRelation) != OperatorVerdict.Supported)
                 return Refuse("operator '" + op + "' over operand kinds the shared table does not emit");
 
-            // 'null == null' / 'null != null' fold to a constant on the engine; the same constant is
-            // spelled here so C#'s null-literal comparison rules (and their warnings) never run.
+            // The engine folds a null-against-null comparison to a constant; spell that constant.
             if (node.Operator == ExprOperator.Equal || node.Operator == ExprOperator.NotEqual)
             {
                 if (Estimate(node.Left).Category == OperandCategory.NullLiteral &&
@@ -544,8 +546,7 @@ namespace Heddle.Generator.Emit
             {
                 var leftKind = Estimate(node.Left);
                 var rightKind = Estimate(node.Right);
-                // 'null ?? x' is x boxed: the engine coalesces a typed object null, and the result is
-                // always the right operand as object. The constant-null left arm is never spelled.
+                // 'null ?? x' is x boxed to object on the engine; the constant-null left arm is never spelled.
                 if (leftKind.Category == OperandCategory.NullLiteral)
                     return "((object)(" + right + "))";
                 if (leftKind.Category == OperandCategory.Numeric && rightKind.Category == OperandCategory.Numeric &&
@@ -559,6 +560,13 @@ namespace Heddle.Generator.Emit
                     left = "((" + keyword + "?)(" + left + "))";
                     right = "((" + keyword + (rightKind.IsNullable ? "?" : string.Empty) + ")(" + right + "))";
                 }
+
+                // Pin the narrower operand to the wider type so C#'s '??' typing — which also consults
+                // user-defined conversions the engine never binds — has nothing left to decide.
+                if (coalesceRelation == TypeRelation.LeftWidensToRight && coalesceWiderFq != null)
+                    left = "((" + coalesceWiderFq + ")(" + left + "))";
+                else if (coalesceRelation == TypeRelation.RightWidensToLeft && coalesceWiderFq != null)
+                    right = "((" + coalesceWiderFq + ")(" + right + "))";
             }
 
             return "(" + left + " " + op + " " + right + ")";
@@ -626,7 +634,8 @@ namespace Heddle.Generator.Emit
                 return null;
             var tKind = Estimate(node.WhenTrue);
             var fKind = Estimate(node.WhenFalse);
-            if (NativeOperatorRules.ClassifyTernary(Estimate(node.Condition), tKind, fKind) !=
+            var armRelation = RelateOperands(node.WhenTrue, node.WhenFalse, out var armWiderFq);
+            if (NativeOperatorRules.ClassifyTernary(Estimate(node.Condition), tKind, fKind, armRelation) !=
                 OperatorVerdict.Supported)
                 return Refuse("conditional arms the shared table does not unify");
 
@@ -647,6 +656,13 @@ namespace Heddle.Generator.Emit
                 t = "((" + unified + ")(" + t + "))";
                 f = "((" + unified + ")(" + f + "))";
             }
+
+            // Cast the narrower arm to the wider type so C#'s conditional inference — which weighs
+            // user-defined conversions and can find the pair ambiguous (CS0172) — never gets a vote.
+            if (armRelation == TypeRelation.LeftWidensToRight && armWiderFq != null)
+                t = "((" + armWiderFq + ")(" + t + "))";
+            else if (armRelation == TypeRelation.RightWidensToLeft && armWiderFq != null)
+                f = "((" + armWiderFq + ")(" + f + "))";
 
             return "(" + c + " ? " + t + " : " + f + ")";
         }
@@ -670,6 +686,54 @@ namespace Heddle.Generator.Emit
                 case NumericKind.Decimal: return "decimal";
                 default: return null;
             }
+        }
+
+        /// <summary>The caller-computed <see cref="TypeRelation"/> for a coalesce pair or ternary arms.
+        /// Reference pairs accept only implicit reference conversions — the assignability walk the engine's
+        /// unifier performs — never user-defined ones. <paramref name="widerTypeFq"/> is the cast target for
+        /// the widening relations.</summary>
+        private TypeRelation RelateOperands(ExprNode left, ExprNode right, out string widerTypeFq)
+        {
+            widerTypeFq = null;
+            var lk = Estimate(left);
+            var rk = Estimate(right);
+            if (OperandKind.KnownSameType(lk, rk))
+                return TypeRelation.Identical;
+
+            bool leftRef = lk.Category == OperandCategory.Reference || lk.Category == OperandCategory.String;
+            bool rightRef = rk.Category == OperandCategory.Reference || rk.Category == OperandCategory.String;
+            if (leftRef != rightRef)
+                return TypeRelation.None;   // a value type never unifies with a reference type on the engine
+            if (!leftRef)
+                return OperandKind.KnownDifferentType(lk, rk) ? TypeRelation.None : TypeRelation.Unknown;
+
+            var compilation = _typeFacts?.Compilation;
+            if (compilation == null)
+                return TypeRelation.Unknown;
+            var leftSymbol = ArgumentType(left);
+            var rightSymbol = ArgumentType(right);
+            if (leftSymbol == null || rightSymbol == null)
+                return TypeRelation.Unknown;
+            leftSymbol = SymbolFacts.Unwrap(leftSymbol, out _);
+            rightSymbol = SymbolFacts.Unwrap(rightSymbol, out _);
+
+            var leftToRight = compilation.ClassifyCommonConversion(leftSymbol, rightSymbol);
+            if (leftToRight.IsIdentity)
+                return TypeRelation.Identical;
+            if (leftToRight.Exists && leftToRight.IsImplicit && leftToRight.IsReference)
+            {
+                widerTypeFq = SymbolTypeResolver.FullyQualified(rightSymbol);
+                return TypeRelation.LeftWidensToRight;
+            }
+
+            var rightToLeft = compilation.ClassifyCommonConversion(rightSymbol, leftSymbol);
+            if (rightToLeft.Exists && rightToLeft.IsImplicit && rightToLeft.IsReference)
+            {
+                widerTypeFq = SymbolTypeResolver.FullyQualified(leftSymbol);
+                return TypeRelation.RightWidensToLeft;
+            }
+
+            return TypeRelation.None;
         }
 
         #region Operand-kind estimation
@@ -701,13 +765,19 @@ namespace Heddle.Generator.Emit
                 case UnaryNode unary:
                     return NativeOperatorRules.UnaryResult(unary.Operator, Estimate(unary.Operand));
                 case BinaryNode binary:
+                {
+                    var relation = binary.Operator == ExprOperator.Coalesce
+                        ? RelateOperands(binary.Left, binary.Right, out _)
+                        : TypeRelation.Unknown;
                     return NativeOperatorRules.BinaryResult(binary.Operator, Estimate(binary.Left),
-                        Estimate(binary.Right));
+                        Estimate(binary.Right), relation);
+                }
                 case TernaryNode ternary:
                 {
                     var whenTrue = Estimate(ternary.WhenTrue);
                     var whenFalse = Estimate(ternary.WhenFalse);
-                    return NativeOperatorRules.TernaryResult(whenTrue, whenFalse);
+                    return NativeOperatorRules.TernaryResult(whenTrue, whenFalse,
+                        RelateOperands(ternary.WhenTrue, ternary.WhenFalse, out _));
                 }
                 default:
                     return OperandKind.Unknown;   // IndexNode / MethodCallNode — never emitted here
