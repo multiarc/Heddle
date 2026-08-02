@@ -105,21 +105,34 @@ namespace Heddle.Tests
         }
 
         [Fact]
-        public void Deviation1_MixedAndUnrelatedEqualityIsNeverEmitted()
+        public void Deviation1_MixedEqualityEmitsThroughTheAdapterWhereTheEnginesChainIsTotal()
         {
             var i32 = OperandKind.Numeric(NumericKind.Int32, false);
+            var ni32 = OperandKind.Numeric(NumericKind.Int32, true);
             var str = OperandKind.Of(OperandCategory.String);
             var reference = OperandKind.Of(OperandCategory.Reference);
             foreach (var op in new[] { ExprOperator.Equal, ExprOperator.NotEqual })
             {
+                // A non-nullable value side can still reach the engine's HED1008, so it stays runtime-owned…
                 Assert.Equal(OperatorVerdict.RequiresRuntimeSemantics, NativeOperatorRules.Classify(op, i32, str));
                 Assert.Equal(OperatorVerdict.RequiresRuntimeSemantics,
-                    NativeOperatorRules.Classify(op, reference, reference));
-                Assert.Equal(OperatorVerdict.RequiresRuntimeSemantics,
                     NativeOperatorRules.Classify(op, OperandKind.Of(OperandCategory.Enum), i32));
+                // …while a pair that is null-assignable on BOTH sides runs the engine's total fallback chain,
+                // replayed by RuntimeOperators over the same static types.
+                Assert.Equal(OperatorVerdict.Supported, NativeOperatorRules.Classify(op, reference, reference));
+                Assert.Equal(OperatorVerdict.Supported, NativeOperatorRules.Classify(op, str, reference));
+                Assert.Equal(OperatorVerdict.Supported, NativeOperatorRules.Classify(op, ni32, reference));
                 Assert.Equal(OperatorVerdict.Supported, NativeOperatorRules.Classify(op, i32, i32));
                 Assert.Equal(OperatorVerdict.Supported, NativeOperatorRules.Classify(op, str, OperandKind.Null));
             }
+
+            // The adapter routing is scoped to the mixed pairs: the verbatim shapes keep the C# operator.
+            Assert.True(NativeOperatorRules.EqualityViaAdapter(reference, reference));
+            Assert.True(NativeOperatorRules.EqualityViaAdapter(str, ni32));
+            Assert.False(NativeOperatorRules.EqualityViaAdapter(i32, i32));
+            Assert.False(NativeOperatorRules.EqualityViaAdapter(str, str));
+            Assert.False(NativeOperatorRules.EqualityViaAdapter(str, OperandKind.Null));
+            Assert.False(NativeOperatorRules.EqualityViaAdapter(OperandKind.Unknown, reference));
         }
 
         [Fact]
