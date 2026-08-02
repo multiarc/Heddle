@@ -360,7 +360,7 @@ namespace Heddle.Generator.Emit
                     SymbolTypeResolver.IsNonNullableValueType(hop.Property),
                     SymbolTypeResolver.FullyQualified(hop.Property),
                     hop.Name,
-                    !hop.Property.IsRefLikeType,
+                    !SymbolTypeResolver.IsRefLikeOrRestricted(hop.Property),
                     SymbolTypeResolver.FullyQualified(hop.Receiver)));
             }
 

@@ -251,7 +251,20 @@ namespace Heddle.Generator.IntegrationTests
             var model = fixtureName == null ? null : Activator.CreateInstance(modelType);
             if (engineOutput == null)
             {
+#if NETFRAMEWORK
+                // The engine refusal these rows pin comes from the RUNTIME, and .NET Framework's draws the
+                // line elsewhere. Byref-like composition (a Span in an array, a type argument, a Nullable, a
+                // tuple) is refused by CoreCLR and merely UNMARKED on .NET Framework, whose runtime happily
+                // constructs it — those rows genuinely serve here, while the degrade above still stands
+                // because csc enforces the marking whatever the consumer targets. Pointer models, void type
+                // arguments and TypedReference arrays are bans OLDER than ref structs, enforced by mscorlib
+                // too — those rows refuse on every runtime.
+                var refusedByNetFxToo = name == "pointer" || name == "pointer-array" ||
+                                        name == "type-argument-void" || name == "array-of-restricted";
+                Assert.Equal(!refusedByNetFxToo, EngineServes(template, modelType));
+#else
                 Assert.False(EngineServes(template, modelType));
+#endif
                 return;
             }
 

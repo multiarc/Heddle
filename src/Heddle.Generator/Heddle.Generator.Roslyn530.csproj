@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The Roslyn 5.3 variant: same sources, same netstandard2.0 assembly identity, compiled against the
+       Microsoft.CodeAnalysis version src/Heddle/Heddle.csproj pins for net10.0. Packed by Heddle.Generator.csproj
+       into analyzers/dotnet/roslyn5.3/cs; consumed directly by the test projects' net10.0 legs so the variant a
+       .NET 10 SDK host would select is the one that leg exercises. -->
+  <PropertyGroup>
+    <HeddleRoslynApiVersion>5.3.0</HeddleRoslynApiVersion>
+  </PropertyGroup>
+
+  <Import Project="Heddle.Generator.Common.props" />
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <DefineConstants>$(DefineConstants);ROSLYN_4_11_OR_GREATER;ROSLYN_5_3_OR_GREATER</DefineConstants>
+  </PropertyGroup>
+
+</Project>

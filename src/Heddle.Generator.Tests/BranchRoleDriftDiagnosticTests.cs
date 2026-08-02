@@ -25,7 +25,7 @@ namespace Heddle.Generator.Tests
 
         private static IReadOnlyList<MetadataReference> BuildReferences()
         {
-            var tpa = (string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES");
+            var tpa = Heddle.Generator.Tests.HostAssemblies.TrustedOrLoaded();
             var refs = tpa.Split(Path.PathSeparator)
                 .Where(p => !string.IsNullOrEmpty(p) && File.Exists(p))
                 // Heddle.Generator is an *analyzer*, never a reference — and it carries linked copies of runtime

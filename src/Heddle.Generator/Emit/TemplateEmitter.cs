@@ -12,6 +12,7 @@ using Heddle.Language.Expressions;
 using Heddle.Precompiled;
 using Heddle.Strings.Core;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 
 namespace Heddle.Generator.Emit
 {
@@ -67,6 +68,18 @@ namespace Heddle.Generator.Emit
         private readonly GlobalConfig _config;
         private readonly LineMapper _map;
         private readonly Compilation _compilation;
+
+        /// <summary>Whether the CONSUMER's compiler parses a <c>u8</c> suffix — a language-version question about
+        /// the compilation being generated into, not about the Roslyn this assembly is built against. When it
+        /// cannot, <see cref="PieceWriter"/> spells the same span through a constant byte array instead.</summary>
+        private bool ConsumerParsesUtf8Literals() =>
+            _compilation is CSharpCompilation csharp &&
+#if ROSLYN_4_11_OR_GREATER
+            csharp.LanguageVersion >= Microsoft.CodeAnalysis.CSharp.LanguageVersion.CSharp11;
+#else
+            // The 4.1 floor's LanguageVersion enum predates the CSharp11 member; 1100 is its value.
+            (int)csharp.LanguageVersion >= 1100;
+#endif
 
         /// <summary>The generator's single Roslyn <c>ITypeFacts</c> adapter — the CLR assignability
         /// relation with its two nullable corrections, the unusable-prop-type predicate, and the shared AQN
@@ -3255,7 +3268,7 @@ namespace Heddle.Generator.Emit
                     SymbolTypeResolver.IsNonNullableValueType(hop.Property),
                     SymbolTypeResolver.FullyQualified(hop.Property),
                     hop.Name,
-                    !hop.Property.IsRefLikeType,
+                    !SymbolTypeResolver.IsRefLikeOrRestricted(hop.Property),
                     SymbolTypeResolver.FullyQualified(hop.Receiver)));
             }
 
@@ -3586,7 +3599,8 @@ namespace Heddle.Generator.Emit
             w.Line();
 
             for (int i = 0; i < _pieces.Count; i++)
-                PieceWriter.EmitPiece(w, i, _pieces[i], _config.EmitUtf8Pieces, utf8Supported: true);
+                PieceWriter.EmitPiece(w, i, _pieces[i], _config.EmitUtf8Pieces, utf8Supported: true,
+                    utf8LiteralSyntax: ConsumerParsesUtf8Literals());
             w.Line();
 
             foreach (var line in _fieldDecls.ToString().Split('\n'))

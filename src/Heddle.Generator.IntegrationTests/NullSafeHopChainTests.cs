@@ -116,10 +116,18 @@ namespace Heddle.Generator.IntegrationTests
             Assert.DoesNotContain(gen.Diagnostics,
                 d => d.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Error);
 
-            // And the refusal the degrade hands off to is a real one, with an id.
             var dynamicTemplate = new Heddle.HeddleTemplate(template,
                 new Heddle.Runtime.CompileContext(typeof(NestedRefStructModel)));
+#if NETFRAMEWORK
+            // The degrade above is right on every TFM — modern csc enforces the byref-like marking whatever
+            // the consumer targets, so generated code naming this type fails the consumer's build. What the
+            // degrade FALLS BACK TO differs: the .NET Framework runtime predates ref structs and enforces
+            // nothing, its expression trees box the value without complaint, and the dynamic tier renders.
+            Assert.True(dynamicTemplate.CompileResult.Success, dynamicTemplate.CompileResult.ToString());
+#else
+            // And the refusal the degrade hands off to is a real one, with an id.
             Assert.False(dynamicTemplate.CompileResult.Success);
+#endif
         }
 
         /// <summary>

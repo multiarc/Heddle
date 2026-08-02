@@ -599,11 +599,32 @@ namespace Heddle.Generator.Binding
                 return NameFault.Unnameable;
             }
 
-            if (!refStructAllowed && type.IsRefLikeType)
+            if (!refStructAllowed && IsRefLikeOrRestricted(type))
                 return Unusable(type, "is a ref struct: it cannot be boxed into a model, be an array element, or " +
                                       "stand as a type argument", out reason);
 
             return NameFault.None;
+        }
+
+        /// <summary>Ref-struct-ness as the CONSUMER'S COMPILER decides it, not as the metadata spells it. The
+        /// classic restricted trio predates <c>IsByRefLikeAttribute</c>: .NET Framework's mscorlib carries no
+        /// marking on them, so <see cref="ITypeSymbol.IsRefLikeType"/> answers false there while csc still
+        /// hardcodes the refusal — generated code boxing one fails the consumer's build (CS1503). Matched by
+        /// name for exactly that reason.</summary>
+        public static bool IsRefLikeOrRestricted(ITypeSymbol type)
+        {
+            if (type == null)
+                return false;
+            if (type.IsRefLikeType)
+                return true;
+            if (type.TypeKind != TypeKind.Struct)
+                return false;
+
+            var ns = type.ContainingNamespace;
+            if (ns == null || ns.Name != "System" || ns.ContainingNamespace?.IsGlobalNamespace != true)
+                return false;
+            return type.Name == "TypedReference" || type.Name == "ArgIterator" ||
+                   type.Name == "RuntimeArgumentHandle";
         }
 
         private static NameFault Unusable(ITypeSymbol type, string what, out string reason)
@@ -709,10 +730,26 @@ namespace Heddle.Generator.Binding
                     new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary,
                         metadataImportOptions: MetadataImportOptions.All)));
 
+#if ROSLYN_4_11_OR_GREATER
             return view.GetTypesByMetadataName(metadataName);
+#else
+            // Compilation.GetTypesByMetadataName exists only from Roslyn 4.2; this is the 4.1 floor variant —
+            // the one every net48 compiler host loads — so the same query is spelled as a per-assembly walk.
+            var candidates = ImmutableArray.CreateBuilder<INamedTypeSymbol>();
+            foreach (var reference in view.References)
+            {
+                if (!(view.GetAssemblyOrModuleSymbol(reference) is IAssemblySymbol assembly))
+                    continue;
+                var candidate = assembly.GetTypeByMetadataName(metadataName);
+                if (candidate != null)
+                    candidates.Add(candidate);
+            }
+
+            return candidates.ToImmutable();
+#endif
         }
 
-        /// <summary>The CLR name <see cref="Compilation.GetTypesByMetadataName"/> reads — nested types joined by
+        /// <summary>The CLR name the full-metadata probe reads — nested types joined by
         /// <c>+</c>, generic arity as a backtick suffix, which <see cref="ISymbol.MetadataName"/> already carries on
         /// a constructed type as well as on its definition.</summary>
         private static string MetadataNameOf(INamedTypeSymbol type)
@@ -827,7 +864,7 @@ namespace Heddle.Generator.Binding
         {
             if (resolution == null || resolution.Hops.Count == 0)
                 return false;
-            return resolution.Hops[resolution.Hops.Count - 1].Property?.IsRefLikeType == true;
+            return IsRefLikeOrRestricted(resolution.Hops[resolution.Hops.Count - 1].Property);
         }
 
         public static string FullyQualified(ITypeSymbol type) =>

@@ -42,7 +42,7 @@ namespace Probe.Hidden
 
         private static IReadOnlyList<MetadataReference> BuildFramework()
         {
-            var tpa = (string) AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES");
+            var tpa = Heddle.Generator.Tests.HostAssemblies.TrustedOrLoaded();
             return tpa.Split(Path.PathSeparator)
                 .Where(p => !string.IsNullOrEmpty(p) && File.Exists(p))
                 .Where(p => !string.Equals(Path.GetFileNameWithoutExtension(p), "Heddle.Generator",

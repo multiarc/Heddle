@@ -884,9 +884,23 @@ namespace Heddle.Generator
                 return rooted;
 
             outOfRoot = true;
-            return TemplateKey.TryNormalize(System.IO.Path.GetFileName(template.Text.Path), out var flat)
+            return TemplateKey.TryNormalize(FileNameOf(template.Text.Path), out var flat)
                 ? flat
                 : null;
+        }
+
+        /// <summary>The last path segment, spelled by hand: .NET Framework's <c>Path.GetFileName</c> VALIDATES
+        /// path characters and throws on <c>"</c> and control characters — ordinary file-name characters on Linux
+        /// and macOS that .NET Core's implementation accepts, and that
+        /// <c>ATemplatePathWithNoLineDirectiveSpellingLosesTheMappingNotTheBuild</c> feeds through here. The
+        /// generator has no file system, so the HOST's path-character rules must not decide whether a template
+        /// gets a key.</summary>
+        private static string FileNameOf(string path)
+        {
+            if (string.IsNullOrEmpty(path))
+                return path;
+            var separator = path.LastIndexOfAny(new[] { '/', '\\' });
+            return separator < 0 ? path : path.Substring(separator + 1);
         }
 
         /// <summary>Derives optional registered name for additional import spelling (same TemplateKey normalization as keys).

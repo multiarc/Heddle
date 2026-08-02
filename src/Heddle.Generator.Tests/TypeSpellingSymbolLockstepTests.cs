@@ -33,7 +33,7 @@ public class GlobalProbe { public class Inner { } }";
 
         private static SymbolTypeResolver BuildResolver()
         {
-            var tpa = (string) AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES");
+            var tpa = Heddle.Generator.Tests.HostAssemblies.TrustedOrLoaded();
             var references = tpa.Split(Path.PathSeparator)
                 .Where(p => !string.IsNullOrEmpty(p) && File.Exists(p))
                 .Where(p => !string.Equals(Path.GetFileNameWithoutExtension(p), "Heddle.Generator",

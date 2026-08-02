@@ -95,11 +95,15 @@ namespace IsolatedExports
                     int hash = 17;
                     foreach (var c in Source)
                         hash = hash * 31 + c;
-                    var name = "HeddleIsolatedExports" + hash.ToString("x8");
+                    // The runtime flavour is part of the cache key, not just the source: the references come from
+                    // the RUNNING host, so a net48 leg finding a hit compiled by a net8 leg would LoadFrom an
+                    // assembly whose attribute blobs name System.Private.CoreLib — unresolvable on Fusion.
+                    var flavour = typeof(object).Assembly.GetName().Name + Environment.Version.Major;
+                    var name = "HeddleIsolatedExports" + hash.ToString("x8") + "-" + flavour;
                     _path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), name + ".dll");
                     if (!System.IO.File.Exists(_path))
                     {
-                        var references = ((string) AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES"))
+                        var references = (Heddle.Generator.Tests.HostAssemblies.TrustedOrLoaded())
                             .Split(System.IO.Path.PathSeparator)
                             .Where(p => !string.IsNullOrEmpty(p) && System.IO.File.Exists(p))
                             .Select(p => (Microsoft.CodeAnalysis.MetadataReference)

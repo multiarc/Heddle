@@ -25,7 +25,14 @@ namespace Heddle.Generator.IntegrationTests
 
             var src = gen.TemplateSources.Values.Single();
             Assert.Contains("U8 => ", src);
+#if NETFRAMEWORK
+            // This leg's harness compiles at Roslyn 4.1's latest (C# 10), where a u8 suffix does not parse —
+            // the twin is spelled through a constant byte array instead, which compiles to the same blob.
+            Assert.Contains("U8 => new byte[]", src);
+            Assert.DoesNotContain("u8;", src);
+#else
             Assert.Contains("u8;", src);
+#endif
             Assert.Contains("Utf8Pieces", gen.ManifestSource);
             Assert.NotNull(gen.Assembly); // the u8 tier compiles (LangVersion latest in the harness).
         }

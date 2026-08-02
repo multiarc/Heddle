@@ -48,9 +48,15 @@ namespace Heddle.Language
             if (ImportReader != null)
                 return ImportReader(importPath);
 
+            // RS1035 (no file IO in analyzers) fires because this file is linked into the generator, but the
+            // fallback below is the RUNTIME half of the seam: the generator always supplies an ImportReader
+            // serving AdditionalFiles — that is what this class exists to make possible — so in an analyzer
+            // context this read is unreachable, not exempted.
+#pragma warning disable RS1035
             var resolvedPath = Path.Combine(RootPath ?? string.Empty, importPath);
             using (var file = File.OpenText(resolvedPath))
                 return file.ReadToEnd();
+#pragma warning restore RS1035
         }
 
         /// <summary>The display/provenance path for an import — <c>Path.Combine(RootPath, importPath)</c>, matching

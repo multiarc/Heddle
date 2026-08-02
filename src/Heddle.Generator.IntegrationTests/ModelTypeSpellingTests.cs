@@ -254,10 +254,21 @@ namespace Heddle.Generator.IntegrationTests
             var template = "@model(){{" + ArticleType + ", " + assembly + ", Version=" + version +
                            "}}@\\\n[@(Title)]\n";
 
+#if NETFRAMEWORK
+            // Fusion binds a STRONG-NAMED reference version-exactly: on .NET Framework the stated 0.0.0.1 is
+            // not advice the loader can take but an identity the loaded assembly fails, so the engine refuses
+            // at @model. The behind-version-as-advice behaviour this test's name describes is the .NET Core
+            // default-load-context rule, which starts where Fusion ends.
+            var dynamicTemplate = new Heddle.HeddleTemplate(template,
+                new Heddle.Runtime.CompileContext(typeof(Article)));
+            Assert.False(dynamicTemplate.CompileResult.Success);
+            Assert.Contains(dynamicTemplate.CompileResult.Errors, e => e.DiagnosticId == "HED0005");
+#else
             var (precompiled, dyn) = DifferentialHarness.Render(key, template, typeof(Article),
                 new Article { Title = "T" });
             Assert.Equal("[T]\n", dyn);
             Assert.Equal(dyn, precompiled);
+#endif
         }
 
         /// <summary>
