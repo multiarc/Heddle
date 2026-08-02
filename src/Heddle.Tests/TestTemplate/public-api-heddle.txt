@@ -912,6 +912,9 @@ TYPE Heddle.Precompiled.PrecompiledValidationReport
   PROP System.Boolean ValidatedStaleness {get;}
   PROP System.Collections.Generic.IReadOnlyList<Heddle.Precompiled.PrecompiledFallbackEvent> Failures {get;}
   PROP System.Int32 EntriesChecked {get;}
+TYPE Heddle.Precompiled.RuntimeOperators
+  METHOD System.Boolean Equal(TLeft, TRight)
+  METHOD System.Boolean NotEqual(TLeft, TRight)
 TYPE Heddle.Precompiled.TemplateKey
   FIELD System.String TemplateExtension
   METHOD System.Boolean HasTemplateExtension(System.String)

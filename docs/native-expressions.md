@@ -239,6 +239,10 @@ Native expressions match C# except for a small, deliberate set of ergonomic choi
    and what `OperatorGuardDifferentialTests.MixedTypeEquality_CompilesTheConsumerProject_AndDegrades`
    pins. **Do not widen the guard to match a looser reading of this rule:** doing so turns a compile
    error into a silent `false`, which is a breaking change and window‑gated.
+   On the precompiled tier this deviation emits through `Heddle.Precompiled.RuntimeOperators`, whose
+   generic entry points replay the engine's own fallback chain over the call site's static types —
+   a user operator where the pair binds one, null‑safe `object.Equals` otherwise — cached per type
+   pair, so the two tiers keep one verdict byte for byte instead of the template degrading.
 2. `.` hops (and indexer targets) are null‑safe, yielding `default(T)`.
 3. `-2147483648` types as `long` (first‑fit literal typing, without C#'s lexer special case); the
    value is identical.

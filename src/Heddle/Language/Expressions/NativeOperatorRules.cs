@@ -80,8 +80,12 @@ namespace Heddle.Language.Expressions
                     case OperandCategory.NullLiteral:
                         return OperatorVerdict.Supported;   // string.Concat on both sides, same text
                     default:
-                        // Formatting is runtime-owned for enums and user types.
-                        return OperatorVerdict.RequiresRuntimeSemantics;
+                        // Enums and user types concatenate through the same object-pair string.Concat the
+                        // engine binds UNCONDITIONALLY — its EmitStringConcat never consults a user-defined
+                        // operator or conversion, where verbatim C# would prefer one. The writer therefore
+                        // spells the Concat call explicitly for these operands (see WriteBinary), which is
+                        // the engine's exact BCL call and bypasses user operators the same way.
+                        return OperatorVerdict.Supported;
                 }
             }
 
@@ -139,7 +143,7 @@ namespace Heddle.Language.Expressions
 
         private static OperatorVerdict ClassifyEquality(in OperandKind left, in OperandKind right)
         {
-            if (IsUndecidable(left) || IsUndecidable(right))
+            if (left.Category == OperandCategory.Unknown || right.Category == OperandCategory.Unknown)
                 return OperatorVerdict.RequiresRuntimeSemantics;
 
             bool leftNull = left.Category == OperandCategory.NullLiteral;
@@ -148,6 +152,9 @@ namespace Heddle.Language.Expressions
                 return OperatorVerdict.RequiresRuntimeSemantics;   // Runtime folds this to a constant; C# would report CS0019
             if (leftNull || rightNull)
             {
+                // Verbatim for every null-inhabitable other side, references included: C# binds the same
+                // user operator (or reference test) for a null literal that the engine's typed-null
+                // Expression.Equal binds.
                 var other = leftNull ? right : left;
                 return other.IsNullAssignable ? OperatorVerdict.Supported : OperatorVerdict.NotDefined;
             }
@@ -170,9 +177,34 @@ namespace Heddle.Language.Expressions
             if (left.Category == OperandCategory.String && right.Category == OperandCategory.String)
                 return OperatorVerdict.Supported;
 
-            // Mixed/unrelated operands use null-safe object.Equals in the runtime, but emitted C# is either CS0019
-            // or a reference comparison. Same-enum equality stays conservative without corpus proof of byte-equivalence.
+            // Mixed/unrelated operands run the engine's equality TAIL — a user-defined operator where the
+            // pair binds one, null-safe object.Equals for the rest. That tail is TOTAL where both sides are
+            // statically null-assignable, so those pairs emit through the RuntimeOperators adapter, which
+            // replays the same chain over the same static types (see EqualityViaAdapter). A pair with a
+            // non-nullable value side can still reach the engine's HED1008 refusal and stays runtime-owned:
+            // a refusal stated at template compile must not become a render-time throw.
+            if (left.IsNullAssignable && right.IsNullAssignable)
+                return OperatorVerdict.Supported;
             return OperatorVerdict.RequiresRuntimeSemantics;
+        }
+
+        /// <summary>Whether a <see cref="OperatorVerdict.Supported"/> equality emits through
+        /// <c>Heddle.Precompiled.RuntimeOperators</c> rather than verbatim: the mixed/unrelated pairs whose
+        /// semantics live in the engine's fallback chain. The verbatim shapes — a null comparison, promoted
+        /// numerics, matched bools, strings — keep the C# operator.</summary>
+        public static bool EqualityViaAdapter(in OperandKind left, in OperandKind right)
+        {
+            if (left.Category == OperandCategory.NullLiteral || right.Category == OperandCategory.NullLiteral)
+                return false;
+            if (left.Category == OperandCategory.Numeric && right.Category == OperandCategory.Numeric)
+                return false;
+            if (left.Category == OperandCategory.Bool && right.Category == OperandCategory.Bool)
+                return false;
+            if (left.Category == OperandCategory.String && right.Category == OperandCategory.String)
+                return false;
+            if (left.Category == OperandCategory.Unknown || right.Category == OperandCategory.Unknown)
+                return false;
+            return left.IsNullAssignable && right.IsNullAssignable;
         }
 
         private static OperatorVerdict ClassifyBitwise(in OperandKind left, in OperandKind right)

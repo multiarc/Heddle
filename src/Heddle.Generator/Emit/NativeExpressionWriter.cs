@@ -139,6 +139,19 @@ namespace Heddle.Generator.Emit
                 _divisionsByZero.Add((site.Position, OperatorLexeme.ForBinary(site.Operator)));
         }
 
+        /// <summary>The FIRST specific refusal this writer hit, or null where nothing refused. The recursion
+        /// bottoms out at the offending node before any ancestor propagates the null, so first-wins is
+        /// innermost-wins — the construct a template author can actually act on. The emitter prints it inside
+        /// HED7031's parenthesis in place of the generic "unsupported native expression".</summary>
+        public string RefusalReason { get; private set; }
+
+        private string Refuse(string reason)
+        {
+            if (RefusalReason == null)
+                RefusalReason = reason;
+            return null;
+        }
+
         /// <summary>The shared ranker's descriptor for what a function call returns, for callers that have to type a
         /// call-site value without emitting it. <c>Unknown</c> where the ranker refuses or the name is neither a
         /// built-in nor an export — the caller's "cannot say".</summary>
@@ -218,8 +231,12 @@ namespace Heddle.Generator.Emit
                     return WriteTernary(ternary);
                 case CallNode call:
                     return WriteCall(call);
+                case IndexNode _:
+                    return Refuse("an indexer access, which only the dynamic tier reads");
+                case MethodCallNode _:
+                    return Refuse("method-call syntax, which the engine refuses too (HED1003)");
                 default:
-                    return null; // IndexNode / MethodCallNode handled elsewhere or unsupported
+                    return Refuse("an expression construct the writer has no spelling for");
             }
         }
 
@@ -237,7 +254,7 @@ namespace Heddle.Generator.Emit
         private string WriteThis()
         {
             if (_modelType == null)
-                return null;
+                return Refuse("'this' in an expression with no static model type");
             _usedModel = true;
             return _modelLocal;
         }
@@ -248,11 +265,11 @@ namespace Heddle.Generator.Emit
             bool hasExport = _exports != null && _exports.TryGet(call.Name, out var export);
 
             if (isDefault && hasExport)
-                return null; // forwarder group across shim + export — deferred
+                return Refuse("a call to '" + call.Name + "', which is both a built-in function and an export");
             if (!isDefault && !hasExport)
             {
                 _unresolvableFunctions.Add((call.Name, call.Position));
-                return null;
+                return Refuse("a call to '" + call.Name + "', which is neither a built-in nor an export");
             }
 
             var args = new string[call.Arguments.Count];
@@ -261,7 +278,8 @@ namespace Heddle.Generator.Emit
                 // An argument the two tiers evaluate in different types picks a different overload on each of them,
                 // so it degrades here even though the number it carries is the same.
                 if (ConstantFolding.TiersEvaluateDifferently(call.Arguments[i]))
-                    return null;
+                    return Refuse("a constant argument to '" + call.Name +
+                                  "' that the two tiers hold in different types");
                 args[i] = Write(call.Arguments[i]);
                 if (args[i] == null)
                     return null;
@@ -271,7 +289,7 @@ namespace Heddle.Generator.Emit
             {
                 var exportBinding = BindExportCall(call);
                 if (exportBinding == null)
-                    return null;
+                    return Refuse("an export call to '" + call.Name + "' the binder refuses");
 
                 for (int i = 0; i < args.Length; i++)
                     if (exportBinding.ArgumentCasts[i] != null)
@@ -288,7 +306,7 @@ namespace Heddle.Generator.Emit
 
             var binding = BindDefaultCall(call);
             if (binding == null)
-                return null;
+                return Refuse("a built-in call to '" + call.Name + "' the binder refuses");
 
             for (int i = 0; i < args.Length; i++)
             {
@@ -326,14 +344,16 @@ namespace Heddle.Generator.Emit
         private string WritePath(PathNode path)
         {
             if (TargetIsOutOfReach(path))
-                return null;
+                return Refuse("a member path rooted somewhere other than the model");
 
             var prop = PropRoot(path);
             if (prop != null)
                 return WritePropPath(prop, path);
 
             if (path.RootRef || _modelType == null)
-                return null;
+                return Refuse(path.RootRef
+                    ? "a '::'-rooted path"
+                    : "a model-rooted path in an expression with no static model type");
 
             var resolution = _resolver.ResolvePath(_modelType, path.Segments);
             if (resolution.Kind != SymbolTypeResolver.PathKind.Resolved)
@@ -361,13 +381,13 @@ namespace Heddle.Generator.Emit
                     }
                 }
 
-                return null;
+                return Refuse("a member path that does not resolve statically");
             }
 
             // An expression's operands are boxed, and a ref struct cannot be. Left to the dynamic tier, which reads
             // it reflectively; emitted here it was CS0030 in the consumer's build over a template that renders.
             if (SymbolTypeResolver.EndsOnRefStruct(resolution))
-                return null;
+                return Refuse("a member path ending on a ref struct, which an expression operand cannot box");
 
             _usedModel = true;
             var hops = new List<MemberPathWriter.HopEmit>(resolution.Hops.Count);
@@ -391,7 +411,7 @@ namespace Heddle.Generator.Emit
         private string WritePropPath(TemplateEmitter.PropSlotInfo slot, PathNode path)
         {
             if (slot.Type == null)
-                return null;
+                return Refuse("a prop whose declared type the writer cannot resolve");
 
             var read = "((" + slot.TypeFq + ")global::Heddle.Precompiled.PrecompiledRuntime.Prop(in scope, " +
                        slot.Index + "))";
@@ -399,12 +419,12 @@ namespace Heddle.Generator.Emit
                 return read;
 
             if (slot.Type.TypeKind == TypeKind.Dynamic)
-                return null;
+                return Refuse("a path crossing a [Dynamic] prop");
 
             var resolution = _resolver.ResolvePath(slot.Type, Rest(path));
             if (resolution.Kind != SymbolTypeResolver.PathKind.Resolved ||
                 SymbolTypeResolver.EndsOnRefStruct(resolution))
-                return null;
+                return Refuse("a prop-rooted path that does not resolve statically");
 
             return MemberPathWriter.Write(read, TemplateEmitter.MapHops(resolution), _allocateHopLocal);
         }
@@ -438,13 +458,13 @@ namespace Heddle.Generator.Emit
             if (ConstantFolding.CompilerWouldReject(node))
             {
                 RecordDivisionByConstantZero(node);
-                return null;
+                return Refuse("constant arithmetic whose fold the consumer's compiler would reject or disagree with");
             }
             var operand = Write(node.Operand);
             if (operand == null)
                 return null;
             if (NativeOperatorRules.ClassifyUnary(node.Operator, Estimate(node.Operand)) != OperatorVerdict.Supported)
-                return null;
+                return Refuse("operator '" + op + "' over an operand kind the shared table does not emit");
             return "(" + op + operand + ")";
         }
 
@@ -460,17 +480,48 @@ namespace Heddle.Generator.Emit
             if (ConstantFolding.CompilerWouldReject(node))
             {
                 RecordDivisionByConstantZero(node);
-                return null;
+                return Refuse("constant arithmetic whose fold the consumer's compiler would reject or disagree with");
             }
             if (TierPromotionEscapes(node.Left, node.Right) || TierPromotionEscapes(node.Right, node.Left))
-                return null;
+                return Refuse("a constant the two tiers hold in different types meeting an unsigned or narrow partner");
             var left = Write(node.Left);
             var right = Write(node.Right);
             if (left == null || right == null)
                 return null;
             if (NativeOperatorRules.Classify(node.Operator, Estimate(node.Left), Estimate(node.Right)) !=
                 OperatorVerdict.Supported)
-                return null;
+                return Refuse("operator '" + op + "' over operand kinds the shared table does not emit");
+
+            // Mixed/unrelated equality emits through the adapter that replays the engine's own fallback
+            // chain over the call site's static types — a user operator where the pair binds one, null-safe
+            // object.Equals for the rest. Verbatim C# is either CS0019 or a bare reference comparison here.
+            if ((node.Operator == ExprOperator.Equal || node.Operator == ExprOperator.NotEqual) &&
+                NativeOperatorRules.EqualityViaAdapter(Estimate(node.Left), Estimate(node.Right)))
+            {
+                return "global::Heddle.Precompiled.RuntimeOperators." +
+                       (node.Operator == ExprOperator.Equal ? "Equal" : "NotEqual") +
+                       "(" + left + ", " + right + ")";
+            }
+
+            // String concatenation with an enum or user-typed operand spells the engine's exact BCL call.
+            // The engine's EmitStringConcat binds string.Concat(object, object) UNCONDITIONALLY for a string
+            // side — never a user-defined '+' or implicit conversion — where verbatim C# would prefer one.
+            if (node.Operator == ExprOperator.Add)
+            {
+                var leftKindForConcat = Estimate(node.Left);
+                var rightKindForConcat = Estimate(node.Right);
+                bool leftIsString = leftKindForConcat.Category == OperandCategory.String;
+                bool rightIsString = rightKindForConcat.Category == OperandCategory.String;
+                if (leftIsString != rightIsString)
+                {
+                    var otherSide = leftIsString ? rightKindForConcat : leftKindForConcat;
+                    if (otherSide.Category == OperandCategory.Enum ||
+                        otherSide.Category == OperandCategory.Reference ||
+                        otherSide.Category == OperandCategory.Other)
+                        return "global::System.String.Concat((object)(" + left + "), (object)(" + right + "))";
+                }
+            }
+
             if (node.Operator == ExprOperator.LeftShift || node.Operator == ExprOperator.RightShift)
                 right = ShiftCountSpelling(right, Estimate(node.Right));
 
@@ -562,7 +613,7 @@ namespace Heddle.Generator.Emit
             var fKind = Estimate(node.WhenFalse);
             if (NativeOperatorRules.ClassifyTernary(Estimate(node.Condition), tKind, fKind) !=
                 OperatorVerdict.Supported)
-                return null;
+                return Refuse("conditional arms the shared table does not unify");
 
             // Numeric arms of DIFFERING kinds unify in the ENGINE's promotion, which is written down as an
             // explicit cast on both arms so C#'s own conditional typing never gets a vote — it would pick the

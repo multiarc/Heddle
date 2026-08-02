@@ -3075,7 +3075,9 @@ namespace Heddle.Generator.Emit
                 DrainUnresolvable(writer);
                 if (expr == null)
                 {
-                    reason = "unsupported native expression";
+                    // The writer's own refusal names the construct that cost the tier; the generic phrase
+                    // survives only for a bail with no specific story.
+                    reason = writer.RefusalReason ?? "unsupported native expression";
                     return false;
                 }
 

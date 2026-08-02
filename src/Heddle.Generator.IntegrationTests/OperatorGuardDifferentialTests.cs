@@ -62,11 +62,29 @@ namespace Heddle.Generator.IntegrationTests
                 HeddleDiagnosticIds.BinaryOperatorNotDefined);
         }
 
+        /// <summary>Unrelated reference equality emits through RuntimeOperators, which replays the engine's
+        /// own fallback chain (a user operator where the pair binds one, null-safe object.Equals otherwise)
+        /// over the same static types — so the shape that used to degrade now precompiles and matches byte
+        /// for byte, the null lanes included (object.Equals(null, null) is TRUE, and both tiers say so).</summary>
         [Fact]
-        public void UnrelatedReferenceEquality_DegradesAndRendersTheRuntimeVerdict()
+        public void UnrelatedReferenceEquality_NowPrecompilesAndMatchesTheRuntime()
         {
-            AssertDegradesAndRenders("guard/eq-unrelated.heddle", "Maker == Where",
-                new Order { Maker = new Manufacturer(), Where = new Address() }, "value: False\n");
+            foreach (var (key, expression, model) in new[]
+            {
+                ("guard/eq-unrelated.heddle", "Maker == Where",
+                    new Order { Maker = new Manufacturer(), Where = new Address() }),
+                ("guard/eq-unrelated-nulls.heddle", "Maker == Where", new Order { Maker = null, Where = null }),
+                ("guard/eq-unrelated-half.heddle", "Maker == Where",
+                    new Order { Maker = new Manufacturer(), Where = null }),
+                ("guard/neq-unrelated.heddle", "Maker != Where",
+                    new Order { Maker = new Manufacturer(), Where = new Address() }),
+                // A string against a nullable numeric: mixed KINDS, both null-assignable, same chain.
+                ("guard/eq-mixed-kinds.heddle", "Name == Maybe", new Order { Name = "5", Maybe = 5 }),
+            })
+            {
+                var (precompiled, dyn) = DifferentialHarness.Render(key, Template(expression), typeof(Order), model);
+                Assert.Equal(dyn, precompiled);
+            }
         }
 
         [Fact]
@@ -145,11 +163,25 @@ namespace Heddle.Generator.IntegrationTests
                 new Order { Approved = true }, "value: False\n");
         }
 
+        /// <summary>String concatenation with an enum or user-typed operand now emits the engine's exact
+        /// BCL call — string.Concat(object, object) — which bypasses user-defined '+' operators and implicit
+        /// conversions the way the engine's EmitStringConcat always has. The Label row is the one that
+        /// mattered: verbatim C# would take its implicit conversion to string and print a different text
+        /// than the engine's ToString path.</summary>
         [Fact]
-        public void StringConcatWithAUserConvertibleStruct_DegradesAndRendersTheRuntimeResult()
+        public void StringConcatWithEnumAndUserTypes_NowPrecompilesAndMatchesTheRuntime()
         {
-            AssertDegradesAndRenders("guard/concat-user-conversion.heddle", "\"n=\" + Tag",
-                new Order { Tag = new Label("x") }, "value: n=tostring:x\n");
+            foreach (var (key, expression, model) in new[]
+            {
+                ("guard/concat-user-conversion.heddle", "\"n=\" + Tag", new Order { Tag = new Label("x") }),
+                ("guard/concat-enum.heddle", "\"s=\" + Status", new Order { Status = OrderStatus.Open }),
+                ("guard/concat-ref.heddle", "\"m=\" + Maker", new Order { Maker = new Manufacturer() }),
+                ("guard/concat-ref-null.heddle", "\"m=\" + Maker", new Order { Maker = null }),
+            })
+            {
+                var (precompiled, dyn) = DifferentialHarness.Render(key, Template(expression), typeof(Order), model);
+                Assert.Equal(dyn, precompiled);
+            }
         }
 
         /// <summary>Shift shapes the table used to hold as runtime-owned, now emitted: a wide count is
