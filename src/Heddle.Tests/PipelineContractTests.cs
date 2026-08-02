@@ -351,7 +351,7 @@ namespace Heddle.Tests
                 read.Add(m.Groups["name"].Value);
 
             // The shipped set, spelled out — so a name added everywhere at once is still a reviewed change.
-            Assert.Equal(new[] { "Key", "Name", "Precompile" }, declared.ToArray());
+            Assert.Equal(new[] { "Key", "ModelType", "Name", "Precompile" }, declared.ToArray());
             Assert.Equal(declared.ToArray(), read.ToArray());
 
             // Nothing restates a metadatum the transform already carries: any such element evaluates to "" and

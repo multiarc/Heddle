@@ -30,12 +30,13 @@ namespace Heddle.Generator
         private sealed class TemplateFile
         {
             public TemplateFile(AdditionalText text, string content, string keyMetadata, string nameMetadata,
-                bool precompile, bool readable, string readError)
+                string modelType, bool precompile, bool readable, string readError)
             {
                 Text = text;
                 Content = content;
                 KeyMetadata = keyMetadata;
                 NameMetadata = nameMetadata;
+                ModelType = modelType;
                 Precompile = precompile;
                 Readable = readable;
                 ReadError = readError;
@@ -51,6 +52,11 @@ namespace Heddle.Generator
             /// of <see cref="KeyMetadata"/>. The template keeps its key and gains this name; both spellings resolve.
             /// Normalizes via the same <c>TemplateKey</c> rule as keys, in the same import-path namespace.</summary>
             public string NameMetadata { get; }
+
+            /// <summary>The <c>ModelType</c> item metadata: types the template's model when the file carries no
+            /// <c>@model</c> directive. When both are present they must name the same resolved type — a
+            /// disagreement is the HED7032 conflict error.</summary>
+            public string ModelType { get; }
 
             /// <summary>The <c>Precompile</c> item metadata. <c>false</c> is the per-item
             /// opt-out: the file still serves <c>@&lt;&lt;</c> imports, but emits no entry point and no manifest
@@ -72,6 +78,7 @@ namespace Heddle.Generator
                     var options = pair.Right.GetOptions(pair.Left);
                     options.TryGetValue("build_metadata.AdditionalFiles.Key", out var key);
                     options.TryGetValue("build_metadata.AdditionalFiles.Name", out var name);
+                    options.TryGetValue("build_metadata.AdditionalFiles.ModelType", out var modelType);
                     options.TryGetValue("build_metadata.AdditionalFiles.Precompile", out var precompileMetadata);
                     var precompile = !(bool.TryParse(precompileMetadata, out var optIn) && !optIn);
                     string content = string.Empty;
@@ -96,7 +103,8 @@ namespace Heddle.Generator
                         readError = ex.Message;
                     }
 
-                    return new TemplateFile(pair.Left, content, key, name, precompile, readable, readError);
+                    return new TemplateFile(pair.Left, content, key, name, modelType, precompile, readable,
+                        readError);
                 })
                 .Collect();
 
@@ -341,7 +349,8 @@ namespace Heddle.Generator
                         // The name goes onto the manifest row only if it actually registered. A name that lost
                         // its spelling (reported at HED7004 above) must not reach the runtime index, or the two tiers
                         // would disagree about which template answers to it.
-                        registeredName: registeredNameForManifest);
+                        registeredName: registeredNameForManifest,
+                        modelType: template.ModelType);
                     var result = emitter.Emit(ContentHash.HashText(template.Content));
 
                     // Emitter diagnostics (HED7006, HED7015). An error here is as unreachable for an import-only

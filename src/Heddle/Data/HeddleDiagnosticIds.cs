@@ -307,6 +307,11 @@ namespace Heddle.Data
         /// final <c>else</c>, and the template simply produced no source and no manifest row.</summary>
         public const string BuildTemplateNotPrecompiled = "HED7031";
 
+        /// <summary>A template carries both an <c>@model</c> directive and <c>ModelType</c> item metadata and the
+        /// two spellings resolve to different types. Equal spellings, or different spellings resolving to the same
+        /// symbol, agree and raise nothing.</summary>
+        public const string BuildConflictingModelTypeDeclarations = "HED7032";
+
         /// <summary>A precompiled entry failed the run-time gauntlet, so the render degrades to the dynamic
         /// tier (carried on <c>PrecompiledFallbackEvent.DiagnosticId</c>).</summary>
         public const string PrecompiledGauntletFallback = "HED7101";

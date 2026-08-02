@@ -42,7 +42,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <HeddleTemplate Include="templates\report.heddle" />
+    <!-- The ModelType item metadatum types the template from the project file: report.heddle carries no @model
+         directive, yet the generated entry point is typed BuildInfo. If the metadatum stops flowing from a real
+         csproj, the entry point degrades to `object model` and the generated-source golden catches the change. -->
+    <HeddleTemplate Include="templates\report.heddle" ModelType="Heddle.Samples.Codegen.BuildInfo" />
     <!-- The Name item metadatum is an ADDITIONAL import name, not a rename. This partial keeps its
          path-derived key `templates/_banner.heddle` AND answers to `Banner`, which is the spelling report.heddle
          imports. Precompile="false" makes it import-only: no entry point, no manifest row. This is also the

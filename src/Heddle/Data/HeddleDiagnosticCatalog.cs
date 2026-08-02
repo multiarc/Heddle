@@ -376,6 +376,11 @@ namespace Heddle.Data
                 "which ignores both assembly boundaries and [Obsolete], so the rendered output is unchanged. Make " +
                 "it public or grant this assembly access with [InternalsVisibleTo] if it is internal, or drop the " +
                 "[Obsolete(..., error: true)] if it carries one, to precompile the template.");
+            Add(HeddleDiagnosticIds.BuildConflictingModelTypeDeclarations,
+                "Conflicting model type declarations", error,
+                "The ModelType item metadata names '{0}' while the template's @model directive names '{1}', and " +
+                "they resolve to different types ('{2}' and '{3}'). The runtime reads only the directive, so the " +
+                "build refuses to pick one — make the two declarations name the same type, or remove one of them.");
             Add(HeddleDiagnosticIds.BuildEmitterFault, "Heddle template emitter fault", error,
                 "The Heddle template emitter failed on '{0}': {1}: {2}. This is a generator defect rather than a " +
                 "template error — please report it; setting Precompile=\"false\" on the item unblocks the build " +
