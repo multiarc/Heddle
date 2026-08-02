@@ -275,11 +275,6 @@ namespace Heddle.Generator.Emit
             var args = new string[call.Arguments.Count];
             for (int i = 0; i < args.Length; i++)
             {
-                // An argument the two tiers evaluate in different types picks a different overload on each of them,
-                // so it degrades here even though the number it carries is the same.
-                if (ConstantFolding.TiersEvaluateDifferently(call.Arguments[i]))
-                    return Refuse("a constant argument to '" + call.Name +
-                                  "' that the two tiers hold in different types");
                 args[i] = Write(call.Arguments[i]);
                 if (args[i] == null)
                     return null;
@@ -456,11 +451,8 @@ namespace Heddle.Generator.Emit
             var op = OperatorLexeme.ForUnary(node.Operator);
             if (op == null)
                 return null;
-            if (ConstantFolding.CompilerWouldReject(node))
-            {
-                RecordDivisionByConstantZero(node);
-                return Refuse("constant arithmetic whose fold the consumer's compiler would reject or disagree with");
-            }
+            if (ConstantFolding.TryEngineConstantSpelling(node, out var engineConstant))
+                return engineConstant;
             var operand = Write(node.Operand);
             if (operand == null)
                 return null;
@@ -474,17 +466,30 @@ namespace Heddle.Generator.Emit
             var op = OperatorLexeme.ForBinary(node.Operator);
             if (op == null)
                 return null;
-            // Degrade rather than emit something the host's compiler will reject. For a constant division by
-            // zero the degrade is no longer the whole story: the engine now refuses it at compile time too
-            // (HED1018), so the writer records the site and the emitter forwards the engine's id as a build
-            // error — one fact, one id, both tiers.
-            if (ConstantFolding.CompilerWouldReject(node))
+            // A constant subtree the two tiers type or value differently is spelled as the ENGINE's folded
+            // value, a typed literal — every later promotion and overload choice then starts from the
+            // engine's type, so nothing here needs to degrade.
+            if (ConstantFolding.TryEngineConstantSpelling(node, out var engineConstant))
+                return engineConstant;
+
+            // A constant division by zero is HED1018 on both tiers: the writer records the site and the
+            // emitter forwards the engine's id as a build error.
+            if ((node.Operator == ExprOperator.Divide || node.Operator == ExprOperator.Modulo) &&
+                ConstantFolding.TryFindDivisionByConstantZero(node, out var zeroSite) &&
+                ReferenceEquals(zeroSite, node))
             {
                 RecordDivisionByConstantZero(node);
-                return Refuse("constant arithmetic whose fold the consumer's compiler would reject or disagree with");
+                return Refuse("a constant division by a zero divisor, refused on both tiers (HED1018)");
             }
-            if (TierPromotionEscapes(node.Left, node.Right) || TierPromotionEscapes(node.Right, node.Left))
-                return Refuse("a constant the two tiers hold in different types meeting an unsigned or narrow partner");
+
+            // A constant arithmetic whose engine evaluation throws at render — the smallest signed value
+            // over -1, a decimal overflow — is emitted as an adapter call the consumer's compiler cannot
+            // fold, so the render throw stays the engine's instead of C# folding to a different number.
+            if (ConstantFolding.TryThrowingArithmeticSpelling(node, out var throwing, out var throwLeft,
+                    out var throwRight))
+                return "global::Heddle.Precompiled.RuntimeOperators." + throwing +
+                       "(" + throwLeft + ", " + throwRight + ")";
+
             var left = Write(node.Left);
             var right = Write(node.Right);
             if (left == null || right == null)
@@ -493,9 +498,32 @@ namespace Heddle.Generator.Emit
             var coalesceRelation = node.Operator == ExprOperator.Coalesce
                 ? RelateOperands(node.Left, node.Right, out coalesceWiderFq)
                 : TypeRelation.Unknown;
-            if (NativeOperatorRules.Classify(node.Operator, Estimate(node.Left), Estimate(node.Right),
-                    coalesceRelation) != OperatorVerdict.Supported)
+            var leftKind = Estimate(node.Left);
+            var rightKind = Estimate(node.Right);
+            var witness = WitnessIfUserPair(node.Operator, node.Left, node.Right, leftKind, rightKind,
+                out var adapterLeftFq, out var adapterRightFq, out var adapterResultFq);
+            if (NativeOperatorRules.Classify(node.Operator, leftKind, rightKind, coalesceRelation, witness) !=
+                OperatorVerdict.Supported)
                 return Refuse("operator '" + op + "' over operand kinds the shared table does not emit");
+
+            // A proven user-defined operator emits through the adapter that replays the engine's factory
+            // over the operands' static types — never the operator (or user conversion) C#'s own overload
+            // resolution might prefer. Equality routes through the EqualityViaAdapter block below.
+            if (witness == OperatorWitness.Bound)
+            {
+                var adapter = AdapterMethodName(node.Operator);
+                if (adapter != null)
+                {
+                    bool arithmetic = node.Operator == ExprOperator.Add || node.Operator == ExprOperator.Subtract ||
+                                      node.Operator == ExprOperator.Multiply ||
+                                      node.Operator == ExprOperator.Divide || node.Operator == ExprOperator.Modulo;
+                    var typeArguments = arithmetic
+                        ? adapterLeftFq + ", " + adapterRightFq + ", " + adapterResultFq
+                        : adapterLeftFq + ", " + adapterRightFq;
+                    return "global::Heddle.Precompiled.RuntimeOperators." + adapter +
+                           "<" + typeArguments + ">(" + left + ", " + right + ")";
+                }
+            }
 
             // The engine folds a null-against-null comparison to a constant; spell that constant.
             if (node.Operator == ExprOperator.Equal || node.Operator == ExprOperator.NotEqual)
@@ -509,7 +537,7 @@ namespace Heddle.Generator.Emit
             // chain over the call site's static types — a user operator where the pair binds one, null-safe
             // object.Equals for the rest. Verbatim C# is either CS0019 or a bare reference comparison here.
             if ((node.Operator == ExprOperator.Equal || node.Operator == ExprOperator.NotEqual) &&
-                NativeOperatorRules.EqualityViaAdapter(Estimate(node.Left), Estimate(node.Right)))
+                NativeOperatorRules.EqualityViaAdapter(leftKind, rightKind, witness))
             {
                 return "global::Heddle.Precompiled.RuntimeOperators." +
                        (node.Operator == ExprOperator.Equal ? "Equal" : "NotEqual") +
@@ -544,8 +572,6 @@ namespace Heddle.Generator.Emit
             // others outright (int? ?? uint is CS0019), so the promotion is written down as casts.
             if (node.Operator == ExprOperator.Coalesce)
             {
-                var leftKind = Estimate(node.Left);
-                var rightKind = Estimate(node.Right);
                 // 'null ?? x' is x boxed to object on the engine; the constant-null left arm is never spelled.
                 if (leftKind.Category == OperandCategory.NullLiteral)
                     return "((object)(" + right + "))";
@@ -587,46 +613,10 @@ namespace Heddle.Generator.Emit
             return (kind.IsNullable ? "((int?)" : "((int)") + count + ")";
         }
 
-        /// <summary>
-        /// Whether a constant operand the two tiers evaluated in different types can still meet
-        /// <paramref name="partner"/> here. C# reached the constant in <c>uint</c> and the engine in <c>long</c>;
-        /// promoting either against a signed integral, a real or a string lands both on the same type, so the
-        /// operator produces the same bytes. An unsigned or sub-<c>int</c> partner does not — it leaves C# in
-        /// <c>uint</c> while the engine stays in <c>long</c>, and <c>0u - (0-0u)</c> is 0 on one tier and
-        /// 4294967296 short of it on the other — and neither does a partner this writer cannot type.
-        /// </summary>
-        private bool TierPromotionEscapes(ExprNode operand, ExprNode partner)
-        {
-            if (!ConstantFolding.TiersEvaluateDifferently(operand))
-                return false;
-
-            var kind = Estimate(partner);
-            switch (kind.Category)
-            {
-                case OperandCategory.String:
-                    return false;
-                case OperandCategory.Numeric:
-                    switch (kind.Kind)
-                    {
-                        case NumericKind.SByte:
-                        case NumericKind.Int16:
-                        case NumericKind.Int32:
-                        case NumericKind.Int64:
-                        case NumericKind.Single:
-                        case NumericKind.Double:
-                        case NumericKind.Decimal:
-                            return false;
-                        default:
-                            return true;
-                    }
-
-                default:
-                    return true;
-            }
-        }
-
         private string WriteTernary(TernaryNode node)
         {
+            if (ConstantFolding.TryEngineConstantSpelling(node, out var engineConstant))
+                return engineConstant;
             var c = Write(node.Condition);
             var t = Write(node.WhenTrue);
             var f = Write(node.WhenFalse);
@@ -736,6 +726,124 @@ namespace Heddle.Generator.Emit
             return TypeRelation.None;
         }
 
+        /// <summary>
+        /// The caller-computed <see cref="OperatorWitness"/> for a pair with a reference/user-struct side.
+        /// Bound is claimed only for an operator declared on an operand type itself whose parameters are
+        /// exactly the operands' types (the shape the engine's factory certainly binds); Absent only when no
+        /// operator by the name exists anywhere in either base chain. Nullable-wrapped operands stay Unknown —
+        /// lifted user operators are not modeled. The out spellings feed the adapter emission.
+        /// </summary>
+        private OperatorWitness BinaryWitness(ExprOperator op, ExprNode leftNode, ExprNode rightNode,
+            out string leftFq, out string rightFq, out string resultFq)
+        {
+            leftFq = rightFq = resultFq = null;
+            var name = UserOperatorMetadataName(op);
+            if (name == null)
+                return OperatorWitness.Unknown;
+            var leftSymbol = ArgumentType(leftNode);
+            var rightSymbol = ArgumentType(rightNode);
+            if (leftSymbol == null || rightSymbol == null)
+                return OperatorWitness.Unknown;
+            leftSymbol = SymbolFacts.Unwrap(leftSymbol, out var leftLifted);
+            rightSymbol = SymbolFacts.Unwrap(rightSymbol, out var rightLifted);
+            if (leftLifted || rightLifted)
+                return OperatorWitness.Unknown;
+
+            bool any = false;
+            IMethodSymbol bound = null;
+            foreach (var container in new[] { leftSymbol, rightSymbol })
+            {
+                for (var type = container; type != null; type = type.BaseType)
+                {
+                    foreach (var member in type.GetMembers(name))
+                    {
+                        if (!(member is IMethodSymbol method) || !method.IsStatic ||
+                            method.DeclaredAccessibility != Accessibility.Public ||
+                            method.Parameters.Length != 2)
+                            continue;
+                        any = true;
+                        if (bound == null &&
+                            SymbolEqualityComparer.Default.Equals(type, container) &&
+                            SymbolEqualityComparer.Default.Equals(method.Parameters[0].Type, leftSymbol) &&
+                            SymbolEqualityComparer.Default.Equals(method.Parameters[1].Type, rightSymbol))
+                            bound = method;
+                    }
+                }
+            }
+
+            if (bound == null)
+                return any ? OperatorWitness.Unknown : OperatorWitness.Absent;
+
+            bool boolRequired = op != ExprOperator.Add && op != ExprOperator.Subtract &&
+                                op != ExprOperator.Multiply && op != ExprOperator.Divide &&
+                                op != ExprOperator.Modulo;
+            if (bound.ReturnsVoid ||
+                boolRequired && bound.ReturnType.SpecialType != SpecialType.System_Boolean)
+                return OperatorWitness.Unknown;
+            if (_resolver.ClassifyTypeName(leftSymbol, out _) != SymbolTypeResolver.NameFault.None ||
+                _resolver.ClassifyTypeName(rightSymbol, out _) != SymbolTypeResolver.NameFault.None ||
+                _resolver.ClassifyTypeName(bound.ReturnType, out _) != SymbolTypeResolver.NameFault.None)
+                return OperatorWitness.Unknown;
+
+            leftFq = SymbolTypeResolver.FullyQualified(leftSymbol);
+            rightFq = SymbolTypeResolver.FullyQualified(rightSymbol);
+            resultFq = SymbolTypeResolver.FullyQualified(bound.ReturnType);
+            return OperatorWitness.Bound;
+        }
+
+        private static string UserOperatorMetadataName(ExprOperator op)
+        {
+            switch (op)
+            {
+                case ExprOperator.Add: return "op_Addition";
+                case ExprOperator.Subtract: return "op_Subtraction";
+                case ExprOperator.Multiply: return "op_Multiply";
+                case ExprOperator.Divide: return "op_Division";
+                case ExprOperator.Modulo: return "op_Modulus";
+                case ExprOperator.Equal: return "op_Equality";
+                case ExprOperator.NotEqual: return "op_Inequality";
+                case ExprOperator.LessThan: return "op_LessThan";
+                case ExprOperator.LessThanOrEqual: return "op_LessThanOrEqual";
+                case ExprOperator.GreaterThan: return "op_GreaterThan";
+                case ExprOperator.GreaterThanOrEqual: return "op_GreaterThanOrEqual";
+                default: return null;
+            }
+        }
+
+        private static string AdapterMethodName(ExprOperator op)
+        {
+            switch (op)
+            {
+                case ExprOperator.Add: return "Add";
+                case ExprOperator.Subtract: return "Subtract";
+                case ExprOperator.Multiply: return "Multiply";
+                case ExprOperator.Divide: return "Divide";
+                case ExprOperator.Modulo: return "Modulo";
+                case ExprOperator.LessThan: return "LessThan";
+                case ExprOperator.LessThanOrEqual: return "LessOrEqual";
+                case ExprOperator.GreaterThan: return "GreaterThan";
+                case ExprOperator.GreaterThanOrEqual: return "GreaterOrEqual";
+                default: return null;
+            }
+        }
+
+        /// <summary>Computes the witness only where the verdict can consume it: an arithmetic, relational or
+        /// equality operator over a pair with a reference/user-struct side. String concatenation is excluded —
+        /// its Supported verdict never binds a user operator.</summary>
+        private OperatorWitness WitnessIfUserPair(ExprOperator op, ExprNode leftNode, ExprNode rightNode,
+            in OperandKind left, in OperandKind right, out string leftFq, out string rightFq, out string resultFq)
+        {
+            leftFq = rightFq = resultFq = null;
+            bool userSide = left.Category == OperandCategory.Reference || left.Category == OperandCategory.Other ||
+                            right.Category == OperandCategory.Reference || right.Category == OperandCategory.Other;
+            if (!userSide || UserOperatorMetadataName(op) == null)
+                return OperatorWitness.Unknown;
+            if (op == ExprOperator.Add &&
+                (left.Category == OperandCategory.String || right.Category == OperandCategory.String))
+                return OperatorWitness.Unknown;
+            return BinaryWitness(op, leftNode, rightNode, out leftFq, out rightFq, out resultFq);
+        }
+
         #region Operand-kind estimation
 
         /// <summary>The static-kind estimate for a sub-expression; anything unknown degrades conservatively.</summary>
@@ -766,11 +874,14 @@ namespace Heddle.Generator.Emit
                     return NativeOperatorRules.UnaryResult(unary.Operator, Estimate(unary.Operand));
                 case BinaryNode binary:
                 {
+                    var left = Estimate(binary.Left);
+                    var right = Estimate(binary.Right);
                     var relation = binary.Operator == ExprOperator.Coalesce
                         ? RelateOperands(binary.Left, binary.Right, out _)
                         : TypeRelation.Unknown;
-                    return NativeOperatorRules.BinaryResult(binary.Operator, Estimate(binary.Left),
-                        Estimate(binary.Right), relation);
+                    var witness = WitnessIfUserPair(binary.Operator, binary.Left, binary.Right, left, right,
+                        out _, out _, out _);
+                    return NativeOperatorRules.BinaryResult(binary.Operator, left, right, relation, witness);
                 }
                 case TernaryNode ternary:
                 {

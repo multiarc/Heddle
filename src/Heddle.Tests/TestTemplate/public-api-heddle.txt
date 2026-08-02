@@ -914,7 +914,21 @@ TYPE Heddle.Precompiled.PrecompiledValidationReport
   PROP System.Int32 EntriesChecked {get;}
 TYPE Heddle.Precompiled.RuntimeOperators
   METHOD System.Boolean Equal(TLeft, TRight)
+  METHOD System.Boolean GreaterOrEqual(TLeft, TRight)
+  METHOD System.Boolean GreaterThan(TLeft, TRight)
+  METHOD System.Boolean LessOrEqual(TLeft, TRight)
+  METHOD System.Boolean LessThan(TLeft, TRight)
   METHOD System.Boolean NotEqual(TLeft, TRight)
+  METHOD T Add(T, T)
+  METHOD T Divide(T, T)
+  METHOD T Modulo(T, T)
+  METHOD T Multiply(T, T)
+  METHOD T Subtract(T, T)
+  METHOD TResult Add(TLeft, TRight)
+  METHOD TResult Divide(TLeft, TRight)
+  METHOD TResult Modulo(TLeft, TRight)
+  METHOD TResult Multiply(TLeft, TRight)
+  METHOD TResult Subtract(TLeft, TRight)
 TYPE Heddle.Precompiled.TemplateKey
   FIELD System.String TemplateExtension
   METHOD System.Boolean HasTemplateExtension(System.String)

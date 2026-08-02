@@ -121,11 +121,27 @@ namespace Heddle.Generator.IntegrationTests
                 HeddleDiagnosticIds.BinaryOperatorNotDefined);
         }
 
+        /// <summary>A user-defined operator the witness proves emits through the RuntimeOperators adapter,
+        /// which replays the engine's Expression factory over the operands' static types; an operator the
+        /// witness proves ABSENT is the engine's HED1008, matched at build time.</summary>
         [Fact]
-        public void UserDefinedOperator_DegradesAndRendersTheRuntimeResult()
+        public void UserDefinedOperator_NowPrecompilesThroughTheAdapter()
         {
-            AssertDegradesAndRenders("guard/user-operator.heddle", "Total + Total",
-                new Order { Total = new Money(2.5m) }, "value: 5.0\n");
+            foreach (var (key, expression, model) in new[]
+            {
+                ("guard/user-operator.heddle", "Total + Total", new Order { Total = new Money(2.5m) }),
+                ("guard/user-relational.heddle", "Total < Total", new Order { Total = new Money(2.5m) }),
+                ("guard/user-relational-gt.heddle", "Total > Total", new Order { Total = new Money(2.5m) }),
+            })
+            {
+                var (precompiled, dyn) = DifferentialHarness.Render(key, Template(expression), typeof(Order), model);
+                Assert.Equal(dyn, precompiled);
+            }
+
+            AssertBothTiersReject("guard/user-operator-absent.heddle", "Total - Total",
+                HeddleDiagnosticIds.BinaryOperatorNotDefined);
+            AssertBothTiersReject("guard/user-relational-absent.heddle", "Total <= Total",
+                HeddleDiagnosticIds.BinaryOperatorNotDefined);
         }
 
 

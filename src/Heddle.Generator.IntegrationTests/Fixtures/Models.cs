@@ -185,6 +185,10 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
 
         public static Money operator +(Money left, Money right) => new Money(left.Amount + right.Amount);
 
+        public static bool operator <(Money left, Money right) => left.Amount < right.Amount;
+
+        public static bool operator >(Money left, Money right) => left.Amount > right.Amount;
+
         public override string ToString() => Amount.ToString(System.Globalization.CultureInfo.InvariantCulture);
     }
 

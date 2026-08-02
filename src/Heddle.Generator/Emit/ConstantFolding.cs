@@ -12,43 +12,172 @@ namespace Heddle.Generator.Emit
     /// Heddle diagnostic attached.</para>
     /// <para><b>An overflow is not one of those, and has not been since the emission became
     /// <c>unchecked</c>.</b> <c>unchecked(2147483647+1)</c> is a legal constant that folds to
-    /// <c>-2147483648</c> — the very number the engine's unchecked <c>Expression.Add</c> renders — so refusing it
-    /// took a working template off the precompiled tier for a build error that can no longer happen. What
-    /// <c>unchecked</c> does <i>not</i> settle is still refused: a division by constant zero, a
-    /// <c>decimal</c> overflow (never governed by the checked context), and the smallest signed value divided by
-    /// <c>-1</c>, which C# folds silently to a value the engine raises on instead of producing.</para>
-    /// <para>Rather than guess a value, an expression identified here is left unwritten, which degrades it to the
-    /// dynamic tier — the tier whose behaviour is the contract.</para>
+    /// <c>-2147483648</c> — the very number the engine's unchecked <c>Expression.Add</c> renders. What
+    /// <c>unchecked</c> does <i>not</i> settle takes a different exit each: a division by constant zero is
+    /// HED1018 on both tiers (<see cref="TryFindDivisionByConstantZero"/>); a <c>decimal</c> overflow and the
+    /// smallest signed value over <c>-1</c> — engine throws C# folds or refuses — become adapter calls that
+    /// carry the engine's throw to render (<see cref="TryThrowingArithmeticSpelling"/>); a value the tiers
+    /// disagree on is spelled as the engine's typed literal (<see cref="TryEngineConstantSpelling"/>).</para>
     /// <para><b>Both directions of error matter.</b> Missing a fault breaks the host's build; reporting one that is
     /// not there silently moves an expression — and with it the whole template — off the precompiled tier. An earlier
     /// version did both, because it folded every integer to <c>long</c> and so lost the operand's real type:
     /// <c>(2147483647+0)+(1+0)</c> looked like it fitted and did not, while <c>2147483647+1L</c> looked like it
     /// overflowed and does not. The fold therefore tracks the type C# would evaluate in, including its promotion
     /// rules, and reports "not constant" only where it genuinely cannot decide.</para>
-    /// <para><b>One pairing is not a fault on either tier and still cannot be written through.</b> An <c>int</c>
-    /// meeting a <c>uint</c> is evaluated in <c>uint</c> by C# — the implicit constant conversion — and in
-    /// <c>long</c> by the engine. Both reach the same number while it fits in a <c>uint</c>, so the value alone is
-    /// safe to print; the <i>type</i> is not, and it is what the next operator promotes from. That is why the flag
-    /// travels on the folded result instead of being consumed where the pairing arose.</para>
+    /// <para><b>One pairing is not a fault on either tier and still cannot be written through verbatim.</b> An
+    /// <c>int</c> meeting a <c>uint</c> is evaluated in <c>uint</c> by C# — the implicit constant conversion —
+    /// and in <c>long</c> by the engine. Both reach the same number while it fits in a <c>uint</c>, so the value
+    /// alone is safe to print; the <i>type</i> is not, and it is what the next operator promotes from. That is
+    /// why the flag travels on the folded value, and why such subtrees are spelled as the engine's typed
+    /// literal instead of their source text.</para>
     /// </summary>
     internal static class ConstantFolding
     {
-        internal static bool CompilerWouldReject(ExprNode node)
+        /// <summary>
+        /// The C# spelling of the ENGINE's value for a constant subtree that cannot be written verbatim:
+        /// a tier-tainted constant (same number, different types) or a rejected fold whose engine-side
+        /// evaluation still succeeds (the tiers reached different numbers). Spelling the engine's value as a
+        /// suffixed literal makes every later promotion — and every overload choice — start from the engine's
+        /// type, so the emission stops needing to refuse these shapes at all.
+        /// </summary>
+        internal static bool TryEngineConstantSpelling(ExprNode node, out string spelling)
         {
-            return Fold(node).Rejected;
+            spelling = null;
+            var fold = Fold(node);
+            if (fold.IsConstant)
+            {
+                if (!fold.TiersDiffer)
+                    return false;
+                spelling = Spell(fold.EngineValue);
+                return true;
+            }
+
+            if (!fold.Rejected || !TryFoldEngine(node, out var engine, out var faulted) || faulted)
+                return false;
+            spelling = Spell(engine);
+            return true;
         }
 
         /// <summary>
-        /// Whether the two tiers evaluate <paramref name="node"/> in different types even though they reach the same
-        /// number. The value is safe to render — a <c>uint</c> and a <c>long</c> holding the same number print the
-        /// same bytes — but it is not safe to hand to anything that keys on its type, because the next promotion
-        /// starts from <c>uint</c> here and from <c>long</c> there. Callers that place the value in such a position
-        /// ask this and degrade.
+        /// The adapter spelling for a constant arithmetic whose ENGINE evaluation throws at render — the
+        /// smallest signed value over -1, a decimal overflow. The operands are spelled in the engine's
+        /// unified type; the caller wraps them in a RuntimeOperators call, which is non-constant to the
+        /// consumer's compiler, so its constant rules never engage and the render throw is the engine's.
+        /// Division by a constant zero is excluded — that is HED1018's, an error on both tiers.
         /// </summary>
-        internal static bool TiersEvaluateDifferently(ExprNode node)
+        internal static bool TryThrowingArithmeticSpelling(ExprNode node, out string method, out string left,
+            out string right)
         {
-            return Fold(node).TiersDiffer;
+            method = left = right = null;
+            if (!(node is BinaryNode binary))
+                return false;
+            switch (binary.Operator)
+            {
+                case ExprOperator.Add: method = "Add"; break;
+                case ExprOperator.Subtract: method = "Subtract"; break;
+                case ExprOperator.Multiply: method = "Multiply"; break;
+                case ExprOperator.Divide: method = "Divide"; break;
+                case ExprOperator.Modulo: method = "Modulo"; break;
+                default: return false;
+            }
+
+            if (!TryFoldEngine(binary.Left, out var l, out var lf) || lf)
+                return false;
+            if (!TryFoldEngine(binary.Right, out var r, out var rf) || rf)
+                return false;
+            if (!Numeric.UnifyAsEngine(l, r, out var ea, out var eb))
+                return false;
+
+            bool division = binary.Operator == ExprOperator.Divide || binary.Operator == ExprOperator.Modulo;
+            if (division && eb.IsZero)
+                return false;
+            bool throws = division && Numeric.DivisionOverflows(ea, eb);
+            if (!throws)
+            {
+                if (TryEvaluate(ea, eb, binary.Operator, out _, out var faulted) || !faulted)
+                    return false;
+            }
+
+            left = Spell(ea);
+            right = Spell(eb);
+            return true;
         }
+
+        /// <summary>The engine-only fold: the value the engine's unchecked expression tree produces for a
+        /// constant subtree, ignoring the C#-side typing entirely. False with <paramref name="faulted"/> set
+        /// where that evaluation throws, false without it where the subtree is not an engine constant.</summary>
+        private static bool TryFoldEngine(ExprNode node, out Numeric engine, out bool faulted)
+        {
+            engine = default;
+            faulted = false;
+            var fold = Fold(node);
+            if (fold.IsConstant)
+            {
+                engine = fold.EngineValue;
+                return true;
+            }
+
+            if (!fold.Rejected)
+                return false;
+
+            switch (node)
+            {
+                case UnaryNode unary:
+                {
+                    if (!TryFoldEngine(unary.Operand, out var operand, out faulted) || faulted)
+                        return false;
+                    return TryUnary(operand, unary.Operator, out engine, out faulted);
+                }
+
+                case BinaryNode binary:
+                {
+                    if (!TryFoldEngine(binary.Left, out var l, out faulted) || faulted)
+                        return false;
+                    if (!TryFoldEngine(binary.Right, out var r, out faulted) || faulted)
+                        return false;
+                    if (binary.Operator == ExprOperator.LeftShift || binary.Operator == ExprOperator.RightShift)
+                    {
+                        if (!l.IsIntegral || !r.IsIntegral)
+                            return false;
+                        engine = Numeric.Shift(l, r.EngineShiftCount(), binary.Operator);
+                        return true;
+                    }
+
+                    if (!Numeric.UnifyAsEngine(l, r, out var ea, out var eb))
+                        return false;
+                    bool division = binary.Operator == ExprOperator.Divide ||
+                                    binary.Operator == ExprOperator.Modulo;
+                    if (division && !eb.IsZero && Numeric.DivisionOverflows(ea, eb))
+                    {
+                        faulted = true;
+                        return false;
+                    }
+
+                    return TryEvaluate(ea, eb, binary.Operator, out engine, out faulted);
+                }
+
+                case TernaryNode ternary:
+                {
+                    if (!(ternary.Condition is LiteralNode literal) || !(literal.Value is bool taken))
+                        return false;
+                    if (!TryFoldEngine(ternary.WhenTrue, out var t, out faulted) || faulted)
+                        return false;
+                    if (!TryFoldEngine(ternary.WhenFalse, out var f, out faulted) || faulted)
+                        return false;
+                    if (!Numeric.UnifyAsEngine(t, f, out var ea, out var eb))
+                        return false;
+                    engine = taken ? ea : eb;
+                    return true;
+                }
+
+                default:
+                    return false;
+            }
+        }
+
+        /// <summary>The C# literal for an engine value. MinValues avoid the literal-token edge with an
+        /// explicit subtraction (the emission sits inside <c>unchecked</c>); negatives are parenthesized.</summary>
+        private static string Spell(Numeric value) => value.Spelled();
 
         /// <summary>Locates the innermost constant division or modulo whose divisor is zero — the site C#
         /// reports CS0020 against, and the one the forwarded HED1018 names. Returns false when a rejection
@@ -410,6 +539,56 @@ namespace Heddle.Generator.Emit
                         return true;
                     default:
                         return false;
+                }
+            }
+
+            /// <summary>The engine's shift count: any integral, truncated to int the way the engine's
+            /// <c>Expression.Convert</c> truncates it. The masking to the operand's width happens in
+            /// <see cref="Shift"/>'s own C# operators.</summary>
+            internal int EngineShiftCount()
+            {
+                switch (Kind)
+                {
+                    case NumericKind.UInt:
+                    case NumericKind.ULong:
+                        return unchecked((int)_unsigned);
+                    default:
+                        return unchecked((int)_signed);
+                }
+            }
+
+            /// <summary>The C# literal spelling of this value in its own kind. MinValues are spelled as a
+            /// subtraction to avoid the bare-literal token edge; negatives are parenthesized.</summary>
+            internal string Spelled()
+            {
+                var inv = System.Globalization.CultureInfo.InvariantCulture;
+                switch (Kind)
+                {
+                    case NumericKind.UInt:
+                        return _unsigned.ToString(inv) + "U";
+                    case NumericKind.ULong:
+                        return _unsigned.ToString(inv) + "UL";
+                    case NumericKind.Long:
+                        if (_signed == long.MinValue)
+                            return "(-9223372036854775807L - 1L)";
+                        return _signed < 0 ? "(" + _signed.ToString(inv) + "L)" : _signed.ToString(inv) + "L";
+                    case NumericKind.Decimal:
+                        return _decimal < 0m
+                            ? "(" + _decimal.ToString(inv) + "M)"
+                            : _decimal.ToString(inv) + "M";
+                    case NumericKind.Double:
+                        if (double.IsNaN(_double))
+                            return "global::System.Double.NaN";
+                        if (double.IsPositiveInfinity(_double))
+                            return "global::System.Double.PositiveInfinity";
+                        if (double.IsNegativeInfinity(_double))
+                            return "global::System.Double.NegativeInfinity";
+                        var spelled = _double.ToString("R", inv) + "D";
+                        return _double < 0d ? "(" + spelled + ")" : spelled;
+                    default:
+                        if (_signed == int.MinValue)
+                            return "(-2147483647 - 1)";
+                        return _signed < 0 ? "(" + _signed.ToString(inv) + ")" : _signed.ToString(inv);
                 }
             }
 

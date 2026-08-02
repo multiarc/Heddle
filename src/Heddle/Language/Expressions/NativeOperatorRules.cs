@@ -27,10 +27,10 @@ namespace Heddle.Language.Expressions
         #region Binary
 
         /// <summary>Classifies <paramref name="op"/> in binary position over the two operand kinds.
-        /// <paramref name="relation"/> is the caller-computed type relation (see <see cref="TypeRelation"/>);
-        /// only <c>??</c> consults it, and <see cref="TypeRelation.Unknown"/> is always a safe default.</summary>
+        /// <paramref name="relation"/> and <paramref name="witness"/> are caller-computed facts (see
+        /// <see cref="TypeRelation"/>/<see cref="OperatorWitness"/>); their Unknown defaults are always safe.</summary>
         public static OperatorVerdict Classify(ExprOperator op, in OperandKind left, in OperandKind right,
-            TypeRelation relation = TypeRelation.Unknown)
+            TypeRelation relation = TypeRelation.Unknown, OperatorWitness witness = OperatorWitness.Unknown)
         {
             if (left.Category == OperandCategory.Unknown || right.Category == OperandCategory.Unknown)
                 return OperatorVerdict.RequiresRuntimeSemantics;
@@ -42,7 +42,7 @@ namespace Heddle.Language.Expressions
                 case ExprOperator.Multiply:
                 case ExprOperator.Divide:
                 case ExprOperator.Modulo:
-                    return ClassifyArithmetic(op, left, right);
+                    return ClassifyArithmetic(op, left, right, witness);
                 case ExprOperator.LeftShift:
                 case ExprOperator.RightShift:
                     return ClassifyShift(left, right);
@@ -50,10 +50,10 @@ namespace Heddle.Language.Expressions
                 case ExprOperator.LessThanOrEqual:
                 case ExprOperator.GreaterThan:
                 case ExprOperator.GreaterThanOrEqual:
-                    return ClassifyRelational(left, right);
+                    return ClassifyRelational(left, right, witness);
                 case ExprOperator.Equal:
                 case ExprOperator.NotEqual:
-                    return ClassifyEquality(left, right);
+                    return ClassifyEquality(left, right, witness);
                 case ExprOperator.And:
                 case ExprOperator.ExclusiveOr:
                 case ExprOperator.Or:
@@ -69,7 +69,8 @@ namespace Heddle.Language.Expressions
             }
         }
 
-        private static OperatorVerdict ClassifyArithmetic(ExprOperator op, in OperandKind left, in OperandKind right)
+        private static OperatorVerdict ClassifyArithmetic(ExprOperator op, in OperandKind left,
+            in OperandKind right, OperatorWitness witness)
         {
             if (op == ExprOperator.Add &&
                 (left.Category == OperandCategory.String || right.Category == OperandCategory.String))
@@ -92,8 +93,22 @@ namespace Heddle.Language.Expressions
                 }
             }
 
-            if (IsUndecidable(left) || IsUndecidable(right))
+            if (left.Category == OperandCategory.Unknown || right.Category == OperandCategory.Unknown)
                 return OperatorVerdict.RequiresRuntimeSemantics;
+
+            // The engine's arithmetic tail binds a user-defined operator or refuses; the witness decides.
+            if (MayCarryUserOperator(left) || MayCarryUserOperator(right))
+            {
+                switch (witness)
+                {
+                    case OperatorWitness.Bound:
+                        return OperatorVerdict.Supported;   // via the RuntimeOperators adapter
+                    case OperatorWitness.Absent:
+                        return OperatorVerdict.NotDefined;
+                    default:
+                        return OperatorVerdict.RequiresRuntimeSemantics;
+                }
+            }
 
             // Enum arithmetic is not supported by the native tier — the runtime raises a positioned error
             // while generated C# would happily render.
@@ -132,10 +147,25 @@ namespace Heddle.Language.Expressions
             return OperatorVerdict.Supported;
         }
 
-        private static OperatorVerdict ClassifyRelational(in OperandKind left, in OperandKind right)
+        private static OperatorVerdict ClassifyRelational(in OperandKind left, in OperandKind right,
+            OperatorWitness witness)
         {
-            if (IsUndecidable(left) || IsUndecidable(right))
+            if (left.Category == OperandCategory.Unknown || right.Category == OperandCategory.Unknown)
                 return OperatorVerdict.RequiresRuntimeSemantics;
+
+            // The engine's relational tail binds a user-defined comparison or refuses; the witness decides.
+            if (MayCarryUserOperator(left) || MayCarryUserOperator(right))
+            {
+                switch (witness)
+                {
+                    case OperatorWitness.Bound:
+                        return OperatorVerdict.Supported;   // via the RuntimeOperators adapter; bool-returning
+                    case OperatorWitness.Absent:
+                        return OperatorVerdict.NotDefined;
+                    default:
+                        return OperatorVerdict.RequiresRuntimeSemantics;
+                }
+            }
 
             // Both sides BCL-shaped here, and enums have no relational operator anywhere the engine looks —
             // every enum pairing is HED1008.
@@ -152,7 +182,8 @@ namespace Heddle.Language.Expressions
             return OperatorVerdict.NotDefined;   // null, bool, string and cross-category all error in the runtime
         }
 
-        private static OperatorVerdict ClassifyEquality(in OperandKind left, in OperandKind right)
+        private static OperatorVerdict ClassifyEquality(in OperandKind left, in OperandKind right,
+            OperatorWitness witness)
         {
             if (left.Category == OperandCategory.Unknown || right.Category == OperandCategory.Unknown)
                 return OperatorVerdict.RequiresRuntimeSemantics;
@@ -212,16 +243,31 @@ namespace Heddle.Language.Expressions
                     : OperatorVerdict.RequiresRuntimeSemantics;
             }
 
+            // A pair touching a reference or user struct with a value side: the engine binds a user equality
+            // operator or lands in HED1008 (the object.Equals fallback needs both sides referenceish).
             if (MayCarryUserOperator(left) || MayCarryUserOperator(right))
-                return OperatorVerdict.RequiresRuntimeSemantics;
+            {
+                switch (witness)
+                {
+                    case OperatorWitness.Bound:
+                        return OperatorVerdict.Supported;   // via the RuntimeOperators adapter
+                    case OperatorWitness.Absent:
+                        return OperatorVerdict.NotDefined;
+                    default:
+                        return OperatorVerdict.RequiresRuntimeSemantics;
+                }
+            }
+
             return OperatorVerdict.NotDefined;
         }
 
         /// <summary>Whether a <see cref="OperatorVerdict.Supported"/> equality emits through
         /// <c>Heddle.Precompiled.RuntimeOperators</c> rather than verbatim: the mixed/unrelated pairs whose
-        /// semantics live in the engine's fallback chain. The verbatim shapes — a null comparison, promoted
-        /// numerics, matched bools, strings — keep the C# operator.</summary>
-        public static bool EqualityViaAdapter(in OperandKind left, in OperandKind right)
+        /// semantics live in the engine's fallback chain, and the pairs a user-operator witness proved. The
+        /// verbatim shapes — a null comparison, promoted numerics, matched bools, strings, one enum type —
+        /// keep the C# operator.</summary>
+        public static bool EqualityViaAdapter(in OperandKind left, in OperandKind right,
+            OperatorWitness witness = OperatorWitness.Unknown)
         {
             if (left.Category == OperandCategory.NullLiteral || right.Category == OperandCategory.NullLiteral)
                 return false;
@@ -233,7 +279,10 @@ namespace Heddle.Language.Expressions
                 return false;
             if (left.Category == OperandCategory.Unknown || right.Category == OperandCategory.Unknown)
                 return false;
-            return left.IsNullAssignable && right.IsNullAssignable;
+            if (left.Category == OperandCategory.Enum && right.Category == OperandCategory.Enum &&
+                OperandKind.KnownSameType(left, right))
+                return false;
+            return (left.IsNullAssignable && right.IsNullAssignable) || witness == OperatorWitness.Bound;
         }
 
         private static OperatorVerdict ClassifyBitwise(in OperandKind left, in OperandKind right)
@@ -502,9 +551,9 @@ namespace Heddle.Language.Expressions
         /// <see cref="OperandKind.Unknown"/> when the operator would not be emitted at all — so a sub-expression the
         /// guard refuses can never contribute a kind that makes its parent emittable.</summary>
         public static OperandKind BinaryResult(ExprOperator op, in OperandKind left, in OperandKind right,
-            TypeRelation relation = TypeRelation.Unknown)
+            TypeRelation relation = TypeRelation.Unknown, OperatorWitness witness = OperatorWitness.Unknown)
         {
-            if (Classify(op, left, right, relation) != OperatorVerdict.Supported)
+            if (Classify(op, left, right, relation, witness) != OperatorVerdict.Supported)
                 return OperandKind.Unknown;
 
             bool lifted = left.IsNullable || right.IsNullable;
@@ -689,20 +738,5 @@ namespace Heddle.Language.Expressions
             }
         }
 
-        /// <summary>The categories whose operator behavior the table cannot decide from the descriptor alone: a
-        /// user-defined operator or conversion on a reference/struct type changes the answer, and Unknown has no
-        /// facts at all.</summary>
-        private static bool IsUndecidable(in OperandKind kind)
-        {
-            switch (kind.Category)
-            {
-                case OperandCategory.Unknown:
-                case OperandCategory.Reference:
-                case OperandCategory.Other:
-                    return true;
-                default:
-                    return false;
-            }
-        }
     }
 }
