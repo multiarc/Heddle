@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using BenchmarkDotNet.Attributes;
 using Heddle.Benchmarks.Dotnet.Engines;
 using Heddle.Benchmarks.Dotnet.Gate;
@@ -56,6 +57,11 @@ namespace Heddle.Benchmarks.Dotnet.Bench
         private readonly Dictionary<string, Func<string>> _cells =
             new Dictionary<string, Func<string>>(StringComparer.Ordinal);
 
+        // Owned by the suite, reused across iterations, sized in Setup. See PrepareBenchSinks.
+        private object _heddleModel;
+        private BenchSinks.BenchBufferWriter _benchBuffer;
+        private BenchSinks.BenchTextWriter _benchWriter;
+
         /// <summary>
         /// Gates every engine's cell for this workload and track, in the very process that will do
         /// the timing.
@@ -85,6 +91,44 @@ namespace Heddle.Benchmarks.Dotnet.Bench
 
                 _cells[key] = cell.Render;
             }
+
+            // Heddle's two streaming rows. Hoisting the model and pre-sizing the sinks here is what
+            // keeps the timed region to the engine alone: the model allocation and the sink's buffer
+            // are setup costs, not render costs, and the competitor rows pay neither.
+            _heddleModel = HeddleEngine.ModelFor(Workload);
+            PrepareBenchSinks(_cells["Heddle"]());
+        }
+
+        /// <summary>
+        /// Sizes both bench sinks past their high-water mark and proves, in this process and before
+        /// anything is timed, that each reproduces the gated string render exactly.
+        ///
+        /// <para>This is where the per-iteration checksum went. The gate writers fold FNV-1a over
+        /// every unit — the TextWriter one through a per-char virtual call — which is correct for a
+        /// gate and ruinous for a measurement: it taxed every timed iteration with harness work no
+        /// competitor row paid, and because both backends paid the same constant it compressed the
+        /// runtime-vs-precompiled ratio toward 1.0. Proving the property once per process gives the
+        /// same guarantee for none of the cost.</para>
+        /// </summary>
+        private void PrepareBenchSinks(string oracle)
+        {
+            // Utf8ScopeRenderer.RenderSingle can reserve up to ~3x the char count on a GetSpan, so
+            // size well past it: a resize inside the timed region would be timing Array.Resize.
+            _benchBuffer = new BenchSinks.BenchBufferWriter(oracle.Length * 4 + 4096);
+            _benchWriter = new BenchSinks.BenchTextWriter(oracle.Length + 1024);
+
+            HeddleEngine.RenderToBuffer(Track, Workload, _benchBuffer, _heddleModel);
+            if (!string.Equals(Encoding.UTF8.GetString(_benchBuffer.WrittenSpan), oracle, StringComparison.Ordinal))
+                throw new GateFailure(
+                    $"[FAIL] {Workload}/{Track}: the utf8 bench sink disagrees with the gated string render.");
+
+            HeddleEngine.RenderToWriter(Track, Workload, _benchWriter, _heddleModel);
+            if (!_benchWriter.WrittenSpan.SequenceEqual(oracle.AsSpan()))
+                throw new GateFailure(
+                    $"[FAIL] {Workload}/{Track}: the textwriter bench sink disagrees with the gated string render.");
+
+            _benchBuffer.Reset();
+            _benchWriter.Reset();
         }
 
         /// <summary>
@@ -110,27 +154,36 @@ namespace Heddle.Benchmarks.Dotnet.Bench
         /// differently from the field made every `vs Heddle` ratio in the program partly a
         /// measurement of output format.</para>
         ///
-        /// <para>Heddle's other sinks are not hidden — <see cref="RenderHeddleSink"/> measures them
-        /// as their own rows in this same sweep, so the UTF-8 advantage on large outputs is visible
-        /// as a technique rather than baked silently into the anchor.</para>
+        /// <para>Heddle's other sinks are not hidden — <see cref="RenderHeddleUtf8Sink"/> and
+        /// <see cref="RenderHeddleTextWriterSink"/> measure them as their own rows in this same
+        /// sweep, so the UTF-8 advantage on large outputs is visible as a technique rather than
+        /// baked silently into the anchor.</para>
         /// </summary>
         protected string Render(string engineKey) => _cells[engineKey]();
 
         /// <summary>
         /// Heddle's non-materialising sinks, measured as extra rows beside the anchor.
         ///
-        /// <para>These use the BENCH path (<c>RenderToSink</c>), which returns a checksum folded in
-        /// as the engine writes and never materialises the output — which is the whole point of a
-        /// streaming sink and would be destroyed by building a string to return. They are therefore
-        /// NOT like-for-like with the competitor rows, which all materialise, and the report keeps
-        /// them out of the cross-stack ranking for that reason. They answer a different and equally
-        /// real question: what does Heddle cost when the caller can stream.</para>
+        /// <para>They stream into a pre-sized, reused sink (<see cref="BenchSinks"/>) and return the
+        /// units written, so the timed region is the engine plus the cheapest honest consumer and
+        /// nothing else. They are NOT like-for-like with the competitor rows, every one of which
+        /// materialises a string, and the report keeps them out of the cross-stack ranking for that
+        /// reason. They answer a different and equally real question: what does Heddle cost when the
+        /// caller can stream.</para>
         /// </summary>
-        protected ulong RenderHeddleUtf8Sink()
-            => HeddleEngine.RenderToSink(Track, Workload, HeddleEngine.Sink.Utf8);
+        protected int RenderHeddleUtf8Sink()
+        {
+            _benchBuffer.Reset();
+            HeddleEngine.RenderToBuffer(Track, Workload, _benchBuffer, _heddleModel);
+            return _benchBuffer.WrittenCount;
+        }
 
         /// <inheritdoc cref="RenderHeddleUtf8Sink"/>
-        protected ulong RenderHeddleTextWriterSink()
-            => HeddleEngine.RenderToSink(Track, Workload, HeddleEngine.Sink.TextWriter);
+        protected int RenderHeddleTextWriterSink()
+        {
+            _benchWriter.Reset();
+            HeddleEngine.RenderToWriter(Track, Workload, _benchWriter, _heddleModel);
+            return _benchWriter.Length;
+        }
     }
 }

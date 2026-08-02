@@ -18,24 +18,31 @@ namespace Heddle.Benchmarks.Dotnet.Engines
     /// and <c>Generate(model, IBufferWriter&lt;byte&gt;)</c> writing UTF-8 directly. All are
     /// implemented and gated here.</para>
     ///
-    /// <para><b>Only UTF-8 is wired into the cross-stack sweep</b> (<see cref="Cell.InCrossStack"/>).
-    /// One engine contributes one row — the rule every other ecosystem follows — and UTF-8 is the
-    /// right row because it is the only .NET path directly comparable with the other five
-    /// ecosystems, which all emit UTF-8 or Latin-1. It also matters concretely: .NET strings are
-    /// UTF-16, so the string path materialises composed-page at 108,802 bytes, over the CLR's
-    /// 85,000-byte Large Object Heap threshold, where copy throughput collapses ~4.5x and every
-    /// render drives a full Gen2 collection. The same output as UTF-8 is 54,411 bytes and never
-    /// crosses that line. Ranking .NET on the UTF-16 path was measuring an allocator cliff no other
-    /// ecosystem pays.</para>
+    /// <para><b>The STRING sink is the cross-stack row</b> (<see cref="Cell.InCrossStack"/>), because
+    /// it is like-for-like with the five .NET competitors, every one of which materialises a UTF-16
+    /// string, and with the other five ecosystems, every one of which returns its own runtime's native
+    /// materialised string. "Materialise your runtime's native string" is the invariant this program
+    /// actually holds — Rust and Go merely happen to make that UTF-8, while the JVM, JS and Python all
+    /// hand back Latin-1/UTF-16 compact strings. An earlier revision ranked .NET on the UTF-8 path
+    /// arguing that UTF-16 charges Heddle a Large Object Heap cliff no other ecosystem pays; that
+    /// reasoning holds only ABOVE the 85,000-byte threshold, and it was applied to all eight workloads
+    /// including five whose output tops out at 31,098 bytes. It also exempted the anchor alone from a
+    /// cost its five .NET rivals all pay, and left it the only cell in the sweep that never
+    /// materialised its output — the exact failure ledger E4 added MATERIALISATION-CHECK to prevent.</para>
     ///
-    /// <para>The other techniques stay gated and are compared against each other by
-    /// <c>bench-techniques</c>, outside <c>run-all</c>.</para>
+    /// <para>The LOH observation survives as a reason the <i>utf8 technique row</i> is interesting on
+    /// composed-page (108,802 bytes as UTF-16 against 54,411 as UTF-8), not as the anchor's rationale.
+    /// All three sinks are gated; utf8 and textwriter ride along as non-ranked technique rows in the
+    /// same sweep and are compared exhaustively by <c>bench-techniques</c>.</para>
     /// </summary>
     public static class HeddleEngine
     {
-        /// <summary>The cross-stack row name. The technique suffix is deliberate: the tables must
-        /// say which path produced the number, because the six differ by more than noise.</summary>
-        public const string Name = "Heddle (utf8)";
+        /// <summary>The cross-stack row name — unqualified, because this is the engine's one ranked
+        /// row. The sink-qualified labels below (<c>Heddle (utf8 sink)</c>, <c>Heddle (textwriter
+        /// sink)</c>) name the non-ranked technique cells. An earlier revision left this as
+        /// "Heddle (utf8)" after the anchor moved to the string sink, which both mislabelled the
+        /// anchor and collided with the real utf8 cell's computed label.</summary>
+        public const string Name = "Heddle";
 
         /// <summary>How a rendered result is produced. Sink and backend are independent axes.</summary>
         public enum Sink
@@ -205,7 +212,7 @@ namespace Heddle.Benchmarks.Dotnet.Engines
                     var capturedWorkload = workload;
                     yield return new Cell
                     {
-                        Engine = sink == Sink.String ? Name : $"Heddle ({SinkLabel(sink)})",
+                        Engine = sink == Sink.String ? Name : $"Heddle ({SinkLabel(sink)} sink)",
                         Track = track,
                         Workload = workload,
                         InCrossStack = sink == Sink.String,
@@ -222,41 +229,43 @@ namespace Heddle.Benchmarks.Dotnet.Engines
         public static int LastUtf8ByteCount { get; private set; }
 
         /// <summary>
-        /// The BENCH path: renders through a sink and returns a checksum, never a string.
+        /// The BENCH path: render into a CALLER-OWNED sink, doing nothing else.
         ///
-        /// This is what <c>bench-techniques</c> times. The string sink returns its output's length
-        /// folded into the same hash space so all three are comparable, but the streaming sinks
-        /// genuinely never allocate the full output -- which is the entire point of measuring them,
-        /// and would be destroyed by materialising a string to return.
+        /// <para>The model is a parameter rather than resolved here, and the sink belongs to the
+        /// caller rather than being allocated per call. Both matter for fairness. The previous shape
+        /// called <see cref="ModelFor"/> on every invocation — allocating a fresh model inside the
+        /// timed region that the precompiled suite, which hoists its model into
+        /// <c>[GlobalSetup]</c>, never paid — and allocated a fresh 64 KB checksum buffer per render.
+        /// Neither cost belongs to the engine.</para>
+        ///
+        /// <para>Nothing is returned: the caller reads the count off its own sink and hands that to
+        /// BenchmarkDotNet, which is what keeps the work from being elided. The engine's writes
+        /// cannot be optimised away regardless — they are stores through spans into escaping heap
+        /// arrays across non-inlined virtual calls. Content is proven once per process by the gate
+        /// and by each suite's setup assertion; see <c>Bench/BenchSinks.cs</c>.</para>
         /// </summary>
-        public static ulong RenderToSink(string track, string workload, Sink sink, Backend backend = Backend.Runtime)
+        public static void RenderToBuffer(string track, string workload, IBufferWriter<byte> buffer,
+            object model, Backend backend = Backend.Runtime)
         {
-            var model = ModelFor(workload);
-
-            if (backend == Backend.Precompiled)
-                return Precompiled.RenderToSink(track, workload, sink, model);
-
-            var template = Template(track, workload);
-            switch (sink)
-            {
-                case Sink.String:
-                    return Gate.Materialisation.HashOf(template.Generate(model));
-                case Sink.TextWriter:
-                {
-                    var writer = new Gate.Materialisation.ChecksumTextWriter();
-                    template.Generate(model, writer);
-                    return writer.Hash;
-                }
-                case Sink.Utf8:
-                {
-                    var buffer = new Gate.Materialisation.ChecksumBufferWriter();
-                    template.Generate(model, buffer);
-                    return buffer.Hash;
-                }
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(sink), sink, null);
-            }
+            if (backend == Backend.Precompiled) { Precompiled.RenderToBuffer(workload, buffer, model); return; }
+            Template(track, workload).Generate(model, buffer);
         }
+
+        /// <inheritdoc cref="RenderToBuffer"/>
+        public static void RenderToWriter(string track, string workload, TextWriter writer,
+            object model, Backend backend = Backend.Runtime)
+        {
+            if (backend == Backend.Precompiled) { Precompiled.RenderToWriter(workload, writer, model); return; }
+            Template(track, workload).Generate(model, writer);
+        }
+
+        /// <summary>The string technique: producing the string IS the work, so it is returned and the
+        /// caller consumes its length.</summary>
+        public static string RenderToString(string track, string workload, object model,
+            Backend backend = Backend.Runtime)
+            => backend == Backend.Precompiled
+                ? Precompiled.RenderToString(workload, model)
+                : Template(track, workload).Generate(model);
 
         public static string SinkLabel(Sink sink) => sink switch
         {

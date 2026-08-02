@@ -25,10 +25,12 @@ namespace Heddle.Benchmarks.Dotnet.Engines
         public Func<string> Render { get; init; }
 
         /// <summary>
-        /// True when this cell participates in the cross-stack sweep. All six Heddle techniques are
-        /// gated, but only the UTF-8 one is wired into <c>run-all</c> and the report (ledger E10) —
-        /// one engine contributes one row, the rule every other ecosystem follows. The other five
-        /// are reachable through <c>bench-techniques</c>.
+        /// True when this cell is the engine's RANKED row in the cross-stack sweep. All six Heddle
+        /// techniques are gated; the STRING sink carries this flag, because it is like-for-like with
+        /// the five .NET competitors and with every other ecosystem's materialised native string.
+        /// The utf8 and textwriter sinks are still measured in the same sweep, as non-ranked
+        /// technique rows the report quarantines from every ranking and margin, and are compared
+        /// exhaustively against the precompiled backend by <c>bench-techniques</c>.
         /// </summary>
         public bool InCrossStack { get; init; }
 

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using Heddle.Attributes;
 using Heddle.Data;
 using Heddle.Helpers;
@@ -47,6 +48,14 @@ namespace Heddle.Runtime {
         {
             public IDataProcessor Processor;
             public string Piece;
+
+            /// <summary>
+            /// <see cref="Piece"/> pre-encoded as UTF-8, so a UTF-8 sink writes final-form bytes
+            /// instead of re-transcoding the same static text on every render. Null when this
+            /// element carries a <see cref="Processor"/> rather than a literal piece. Encoded once
+            /// at document build: templates compile once, so the cost is off the render path.
+            /// </summary>
+            public byte[] PieceUtf8;
         }
 
         private static ICollection<IDataProcessor> OptimizeCallTree(DocumentElement[] items, string document, out bool canDoFullOptimize)
@@ -225,17 +234,24 @@ namespace Heddle.Runtime {
         private sealed class DocumentStrategy : IProcessStrategy
         {
             private readonly string _document;
+            private readonly byte[] _documentUtf8;
 
             public DocumentStrategy(string document)
             {
                 _document = document;
+                _documentUtf8 = Encoding.UTF8.GetBytes(document);
             }
 
             public string Execute(in Scope scope) => _document;
 
+            // Same shape as PrecompiledRuntime.WritePiece, whose semantics the parity gates pin: a
+            // UTF-8 sink takes pre-encoded bytes, everything else takes the chars. Static pieces
+            // reach the sink directly and never pass through the encode proxy, so the
+            // never-bypass-encoding invariant is untouched.
             public void Render(in Scope scope)
             {
-                scope.Renderer.Render(_document);
+                if (scope.Renderer is IUtf8ScopeRenderer u8) u8.RenderUtf8(_documentUtf8);
+                else scope.Renderer.Render(_document);
             }
         }
 
@@ -280,6 +296,12 @@ namespace Heddle.Runtime {
             public NormalStrategy(DataProcessor[] processors)
             {
                 _processors = processors;
+                // Eager: templates compile once, so this is one-time work off the render path. Costs
+                // roughly the static content again in bytes for ASCII-dominated templates, which is
+                // the trade for not re-transcoding every static piece on every UTF-8 render.
+                for (var i = 0; i < _processors.Length; i++)
+                    if (_processors[i].Piece != null)
+                        _processors[i].PieceUtf8 = Encoding.UTF8.GetBytes(_processors[i].Piece);
             }
 
             public string Execute(in Scope scope)
@@ -301,11 +323,15 @@ namespace Heddle.Runtime {
 
             public void Render(in Scope scope)
             {
-                foreach (var element in _processors)
+                // Type-tested once for the whole document rather than per piece.
+                var u8 = scope.Renderer as IUtf8ScopeRenderer;
+                for (var i = 0; i < _processors.Length; i++)
                 {
+                    var element = _processors[i];
                     if (element.Piece != null)
                     {
-                        scope.Renderer.Render(element.Piece);
+                        if (u8 != null) u8.RenderUtf8(element.PieceUtf8);
+                        else scope.Renderer.Render(element.Piece);
                     }
                     else
                     {

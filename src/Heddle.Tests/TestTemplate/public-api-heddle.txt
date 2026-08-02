@@ -134,6 +134,7 @@ TYPE Heddle.Data.HeddleDiagnosticIds
   FIELD System.String BuildOptionParseError
   FIELD System.String BuildRegionNotPublic
   FIELD System.String BuildSurrogatePiece
+  FIELD System.String BuildTemplateNotPrecompiled
   FIELD System.String BuildTemplateOutsideRoot
   FIELD System.String BuildUnknownOutputProfile
   FIELD System.String BuildUnreadableFile
