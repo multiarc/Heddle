@@ -87,6 +87,27 @@ namespace Heddle.Generator.IntegrationTests
             Assert.Equal(dyn, precompiled);
         }
 
+        private static readonly bool FileSystemIsCaseSensitive = ProbeCaseSensitivity();
+
+        /// <summary>Writes a probe file and asks for it back under a different casing. Only the file
+        /// NAME is re-cased: re-casing the directory too would answer a question about the temp
+        /// path's own spelling instead.</summary>
+        private static bool ProbeCaseSensitivity()
+        {
+            var dir = System.IO.Path.GetTempPath();
+            var name = "heddle-case-probe-" + Guid.NewGuid().ToString("N");
+            var path = System.IO.Path.Combine(dir, name);
+            System.IO.File.WriteAllText(path, string.Empty);
+            try
+            {
+                return !System.IO.File.Exists(System.IO.Path.Combine(dir, name.ToUpperInvariant()));
+            }
+            finally
+            {
+                System.IO.File.Delete(path);
+            }
+        }
+
         /// <summary>Spellings that name no file the engine can read either. A <c>..</c> with nothing left to cancel
         /// against reaches above the root, and a key differs by case — both refuse on both tiers, and the build
         /// error is matched by an engine error rather than standing alone over a template that renders.</summary>
@@ -101,6 +122,19 @@ namespace Heddle.Generator.IntegrationTests
         [InlineData("sub/..")]
         public void AnImportSpellingTheEngineResolvesToNothingIsRefusedByBothTiers(string spelling)
         {
+            // "LIB.heddle" is the case-differing row, and whether it names a readable file is a
+            // property of the FILE SYSTEM, not of either tier: NTFS and APFS resolve it to
+            // lib.heddle, ext4 does not. On a case-insensitive volume the engine reads the file and
+            // compiles, so the row's own premise -- that this spelling reaches nothing -- is false
+            // and it can prove nothing about refusal. Probed rather than assumed from the OS,
+            // because Windows can mount case-sensitive directories and macOS ships either.
+            if (!FileSystemIsCaseSensitive
+                && string.Equals(spelling, "LIB.heddle", StringComparison.Ordinal))
+            {
+                Assert.Skip("the file system resolving this corpus is case-insensitive, so a " +
+                            "case-differing spelling names a file that exists");
+            }
+
             var engine = Engine(spelling);
             Assert.False(engine.CompileResult.Success);
             Assert.Contains(engine.CompileResult.Errors, e => e.DiagnosticId == "HED4009");

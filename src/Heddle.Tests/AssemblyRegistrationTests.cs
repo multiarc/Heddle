@@ -64,8 +64,17 @@ namespace Heddle.Tests
 
             Assert.False(TemplateFactory.Exists(extensionName),
                 "an unregistered assembly took an extension name");
+#if !NETFRAMEWORK
+            // .NET Core loads the probe into a context that the resolver's assembly enumeration does
+            // not surface, so the type spelling is gated too. On .NET Framework an
+            // Assembly.Load(byte[]) joins the AppDomain's assembly list, which is exactly what
+            // ReflectionHelper walks -- so the TYPE is ambiently visible there before any
+            // registration, and asserting a throw would be asserting a property that framework does
+            // not have. The extension NAME is gated on both, and that half is asserted above and
+            // below; it is the half the registration seam actually owns.
             Assert.Throws<InvalidOperationException>(
                 () => ReflectionHelper.ResolveType($"ProbeNamespace{suffix}.{typeName}"));
+#endif
 
             HeddleTemplate.Register(probe);
 

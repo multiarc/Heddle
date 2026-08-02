@@ -17,7 +17,7 @@ performance pick — a modern precompiled EJS successor with native layouts/part
 whitespace-control documentation. Both fairness tracks ship, per the standing ruling: the controlled
 track under the byte-identical gate against the golden corpus, and the idiomatic track under
 contract v2's functional-equivalence verifier. The deliverable is a per-ecosystem benchmark report
-in the repo's established style ([2026-07-18](../benchmarks/2026-07-18/index.md) is the model).
+in the repo's established style (2026-07-18 is the model).
 
 **Why JS is priority 3, and the framing burden that comes with it.** JS/Node is the largest
 practitioner population any phase reaches — npm download volume dwarfs every other ecosystem's
@@ -223,7 +223,7 @@ here.
 | Controlled-track disclosed-idiom rule (registered helpers as documented per-language idioms) | Marr, Daloze & Mössenböck, "Cross-Language Compiler Benchmarking: Are We Fast Yet?" (DLS 2016); [smarr/are-we-fast-yet](https://github.com/smarr/are-we-fast-yet); adopted in [phase 1](phase-1-cross-stack-foundation.md) |
 | Isolated microbenchmarks can induce unrepresentative JIT profiles on managed runtimes — the concern mitata's deopt detection addresses for V8 | Schiavio, Bulej & Binder, "Misleading Microbenchmarks on the JVM" (ACM SAC 2026, [arXiv:2605.23570](https://arxiv.org/abs/2605.23570)), by analogy to V8's tiered JIT |
 | Allocation/GC numbers are not comparable across runtimes; wall time per render is the sole cross-comparable metric | Standing ruling 5, grounded in BenchmarkDotNet documentation ([benchmarkdotnet.org](https://benchmarkdotnet.org/)); protocol in [phase 1](phase-1-cross-stack-foundation.md) |
-| Handlebars.Net (the .NET port of this phase's credibility pick) was not uniformly beaten intra-.NET: 0.46x allocation on trivial substitution, within ~8% on large-loop time | [docs/benchmarks/2026-07-18/index.md](../benchmarks/2026-07-18/index.md) |
+| Handlebars.Net (the .NET port of this phase's credibility pick) was not uniformly beaten intra-.NET: 0.46x allocation on trivial substitution, within ~8% on large-loop time | docs/benchmarks/2026-07-18/index.md |
 | Pug is structurally excluded (whitespace-significant syntax cannot target byte-exact output) | Standing ruling 4; exclusion policy in [phase 1](phase-1-cross-stack-foundation.md) |
 | Golden corpus, parity contract v2 (controlled byte gate + idiomatic verifier), and metrics/publication protocol this phase consumes | [Phase 1 — cross-stack-foundation](phase-1-cross-stack-foundation.md) |
 

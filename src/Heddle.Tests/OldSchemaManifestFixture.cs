@@ -102,8 +102,20 @@ namespace OldGenerated
 
         private static byte[] Compile(string assemblyName, string source, MetadataReference[] extra, Version version)
         {
-            var references = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES"))
-                .Split(Path.PathSeparator)
+            // TRUSTED_PLATFORM_ASSEMBLIES is a .NET Core host concept and is NULL on .NET Framework,
+            // where the reference closure comes from what the AppDomain has actually loaded. Without
+            // the fallback this fixture threw NullReferenceException on the net48 leg, taking all
+            // three old-schema rejection tests with it -- on the one framework whose binding
+            // behaviour the fixture exists to pin.
+            var trusted = (string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES");
+            var candidates = trusted != null
+                ? trusted.Split(Path.PathSeparator)
+                : AppDomain.CurrentDomain.GetAssemblies()
+                    .Where(a => !a.IsDynamic)
+                    .Select(a => a.Location)
+                    .ToArray();
+
+            var references = candidates
                 .Where(p => !string.IsNullOrEmpty(p) && File.Exists(p))
                 // The real Heddle must never be visible to either compilation: its presence is what would let the
                 // manifest bind to the current three-parameter constructor and turn this fixture into the very

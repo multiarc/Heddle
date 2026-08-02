@@ -12,7 +12,7 @@
 This phase turns Heddle's existing intra-.NET benchmark credibility work into a foundation that five
 language ecosystems can build on independently. Today the repo has three parity-checked workloads
 (composed page, trivial substitution, large loop) held byte-identical across Heddle and four .NET
-twins ([2026-07-11](../benchmarks/2026-07-11/index.md), [2026-07-18](../benchmarks/2026-07-18/index.md)),
+twins (2026-07-11, 2026-07-18),
 but the workload set is too narrow to defend cross-stack claims, has no encoding-ON coverage, and its
 parity contract is written for one runtime.
 
@@ -36,7 +36,7 @@ Phase 1 delivers four things, in dependency order:
    number, allocations/GC per-ecosystem-only and explicitly marked non-comparable, per-ecosystem
    standard harnesses, one machine, date-stamped publication under `docs/benchmarks/<date>/` in the
    repo's established honest-reporting style (losses reported as prominently as wins — the
-   [2026-07-18 report](../benchmarks/2026-07-18/index.md) is the model).
+   2026-07-18 report is the model).
 
 Why this phase exists at all: the research survey found **no existing benchmark that is both
 cross-language and template-focused**, and no surveyed project enforces byte-identical cross-engine
@@ -313,8 +313,8 @@ and Q6.2 presentation rules folded into the metrics/publication protocol above) 
 | Go per-ecosystem precedent (interpreted vs precompiled organization) | [slinso/goTemplateBenchmark](https://github.com/slinso/goTemplateBenchmark) |
 | Python realistic-template precedent (~65 KB e-commerce template, transparent scripts, Oct 2025) | simonw/research, minijinja-vs-jinja2 study |
 | Existing parity contract v1: byte-identical after documented normalization (line endings, inter-tag whitespace collapse, trim), asserted before timing; templates authored whitespace-free; raw path on every engine | [benchmarks/dotnet/GoldenCorpus/README.md](../../benchmarks/dotnet/GoldenCorpus/README.md) |
-| Results are workload-shape-dependent: Handlebars.Net 0.46x alloc on trivial substitution, within ~8% on large-loop time; honest-reporting posture modeled | [docs/benchmarks/2026-07-18/index.md](../benchmarks/2026-07-18/index.md) |
-| Composed-page anchor: ~35 K normalized chars, four twins parity-checked, 2.0x time lead; fragment-sequence fidelity note and `@<<` root cause documented | [docs/benchmarks/2026-07-11/index.md](../benchmarks/2026-07-11/index.md); [Runners README](../../benchmarks/dotnet/GoldenCorpus/README.md) |
+| Results are workload-shape-dependent: Handlebars.Net 0.46x alloc on trivial substitution, within ~8% on large-loop time; honest-reporting posture modeled | docs/benchmarks/2026-07-18/index.md |
+| Composed-page anchor: ~35 K normalized chars, four twins parity-checked, 2.0x time lead; fragment-sequence fidelity note and `@<<` root cause documented | docs/benchmarks/2026-07-11/index.md; [Runners README](../../benchmarks/dotnet/GoldenCorpus/README.md) |
 | Contextual vs flat escaping split among cast engines (Heddle and JTE contextual at compile time; Go html/template contextual at runtime; others flat HTML) — grounds the encoded-suite context-confinement constraint | Research spike 2 engine notes (grounding dossier, 2026-07-19); Go html/template documentation; [jte.gg](https://jte.gg/) |
 
 Assumptions to verify in the spec (flagged, not grounded here): exact whitespace-control syntax for

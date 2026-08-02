@@ -1,3 +1,4 @@
+using System.Linq;
 using Xunit;
 
 namespace Heddle.Generator.IntegrationTests
@@ -83,7 +84,13 @@ namespace Heddle.Generator.IntegrationTests
         {
             var generated = DifferentialHarness.Generate(new[] { (Key, Template(expression)) });
 
-            Assert.Empty(generated.Diagnostics);
+            // A degrade is ANNOUNCED now: HED7031 names the template and the emitter's own reason,
+            // where moving to the dynamic tier used to be silent -- the very hazard the
+            // "silently and with no diagnostic to notice" comment in this file calls out. These rows
+            // therefore pin "nothing OTHER than that notice", which still fails on any unrelated
+            // diagnostic while not demanding the notice from degrade paths that route through a more
+            // specific channel (HED7014's fallback marker, for one).
+            Assert.Empty(generated.Diagnostics.Where(d => d.Id != "HED7031"));
             DifferentialHarness.ExpectDegrade(generated, Key);
         }
 
@@ -134,7 +141,13 @@ namespace Heddle.Generator.IntegrationTests
         {
             var generated = DifferentialHarness.Generate(new[] { (Key, Template(expression)) });
 
-            Assert.Empty(generated.Diagnostics);
+            // A degrade is ANNOUNCED now: HED7031 names the template and the emitter's own reason,
+            // where moving to the dynamic tier used to be silent -- the very hazard the
+            // "silently and with no diagnostic to notice" comment in this file calls out. These rows
+            // therefore pin "nothing OTHER than that notice", which still fails on any unrelated
+            // diagnostic while not demanding the notice from degrade paths that route through a more
+            // specific channel (HED7014's fallback marker, for one).
+            Assert.Empty(generated.Diagnostics.Where(d => d.Id != "HED7031"));
             DifferentialHarness.ExpectDegrade(generated, Key);
         }
 
@@ -184,7 +197,10 @@ namespace Heddle.Generator.IntegrationTests
             var model = new Fixtures.UnsignedMemberModel { Ticks = 0, Count = 0, Label = "n" };
 
             var generated = DifferentialHarness.Generate(new[] { (key, template) });
-            Assert.Empty(generated.Diagnostics);
+            // Same rule as the degrade rows above: a template that does not precompile now says so
+            // through HED7031, so anything BUT that notice is what must be absent here. The rows
+            // with precompiles: true still assert a completely clean build, because no notice fires.
+            Assert.Empty(generated.Diagnostics.Where(d => d.Id != "HED7031"));
             if (!precompiles)
             {
                 DifferentialHarness.ExpectDegrade(generated, key);
@@ -214,7 +230,13 @@ namespace Heddle.Generator.IntegrationTests
         {
             var generated = DifferentialHarness.Generate(new[] { (Key, Template(expression)) });
 
-            Assert.Empty(generated.Diagnostics);
+            // A degrade is ANNOUNCED now: HED7031 names the template and the emitter's own reason,
+            // where moving to the dynamic tier used to be silent -- the very hazard the
+            // "silently and with no diagnostic to notice" comment in this file calls out. These rows
+            // therefore pin "nothing OTHER than that notice", which still fails on any unrelated
+            // diagnostic while not demanding the notice from degrade paths that route through a more
+            // specific channel (HED7014's fallback marker, for one).
+            Assert.Empty(generated.Diagnostics.Where(d => d.Id != "HED7031"));
             DifferentialHarness.ExpectDegrade(generated, Key);
         }
 
@@ -250,7 +272,13 @@ namespace Heddle.Generator.IntegrationTests
         {
             var generated = DifferentialHarness.Generate(new[] { (Key, Template(expression)) });
 
-            Assert.Empty(generated.Diagnostics);
+            // A degrade is ANNOUNCED now: HED7031 names the template and the emitter's own reason,
+            // where moving to the dynamic tier used to be silent -- the very hazard the
+            // "silently and with no diagnostic to notice" comment in this file calls out. These rows
+            // therefore pin "nothing OTHER than that notice", which still fails on any unrelated
+            // diagnostic while not demanding the notice from degrade paths that route through a more
+            // specific channel (HED7014's fallback marker, for one).
+            Assert.Empty(generated.Diagnostics.Where(d => d.Id != "HED7031"));
             DifferentialHarness.ExpectDegrade(generated, Key);
         }
 

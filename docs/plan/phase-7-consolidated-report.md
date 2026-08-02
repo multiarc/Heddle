@@ -51,7 +51,7 @@ analysis states wherever it presents encoded-suite results, per the Phase 1
 protocol. The analysis must be as
 articulate about Heddle's weaknesses as its strengths: every workload where Heddle trails or an
 engine narrows to measurement distance is reported as prominently as any win, in the posture the
-[2026-07-18 report](../benchmarks/2026-07-18/index.md) already models intra-.NET (an allocation
+2026-07-18 report already models intra-.NET (an allocation
 inversion and an ~8% time gap led that report's findings). Where Heddle loses, the report says
 what that reveals about the design's cost — not just that it happened.
 
@@ -69,8 +69,8 @@ generalization question is stated as narrowed or open, never extrapolated.
   7 never runs a benchmark.
 - **No edits to any existing artifact.** Published reports stay immutable; the golden corpus,
   parity contract v2, the metrics protocol, and all per-ecosystem harnesses are untouched. The
-  pre-protocol reports ([2026-07-11](../benchmarks/2026-07-11/index.md),
-  [2026-07-18](../benchmarks/2026-07-18/index.md)) are cited as history and are **not**
+  pre-protocol reports (2026-07-11,
+  2026-07-18) are cited as history and are **not**
   aggregated — only runs produced under the Phase 1 protocol are eligible rows.
 - **No marketing-style ranking.** No overall-winner declaration, no single aggregate score or
   cross-workload geomean leaderboard, and no ranking table that is not accompanied by
@@ -315,9 +315,9 @@ above and not duplicated: Q1.3, Q1.6, Q2.1, Q2.2 (= option A), Q4.1, Q4.2, Q5.1,
 | Wall time per render is the only cross-language-comparable number; allocation/GC is per-ecosystem-only and explicitly non-comparable; one machine; publication under `docs/benchmarks/<date>/` in the existing style | Standing ruling 5 (grounding dossier, 2026-07-19); [Phase 1 metrics & publication protocol](phase-1-cross-stack-foundation.md); BenchmarkDotNet documentation ([benchmarkdotnet.org](https://benchmarkdotnet.org/)) |
 | Both fairness tracks ship, labeled, answering different questions (engine vs practitioner experience) | Standing ruling 6 (grounding dossier, 2026-07-19); Marr, Daloze & Mössenböck, "Cross-Language Compiler Benchmarking: Are We Fast Yet?" (DLS 2016), [smarr/are-we-fast-yet](https://github.com/smarr/are-we-fast-yet); TechEmpower posture per [TechEmpower/FrameworkBenchmarks](https://github.com/TechEmpower/FrameworkBenchmarks) |
 | Phases 2–6 are independent, priority-ordered, individually cuttable; Phase 7 consolidates | Standing ruling 8, the approved phase backbone (grounding dossier, 2026-07-19) |
-| Honest-reporting posture: losses reported as prominently as wins, no universal-superiority claims, hardware- and date-specific numbers, reproduce-it-yourself commands — the report style this phase must match | [docs/benchmarks/2026-07-18/index.md](../benchmarks/2026-07-18/index.md) |
-| Heddle is the ratio baseline in the repo's published parity benchmarks | [benchmarks/dotnet/GoldenCorpus/README.md](../../benchmarks/dotnet/GoldenCorpus/README.md); [docs/benchmarks/2026-07-18/index.md](../benchmarks/2026-07-18/index.md) |
-| Workload-shape dependence is demonstrated fact, not hypothesis: composition 2.0x Heddle lead vs allocation inversion (0.46x) and ~8% loop-time gap intra-.NET | [docs/benchmarks/2026-07-11/index.md](../benchmarks/2026-07-11/index.md); [docs/benchmarks/2026-07-18/index.md](../benchmarks/2026-07-18/index.md) |
+| Honest-reporting posture: losses reported as prominently as wins, no universal-superiority claims, hardware- and date-specific numbers, reproduce-it-yourself commands — the report style this phase must match | docs/benchmarks/2026-07-18/index.md |
+| Heddle is the ratio baseline in the repo's published parity benchmarks | [benchmarks/dotnet/GoldenCorpus/README.md](../../benchmarks/dotnet/GoldenCorpus/README.md); docs/benchmarks/2026-07-18/index.md |
+| Workload-shape dependence is demonstrated fact, not hypothesis: composition 2.0x Heddle lead vs allocation inversion (0.46x) and ~8% loop-time gap intra-.NET | docs/benchmarks/2026-07-11/index.md; docs/benchmarks/2026-07-18/index.md |
 | Each workload owns one variability dimension — the inversion of that table is the shape analysis's structure | [Phase 1 — cross-stack-foundation](phase-1-cross-stack-foundation.md), workload table |
 | Three AOT-compiled/typed peers (Askama, JTE, templ) exist to test whether the compiled result generalizes; html/template is the cast's only runtime contextual encoder (JTE, like Heddle, is contextual at compile time), and cutting Go forfeits the compile-time-vs-runtime contextual comparison | [Phase 2](phase-2-rust.md); [Phase 3](phase-3-jvm.md); [Phase 6](phase-6-go.md); research spike 2 engine notes (grounding dossier, 2026-07-19) |
 | JS/Python results are reach-and-context evidence, not fair-fight evidence — framing this report must preserve | [Phase 4](phase-4-js.md); [Phase 5](phase-5-python.md) |

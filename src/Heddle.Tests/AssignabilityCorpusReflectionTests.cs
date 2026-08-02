@@ -25,6 +25,27 @@ namespace Heddle.Tests
         private static Type Resolve(string spelling) =>
             ReflectionHelper.ResolveType(spelling, Array.Empty<string>());
 
+        /// <summary>
+        /// The expectation for the CLR actually running this test.
+        ///
+        /// <para>The shared corpus commits the relation as CoreCLR and Roslyn's symbol model both
+        /// answer it, because that is the pair the generator and the modern runtime must agree on.
+        /// The .NET Framework CLR answers one row differently: on x64 it permits
+        /// <c>IntPtr[]</c> -&gt; <c>Int64[]</c> array covariance, reducing <c>IntPtr</c> to its
+        /// 64-bit underlying primitive, where CoreCLR refuses and the symbol tier refuses. Skipping
+        /// the row on netfx would drop a real assertion; flipping the committed value would break
+        /// both the CoreCLR driver and the generator's symbol driver, which read the same file. So
+        /// the divergence is recorded here and the netfx run asserts the behaviour netfx actually
+        /// has. A change on either side turns a run red, which is the point of the corpus.</para>
+        /// </summary>
+        private static bool ExpectedOnThisRuntime(string source, string target, bool committed)
+        {
+#if NETFRAMEWORK
+            if (source == "System.IntPtr[]" && target == "System.Int64[]") return true;
+#endif
+            return committed;
+        }
+
         [Theory]
         [MemberData(nameof(Rows))]
         public void CommittedExpectationEqualsTheLiveClrRelation(string source, string target, bool expected,
@@ -32,8 +53,9 @@ namespace Heddle.Tests
         {
             var sourceType = Resolve(source);
             var targetType = Resolve(target);
-            Assert.True(targetType.IsAssignableFrom(sourceType) == expected,
-                $"{family}: {source} -> {target} — committed expectation {expected} disagrees with live reflection.");
+            var here = ExpectedOnThisRuntime(source, target, expected);
+            Assert.True(targetType.IsAssignableFrom(sourceType) == here,
+                $"{family}: {source} -> {target} — expectation {here} disagrees with live reflection.");
         }
 
         [Theory]
@@ -41,7 +63,8 @@ namespace Heddle.Tests
         public void ReflectionAdapterMatchesTheCorpus(string source, string target, bool expected, string family)
         {
             ITypeFacts<Type> facts = ReflectionTypeFacts.Instance;
-            Assert.True(facts.IsAssignableFrom(Resolve(target), Resolve(source)) == expected,
+            Assert.True(facts.IsAssignableFrom(Resolve(target), Resolve(source))
+                        == ExpectedOnThisRuntime(source, target, expected),
                 $"{family}: {source} -> {target}");
         }
 

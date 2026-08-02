@@ -151,7 +151,15 @@ namespace Heddle.Tests
         [Fact]
         public void AnImportThatCannotBeReadIsReportedAndTheRestOfTheDocumentStillParses()
         {
-            var settings = new ParserSettings { RootPath = System.IO.Path.Combine("<none>", "no-such-directory") };
+            // A root that is ABSENT, which is the state under test -- not one that is syntactically
+            // illegal. The former spelling used "<none>", and .NET Framework's Path.Combine rejects
+            // '<' as an illegal path character (ArgumentException) where .NET Core dropped that
+            // validation, so the test threw out of its own arrangement on the net48 leg before the
+            // parser was ever reached.
+            var settings = new ParserSettings
+            {
+                RootPath = System.IO.Path.Combine("no-such-root", "no-such-directory")
+            };
 
             var context = DocumentParser.Parse(
                 "@<<{{missing.heddle}}@\\\n@import(){{legacy.heddle}}@\\\ntail", settings, out var clean);

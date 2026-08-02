@@ -163,7 +163,7 @@ excluded-with-documented-evidence, and no replacement engine enters without user
   git-versioned change (Phase 1, Q1.5) — means any subsequent Go run re-runs the Go parity gates
   against the current corpus, like any other repo change.
 - **Report readers:** the per-ecosystem report follows the established `docs/benchmarks/<date>/`
-  style ([2026-07-18](../benchmarks/2026-07-18/index.md) is the model), so no new reading
+  style (2026-07-18 is the model), so no new reading
   conventions are introduced beyond the interpreted-vs-precompiled section framing.
 
 ## Risks & mitigations
@@ -253,7 +253,7 @@ resolutions referenced above, not duplicated here.
 | Allocation/GC numbers are not comparable across runtimes with different allocator designs; wall time per render is the sole cross-comparable metric | Standing ruling 5 and the [Phase 1 metrics protocol](phase-1-cross-stack-foundation.md); BenchmarkDotNet documentation ([benchmarkdotnet.org](https://benchmarkdotnet.org/)) |
 | Controlled-track methodology: semantically-equivalent, disclosed-idiom implementations so the engine, not the algorithm, is measured | Marr, Daloze & Mössenböck, "Cross-Language Compiler Benchmarking: Are We Fast Yet?" (DLS 2016); [smarr/are-we-fast-yet](https://github.com/smarr/are-we-fast-yet) |
 | Encoded-workload shape (untrusted rows, `<script>` payload, Japanese UTF-8) and its context-confinement constraint | [Phase 1](phase-1-cross-stack-foundation.md) design direction; [TechEmpower/FrameworkBenchmarks](https://github.com/TechEmpower/FrameworkBenchmarks) Fortunes rules |
-| Honest-reporting posture and report style this phase's publication must match | [docs/benchmarks/2026-07-18/index.md](../benchmarks/2026-07-18/index.md) |
+| Honest-reporting posture and report style this phase's publication must match | docs/benchmarks/2026-07-18/index.md |
 | Parity gate mechanics (byte-identical after documented normalization, asserted before timing) | [benchmarks/dotnet/GoldenCorpus/README.md](../../benchmarks/dotnet/GoldenCorpus/README.md); [Phase 1](phase-1-cross-stack-foundation.md) contract v2 |
 
 Assumptions to verify in the spec (flagged, not grounded here): templ's and quicktemplate's exact
