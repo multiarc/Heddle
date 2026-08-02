@@ -92,6 +92,10 @@ namespace Heddle.Generator.Emit
 
         private string _modelTypeText;
         private BlockPosition _modelDirectivePosition;
+
+        /// <summary>The <c>ModelType</c> item metadata, trimmed, or null. It types the template when no
+        /// <c>@model</c> directive exists; when both exist they must name the same resolved type.</summary>
+        private readonly string _metadataModelType;
         private ITypeSymbol _modelSymbol;
         private readonly List<string> _usings = new List<string>();
 
@@ -179,8 +183,9 @@ namespace Heddle.Generator.Emit
         public TemplateEmitter(string key, string sanitizedName, string generatedNamespace, string cleanDocument,
             string originalDocument, ParseContext parse, GlobalConfig config, Compilation compilation,
             FunctionExportResolver exports = null, string sourcePath = null, string lineDirectiveFile = null,
-            bool lineDirectiveFileIsRootRelative = true, string registeredName = null)
+            bool lineDirectiveFileIsRootRelative = true, string registeredName = null, string modelType = null)
         {
+            _metadataModelType = string.IsNullOrWhiteSpace(modelType) ? null : modelType.Trim();
             _key = key;
             _lineDirectiveFile = lineDirectiveFile ?? key;
             _lineDirectiveFileIsRootRelative = lineDirectiveFileIsRootRelative;
@@ -246,6 +251,21 @@ namespace Heddle.Generator.Emit
             FaultInjector?.Invoke(_key);
             _profileHtml = IsHtml;
             ExtractDirectives();
+            if (_modelTypeText == null)
+            {
+                // No directive: the metadata types the template, through the very pipeline the directive feeds, so
+                // resolution, its diagnostics and the accessibility gate behave identically. The position stays at
+                // the file start — metadata has no in-file span to point at.
+                _modelTypeText = _metadataModelType;
+            }
+            else if (_metadataModelType != null &&
+                !string.Equals(_metadataModelType, _modelTypeText, System.StringComparison.Ordinal))
+            {
+                var conflict = CheckMetadataModelConflict();
+                if (conflict != null)
+                    return conflict;
+            }
+
             bool isDynamic = _modelTypeText == null ||
                              string.Equals(_modelTypeText, "dynamic", System.StringComparison.Ordinal);
             string modelType = isDynamic ? "object" : _modelTypeText;
@@ -339,6 +359,53 @@ namespace Heddle.Generator.Emit
                 Emitted = true, Source = source, ManifestEntry = manifest, Diagnostics = _diagnostics,
                 RetractedCandidateErrors = _retractedCandidateErrors,
                 IsDynamic = isDynamic, ModelTypeText = modelType
+            };
+        }
+
+        /// <summary>
+        /// The agreement check for a template that carries BOTH an <c>@model</c> directive and <c>ModelType</c> item
+        /// metadata with different spellings. Two spellings resolving to the same symbol agree — no diagnostic. A
+        /// metadata spelling that resolves to nothing draws the same diagnostics a non-resolving directive spelling
+        /// draws (HED7023/HED7007, gated the same way) and degrades the template the same way. Two different resolved
+        /// types are the HED7032 conflict error. Returns null when the emit may proceed on the directive's spelling —
+        /// including when the directive itself does not resolve, which the directive path reports as it always has.
+        /// </summary>
+        private Result CheckMetadataModelConflict()
+        {
+            // "dynamic" resolves as object through the shared keyword table, so an explicitly dynamic directive
+            // against a typed metadata (or the reverse) lands in the different-resolved-types arm below.
+            var directiveSymbol = _resolver.ResolveModelType(_modelTypeText, _usings);
+            if (directiveSymbol == null)
+                return null;
+
+            var metadataSymbol = _resolver.ResolveModelType(_metadataModelType, _usings);
+            if (metadataSymbol == null)
+            {
+                if (_resolver.LastFault == Heddle.Language.Binding.TypeSpellingFault.Ambiguous)
+                    _diagnostics.Add(new EmitDiagnostic(GeneratorDiagnostics.AmbiguousTypeName,
+                        default, _metadataModelType));
+                else if (IsPlainTypeName(_metadataModelType) && !_resolver.TypeNameExistsAnywhere(_metadataModelType))
+                    _diagnostics.Add(new EmitDiagnostic(GeneratorDiagnostics.UnresolvableModelType,
+                        default, _metadataModelType));
+
+                return new Result
+                {
+                    Emitted = false, Diagnostics = _diagnostics,
+                    UnsupportedReason = "ModelType metadata '" + _metadataModelType + "' resolves to no symbol"
+                };
+            }
+
+            if (SymbolEqualityComparer.Default.Equals(directiveSymbol, metadataSymbol))
+                return null;
+
+            _diagnostics.Add(new EmitDiagnostic(GeneratorDiagnostics.ConflictingModelTypeDeclarations, default,
+                _metadataModelType, _modelTypeText,
+                SymbolTypeResolver.FullyQualified(metadataSymbol), SymbolTypeResolver.FullyQualified(directiveSymbol)));
+            return new Result
+            {
+                Emitted = false, Diagnostics = _diagnostics,
+                UnsupportedReason = "ModelType metadata '" + _metadataModelType +
+                    "' and the @model directive '" + _modelTypeText + "' name different types"
             };
         }
 

@@ -116,6 +116,7 @@ TYPE Heddle.Data.HeddleDiagnosticIds
   FIELD System.String BuildAmbiguousTypeName
   FIELD System.String BuildBranchRoleMissingScopeChannel
   FIELD System.String BuildCaseOnlyKeyTwin
+  FIELD System.String BuildConflictingModelTypeDeclarations
   FIELD System.String BuildDuplicateKey
   FIELD System.String BuildDuplicateSanitizedName
   FIELD System.String BuildEmitterFault

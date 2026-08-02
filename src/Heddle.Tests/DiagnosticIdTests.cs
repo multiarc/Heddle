@@ -76,6 +76,8 @@ namespace Heddle.Tests
                 // decline was silent -- no source, no manifest row, no diagnostic -- so a template could
                 // render dynamically forever while the project believed it was precompiled.
                 "HED7031",
+                // HED7032: an @model directive and ModelType item metadata resolving to different types.
+                "HED7032",
                 "HED7101", "HED7102", "HED7103",
                 // HED7104: registered name also answered by another template; runtime id due to cross-assembly collision.
                 "HED7104"

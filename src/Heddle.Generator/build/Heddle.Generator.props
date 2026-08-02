@@ -22,11 +22,15 @@
        already answers to, is HED7004 against the name only. It does not touch the key, the manifest, the entry class
        or the #line file, and does not suppress HED7018. An earlier implementation made it a second spelling of `Key`,
        which silently broke every @<< that named a file by its path.
+       `ModelType` types the template's model without an in-file @model directive. When both are present they must
+       name the same resolved type: a disagreement is HED7032, and an unresolvable metadata spelling reports the same
+       way an unresolvable directive spelling does.
        A name declared here must also be mapped onto AdditionalFiles by Heddle.Generator.targets and read by the
        generator; the props↔targets↔code set-equality gate in PipelineContractTests turns a declared-but-unwired
        metadata name into a red test instead of dead XML. -->
   <ItemGroup>
     <CompilerVisibleItemMetadata Include="AdditionalFiles" MetadataName="Key" />
+    <CompilerVisibleItemMetadata Include="AdditionalFiles" MetadataName="ModelType" />
     <CompilerVisibleItemMetadata Include="AdditionalFiles" MetadataName="Name" />
     <CompilerVisibleItemMetadata Include="AdditionalFiles" MetadataName="Precompile" />
   </ItemGroup>

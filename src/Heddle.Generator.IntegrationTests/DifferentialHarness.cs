@@ -171,7 +171,8 @@ namespace Heddle.Generator.IntegrationTests
             Dictionary<string, string> globalOptions = null,
             IReadOnlyList<MetadataReference> extraReferences = null,
             Func<string, string> rewriteManifest = null,
-            bool checkOverflow = false)
+            bool checkOverflow = false,
+            Dictionary<string, Dictionary<string, string>> perFileMetadata = null)
         {
             RememberExtraReferences(extraReferences);
             var references = References;
@@ -193,7 +194,11 @@ namespace Heddle.Generator.IntegrationTests
             foreach (var (key, content) in templates)
             {
                 additional.Add(new TestAdditionalText(key, content));
-                perFile[key] = new Dictionary<string, string> { ["build_metadata.AdditionalFiles.Key"] = key };
+                var metadata = new Dictionary<string, string> { ["build_metadata.AdditionalFiles.Key"] = key };
+                if (perFileMetadata != null && perFileMetadata.TryGetValue(key, out var extra))
+                    foreach (var pair in extra)
+                        metadata[pair.Key] = pair.Value;
+                perFile[key] = metadata;
             }
 
             var inputCompilation = CSharpCompilation.Create("HeddleDiffInput",
@@ -262,9 +267,11 @@ namespace Heddle.Generator.IntegrationTests
         /// <summary>Renders one template through both backends, returning outputs for byte-for-byte comparison.</summary>
         public static (string precompiled, string dynamic) Render(string key, string content, Type modelType,
             object model, Dictionary<string, string> globalOptions = null, TemplateOptions runtimeOptions = null,
-            bool checkOverflow = false, IReadOnlyList<MetadataReference> extraReferences = null)
+            bool checkOverflow = false, IReadOnlyList<MetadataReference> extraReferences = null,
+            Dictionary<string, Dictionary<string, string>> perFileMetadata = null)
         {
-            var gen = Generate(new[] { (key, content) }, globalOptions, extraReferences, checkOverflow: checkOverflow);
+            var gen = Generate(new[] { (key, content) }, globalOptions, extraReferences, checkOverflow: checkOverflow,
+                perFileMetadata: perFileMetadata);
             var errors = gen.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ToList();
             if (errors.Count != 0)
                 throw new InvalidOperationException("Generator errors: " + string.Join("\n", errors.Select(e => e.ToString())));

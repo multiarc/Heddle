@@ -21,7 +21,7 @@ namespace Heddle.Generated
         internal static readonly global::Heddle.Runtime.IProcessStrategy Root = new Body0();
         internal static readonly global::System.Type __ModelType = typeof(global::Heddle.Samples.Codegen.BuildInfo);
 
-        internal const string P0 = "\n\n";
+        internal const string P0 = "\n";
         internal const string P1 = "// AUTO-GENERATED build report — do not edit.";
         internal const string P2 = "\nProject:  ";
         internal const string P3 = "\nVersion:  ";
@@ -29,13 +29,13 @@ namespace Heddle.Generated
         internal const string P5 = "\n";
 
         private static readonly global::Heddle.Core.AbstractExtension E0 = global::Heddle.Precompiled.PrecompiledRuntime.BindDefinition(
-            body: new Body1(), callerContent: null, props: null, dynamicSetters: null, global::Heddle.Data.RenderType.Raw, bodyNeedsLocals: false, callerContentNeedsLocals: false, slotMode: false, maxRecursionCount: 100, line: 4, column: 2);
+            body: new Body1(), callerContent: null, props: null, dynamicSetters: null, global::Heddle.Data.RenderType.Raw, bodyNeedsLocals: false, callerContentNeedsLocals: false, slotMode: false, maxRecursionCount: 100, line: 3, column: 2);
         private static readonly global::Heddle.Extensions.EmptyExtension E1 = global::Heddle.Precompiled.PrecompiledRuntime.Bind(
-            new global::Heddle.Extensions.EmptyExtension(), body: null, global::Heddle.Data.RenderType.Raw, needsLocals: false, line: 5, column: 12);
+            new global::Heddle.Extensions.EmptyExtension(), body: null, global::Heddle.Data.RenderType.Raw, needsLocals: false, line: 4, column: 12);
         private static readonly global::Heddle.Extensions.EmptyExtension E2 = global::Heddle.Precompiled.PrecompiledRuntime.Bind(
-            new global::Heddle.Extensions.EmptyExtension(), body: null, global::Heddle.Data.RenderType.Raw, needsLocals: false, line: 6, column: 12);
+            new global::Heddle.Extensions.EmptyExtension(), body: null, global::Heddle.Data.RenderType.Raw, needsLocals: false, line: 5, column: 12);
         private static readonly global::Heddle.Extensions.EmptyExtension E3 = global::Heddle.Precompiled.PrecompiledRuntime.Bind(
-            new global::Heddle.Extensions.EmptyExtension(), body: null, global::Heddle.Data.RenderType.Raw, needsLocals: false, line: 7, column: 12);
+            new global::Heddle.Extensions.EmptyExtension(), body: null, global::Heddle.Data.RenderType.Raw, needsLocals: false, line: 6, column: 12);
 
         private sealed class Body0 : global::Heddle.Runtime.IProcessStrategy
         {
@@ -44,19 +44,19 @@ namespace Heddle.Generated
                 var m = (global::Heddle.Samples.Codegen.BuildInfo)scope.ModelData;
 #line hidden
                 scope.Renderer.Render(P0);
-#line (4, 2) - (4, 10) "templates/report.heddle"
+#line (3, 2) - (3, 10) "templates/report.heddle"
                 E0.RenderData(scope.Model(scope.ModelData));
 #line hidden
                 scope.Renderer.Render(P2);
-#line (5, 12) - (5, 21) "templates/report.heddle"
+#line (4, 12) - (4, 21) "templates/report.heddle"
                 E1.RenderData(scope.Model((object)(m?.Project)));
 #line hidden
                 scope.Renderer.Render(P3);
-#line (6, 12) - (6, 21) "templates/report.heddle"
+#line (5, 12) - (5, 21) "templates/report.heddle"
                 E2.RenderData(scope.Model((object)(m?.Version)));
 #line hidden
                 scope.Renderer.Render(P4);
-#line (7, 12) - (7, 20) "templates/report.heddle"
+#line (6, 12) - (6, 20) "templates/report.heddle"
                 E3.RenderData(scope.Model((object)(m?.Commit)));
 #line hidden
                 scope.Renderer.Render(P5);
@@ -66,13 +66,13 @@ namespace Heddle.Generated
             public string Execute(in global::Heddle.Data.Scope scope)
             {
                 var m = (global::Heddle.Samples.Codegen.BuildInfo)scope.ModelData;
-#line (4, 2) - (4, 10) "templates/report.heddle"
+#line (3, 2) - (3, 10) "templates/report.heddle"
                 var v0 = E0.ProcessData(scope.Model(scope.ModelData)) as string ?? string.Empty;
-#line (5, 12) - (5, 21) "templates/report.heddle"
+#line (4, 12) - (4, 21) "templates/report.heddle"
                 var v1 = E1.ProcessData(scope.Model((object)(m?.Project))) as string ?? string.Empty;
-#line (6, 12) - (6, 21) "templates/report.heddle"
+#line (5, 12) - (5, 21) "templates/report.heddle"
                 var v2 = E2.ProcessData(scope.Model((object)(m?.Version))) as string ?? string.Empty;
-#line (7, 12) - (7, 20) "templates/report.heddle"
+#line (6, 12) - (6, 20) "templates/report.heddle"
                 var v3 = E3.ProcessData(scope.Model((object)(m?.Commit))) as string ?? string.Empty;
 #line hidden
                 return string.Concat(P0, v0, P2, v1, P3, v2, P4, v3, P5);

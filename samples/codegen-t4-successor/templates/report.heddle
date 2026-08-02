@@ -1,5 +1,4 @@
 @using(){{Heddle.Samples.Codegen}}
-@model(){{BuildInfo}}
 @<<{{Banner}}@\
 @banner()
 Project:  @(Project)

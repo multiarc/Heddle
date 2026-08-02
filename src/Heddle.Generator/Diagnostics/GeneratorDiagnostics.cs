@@ -233,5 +233,12 @@ namespace Heddle.Generator.Diagnostics
         /// of. Position: the call in the <c>.heddle</c> file.</para></summary>
         public static readonly DiagnosticDescriptor FunctionCallNotBindable =
             FromCatalog(HeddleDiagnosticIds.BuildFunctionCallNotBindable);
+
+        /// <summary>A template carrying both an <c>@model</c> directive and <c>ModelType</c> item metadata whose
+        /// spellings resolve to different types. The runtime reads only the directive, so quietly preferring either
+        /// spelling would let the two tiers type the same template differently; the build refuses instead.
+        /// Positioned at the file start — the metadata has no in-file span.</summary>
+        public static readonly DiagnosticDescriptor ConflictingModelTypeDeclarations =
+            FromCatalog(HeddleDiagnosticIds.BuildConflictingModelTypeDeclarations);
     }
 }
