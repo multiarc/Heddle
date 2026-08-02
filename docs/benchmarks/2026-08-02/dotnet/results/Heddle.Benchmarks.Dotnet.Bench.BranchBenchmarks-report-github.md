@@ -1,0 +1,18 @@
+```
+
+BenchmarkDotNet v0.15.8, Windows 11 (10.0.26200.8894/25H2/2025Update/HudsonValley2)
+AMD Ryzen 9 9950X 4.30GHz, 1 CPU, 32 logical and 16 physical cores
+.NET SDK 10.0.302
+  [Host]   : .NET 10.0.10 (10.0.10, 10.0.1026.32716), X64 RyuJIT x86-64-v4
+  ShortRun : .NET 10.0.10 (10.0.10, 10.0.1026.32716), X64 RyuJIT x86-64-v4
+
+Job=ShortRun  IterationCount=3  LaunchCount=3  
+WarmupCount=3  
+
+```
+| Method                 | Mean          | Error         | StdDev        | Ratio | RatioSD | Gen0    | Gen1    | Gen2    | Allocated | Alloc Ratio |
+|----------------------- |--------------:|--------------:|--------------:|------:|--------:|--------:|--------:|--------:|----------:|------------:|
+| ListNoBranches         | 452,944.80 ns |    649.491 ns |    386.502 ns | 1.000 |    0.00 | 66.4063 | 28.3203 | 28.3203 |  845548 B |       1.000 |
+| ListIfPair             | 279,852.40 ns | 33,223.205 ns | 19,770.596 ns | 0.618 |    0.04 | 62.0117 | 10.2539 |       - | 1043840 B |       1.235 |
+| ListIfElse             | 258,478.88 ns | 19,904.766 ns | 11,845.007 ns | 0.571 |    0.02 | 66.8945 | 10.2539 |       - | 1123840 B |       1.329 |
+| FlagshipNeverPublishes |      54.23 ns |      8.420 ns |      5.011 ns | 0.000 |    0.00 |  0.0181 |       - |       - |     304 B |       0.000 |

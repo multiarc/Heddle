@@ -143,6 +143,13 @@ namespace Heddle.Generator.Diagnostics
         public static readonly DiagnosticDescriptor UnresolvableFunction =
             FromCatalog(HeddleDiagnosticIds.BuildUnresolvableFunction);
 
+        /// <summary>The emitter declined to precompile for a reason with no more specific channel. The
+        /// emitter has always computed this reason; nothing reported it, because the generator's
+        /// <c>if (Emitted) … else if (IsMarker)</c> had no final <c>else</c>. A consumer therefore had no
+        /// way to learn that a template it believed precompiled was in fact rendering dynamically.</summary>
+        public static readonly DiagnosticDescriptor TemplateNotPrecompiled =
+            FromCatalog(HeddleDiagnosticIds.BuildTemplateNotPrecompiled);
+
         /// <summary>A branch <c>Continuation</c>/<c>Terminal</c> extension (<c>[BranchRole]</c>)
         /// does not carry <c>[ScopeChannel]</c>, so its <c>TryRead</c> of the branch state always misses at
         /// render. Additive and never fired by the built-ins, which all comply.</summary>

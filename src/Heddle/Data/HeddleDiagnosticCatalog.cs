@@ -305,6 +305,12 @@ namespace Heddle.Data
                 "be precompiled (delegate-only registrations are not representable in metadata). Export it with " +
                 "[ExportFunctions] on a public static container to precompile it; otherwise this template renders " +
                 "through the dynamic path at run time.");
+            Add(HeddleDiagnosticIds.BuildTemplateNotPrecompiled, "Template could not be precompiled", warning,
+                "This template could not be precompiled ({0}), so it renders through the dynamic path at run " +
+                "time. The output is identical either way — the two tiers are parity-checked — but the " +
+                "build-time work is not being done for this template. Where precompilation is a requirement " +
+                "rather than an optimisation, make this fatal with " +
+                "<WarningsAsErrors>HED7031</WarningsAsErrors>.");
             Add(HeddleDiagnosticIds.BuildExtensionOverridesHook, "Extension overrides a compile-time hook", error,
                 "Extension <{0}> ({1}) overrides {2}, which runs compile-time logic the generator cannot evaluate " +
                 "at build time; precompiled binding would silently skip it. Exclude this template from " +
