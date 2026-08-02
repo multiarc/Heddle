@@ -241,8 +241,12 @@ namespace Heddle.Generator.IntegrationTests
         }
 
         /// <summary>
-        /// Division by a constant zero is a build error in C# and a render-time <c>DivideByZeroException</c> in the
-        /// engine. There is no value to fold to, so the only answer that matches is to let the engine raise it.
+        /// Division by a constant zero is refused at compile time by BOTH tiers (ledger E16). It used to degrade
+        /// instead — C# refuses <c>CS0020</c>, the engine's expression tree threw at render, and the degrade let
+        /// "the tier whose behaviour is the contract" keep rendering — but that expression has no behaviour to
+        /// keep: rendering it can only ever throw. The engine now raises <c>HED1018</c> from its expression
+        /// compiler, and the generator, whose fold proves the same fact, FORWARDS the same id as a build error
+        /// rather than minting a HED7xxx twin — one fact, one id, per the same-fact-same-id registry rule.
         /// </summary>
         [Theory]
         [InlineData("1/0")]
@@ -268,17 +272,20 @@ namespace Heddle.Generator.IntegrationTests
         [InlineData("1/(1>>1)")]
         [InlineData("1/(true?0:1)")]
         [InlineData("1%(1&0)")]
-        public void ConstantDivisionByZeroDegradesInsteadOfBreakingTheBuild(string expression)
+        public void ConstantDivisionByZeroIsRefusedByBothTiers(string expression)
         {
-            var generated = DifferentialHarness.Generate(new[] { (Key, Template(expression)) });
+            // The engine half: a positioned HED1018 compile error, not a render-time throw.
+            var engine = new Heddle.HeddleTemplate(Template(expression),
+                new Heddle.Runtime.CompileContext(new Heddle.Data.TemplateOptions(), typeof(string)));
+            Assert.False(engine.CompileResult.Success);
+            Assert.Contains(engine.CompileResult.Errors, e => e.DiagnosticId == "HED1018");
 
-            // A degrade is ANNOUNCED now: HED7031 names the template and the emitter's own reason,
-            // where moving to the dynamic tier used to be silent -- the very hazard the
-            // "silently and with no diagnostic to notice" comment in this file calls out. These rows
-            // therefore pin "nothing OTHER than that notice", which still fails on any unrelated
-            // diagnostic while not demanding the notice from degrade paths that route through a more
-            // specific channel (HED7014's fallback marker, for one).
-            Assert.Empty(generated.Diagnostics.Where(d => d.Id != "HED7031"));
+            // The build half: the SAME id, forwarded as an error — not a HED7xxx twin. The template still
+            // degrades (no entry is emitted), so HED7031's notice may ride along; nothing else may.
+            var generated = DifferentialHarness.Generate(new[] { (Key, Template(expression)) });
+            var forwarded = Assert.Single(generated.Diagnostics.Where(d => d.Id == "HED1018"));
+            Assert.Equal(Microsoft.CodeAnalysis.DiagnosticSeverity.Error, forwarded.Severity);
+            Assert.Empty(generated.Diagnostics.Where(d => d.Id != "HED1018" && d.Id != "HED7031"));
             DifferentialHarness.ExpectDegrade(generated, Key);
         }
 

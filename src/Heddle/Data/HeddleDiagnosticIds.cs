@@ -77,6 +77,12 @@ namespace Heddle.Data
         /// <summary>A standalone registry hit was given a chain/C# parameter shape.</summary>
         public const string FunctionRequiresExpressionArguments = "HED1017";
 
+        /// <summary>An integral or <c>decimal</c> divide/modulo over constant operands whose divisor is zero.
+        /// Rendering could only throw, so the expression is refused at compile time — by the engine and, with
+        /// this same id forwarded, by the generator. Floating-point stays legal (<c>1.0/0</c> is Infinity), and
+        /// a runtime divisor that happens to be zero still throws at render, exactly as C# draws both lines.</summary>
+        public const string DivisionByConstantZero = "HED1018";
+
         /// <summary>A <c>@profile()</c> directive names a value other than <c>text</c>/<c>html</c> (or is empty).</summary>
         public const string UnknownOutputProfile = "HED2001";
 

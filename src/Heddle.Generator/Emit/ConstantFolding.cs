@@ -50,6 +50,41 @@ namespace Heddle.Generator.Emit
             return Fold(node).TiersDiffer;
         }
 
+        /// <summary>Locates the innermost constant division or modulo whose divisor is zero — the site C#
+        /// reports CS0020 against, and the one the forwarded HED1018 names. Returns false when a rejection
+        /// (if any) has some other cause, so the generic degrade keeps covering those.</summary>
+        internal static bool TryFindDivisionByConstantZero(ExprNode node, out BinaryNode site)
+        {
+            site = null;
+            switch (node)
+            {
+                case UnaryNode unary:
+                    return TryFindDivisionByConstantZero(unary.Operand, out site);
+                case TernaryNode ternary:
+                    return TryFindDivisionByConstantZero(ternary.Condition, out site) ||
+                           TryFindDivisionByConstantZero(ternary.WhenTrue, out site) ||
+                           TryFindDivisionByConstantZero(ternary.WhenFalse, out site);
+                case BinaryNode binary:
+                    if (TryFindDivisionByConstantZero(binary.Left, out site) ||
+                        TryFindDivisionByConstantZero(binary.Right, out site))
+                        return true;
+                    if (binary.Operator != ExprOperator.Divide && binary.Operator != ExprOperator.Modulo)
+                        return false;
+                    var left = Fold(binary.Left);
+                    var right = Fold(binary.Right);
+                    if (!left.IsConstant || !right.IsConstant)
+                        return false;
+                    if (!Numeric.Unify(left.Value, right.Value, out var a, out var b))
+                        return false;
+                    if (!b.IsZero || !(a.IsIntegral || a.Kind == NumericKind.Decimal))
+                        return false;
+                    site = binary;
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
         private static Folded Fold(ExprNode node)
         {
             switch (node)

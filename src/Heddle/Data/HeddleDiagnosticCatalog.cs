@@ -218,6 +218,12 @@ namespace Heddle.Data
             Add(HeddleDiagnosticIds.FunctionShadowedByExtension, "Function shadowed by an extension", warning);
             Add(HeddleDiagnosticIds.FunctionRequiresExpressionArguments, "Function requires expression arguments",
                 error);
+            // Carries MessageFormat because the id has TWO formatting consumers: the engine's expression
+            // compiler and the generator, which forwards the same id rather than minting a HED7xxx twin —
+            // same fact, same id, same sentence on both tiers.
+            Add(HeddleDiagnosticIds.DivisionByConstantZero, "Division by constant zero", error,
+                "Operator '{0}' has a constant zero divisor; the expression can only throw when rendered, so it " +
+                "is refused at compile time.");
 
             Add(HeddleDiagnosticIds.UnknownOutputProfile, "Unknown output profile", error);
             Add(HeddleDiagnosticIds.ProfileDirectiveAfterOutput, "Profile directive after output", warning);

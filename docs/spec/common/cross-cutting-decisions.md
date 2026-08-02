@@ -148,7 +148,7 @@ owns it — that is the tie-break, because a diagnostic has a registry owner and
 
 | Claim block | Normative home | Also gated by |
 | --- | --- | --- |
-| Native-expression semantics (operators, coercion, arity, overloads) | [native-expressions.md](../../native-expressions.md) | `HED1001`–`HED1017` registry rows |
+| Native-expression semantics (operators, coercion, arity, overloads) | [native-expressions.md](../../native-expressions.md) | `HED1001`–`HED1018` registry rows |
 | Built-in extensions, output profiles, branch sets | [built-in-extensions.md](../../built-in-extensions.md) | `HED2001`–`HED4005` registry rows |
 | Template syntax and parse shapes | [language-reference.md](../../language-reference.md) | parser tests |
 | Extension authoring, `Scope` channels, carrier transparency | [custom-extensions.md](../../custom-extensions.md) | [D6](#d6--the-scope-publishread-channel-is-public-api) |
@@ -250,12 +250,22 @@ Corrections to past allocations are recorded in the
 [historical records](../records.md#diagnostic-registry-corrections), never rewritten here
 silently.
 
+**Same fact, same id.** When the build tier refuses a template for a fact the engine also
+diagnoses at compile time, it **forwards the engine's id** (via the forwarded-descriptor
+mechanism the parse channel already uses) rather than claiming a `HED7xxx` twin. A twin id is
+claimed only where no engine-compile-time counterpart exists to forward — a build capability
+notice (`HED7031`), a fact the engine discovers at a different stage, or a fault only a build
+has. The existing twins (`HED7011`/`HED4009`, `HED7024`/`HED5019`, …) predate this rule and
+keep their ids — an id once listed is never renumbered — but every **new** diagnostic follows
+it, so the projection corpus can pin one id per fact instead of a mapping. Recorded as ledger
+[E16](../records.md).
+
 | IDs | Owner | Notes |
 | --- | --- | --- |
 | `HED0001`–`HED0003` | Core engine | Pre-existing diagnostics (resolver / legacy shapes / syntax listener) |
 | `HED0004` | Core engine | Pre-existing `CheckTypes` return-type message |
 | `HED0005` | Core engine | The compile-item catch-all — one call in the document threw while being compiled for a reason no other diagnostic covers. Positioned at the call, carrying the exception; the text names the call and the fault. Before it, this class of failure reached callers with no id at all |
-| `HED1001`–`HED1017` | [native-expressions.md](../../native-expressions.md) | Native-expression tier |
+| `HED1001`–`HED1018` | [native-expressions.md](../../native-expressions.md) | Native-expression tier. `HED1018` (constant division by zero, error on **both** tiers) is the first id governed by the same-fact-same-id rule below: the generator **forwards** it rather than claiming a `HED7xxx` twin |
 | `HED2001`–`HED2003` | [built-in-extensions.md](../../built-in-extensions.md#html-encoding) | Output profiles |
 | `HED2004` | Shipped in 2.0.0; this registry row is the live normative home | HTML-context encoding lint (`MissingContextEncoder`) — warning; bare `@(value)` in an attribute/`<script>`/URL position under an explicitly declared `Html` profile without the matching `@attr`/`@js`/`@url` encoder |
 | `HED3001`–`HED3005` | [built-in-extensions.md](../../built-in-extensions.md#branch-sets) | Branch sets (incl. the `HED3005` drift warning) |

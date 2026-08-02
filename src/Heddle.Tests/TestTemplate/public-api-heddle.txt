@@ -149,6 +149,7 @@ TYPE Heddle.Data.HeddleDiagnosticIds
   FIELD System.String ComposeImportUnreadable
   FIELD System.String DefinitionHasNoProps
   FIELD System.String DefinitionRendersTwice
+  FIELD System.String DivisionByConstantZero
   FIELD System.String DuplicatePropArgument
   FIELD System.String DuplicatePropDeclaration
   FIELD System.String DuplicateRegionDeclaration

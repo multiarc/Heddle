@@ -56,6 +56,10 @@ namespace Heddle.Tests
                 "HED1001", "HED1002", "HED1003", "HED1004", "HED1005", "HED1006", "HED1007",
                 "HED1008", "HED1009", "HED1010", "HED1011", "HED1012", "HED1013", "HED1014",
                 "HED1015", "HED1016", "HED1017",
+                // HED1018: constant integer/decimal division by zero, refused at compile time by BOTH tiers
+                // under this one id -- the engine raises it and the generator forwards it, per the
+                // same-fact-same-id rule in the claimed-ID registry.
+                "HED1018",
                 "HED2001", "HED2002", "HED2003", "HED2004",
                 "HED3001", "HED3002", "HED3003", "HED3004", "HED3005",
                 "HED4001", "HED4002", "HED4003", "HED4004", "HED4005", "HED4006", "HED4007", "HED4008", "HED4009",
