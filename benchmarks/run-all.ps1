@@ -323,8 +323,21 @@ $toolchain = [ordered]@{
 }
 $toolchainPath = Join-Path $OutDir 'toolchain.json'
 # -Depth 3 keeps the nested pin/actual/drift objects; the default (2) would stringify them.
-$toolchain | ConvertTo-Json -Depth 3 | Set-Content -Path $toolchainPath -Encoding utf8NoBOM
-Note ('   toolchain.json written to ' + $toolchainPath + ' (pin deltas, machine-readable)')
+# Written through .NET rather than Set-Content: this script runs under Windows PowerShell 5.1,
+# whose -Encoding has no utf8NoBOM member (that is 7.0+), and whose plain `utf8` emits a BOM
+# that consolidate.py's json.loads(..., encoding='utf-8') would choke on. The 5.1 failure was
+# also silent in the worst way -- Set-Content threw on the parameter bind, the pipeline kept
+# going, and the next line still announced the file as written.
+[System.IO.File]::WriteAllText(
+    $toolchainPath,
+    ($toolchain | ConvertTo-Json -Depth 3),
+    (New-Object System.Text.UTF8Encoding($false)))
+if (Test-Path $toolchainPath) {
+    Note ('   toolchain.json written to ' + $toolchainPath + ' (pin deltas, machine-readable)')
+}
+else {
+    Note ('   WARN: toolchain.json could NOT be written to ' + $toolchainPath + ' -- the report''s pin-drift table will be missing.') 'Yellow'
+}
 
 # Goldens-rewrite hazard: a stray dotnet-hosted watcher (Heddle demo/docs tooling) touching
 # the working tree during export/verify would dirty the corpus manifest. Best-effort check:
