@@ -19,13 +19,23 @@ namespace Heddle.Generator.Binding
             public FunctionExportResolver.ExportOverloadInfo Overload;
 
             /// <summary>Per-argument cast to the chosen parameter type (<c>global::</c>-qualified), or null when the
-            /// argument already matches exactly.</summary>
+            /// argument already matches exactly. For an expanded bind the tail entries target the element type.</summary>
             public string[] ArgumentCasts;
 
             public ITypeSymbol ReturnType;
+
+            /// <summary>True when the bind used the params-expanded tier, so the emitted call must spell the tail as
+            /// an explicitly typed array creation.</summary>
+            public bool Expanded;
+
+            /// <summary>The <c>global::</c>-qualified element type of the expanded array; null unless
+            /// <see cref="Expanded"/>.</summary>
+            public string ParamsElementTypeName;
         }
 
-        private sealed class SymbolRankModel : IRankModel<ITypeSymbol>
+        /// <summary>The symbol-side rank model, shared with the indexer-candidate match so "convertible" means the
+        /// same thing wherever the engine's <c>ConversionRank</c> is being mirrored.</summary>
+        internal sealed class SymbolRankModel : IRankModel<ITypeSymbol>
         {
             private readonly SymbolTypeFacts _facts;
 
@@ -100,9 +110,8 @@ namespace Heddle.Generator.Binding
             // binding it here emitted CS1503 into the consumer's build. An argument that WAS typed and converts to
             // nothing rules the candidate out on its own, whatever the others turn out to be, because applicability
             // is decided argument by argument — which is why the cure for the arguments this used to bind past is to
-            // type them (see `argTypes`) rather than to delete the shortcut: deleting it sends every single-`params`
-            // export down the expanded tier the writer does not emit, and every genuinely untypeable argument to a
-            // degrade.
+            // type them (see `argTypes`) rather than to delete the shortcut: deleting it sends every genuinely
+            // untypeable argument to a degrade.
             if (overloads.Count == 1 && overloads[0].Method.Parameters.Length == argKinds.Count &&
                 !ExcludedByTypedArguments(model, overloads[0].Method, args, typed))
             {
@@ -146,32 +155,63 @@ namespace Heddle.Generator.Binding
                 return null;
             }
 
-            if (binding.Expanded)
-                return null;   // params-expanded: bound, but not a shape this writer emits cast-pinned
-
             var winner = overloads[binding.Index];
-            var casts = new string[argKinds.Count];
-            for (int i = 0; i < casts.Length; i++)
-            {
-                var parameterType = winner.Method.Parameters[i].Type;
-                if (args[i].IsNullLiteral || SymbolEqualityComparer.Default.Equals(args[i].Type, parameterType))
-                    continue;
-
-                // The cast target is a name written into the consumer's assembly, so it goes through the same
-                // classifier every other spelled name does. It used to be safe only because of what the argument
-                // estimator could reach — the primitives — and an argument that carries its own symbol reaches the
-                // whole of a host's signature set, where a parameter type this assembly may not name is CS0122 or
-                // CS0619 against a .g.cs nobody can edit. Unproven, so the template degrades in silence: the call is
-                // one the engine binds and renders, and only the writing of it is out of reach.
-                if (resolver != null && resolver.ClassifyTypeName(parameterType, out _) !=
-                    SymbolTypeResolver.NameFault.None)
-                    return null;
-
-                casts[i] = parameterType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-            }
+            if (!TryComputeCasts(winner.Method, resolver, args, binding.Expanded, out var casts,
+                    out var elementName))
+                return null;
 
             refusal = BindRefusal.Bound;
-            return new Binding { Overload = winner, ArgumentCasts = casts, ReturnType = winner.Method.ReturnType };
+            return new Binding
+            {
+                Overload = winner,
+                ArgumentCasts = casts,
+                ReturnType = winner.Method.ReturnType,
+                Expanded = binding.Expanded,
+                ParamsElementTypeName = elementName
+            };
+        }
+
+        /// <summary>
+        /// The per-argument pinned casts for a call bound to <paramref name="method"/> — under an expanded bind the
+        /// tail arguments pin to the params element type, whose <c>global::</c> spelling comes back in
+        /// <paramref name="paramsElementTypeName"/> because the array creation writes it even when no element needs
+        /// a cast. False degrades the call: every cast target is a name written into the consumer's assembly, so it
+        /// goes through the same classifier every other spelled name does — a parameter type this assembly may not
+        /// name is CS0122 or CS0619 against a .g.cs nobody can edit, while the engine binds the call reflectively
+        /// and renders it fine.
+        /// </summary>
+        internal static bool TryComputeCasts(IMethodSymbol method, SymbolTypeResolver resolver,
+            IReadOnlyList<RankArgument<ITypeSymbol>> args, bool expanded, out string[] casts,
+            out string paramsElementTypeName)
+        {
+            casts = null;
+            paramsElementTypeName = null;
+            int fixedCount = expanded ? method.Parameters.Length - 1 : args.Count;
+            ITypeSymbol elementType = null;
+            if (expanded)
+            {
+                elementType = ((IArrayTypeSymbol)method.Parameters[fixedCount].Type).ElementType;
+                if (resolver != null && resolver.ClassifyTypeName(elementType, out _) !=
+                    SymbolTypeResolver.NameFault.None)
+                    return false;
+                paramsElementTypeName = elementType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+            }
+
+            var result = new string[args.Count];
+            for (int i = 0; i < args.Count; i++)
+            {
+                var target = i < fixedCount ? method.Parameters[i].Type : elementType;
+                if (args[i].IsNullLiteral || SymbolEqualityComparer.Default.Equals(args[i].Type, target))
+                    continue;
+                if (resolver != null && resolver.ClassifyTypeName(target, out _) !=
+                    SymbolTypeResolver.NameFault.None)
+                    return false;
+
+                result[i] = target.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+            }
+
+            casts = result;
+            return true;
         }
 
         /// <summary>
@@ -240,7 +280,7 @@ namespace Heddle.Generator.Binding
 
         /// <summary>Maps the estimator's <see cref="OperandKind"/> back onto a compilation type symbol. Only the
         /// categories the estimator can type precisely are mapped; everything else answers null, which degrades.</summary>
-        private static ITypeSymbol ToSymbol(Compilation compilation, OperandKind kind)
+        internal static ITypeSymbol ToSymbol(Compilation compilation, OperandKind kind)
         {
             ITypeSymbol underlying;
             switch (kind.Category)

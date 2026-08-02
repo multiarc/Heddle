@@ -122,5 +122,17 @@ namespace Heddle.Tests
             Assert.Null(PrecompiledRuntime.Prop(scope, 0));
             Assert.Null(PrecompiledRuntime.RootModel(scope));
         }
+
+        /// <summary>RootData rides the scope lineage unchanged through model swaps, so a generated '::' read
+        /// inside any nested body still answers the template's root model — the same object, not a copy.</summary>
+        [Fact]
+        public void RootModelSurvivesModelSwaps()
+        {
+            var root = new Product { Name = "root" };
+            var renderer = new ScopeRenderer(16);
+            var scope = new Scope(root, null, root, null, renderer, null, null);
+            var nested = scope.Model(new Nested { Name = "child" }).Model("leaf");
+            Assert.Same(root, PrecompiledRuntime.RootModel(nested));
+        }
     }
 }

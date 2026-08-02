@@ -548,6 +548,69 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
         }
     }
 
+    /// <summary>A root model beside a child that shares a member name, so which model a <c>::</c> path read is
+    /// observable in the rendered text; <see cref="Child"/> is the nullable reference hop of the multi-hop
+    /// <c>::</c> lanes.</summary>
+    public sealed class RootHost
+    {
+        public string Name { get; set; }
+        public int Count { get; set; }
+        public RootChild Child { get; set; }
+    }
+
+    public sealed class RootChild
+    {
+        public string Name { get; set; }
+        public int Amount { get; set; }
+    }
+
+    /// <summary>The indexer differential fixture: array shapes at every index type the engine converts, a
+    /// dictionary and a list for the single-candidate indexer lane, a null array for the null-receiver default,
+    /// and a counting getter proving the receiver of an index is read once per render on either tier.</summary>
+    public sealed class IndexHost
+    {
+        public static int Reads;
+
+        public int[] Ints { get; set; }
+        public int[] NullInts { get; set; }
+        public string[] Tags { get; set; }
+        public int[,] Grid { get; set; }
+        public int[][] Jagged { get; set; }
+        public System.Collections.Generic.Dictionary<string, int> Map { get; set; }
+        public System.Collections.Generic.List<string> Names { get; set; }
+        public int Count { get; set; }
+        public int? MaybeIndex { get; set; }
+        public long WideIndex { get; set; }
+        public char CharIndex { get; set; }
+        public string Name { get; set; }
+        public TwoIndexers Two { get; set; } = new TwoIndexers();
+        public NoIndexer None { get; set; } = new NoIndexer();
+
+        public int[] Counted
+        {
+            get
+            {
+                Reads++;
+                return Ints;
+            }
+        }
+    }
+
+    /// <summary>Two indexers an <c>int</c> argument converts to (exactly, and by boxing): the engine takes
+    /// whichever reflection enumerates first, so the generator must refuse. A <c>string</c> argument matches only
+    /// the <c>object</c> one, and that single-match shape stays precompiled.</summary>
+    public sealed class TwoIndexers
+    {
+        public string this[int index] => "int:" + index;
+
+        public string this[object key] => "obj:" + key;
+    }
+
+    public sealed class NoIndexer
+    {
+        public string Label { get; set; }
+    }
+
     public sealed class AmbiguousElementHolder
     {
         public AmbiguousEnumerable Multi { get; set; } = new AmbiguousEnumerable();

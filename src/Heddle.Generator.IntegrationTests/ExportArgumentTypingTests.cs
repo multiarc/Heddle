@@ -65,8 +65,8 @@ namespace Heddle.Generator.IntegrationTests.ArgTyping
         public static string ArgLive(int value) => "n" + value;
 
         /// <summary>A sole <c>params</c> overload — the shape the single-candidate shortcut exists to keep on the
-        /// tier, since the ranker would bind it only through its expanded tier and this writer does not emit
-        /// that.</summary>
+        /// tier even when an argument cannot be typed, since the ranker refuses untyped arguments before its
+        /// expanded tier is reached.</summary>
         public static string JoinArgs(params string[] parts) => "j:" + string.Join("+", parts);
     }
 }
@@ -84,8 +84,8 @@ namespace Heddle.Generator.IntegrationTests
     /// edit, where the engine answers <c>HED1012</c> before it renders a byte.
     /// <para>The cure is to stop the estimate being lossy at the seam rather than to delete the shortcut: the
     /// binder is handed the symbol the writer already resolved. That <i>shrinks</i> what "cannot say" covers instead
-    /// of widening what it is allowed to mean — deleting the shortcut would send every single-<c>params</c> export
-    /// down the expanded tier this writer does not emit, and every genuinely untypeable argument to a degrade.</para>
+    /// of widening what it is allowed to mean — deleting the shortcut would send every genuinely untypeable
+    /// argument to a degrade.</para>
     /// </summary>
     public class ExportArgumentTypingTests
     {
@@ -223,8 +223,8 @@ namespace Heddle.Generator.IntegrationTests
         }
 
         /// <summary>A <c>params</c> signature is the shape the sole-candidate shortcut exists for, and typing the
-        /// arguments must not cost it: the ranker's expanded tier is not one this writer emits cast-pinned, so a
-        /// call that reaches it degrades. The fixed-arity call through the same sole overload keeps working.</summary>
+        /// arguments must not cost it: the fixed-arity call through the sole overload keeps binding without any
+        /// ranking being imposed.</summary>
         [Fact]
         public void ASoleParamsOverloadKeepsBindingThroughTheShortcut()
         {

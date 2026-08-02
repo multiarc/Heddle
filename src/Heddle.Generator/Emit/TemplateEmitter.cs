@@ -999,8 +999,8 @@ namespace Heddle.Generator.Emit
             if (callTarget == CallTargetKind.Function && string.IsNullOrEmpty(item.ParameterTemplate))
             {
                 var callNode = BuildFunctionCallNode(name, cp, item.Position);
-                var writer = new NativeExpressionWriter(_resolver, bctx.ModelSymbol, "m", _exports, TypeFacts, AllocateHopLocal,
-                    bctx.Props);
+                var writer = new NativeExpressionWriter(_resolver, bctx.ModelSymbol, _modelSymbol, "m", _exports,
+                    TypeFacts, AllocateHopLocal, bctx.Props);
                 var expr = writer.WriteRoot(callNode);
                 DrainUnresolvable(writer);
                 if (expr == null)
@@ -1613,11 +1613,17 @@ namespace Heddle.Generator.Emit
             if (cp.ChainParameter != null && cp.ChainParameter.Count != 0)
                 return _compilation.GetSpecialType(SpecialType.System_String);
 
+            // A root reference resolves against the template's model on every tier — the body's typing has no
+            // say — and an untyped root is the engine's dynamic accessor exit, a definite "no static type".
+            if (cp.IsModelTypeParameter && cp.RootReference && cp.ModelParameter != null &&
+                cp.ModelParameter.Length != 0 && !string.IsNullOrEmpty(cp.ModelParameter[0]))
+                return _modelSymbol == null
+                    ? _compilation.DynamicType
+                    : ResolvedTypeOf(_modelSymbol, cp.ModelParameter);
+
             if (bctx.IsDynamic && model == null)
                 return null;
 
-            // A root reference is "cannot say" and cannot become a divergence: BuildParamExpr refuses every one of
-            // them outright, so an `@out(::X)` degrades before anything is emitted whatever this answers.
             if (!cp.IsModelTypeParameter || cp.RootReference)
                 return null;
 
@@ -1783,11 +1789,21 @@ namespace Heddle.Generator.Emit
                     if (propType != null)
                         return new ComputedValue(propType, SymbolFacts.Classify(propType));
 
-                    // A `::`-rooted path, a path over a scope with no static type, and a path hung off any target
-                    // but `this` are where the engine's own compiler stops resolving — it refuses the expression
-                    // rather than typing it. `this.` roots at the model, so it types like a bare path.
-                    if ((path.Target != null && !(path.Target is ThisNode)) || path.RootRef || model == null ||
-                        model.TypeKind == TypeKind.Dynamic || IsPropName(path, props))
+                    // A path hung off any target but `this` is typed only by the expression writer; this helper
+                    // answers "cannot say" for it, the degrade an unproven value always gets. `this.` roots at
+                    // the model, so it types like a bare path; `::` roots at the template's model whatever the
+                    // body's scope is.
+                    if ((path.Target != null && !(path.Target is ThisNode)) || IsPropName(path, props))
+                        return ComputedValue.None;
+                    if (path.RootRef)
+                    {
+                        var rooted = _modelSymbol == null ? null : ResolvedTypeOf(_modelSymbol, path.Segments);
+                        return rooted == null
+                            ? ComputedValue.None
+                            : new ComputedValue(rooted, SymbolFacts.Classify(rooted));
+                    }
+
+                    if (model == null || model.TypeKind == TypeKind.Dynamic)
                         return ComputedValue.None;
                     var resolved = ResolvedTypeOf(model, path.Segments);
                     return resolved == null
@@ -1835,7 +1851,7 @@ namespace Heddle.Generator.Emit
                     // nothing: a call the ranker refuses has no return type either, so the value stays "cannot say",
                     // no gate can refuse the template on account of it, and the writer that emits the same
                     // expression reaches it and reports what this one saw.
-                    var writer = new NativeExpressionWriter(_resolver, model, "m", _exports, TypeFacts,
+                    var writer = new NativeExpressionWriter(_resolver, model, _modelSymbol, "m", _exports, TypeFacts,
                         AllocateHopLocal, props);
                     var kind = writer.EstimateCallReturn(call);
 
@@ -2803,15 +2819,22 @@ namespace Heddle.Generator.Emit
             string conversionKeyword = null;
             if (arg.Value is PathNode pn)
             {
-                if (pn.RootRef) { reason = "root-reference dynamic arg"; return false; }
-
                 // Prop-first, like every other reader of a path's first segment — and like the writer three lines
                 // below, which has had the layout since it was given one. Typed off the model instead, the check and
                 // the emission disagreed about which value this argument even is: the writer emitted the caller's
                 // prop while the check approved the shadowed member's type, so a string went into an int-declared
                 // slot the engine refuses outright.
                 ITypeSymbol argType;
-                if (IsPropName(pn, bctx.Props))
+                if (pn.RootRef)
+                {
+                    // The engine compiles a '::' arg against RootScopeType; an untyped root is its own
+                    // typed-model refusal, so degrading hands the template to the tier that raises it.
+                    if (_modelSymbol == null) { reason = "root-reference dynamic arg without a typed root model"; return false; }
+                    var res = _resolver.ResolvePath(_modelSymbol, pn.Segments);
+                    if (res.Kind != SymbolTypeResolver.PathKind.Resolved) { reason = "dynamic arg root path (" + res.Kind + ")"; return false; }
+                    argType = res.ResultType;
+                }
+                else if (IsPropName(pn, bctx.Props))
                 {
                     argType = PropRootType(pn, bctx.Props);
                     if (argType == null) { reason = "dynamic arg reads a prop this call site cannot type"; return false; }
@@ -2845,8 +2868,8 @@ namespace Heddle.Generator.Emit
                 return false;
             }
 
-            var writer = new NativeExpressionWriter(_resolver, callerModel, "m", _exports, TypeFacts, AllocateHopLocal,
-                bctx.Props);
+            var writer = new NativeExpressionWriter(_resolver, callerModel, _modelSymbol, "m", _exports, TypeFacts,
+                AllocateHopLocal, bctx.Props);
             var body = writer.WriteRoot(arg.Value);
             DrainUnresolvable(writer);
             if (body == null) { reason = "unwritable dynamic arg"; return false; }
@@ -3016,16 +3039,20 @@ namespace Heddle.Generator.Emit
                     return true;
                 }
 
+                // A '::' path roots at the TEMPLATE's model whatever body it sits in — the engine resolves it
+                // against RootScopeType, which every nested and definition body inherits — so its tier follows
+                // the root typing, not the body's.
+                if (cp.RootReference)
+                    return BuildRootRefParamExpr(segments, out paramExpr, out reason);
+
                 if (bctx.IsDynamic)
                 {
                     // Dynamic tier: leading conditional guards first hop, dynamic ?. carries rest (DynamicParameter emits this).
-                    if (cp.RootReference) { reason = "dynamic root-reference member path"; return false; }
                     paramExpr = WriteDynamicPath("m", segments);
                     usesModel = true;
                     return true;
                 }
 
-                if (cp.RootReference) { reason = "root-reference member path"; return false; }
                 if (bctx.ModelSymbol == null) { reason = "unresolved model type"; return false; }
 
                 var resolution = _resolver.ResolvePath(bctx.ModelSymbol, segments);
@@ -3069,7 +3096,7 @@ namespace Heddle.Generator.Emit
                 // — and refusing every expression on the untyped tier dropped whole templates the engine renders.
                 // The writer is the gate instead: given no model type it refuses any path that reads one, which is
                 // the same answer by the same rule, and it never claims to use a model local it has not been given.
-                var writer = new NativeExpressionWriter(_resolver, bctx.ModelSymbol, "m",
+                var writer = new NativeExpressionWriter(_resolver, bctx.ModelSymbol, _modelSymbol, "m",
                     _exports, TypeFacts, AllocateHopLocal, bctx.Props);
                 var expr = writer.WriteRoot(cp.NativeExpression);
                 DrainUnresolvable(writer);
@@ -3107,6 +3134,42 @@ namespace Heddle.Generator.Emit
 
             reason = "C#/chain parameter";
             return false;
+        }
+
+        /// <summary>The <c>::</c> member-path parameter: a typed root emits the null-safe hop chain off the root
+        /// model read cast to the template's model (the engine's own RootScopeType conversion, InvalidCastException
+        /// included), and an untyped root walks the per-segment DLR chain the engine's <c>RootDynamicParameter</c>
+        /// compiles. Neither reads the model local, so the caller's <c>usesModel</c> stays false.</summary>
+        private bool BuildRootRefParamExpr(string[] segments, out string paramExpr, out string reason)
+        {
+            reason = null;
+            paramExpr = null;
+            const string rootRead = "global::Heddle.Precompiled.PrecompiledRuntime.RootModel(in scope)";
+            if (_modelSymbol == null)
+            {
+                paramExpr = WriteDynamicPath(rootRead, segments);
+                return true;
+            }
+
+            var resolution = _resolver.ResolvePath(_modelSymbol, segments);
+            if (resolution.Kind != SymbolTypeResolver.PathKind.Resolved)
+            {
+                if (resolution.Kind == SymbolTypeResolver.PathKind.Failed ||
+                    resolution.Kind == SymbolTypeResolver.PathKind.Inaccessible)
+                    RecordMemberFailure(_modelSymbol, segments, resolution);
+                reason = "root member path (" + resolution.Kind + ")";
+                return false;
+            }
+
+            if (SymbolTypeResolver.EndsOnRefStruct(resolution))
+            {
+                reason = "root member path ends on a ref struct";
+                return false;
+            }
+
+            var root = "((" + SymbolTypeResolver.FullyQualified(_modelSymbol) + ")" + rootRead + ")";
+            paramExpr = "(object)(" + MemberPathWriter.Write(root, MapHops(resolution), AllocateHopLocal) + ")";
+            return true;
         }
 
         /// <summary>FullCSharp tier: C# expression pasted verbatim with local <c>model</c> bound (same name as runtime).
@@ -3210,8 +3273,8 @@ namespace Heddle.Generator.Emit
             if (innerTarget == CallTargetKind.Function)
             {
                 var callNode = BuildFunctionCallNode(name, inner.CallParameter, inner.Position);
-                var writer = new NativeExpressionWriter(_resolver, bctx.ModelSymbol, "m", _exports, TypeFacts, AllocateHopLocal,
-                    bctx.Props);
+                var writer = new NativeExpressionWriter(_resolver, bctx.ModelSymbol, _modelSymbol, "m", _exports,
+                    TypeFacts, AllocateHopLocal, bctx.Props);
                 var expr = writer.WriteRoot(callNode);
                 DrainUnresolvable(writer);
                 if (expr == null)
@@ -3557,6 +3620,10 @@ namespace Heddle.Generator.Emit
                     NativeExpressionWriter.DefaultOverloadCount(fn));
             foreach (var ex in writer.UsedExports)
                 RecordFunctionBinding(ex.Name, ex.Aqn, ex.OverloadCount);
+            // A collided name's shim row carries only the built-in overloads exact-signature exports left in
+            // place — the count the live merged registry actually holds on the shim target.
+            foreach (var fn in writer.UsedCollidedBuiltIns)
+                RecordFunctionBinding(fn.Name, DefaultFunctionTable.ShimTargetTypeName, fn.OverloadCount);
         }
 
         private string RenderFile(string modelType, BodyClass root)

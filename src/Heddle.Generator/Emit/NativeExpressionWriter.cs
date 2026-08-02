@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Text;
 using Heddle.Generator.Binding;
 using Heddle.Language.Expressions;
+using Heddle.Language.Members;
 using Heddle.Precompiled;
 using Microsoft.CodeAnalysis;
 
@@ -31,8 +32,12 @@ namespace Heddle.Generator.Emit
         private readonly Dictionary<CallNode, ExportFunctionBinder.Binding> _exportBindings =
             new Dictionary<CallNode, ExportFunctionBinder.Binding>();
 
+        private readonly Dictionary<CallNode, MergedFunctionBinder.Binding> _mergedBindings =
+            new Dictionary<CallNode, MergedFunctionBinder.Binding>();
+
         private readonly SymbolTypeResolver _resolver;
         private readonly ITypeSymbol _modelType;
+        private readonly ITypeSymbol _rootModelType;
         private readonly string _modelLocal;
         private readonly TemplateEmitter.PropLayoutInfo _props;
         private readonly FunctionExportResolver _exports;
@@ -40,6 +45,8 @@ namespace Heddle.Generator.Emit
         private readonly HashSet<string> _usedDefaultFunctions = new HashSet<string>();
         private readonly List<(string Name, string Aqn, int OverloadCount)> _usedExports =
             new List<(string, string, int)>();
+        private readonly List<(string Name, int OverloadCount)> _usedCollidedBuiltIns =
+            new List<(string, int)>();
         private readonly List<(string Name, Heddle.Strings.Core.BlockPosition Position)> _unresolvableFunctions =
             new List<(string, Heddle.Strings.Core.BlockPosition)>();
         private readonly List<SymbolMemberResolver.MemberFailure> _memberFailures =
@@ -56,12 +63,16 @@ namespace Heddle.Generator.Emit
 
         private readonly SymbolTypeFacts _typeFacts;
 
-        public NativeExpressionWriter(SymbolTypeResolver resolver, ITypeSymbol modelType, string modelLocal,
-            FunctionExportResolver exports, SymbolTypeFacts typeFacts, Func<string> allocateHopLocal,
-            TemplateEmitter.PropLayoutInfo props = null)
+        public NativeExpressionWriter(SymbolTypeResolver resolver, ITypeSymbol modelType, ITypeSymbol rootModelType,
+            string modelLocal, FunctionExportResolver exports, SymbolTypeFacts typeFacts,
+            Func<string> allocateHopLocal, TemplateEmitter.PropLayoutInfo props = null)
         {
             _resolver = resolver;
             _modelType = modelType;
+            // The template's own @model, whatever body this expression sits in: a definition body keeps its
+            // caller's model in _modelType while '::' still roots at the outer template's model, exactly as the
+            // engine resolves '::' against RootScopeType rather than the body's scope type.
+            _rootModelType = rootModelType;
             _modelLocal = modelLocal;
             _props = props;
             _exports = exports;
@@ -84,6 +95,12 @@ namespace Heddle.Generator.Emit
         /// A name exported by more than one container yields one row <b>per container</b>, matching
         /// the runtime's merged registry — the gauntlet compares each row's count exactly.</summary>
         public IReadOnlyList<(string Name, string Aqn, int OverloadCount)> UsedExports => _usedExports;
+
+        /// <summary>Collided names (built-in ∧ export) called in this expression whose built-in overloads are
+        /// still live after exact-signature exports replaced theirs, with that remaining count — the shim-target
+        /// manifest row the gauntlet compares exactly against the merged registry. A name whose every built-in
+        /// overload was replaced does not appear: the live registry holds no shim-target entries for it either.</summary>
+        public IReadOnlyList<(string Name, int OverloadCount)> UsedCollidedBuiltIns => _usedCollidedBuiltIns;
 
         /// <summary>Function names in this expression resolvable from neither the default table nor any referenced
         /// export; each name with its <c>.heddle</c> position. When non-empty,
@@ -109,7 +126,7 @@ namespace Heddle.Generator.Emit
         /// <c>.heddle</c> position, the runtime-shaped sentence naming the candidates, and the diagnostic id
         /// HED7025. Drained by the emitter and reported at Error.
         /// <para>Refusals the generator could <b>not</b> prove (an <c>Unknown</c> argument estimate, an unspellable
-        /// cast target, a params-expanded bind) never land here: they stay the silent degrade they always were,
+        /// cast target) never land here: they stay the silent degrade they always were,
         /// because the generator has established nothing about what the runtime will do.</para></summary>
         public IReadOnlyList<(string Name, Heddle.Strings.Core.BlockPosition Position, string Detail,
             string RuntimeDiagnosticId)> UnbindableFunctionCalls => _unbindableCalls;
@@ -169,7 +186,12 @@ namespace Heddle.Generator.Emit
         public ITypeSymbol CallReturnType(CallNode call, Compilation compilation)
         {
             if (_exports != null && _exports.TryGet(call.Name, out _))
+            {
+                if (DefaultShims.ContainsKey(call.Name))
+                    return BindMergedCall(call)?.ReturnType;
                 return BindExportCall(call)?.ReturnType;
+            }
+
             var binding = BindDefaultCall(call);
             return binding == null ? null : compilation.GetTypeByMetadataName(binding.Row.ReturnTypeName);
         }
@@ -231,8 +253,8 @@ namespace Heddle.Generator.Emit
                     return WriteTernary(ternary);
                 case CallNode call:
                     return WriteCall(call);
-                case IndexNode _:
-                    return Refuse("an indexer access, which only the dynamic tier reads");
+                case IndexNode index:
+                    return WriteIndex(index);
                 case MethodCallNode _:
                     return Refuse("method-call syntax, which the engine refuses too (HED1003)");
                 default:
@@ -262,10 +284,9 @@ namespace Heddle.Generator.Emit
         private string WriteCall(CallNode call)
         {
             bool isDefault = DefaultShims.TryGetValue(call.Name, out var shim);
-            bool hasExport = _exports != null && _exports.TryGet(call.Name, out var export);
+            FunctionExportResolver.ExportEntry export = null;
+            bool hasExport = _exports != null && _exports.TryGet(call.Name, out export);
 
-            if (isDefault && hasExport)
-                return Refuse("a call to '" + call.Name + "', which is both a built-in function and an export");
             if (!isDefault && !hasExport)
             {
                 _unresolvableFunctions.Add((call.Name, call.Position));
@@ -279,6 +300,9 @@ namespace Heddle.Generator.Emit
                 if (args[i] == null)
                     return null;
             }
+
+            if (isDefault && hasExport)
+                return WriteMergedCall(call, export, args);
 
             if (hasExport)
             {
@@ -295,8 +319,12 @@ namespace Heddle.Generator.Emit
                     if (!_usedExports.Contains((call.Name, row.Aqn, row.OverloadCount)))
                         _usedExports.Add((call.Name, row.Aqn, row.OverloadCount));
 
+                var argumentList = exportBinding.Expanded
+                    ? ExpandedArgumentList(args, exportBinding.Overload.Method.Parameters.Length - 1,
+                        exportBinding.ParamsElementTypeName)
+                    : string.Join(", ", args);
                 return exportBinding.Overload.ContainerGlobalName + "." + exportBinding.Overload.MethodName +
-                       "(" + string.Join(", ", args) + ")";
+                       "(" + argumentList + ")";
             }
 
             var binding = BindDefaultCall(call);
@@ -311,6 +339,282 @@ namespace Heddle.Generator.Emit
 
             _usedDefaultFunctions.Add(call.Name);
             return "global::Heddle.Precompiled.PrecompiledFunctions." + shim + "(" + string.Join(", ", args) + ")";
+        }
+
+        /// <summary>Emits a call to a collided name — the registry's own merge replayed by
+        /// <see cref="MergedFunctionBinder"/> — spelling the winner's ordinary call target. The manifest gets one
+        /// row per live target of the name (the shim for surviving built-in overloads, each exporting container),
+        /// whichever side this call binds, because the gauntlet checks every live registration of the name.</summary>
+        private string WriteMergedCall(CallNode call, FunctionExportResolver.ExportEntry entry, string[] args)
+        {
+            var binding = BindMergedCall(call);
+            if (binding == null)
+                return Refuse("a call to '" + call.Name +
+                              "' the merged built-in and export candidate set does not bind");
+
+            for (int i = 0; i < args.Length; i++)
+                if (binding.ArgumentCasts[i] != null)
+                    args[i] = "(" + binding.ArgumentCasts[i] + ")(" + args[i] + ")";
+
+            foreach (var row in entry.ManifestRows)
+                if (!_usedExports.Contains((call.Name, row.Aqn, row.OverloadCount)))
+                    _usedExports.Add((call.Name, row.Aqn, row.OverloadCount));
+            if (binding.RemainingBuiltInOverloads > 0 &&
+                !_usedCollidedBuiltIns.Contains((call.Name, binding.RemainingBuiltInOverloads)))
+                _usedCollidedBuiltIns.Add((call.Name, binding.RemainingBuiltInOverloads));
+
+            if (binding.IsBuiltIn)
+                return "global::Heddle.Precompiled.PrecompiledFunctions." + binding.Row.ShimMethodName +
+                       "(" + string.Join(", ", args) + ")";
+            var argumentList = binding.Expanded
+                ? ExpandedArgumentList(args, binding.Overload.Method.Parameters.Length - 1,
+                    binding.ParamsElementTypeName)
+                : string.Join(", ", args);
+            return binding.Overload.ContainerGlobalName + "." + binding.Overload.MethodName +
+                   "(" + argumentList + ")";
+        }
+
+        /// <summary>The argument list of a params-expanded bind: the expanded tail is spelled as one explicitly
+        /// typed array creation, so the consumer's compiler binds the winner in normal form instead of re-running
+        /// its own params expansion — whose betterness rules are not the engine's — over the overload set.</summary>
+        private static string ExpandedArgumentList(string[] args, int fixedCount, string elementTypeName)
+        {
+            var parts = new string[fixedCount + 1];
+            for (int i = 0; i < fixedCount; i++)
+                parts[i] = args[i];
+            parts[fixedCount] = args.Length == fixedCount
+                ? "new " + elementTypeName + "[] { }"
+                : "new " + elementTypeName + "[] { " +
+                  string.Join(", ", args, fixedCount, args.Length - fixedCount) + " }";
+            return string.Join(", ", parts);
+        }
+
+        /// <summary>Resolves a collided call against the merged built-in + export candidate set; returns null when
+        /// the merged ranker refuses or the winning export may not be spelled (recorded as <c>HED7030</c>).</summary>
+        private MergedFunctionBinder.Binding BindMergedCall(CallNode call)
+        {
+            if (_mergedBindings.TryGetValue(call, out var cached))
+                return cached;
+
+            MergedFunctionBinder.Binding binding = null;
+            if (_typeFacts != null && _exports != null && _exports.TryGet(call.Name, out var entry))
+            {
+                var argKinds = new OperandKind[call.Arguments.Count];
+                var argTypes = new ITypeSymbol[call.Arguments.Count];
+                for (int i = 0; i < argKinds.Length; i++)
+                {
+                    argKinds[i] = Estimate(call.Arguments[i]);
+                    argTypes[i] = ArgumentType(call.Arguments[i]);
+                }
+
+                binding = MergedFunctionBinder.TryBind(_typeFacts, _resolver, call.Name, entry.Overloads,
+                    argKinds, argTypes, out var refusal);
+                RecordIfProvenIllegal(call, refusal);
+
+                if (binding != null && !binding.IsBuiltIn && !CanWriteCallTo(binding.Overload, out var display))
+                {
+                    _unnameableCalls.Add((call.Name, call.Position, display));
+                    binding = null;
+                }
+            }
+
+            _mergedBindings[call] = binding;
+            return binding;
+        }
+
+        /// <summary>
+        /// Emits an index access with the engine's null-receiver semantics: the receiver is evaluated once, and a
+        /// null receiver yields <c>default(TResult)</c> without evaluating the index expressions — which is what
+        /// C#'s <c>?[</c> does, so the null-conditional form spells it directly, <c>?? default(T)</c> restoring the
+        /// non-nullable result type the engine's conditional carries. A value-type receiver reads directly, as the
+        /// engine does. Argument casts come pinned from <see cref="ResolveIndex"/> so neither the conversion nor —
+        /// for indexers — the overload choice is left to the consumer's compiler.
+        /// </summary>
+        private string WriteIndex(IndexNode index)
+        {
+            var target = Write(index.Target);
+            if (target == null)
+                return null;
+            var args = new string[index.Arguments.Count];
+            for (int i = 0; i < args.Length; i++)
+            {
+                args[i] = Write(index.Arguments[i]);
+                if (args[i] == null)
+                    return null;
+            }
+
+            var binding = ResolveIndex(index);
+            if (binding.Refusal != null)
+                return Refuse(binding.Refusal);
+
+            for (int i = 0; i < args.Length; i++)
+            {
+                if (binding.ArgumentCasts[i] != null)
+                    args[i] = "((" + binding.ArgumentCasts[i] + ")(" + args[i] + "))";
+            }
+
+            var joined = string.Join(", ", args);
+            if (binding.DirectReceiver)
+                return "(" + target + "[" + joined + "])";
+            if (SymbolTypeResolver.IsNonNullableValueType(binding.ResultType))
+                return "(" + target + "?[" + joined + "] ?? default(" +
+                       SymbolTypeResolver.FullyQualified(binding.ResultType) + "))";
+            return "(" + target + "?[" + joined + "])";
+        }
+
+        /// <summary>What one index access resolved to — or why it never will, in <see cref="Refusal"/>.</summary>
+        private sealed class IndexBinding
+        {
+            public ITypeSymbol ResultType;
+
+            /// <summary>Per-argument cast target, or null where the argument's own type is already exact.</summary>
+            public string[] ArgumentCasts;
+
+            /// <summary>A value-type receiver reads directly — the engine skips the null test there too.</summary>
+            public bool DirectReceiver;
+
+            public string Refusal;
+        }
+
+        private readonly Dictionary<IndexNode, IndexBinding> _indexBindings =
+            new Dictionary<IndexNode, IndexBinding>();
+
+        private IndexBinding ResolveIndex(IndexNode index)
+        {
+            if (_indexBindings.TryGetValue(index, out var cached))
+                return cached;
+            var binding = ResolveIndexCore(index);
+            _indexBindings[index] = binding;
+            return binding;
+        }
+
+        private static IndexBinding IndexRefusal(string reason) => new IndexBinding { Refusal = reason };
+
+        private IndexBinding ResolveIndexCore(IndexNode index)
+        {
+            var receiverType = ArgumentType(index.Target);
+            if (!IsEstablishedType(receiverType))
+                return IndexRefusal("an index whose receiver has no established static type");
+
+            if (receiverType is IArrayTypeSymbol array)
+                return ResolveArrayIndex(index, array);
+            return ResolveIndexerAccess(index, receiverType);
+        }
+
+        /// <summary>The array arm, mirroring the engine: any integral index — <c>char</c> included — converts to
+        /// <c>int</c> unless it already is one exactly, so a wide index truncates and a nullable index throws at
+        /// render on both tiers. A known non-integral index is the engine's own HED1010 refusal.</summary>
+        private IndexBinding ResolveArrayIndex(IndexNode index, IArrayTypeSymbol array)
+        {
+            if (array.Rank != index.Arguments.Count)
+                return IndexRefusal("an array index whose argument count does not match the array's rank");
+            if (_resolver.ClassifyTypeName(array.ElementType, out _) != SymbolTypeResolver.NameFault.None)
+                return IndexRefusal("an array element type generated code cannot name");
+
+            var casts = new string[index.Arguments.Count];
+            for (int i = 0; i < casts.Length; i++)
+            {
+                var kind = Estimate(index.Arguments[i]);
+                if (kind.Category == OperandCategory.Unknown)
+                    return IndexRefusal("an index whose static type the writer cannot establish");
+                if (kind.Category != OperandCategory.Numeric || !NumericTable.IsIntegral(kind.Kind))
+                    return IndexRefusal("an index access the engine refuses too (HED1010)");
+                if (kind.Kind != NumericKind.Int32 || kind.IsNullable)
+                    casts[i] = "int";
+            }
+
+            return new IndexBinding { ResultType = array.ElementType, ArgumentCasts = casts };
+        }
+
+        /// <summary>
+        /// The indexer arm. Emitted only when exactly ONE candidate the engine's filter admits matches the
+        /// argument arity and types under the shared conversion rank — with several matches the engine takes
+        /// whichever reflection happens to enumerate first, which no symbol walk can reproduce. Candidates are
+        /// gathered most-derived-first over the base chain and, on an interface receiver, from the interface's own
+        /// declarations only, both mirroring what reflection's <c>GetProperties</c> surfaces to the engine.
+        /// </summary>
+        private IndexBinding ResolveIndexerAccess(IndexNode index, ITypeSymbol receiverType)
+        {
+            if (_typeFacts?.Compilation == null)
+                return IndexRefusal("an index whose static type the writer cannot establish");
+
+            var args = new RankArgument<ITypeSymbol>[index.Arguments.Count];
+            for (int i = 0; i < args.Length; i++)
+            {
+                var kind = Estimate(index.Arguments[i]);
+                if (kind.Category == OperandCategory.NullLiteral)
+                {
+                    args[i] = RankArgument<ITypeSymbol>.Null();
+                    continue;
+                }
+
+                var type = ArgumentType(index.Arguments[i]) ??
+                           ExportFunctionBinder.ToSymbol(_typeFacts.Compilation, kind);
+                if (type == null || type.TypeKind == TypeKind.Dynamic || type.TypeKind == TypeKind.Error)
+                    return IndexRefusal("an index whose static type the writer cannot establish");
+                args[i] = RankArgument<ITypeSymbol>.Of(type);
+            }
+
+            var model = new ExportFunctionBinder.SymbolRankModel(_typeFacts);
+            IPropertySymbol single = null;
+            for (var type = receiverType; type != null; type = type.BaseType)
+            {
+                foreach (var member in type.GetMembers())
+                {
+                    if (!(member is IPropertySymbol property) || property.Parameters.Length == 0 ||
+                        property.Parameters.Length != args.Length)
+                        continue;
+                    var facts = SymbolTypeResolver.PropertyFacts(property);
+                    if (!MemberVisibility.IsAccessible(facts))
+                    {
+                        // A [Hidden] indexer is skipped by the engine's filter but stays a perfectly bindable
+                        // overload to the consumer's compiler, so no cast pin can keep the two in step.
+                        if (facts.HasHidden && MemberVisibility.IsAccessible(
+                                new MemberFacts(facts.CanRead, facts.Access, false, facts.IsStatic)))
+                            return IndexRefusal("an indexer the engine's [Hidden] filter skips but C# would bind");
+                        continue;
+                    }
+
+                    bool matches = true;
+                    for (int i = 0; i < args.Length && matches; i++)
+                        matches = OverloadRank.ConversionRank(model, args[i], property.Parameters[i].Type) >= 0;
+                    if (!matches)
+                        continue;
+                    if (single != null)
+                        return IndexRefusal("an indexer choice that depends on reflection order");
+                    single = property;
+                }
+            }
+
+            if (single == null)
+                return IndexRefusal("an indexer access the engine refuses too (HED1010)");
+
+            if (!_resolver.IsAccessibleFromCompilation(single) ||
+                !_resolver.IsAccessibleFromCompilation(single.GetMethod) ||
+                SymbolTypeResolver.IsObsoleteError(single) || SymbolTypeResolver.IsObsoleteError(single.GetMethod))
+                return IndexRefusal("an indexer generated code cannot name");
+            if (_resolver.ClassifyTypeName(single.Type, out _) != SymbolTypeResolver.NameFault.None)
+                return IndexRefusal("an indexer whose type generated code cannot name");
+            if (SymbolTypeResolver.IsRefLikeOrRestricted(single.Type))
+                return IndexRefusal("an indexer returning a ref struct, which an expression operand cannot box");
+
+            var casts = new string[args.Length];
+            for (int i = 0; i < casts.Length; i++)
+            {
+                var parameterType = single.Parameters[i].Type;
+                if (!args[i].IsNullLiteral && SymbolEqualityComparer.Default.Equals(args[i].Type, parameterType))
+                    continue;
+                if (_resolver.ClassifyTypeName(parameterType, out _) != SymbolTypeResolver.NameFault.None)
+                    return IndexRefusal("an indexer whose type generated code cannot name");
+                casts[i] = SymbolTypeResolver.FullyQualified(parameterType);
+            }
+
+            return new IndexBinding
+            {
+                ResultType = single.Type,
+                ArgumentCasts = casts,
+                DirectReceiver = receiverType.IsValueType
+            };
         }
 
         /// <summary>
@@ -329,28 +633,46 @@ namespace Heddle.Generator.Emit
             return slot;
         }
 
-        /// <summary>Whether a path's target puts it out of this writer's reach. <c>this.</c> does not: the path
+        /// <summary>Whether the path hops off a target expression of its own. <c>this.</c> does not: the path
         /// roots at the model exactly as a bare one does, because that is what the engine's compiler converts the
-        /// target to. Every other target is an expression this tier does not root a member walk at.
-        /// <para>Prop-first resolution needs no exception for it — a path with a target is not a prop read on
+        /// target to.
+        /// <para>Prop-first resolution needs no exception for a target — a path with one is not a prop read on
         /// either tier, so <c>this.Name</c> reads the model member a prop named <c>Name</c> shadows.</para></summary>
-        private static bool TargetIsOutOfReach(PathNode path) => path.Target != null && !(path.Target is ThisNode);
+        private static bool HasExpressionTarget(PathNode path) => path.Target != null && !(path.Target is ThisNode);
 
         private string WritePath(PathNode path)
         {
-            if (TargetIsOutOfReach(path))
-                return Refuse("a member path rooted somewhere other than the model");
+            if (HasExpressionTarget(path))
+                return WriteTargetedPath(path);
 
             var prop = PropRoot(path);
             if (prop != null)
                 return WritePropPath(prop, path);
 
-            if (path.RootRef || _modelType == null)
-                return Refuse(path.RootRef
-                    ? "a '::'-rooted path"
-                    : "a model-rooted path in an expression with no static model type");
+            if (path.RootRef)
+            {
+                if (_rootModelType == null)
+                    return Refuse("a '::'-rooted path in an expression with no static root model type");
+                // The cast is parity, not a hazard: the engine converts the root object to RootScopeType at the
+                // first hop, so a mismatched root throws the same InvalidCastException on both tiers.
+                var rootRead = "((" + SymbolTypeResolver.FullyQualified(_rootModelType) +
+                               ")global::Heddle.Precompiled.PrecompiledRuntime.RootModel(in scope))";
+                return WriteMemberChain(_rootModelType, path, rootRead);
+            }
 
-            var resolution = _resolver.ResolvePath(_modelType, path.Segments);
+            if (_modelType == null)
+                return Refuse("a model-rooted path in an expression with no static model type");
+
+            _usedModel = true;
+            return WriteMemberChain(_modelType, path, _modelLocal);
+        }
+
+        /// <summary>Resolves the path's segments against <paramref name="startType"/> and writes the null-safe hop
+        /// chain off <paramref name="rootExpr"/> (already cast to that type) — the emission the model root and the
+        /// <c>::</c> root share.</summary>
+        private string WriteMemberChain(ITypeSymbol startType, PathNode path, string rootExpr)
+        {
+            var resolution = _resolver.ResolvePath(startType, path.Segments);
             if (resolution.Kind != SymbolTypeResolver.PathKind.Resolved)
             {
                 // Unusable is the one refusal with no author-facing fault behind it — the member is there and
@@ -362,7 +684,7 @@ namespace Heddle.Generator.Emit
                 {
                     var idx = resolution.DynamicIndex;
                     var receiver = resolution.Hops.Count == 0
-                        ? _modelType
+                        ? startType
                         : resolution.Hops[resolution.Hops.Count - 1].Property;
                     if (!TemplateEmitter.IsUntypedReceiver(receiver))
                     {
@@ -385,21 +707,47 @@ namespace Heddle.Generator.Emit
             if (SymbolTypeResolver.EndsOnRefStruct(resolution))
                 return Refuse("a member path ending on a ref struct, which an expression operand cannot box");
 
-            _usedModel = true;
-            var hops = new List<MemberPathWriter.HopEmit>(resolution.Hops.Count);
-            foreach (var hop in resolution.Hops)
-            {
-                hops.Add(new MemberPathWriter.HopEmit(
-                    hop.Receiver.IsValueType,
-                    SymbolTypeResolver.IsNonNullableValueType(hop.Property),
-                    SymbolTypeResolver.FullyQualified(hop.Property),
-                    hop.Name,
-                    !SymbolTypeResolver.IsRefLikeOrRestricted(hop.Property),
-                    SymbolTypeResolver.FullyQualified(hop.Receiver)));
-            }
-
-            return MemberPathWriter.Write(_modelLocal, hops, _allocateHopLocal);
+            return MemberPathWriter.Write(rootExpr, TemplateEmitter.MapHops(resolution), _allocateHopLocal);
         }
+
+        /// <summary>Emits a path hopping off a target expression — a call, an index, a literal — as the written
+        /// target cast to its static type, with the shared hop chain rooted there. The engine boxes the target to
+        /// <c>object</c> and re-converts at the first hop, so the cast reads the same value; every hop form splices
+        /// the root text exactly once, which keeps the engine's evaluate-the-target-once contract.</summary>
+        private string WriteTargetedPath(PathNode path)
+        {
+            var target = Write(path.Target);
+            if (target == null)
+                return null;
+
+            var targetType = TargetType(path.Target);
+            if (!IsEstablishedType(targetType))
+                return Refuse("a member path rooted at an expression with no established static type");
+            if (SymbolTypeResolver.IsRefLikeOrRestricted(targetType))
+                return Refuse("a member path rooted at a ref struct, which an expression operand cannot box");
+            if (_resolver.ClassifyTypeName(targetType, out _) != SymbolTypeResolver.NameFault.None)
+                return Refuse("a member path rooted at a type generated code cannot name");
+
+            var rootRead = "((" + SymbolTypeResolver.FullyQualified(targetType) + ")(" + target + "))";
+            return WriteMemberChain(targetType, path, rootRead);
+        }
+
+        /// <summary>The static type a path target roots the member walk at — the engine's <c>target.Type</c>: a
+        /// literal's own CLR type, and for every other shape the symbol <see cref="ArgumentType"/> resolves. Null
+        /// where nothing is established — a binary or ternary result has an operand descriptor but no symbol
+        /// behind it.</summary>
+        private ITypeSymbol TargetType(ExprNode target)
+        {
+            if (target is LiteralNode literal)
+                return literal.LiteralError != null || _typeFacts?.Compilation == null
+                    ? null
+                    : ExportFunctionBinder.ToSymbol(_typeFacts.Compilation, EstimateLiteral(literal.Value));
+            return ArgumentType(target);
+        }
+
+        private static bool IsEstablishedType(ITypeSymbol type) =>
+            type != null && type.TypeKind != TypeKind.Dynamic && type.TypeKind != TypeKind.Error &&
+            type.TypeKind != TypeKind.TypeParameter;
 
         /// <summary>Emits the prop read: the boxed slot cast back to its declared type, then the remaining segments
         /// hopped off that type — the same shape a prop-rooted call-site parameter emits. Null degrades the
@@ -890,8 +1238,10 @@ namespace Heddle.Generator.Emit
                     return NativeOperatorRules.TernaryResult(whenTrue, whenFalse,
                         RelateOperands(ternary.WhenTrue, ternary.WhenFalse, out _));
                 }
+                case IndexNode index:
+                    return SymbolFacts.Classify(ResolveIndex(index).ResultType);
                 default:
-                    return OperandKind.Unknown;   // IndexNode / MethodCallNode — never emitted here
+                    return OperandKind.Unknown;   // MethodCallNode — never emitted here
             }
         }
 
@@ -913,16 +1263,23 @@ namespace Heddle.Generator.Emit
         /// where nothing resolves — the same condition <see cref="EstimatePath"/> answers <c>Unknown</c> for.</summary>
         private ITypeSymbol PathType(PathNode path)
         {
-            if (TargetIsOutOfReach(path))
-                return null;
+            if (HasExpressionTarget(path))
+            {
+                var targetType = TargetType(path.Target);
+                if (!IsEstablishedType(targetType))
+                    return null;
+                var targeted = _resolver.ResolvePath(targetType, path.Segments);
+                return targeted.Kind == SymbolTypeResolver.PathKind.Resolved ? targeted.ResultType : null;
+            }
 
             var prop = PropRoot(path);
             if (prop != null)
                 return PropPathType(prop, path);
 
-            if (path.RootRef || _modelType == null)
+            var start = path.RootRef ? _rootModelType : _modelType;
+            if (start == null)
                 return null;
-            var resolution = _resolver.ResolvePath(_modelType, path.Segments);
+            var resolution = _resolver.ResolvePath(start, path.Segments);
             return resolution.Kind == SymbolTypeResolver.PathKind.Resolved ? resolution.ResultType : null;
         }
 
@@ -946,6 +1303,8 @@ namespace Heddle.Generator.Emit
                     return PathType(path);
                 case CallNode call:
                     return _typeFacts?.Compilation == null ? null : CallReturnType(call, _typeFacts.Compilation);
+                case IndexNode index:
+                    return ResolveIndex(index).ResultType;
                 default:
                     return null;
             }
@@ -956,6 +1315,16 @@ namespace Heddle.Generator.Emit
         {
             if (_exports != null && _exports.TryGet(call.Name, out _))
             {
+                if (DefaultShims.ContainsKey(call.Name))
+                {
+                    var merged = BindMergedCall(call);
+                    if (merged == null)
+                        return OperandKind.Unknown;
+                    return merged.IsBuiltIn
+                        ? DefaultFunctionBinder.ReturnKind(merged.Row)
+                        : SymbolFacts.Classify(merged.ReturnType);
+                }
+
                 var exportBinding = BindExportCall(call);
                 return exportBinding == null
                     ? OperandKind.Unknown
@@ -1042,8 +1411,7 @@ namespace Heddle.Generator.Emit
                 return cached;
 
             DefaultFunctionBinder.Binding binding = null;
-            bool shadowedByExport = _exports != null && _exports.TryGet(call.Name, out _);
-            if (!shadowedByExport && DefaultShims.ContainsKey(call.Name))
+            if (DefaultShims.ContainsKey(call.Name))
             {
                 var argKinds = new OperandKind[call.Arguments.Count];
                 var argTypes = new ITypeSymbol[call.Arguments.Count];
