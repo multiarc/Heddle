@@ -251,6 +251,12 @@ namespace Heddle.Generator.Emit
             FaultInjector?.Invoke(_key);
             _profileHtml = IsHtml;
             ExtractDirectives();
+            // Decided on the directive alone, before the metadata merge: only an in-file @model(){{dynamic}}
+            // pins the ENGINE's scope dynamic on every compile (the directive overrides a caller-supplied model
+            // type, where metadata never reaches the engine at all) — and an alias named 'dynamic' re-types the
+            // very same spelling, so it un-pins it.
+            _modelDeclaredDynamic = string.Equals(_modelTypeText, "dynamic", System.StringComparison.Ordinal) &&
+                                    !HasAliasNamed("dynamic");
             if (_modelTypeText == null)
             {
                 // No directive: the metadata types the template, through the very pipeline the directive feeds, so
@@ -427,6 +433,21 @@ namespace Heddle.Generator.Emit
             if (_extensionBinder.TryResolve(leftmost.ExtensionName, out var info))
                 return info.IsZeroOutput;
             return IsDirectiveName(leftmost.ExtensionName);
+        }
+
+        private bool _modelDeclaredDynamic;
+
+        /// <summary>Whether a <c>@using(){{name = …}}</c> alias claims <paramref name="name"/>.</summary>
+        private bool HasAliasNamed(string name)
+        {
+            foreach (var import in _usings)
+            {
+                var eq = import.IndexOf('=');
+                if (eq > 0 && string.Equals(import.Substring(0, eq).Trim(), name, System.StringComparison.Ordinal))
+                    return true;
+            }
+
+            return false;
         }
 
         private void ExtractDirectives()
@@ -1067,7 +1088,7 @@ namespace Heddle.Generator.Emit
             {
                 var callNode = BuildFunctionCallNode(name, cp, item.Position);
                 var writer = new NativeExpressionWriter(_resolver, bctx.ModelSymbol, _modelSymbol, "m", _exports,
-                    TypeFacts, AllocateHopLocal, bctx.Props);
+                    TypeFacts, AllocateHopLocal, bctx.Props, _modelDeclaredDynamic);
                 var expr = writer.WriteRoot(callNode);
                 DrainUnresolvable(writer);
                 if (expr == null)
@@ -2936,7 +2957,7 @@ namespace Heddle.Generator.Emit
             }
 
             var writer = new NativeExpressionWriter(_resolver, callerModel, _modelSymbol, "m", _exports, TypeFacts,
-                AllocateHopLocal, bctx.Props);
+                AllocateHopLocal, bctx.Props, _modelDeclaredDynamic);
             var body = writer.WriteRoot(arg.Value);
             DrainUnresolvable(writer);
             if (body == null) { reason = "unwritable dynamic arg"; return false; }
@@ -3164,7 +3185,7 @@ namespace Heddle.Generator.Emit
                 // The writer is the gate instead: given no model type it refuses any path that reads one, which is
                 // the same answer by the same rule, and it never claims to use a model local it has not been given.
                 var writer = new NativeExpressionWriter(_resolver, bctx.ModelSymbol, _modelSymbol, "m",
-                    _exports, TypeFacts, AllocateHopLocal, bctx.Props);
+                    _exports, TypeFacts, AllocateHopLocal, bctx.Props, _modelDeclaredDynamic);
                 var expr = writer.WriteRoot(cp.NativeExpression);
                 DrainUnresolvable(writer);
                 if (expr == null)
@@ -3341,7 +3362,7 @@ namespace Heddle.Generator.Emit
             {
                 var callNode = BuildFunctionCallNode(name, inner.CallParameter, inner.Position);
                 var writer = new NativeExpressionWriter(_resolver, bctx.ModelSymbol, _modelSymbol, "m", _exports,
-                    TypeFacts, AllocateHopLocal, bctx.Props);
+                    TypeFacts, AllocateHopLocal, bctx.Props, _modelDeclaredDynamic);
                 var expr = writer.WriteRoot(callNode);
                 DrainUnresolvable(writer);
                 if (expr == null)
@@ -3525,7 +3546,22 @@ namespace Heddle.Generator.Emit
                             division.Operator)));
                 }
             }
+
+            // The HED1018 channel, generalized: refusals the writer PROVED the engine repeats at its own
+            // template compile carry the engine's id and the engine's sentence forward as build errors. The
+            // template still degrades (the entry is never emitted), which no longer matters: the error fails
+            // the build the way the engine's fails the template compile.
+            foreach (var refusal in writer.EngineRefusals)
+            {
+                var seenKey = refusal.Id + "@" + refusal.Position.StartIndex;
+                if (_seenEngineRefusals.Add(seenKey))
+                    _diagnostics.Add(new EmitDiagnostic(
+                        GeneratorDiagnostics.Forwarded(refusal.Id, isWarning: false),
+                        refusal.Position, refusal.Message));
+            }
         }
+
+        private readonly HashSet<string> _seenEngineRefusals = new HashSet<string>(System.StringComparer.Ordinal);
 
         private readonly HashSet<string> _seenZeroDivisions = new HashSet<string>(System.StringComparer.Ordinal);
 

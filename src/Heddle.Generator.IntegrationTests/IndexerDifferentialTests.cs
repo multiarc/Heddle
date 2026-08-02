@@ -1,3 +1,4 @@
+using System.Linq;
 using Heddle.Data;
 using Heddle.Generator.IntegrationTests.Fixtures;
 using Heddle.Runtime;
@@ -11,8 +12,8 @@ namespace Heddle.Generator.IntegrationTests
     /// <c>default(TResult)</c> on a null receiver instead of throwing; array indices convert to <c>int</c> whatever
     /// integral type they carry; a non-array target binds an indexer by reflection, first match wins. The generator
     /// emits the shapes it can prove — any integral array index, exactly one matching indexer candidate — and
-    /// degrades where the engine's answer depends on reflection order, matching the engine's HED1010 refusal where
-    /// no candidate exists at a known target type.
+    /// degrades where the engine's answer depends on reflection order, and forwards the engine's HED1010 as a
+    /// build error where no candidate exists at a known target type.
     /// </summary>
     public class IndexerDifferentialTests
     {
@@ -52,15 +53,27 @@ namespace Heddle.Generator.IntegrationTests
             Assert.Empty(gen.TemplateSources);
         }
 
-        /// <summary>Asserts both tiers reject the expression with the same diagnostic.</summary>
+        /// <summary>Asserts both tiers reject the expression under the same id AND the same sentence: the
+        /// engine's positioned compile error, and the generator's forwarded build error carrying the engine's
+        /// exact message (the template still degrades, so HED7031's notice may ride along).</summary>
         private static void AssertBothTiersReject(string key, string expression, string diagnosticId)
         {
-            AssertDegrades(key, expression);
+            var content = Template(expression);
 
-            var template = new HeddleTemplate(Template(expression),
+            var template = new HeddleTemplate(content,
                 new CompileContext(new TemplateOptions(), typeof(IndexHost)));
             Assert.False(template.CompileResult.Success);
-            Assert.Contains(template.CompileResult.ErrorList, e => e.DiagnosticId == diagnosticId);
+            var engineMessages = template.CompileResult.ErrorList
+                .Where(e => e.DiagnosticId == diagnosticId).Select(e => e.Error).ToList();
+            Assert.NotEmpty(engineMessages);
+
+            var gen = DifferentialHarness.Generate(new[] { (key, content) });
+            var forwarded = Assert.Single(gen.Diagnostics.Where(d => d.Id == diagnosticId));
+            Assert.Equal(DiagnosticSeverity.Error, forwarded.Severity);
+            Assert.Contains(forwarded.GetMessage(), engineMessages);
+            Assert.Empty(gen.Diagnostics.Where(d => d.Id != diagnosticId && d.Id != "HED7031"));
+            DifferentialHarness.ExpectDegrade(gen, key);
+            Assert.Empty(gen.TemplateSources);
         }
 
         [Fact]
@@ -157,8 +170,8 @@ namespace Heddle.Generator.IntegrationTests
             Assert.True(rendered == "value: int:3\n" || rendered == "value: obj:3\n", rendered);
         }
 
-        /// <summary>A known target type with no matching indexer is the engine's HED1010; the generator degrades
-        /// so the template meets that refusal on the tier that owns it.</summary>
+        /// <summary>A known target type with no matching indexer is the engine's HED1010 on every input, so the
+        /// generator forwards that id as a build error with the engine's own sentence.</summary>
         [Fact]
         public void KnownTypeWithNoMatchingIndexer_IsRefusedByBothTiers()
         {

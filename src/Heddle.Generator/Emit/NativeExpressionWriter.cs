@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
+using Heddle.Data;
 using Heddle.Generator.Binding;
 using Heddle.Language.Expressions;
 using Heddle.Language.Members;
@@ -65,10 +66,15 @@ namespace Heddle.Generator.Emit
 
         public NativeExpressionWriter(SymbolTypeResolver resolver, ITypeSymbol modelType, ITypeSymbol rootModelType,
             string modelLocal, FunctionExportResolver exports, SymbolTypeFacts typeFacts,
-            Func<string> allocateHopLocal, TemplateEmitter.PropLayoutInfo props = null)
+            Func<string> allocateHopLocal, TemplateEmitter.PropLayoutInfo props = null,
+            bool modelDeclaredDynamic = false)
         {
             _resolver = resolver;
             _modelType = modelType;
+            // Only an in-file `@model(){{dynamic}}` proves the engine's scope is dynamic: the directive overrides
+            // whatever model type a runtime caller supplies, where a merely UNDECLARED model can still be typed by
+            // the caller's CompileContext — so only the declared form may forward the engine's HED1004.
+            _modelDeclaredDynamic = modelDeclaredDynamic;
             // The template's own @model, whatever body this expression sits in: a definition body keeps its
             // caller's model in _modelType while '::' still roots at the outer template's model, exactly as the
             // engine resolves '::' against RootScopeType rather than the body's scope type.
@@ -83,6 +89,7 @@ namespace Heddle.Generator.Emit
         }
 
         private readonly Func<string> _allocateHopLocal;
+        private readonly bool _modelDeclaredDynamic;
 
         public bool UsedModel => _usedModel;
 
@@ -155,6 +162,31 @@ namespace Heddle.Generator.Emit
             if (ConstantFolding.TryFindDivisionByConstantZero(node, out var site))
                 _divisionsByZero.Add((site.Position, OperatorLexeme.ForBinary(site.Operator)));
         }
+
+        /// <summary>Refusals whose engine counterpart is PROVEN: the same fact the engine refuses at its own
+        /// template compile, recorded with the engine's id and the engine's exact sentence. Drained by the
+        /// emitter and forwarded as build errors the way HED1018 is — one fact, one id, on both tiers.
+        /// <para>A refusal the writer cannot prove — an Unknown estimate, a runtime-owned verdict, a type
+        /// spelling it cannot reproduce — never lands here and stays the silent degrade it always was.</para></summary>
+        public IReadOnlyList<(string Id, Heddle.Strings.Core.BlockPosition Position, string Message)>
+            EngineRefusals => _engineRefusals;
+
+        private readonly List<(string Id, Heddle.Strings.Core.BlockPosition Position, string Message)>
+            _engineRefusals = new List<(string, Heddle.Strings.Core.BlockPosition, string)>();
+
+        /// <summary>Refuses like <see cref="Refuse"/>, additionally recording the engine's id and sentence for
+        /// the forward — or only refusing when <paramref name="message"/> is null, i.e. when some type spelling
+        /// in the engine's sentence could not be reproduced exactly.</summary>
+        private string RefuseAsEngine(string id, Heddle.Strings.Core.BlockPosition position, string message,
+            string reason)
+        {
+            if (message != null)
+                _engineRefusals.Add((id, position, message));
+            return Refuse(reason);
+        }
+
+        private const string TypedModelRequiredMessage =
+            "Native expressions require a typed model; declare @model(...) / ':: <Type>' or use the @ C# tier.";
 
         /// <summary>The FIRST specific refusal this writer hit, or null where nothing refused. The recursion
         /// bottoms out at the offending node before any ancestor propagates the null, so first-wins is
@@ -241,8 +273,8 @@ namespace Heddle.Generator.Emit
             {
                 case LiteralNode literal:
                     return literal.LiteralError != null ? null : LiteralFormatter.Format(literal.Value);
-                case ThisNode _:
-                    return WriteThis();
+                case ThisNode thisNode:
+                    return WriteThis(thisNode);
                 case PathNode path:
                     return WritePath(path);
                 case UnaryNode unary:
@@ -255,8 +287,10 @@ namespace Heddle.Generator.Emit
                     return WriteCall(call);
                 case IndexNode index:
                     return WriteIndex(index);
-                case MethodCallNode _:
-                    return Refuse("method-call syntax, which the engine refuses too (HED1003)");
+                case MethodCallNode method:
+                    return RefuseAsEngine(HeddleDiagnosticIds.MethodCallNotAvailable, method.Position,
+                        "Method calls are not available in native expressions — register a function with TemplateOptions.Functions or use the @ C# tier.",
+                        "method-call syntax, which the engine refuses too (HED1003)");
                 default:
                     return Refuse("an expression construct the writer has no spelling for");
             }
@@ -273,10 +307,13 @@ namespace Heddle.Generator.Emit
         /// <para>Distinct from <c>this</c> as a <b>whole</b> call parameter, which the emitter passes through as the
         /// scope's model and which needs no static type at all — that is the empty member path, not an operand.</para>
         /// </summary>
-        private string WriteThis()
+        private string WriteThis(ThisNode node)
         {
             if (_modelType == null)
-                return Refuse("'this' in an expression with no static model type");
+                return _modelDeclaredDynamic
+                    ? RefuseAsEngine(HeddleDiagnosticIds.TypedModelRequired, node.Position,
+                        TypedModelRequiredMessage, "'this' in an expression with no static model type")
+                    : Refuse("'this' in an expression with no static model type");
             _usedModel = true;
             return _modelLocal;
         }
@@ -445,7 +482,10 @@ namespace Heddle.Generator.Emit
 
             var binding = ResolveIndex(index);
             if (binding.Refusal != null)
-                return Refuse(binding.Refusal);
+                return binding.EngineMessage != null
+                    ? RefuseAsEngine(HeddleDiagnosticIds.IndexerNotFound, index.Position, binding.EngineMessage,
+                        binding.Refusal)
+                    : Refuse(binding.Refusal);
 
             for (int i = 0; i < args.Length; i++)
             {
@@ -474,6 +514,10 @@ namespace Heddle.Generator.Emit
             public bool DirectReceiver;
 
             public string Refusal;
+
+            /// <summary>The engine's HED1010 sentence, set only on the refusals whose engine counterpart is
+            /// proven and whose every type spelling the writer can reproduce; drives the forward.</summary>
+            public string EngineMessage;
         }
 
         private readonly Dictionary<IndexNode, IndexBinding> _indexBindings =
@@ -488,7 +532,26 @@ namespace Heddle.Generator.Emit
             return binding;
         }
 
-        private static IndexBinding IndexRefusal(string reason) => new IndexBinding { Refusal = reason };
+        private static IndexBinding IndexRefusal(string reason, string engineMessage = null) =>
+            new IndexBinding { Refusal = reason, EngineMessage = engineMessage };
+
+        /// <summary>The engine's HED1010 sentence for this access — receiver and argument types in the engine's
+        /// own spelling — or null when any of them cannot be reproduced exactly.</summary>
+        private string IndexerNotFoundMessage(ITypeSymbol receiverType, IndexNode index)
+        {
+            var receiver = EngineFriendlyName(receiverType);
+            if (receiver == null)
+                return null;
+            var args = new string[index.Arguments.Count];
+            for (int i = 0; i < args.Length; i++)
+            {
+                args[i] = EngineTypeName(index.Arguments[i]);
+                if (args[i] == null)
+                    return null;
+            }
+
+            return "Type " + receiver + " has no accessible indexer that takes (" + string.Join(", ", args) + ").";
+        }
 
         private IndexBinding ResolveIndexCore(IndexNode index)
         {
@@ -518,7 +581,8 @@ namespace Heddle.Generator.Emit
                 if (kind.Category == OperandCategory.Unknown)
                     return IndexRefusal("an index whose static type the writer cannot establish");
                 if (kind.Category != OperandCategory.Numeric || !NumericTable.IsIntegral(kind.Kind))
-                    return IndexRefusal("an index access the engine refuses too (HED1010)");
+                    return IndexRefusal("an index access the engine refuses too (HED1010)",
+                        IndexerNotFoundMessage(array, index));
                 if (kind.Kind != NumericKind.Int32 || kind.IsNullable)
                     casts[i] = "int";
             }
@@ -587,7 +651,8 @@ namespace Heddle.Generator.Emit
             }
 
             if (single == null)
-                return IndexRefusal("an indexer access the engine refuses too (HED1010)");
+                return IndexRefusal("an indexer access the engine refuses too (HED1010)",
+                    IndexerNotFoundMessage(receiverType, index));
 
             if (!_resolver.IsAccessibleFromCompilation(single) ||
                 !_resolver.IsAccessibleFromCompilation(single.GetMethod) ||
@@ -652,7 +717,11 @@ namespace Heddle.Generator.Emit
             if (path.RootRef)
             {
                 if (_rootModelType == null)
-                    return Refuse("a '::'-rooted path in an expression with no static root model type");
+                    return _modelDeclaredDynamic
+                        ? RefuseAsEngine(HeddleDiagnosticIds.TypedModelRequired, path.Position,
+                            TypedModelRequiredMessage,
+                            "a '::'-rooted path in an expression with no static root model type")
+                        : Refuse("a '::'-rooted path in an expression with no static root model type");
                 // The cast is parity, not a hazard: the engine converts the root object to RootScopeType at the
                 // first hop, so a mismatched root throws the same InvalidCastException on both tiers.
                 var rootRead = "((" + SymbolTypeResolver.FullyQualified(_rootModelType) +
@@ -661,7 +730,11 @@ namespace Heddle.Generator.Emit
             }
 
             if (_modelType == null)
-                return Refuse("a model-rooted path in an expression with no static model type");
+                return _modelDeclaredDynamic
+                    ? RefuseAsEngine(HeddleDiagnosticIds.TypedModelRequired, path.Position,
+                        TypedModelRequiredMessage,
+                        "a model-rooted path in an expression with no static model type")
+                    : Refuse("a model-rooted path in an expression with no static model type");
 
             _usedModel = true;
             return WriteMemberChain(_modelType, path, _modelLocal);
@@ -673,6 +746,11 @@ namespace Heddle.Generator.Emit
         private string WriteMemberChain(ITypeSymbol startType, PathNode path, string rootExpr)
         {
             var resolution = _resolver.ResolvePath(startType, path.Segments);
+            // A path crossing a [Dynamic] property: the shared member walk answers DynamicHop on both tiers,
+            // and the engine's native tier refuses that answer outright where its member tier would go DLR.
+            if (resolution.Kind == SymbolTypeResolver.PathKind.DynamicHop)
+                return RefuseAsEngine(HeddleDiagnosticIds.TypedModelRequired, path.Position,
+                    TypedModelRequiredMessage, "a path crossing a [Dynamic] property");
             if (resolution.Kind != SymbolTypeResolver.PathKind.Resolved)
             {
                 // Unusable is the one refusal with no author-facing fault behind it — the member is there and
@@ -766,6 +844,9 @@ namespace Heddle.Generator.Emit
                 return Refuse("a path crossing a [Dynamic] prop");
 
             var resolution = _resolver.ResolvePath(slot.Type, Rest(path));
+            if (resolution.Kind == SymbolTypeResolver.PathKind.DynamicHop)
+                return RefuseAsEngine(HeddleDiagnosticIds.TypedModelRequired, path.Position,
+                    TypedModelRequiredMessage, "a prop-rooted path crossing a [Dynamic] property");
             if (resolution.Kind != SymbolTypeResolver.PathKind.Resolved ||
                 SymbolTypeResolver.EndsOnRefStruct(resolution))
                 return Refuse("a prop-rooted path that does not resolve statically");
@@ -804,7 +885,18 @@ namespace Heddle.Generator.Emit
             var operand = Write(node.Operand);
             if (operand == null)
                 return null;
-            if (NativeOperatorRules.ClassifyUnary(node.Operator, Estimate(node.Operand)) != OperatorVerdict.Supported)
+            var verdict = NativeOperatorRules.ClassifyUnary(node.Operator, Estimate(node.Operand));
+            if (verdict == OperatorVerdict.NotDefined)
+            {
+                var operandName = EngineTypeName(node.Operand);
+                return RefuseAsEngine(HeddleDiagnosticIds.UnaryOperatorNotDefined, node.Position,
+                    operandName == null
+                        ? null
+                        : "Operator '" + op + "' is not defined for operand type " + operandName + ".",
+                    "operator '" + op + "' over an operand kind the shared table does not emit");
+            }
+
+            if (verdict != OperatorVerdict.Supported)
                 return Refuse("operator '" + op + "' over an operand kind the shared table does not emit");
             return "(" + op + operand + ")";
         }
@@ -850,8 +942,10 @@ namespace Heddle.Generator.Emit
             var rightKind = Estimate(node.Right);
             var witness = WitnessIfUserPair(node.Operator, node.Left, node.Right, leftKind, rightKind,
                 out var adapterLeftFq, out var adapterRightFq, out var adapterResultFq);
-            if (NativeOperatorRules.Classify(node.Operator, leftKind, rightKind, coalesceRelation, witness) !=
-                OperatorVerdict.Supported)
+            var verdict = NativeOperatorRules.Classify(node.Operator, leftKind, rightKind, coalesceRelation, witness);
+            if (verdict == OperatorVerdict.NotDefined)
+                return RefuseBinaryAsEngine(node, op, leftKind, rightKind);
+            if (verdict != OperatorVerdict.Supported)
                 return Refuse("operator '" + op + "' over operand kinds the shared table does not emit");
 
             // A proven user-defined operator emits through the adapter that replays the engine's factory
@@ -946,6 +1040,49 @@ namespace Heddle.Generator.Emit
             return "(" + left + " " + op + " " + right + ")";
         }
 
+        /// <summary>A binary NotDefined verdict, forwarded under the id and sentence the engine's own refusal
+        /// site composes: HED1005 for logical, HED1007 for a coalesce with no common type, HED1008 for the
+        /// rest. A coalesce over a non-null-assignable left is the engine's HED1006, which is not in the
+        /// forwarded set and stays a silent degrade.</summary>
+        private string RefuseBinaryAsEngine(BinaryNode node, string op, in OperandKind left, in OperandKind right)
+        {
+            var reason = "operator '" + op + "' over operand kinds the shared table does not emit";
+            if (node.Operator == ExprOperator.AndAlso || node.Operator == ExprOperator.OrElse)
+            {
+                // The engine tests the left operand first and names the first one that is not exactly bool.
+                bool leftIsBareBool = left.Category == OperandCategory.Bool && !left.IsNullable;
+                var offenderName = EngineTypeName(leftIsBareBool ? node.Right : node.Left);
+                return RefuseAsEngine(HeddleDiagnosticIds.LogicalOperatorRequiresBool, node.Position,
+                    offenderName == null
+                        ? null
+                        : "Operator '" + op + "' requires bool operands, but the operand type is " +
+                          offenderName + ".",
+                    reason);
+            }
+
+            if (node.Operator == ExprOperator.Coalesce)
+            {
+                if (!left.IsNullAssignable)
+                    return Refuse(reason);
+                var leftName = EngineTypeName(node.Left);
+                var rightName = EngineTypeName(node.Right);
+                return RefuseAsEngine(HeddleDiagnosticIds.TernaryArmsNoCommonType, node.Position,
+                    leftName == null || rightName == null
+                        ? null
+                        : "The conditional operator arms have no common type (" + leftName + " vs " +
+                          rightName + ").",
+                    reason);
+            }
+
+            var l = EngineTypeName(node.Left);
+            var r = EngineTypeName(node.Right);
+            return RefuseAsEngine(HeddleDiagnosticIds.BinaryOperatorNotDefined, node.Position,
+                l == null || r == null
+                    ? null
+                    : "Operator '" + op + "' is not defined for operand types " + l + " and " + r + ".",
+                reason);
+        }
+
         /// <summary>C# accepts only an <c>int</c> (or implicitly-int) shift count; the runtime converts ANY
         /// integral count with a truncating <c>Expression.Convert</c>. The same truncation in C# is the
         /// <c>(int)</c> cast — the emission sits inside <c>unchecked</c>, so a wide count truncates to the
@@ -972,9 +1109,29 @@ namespace Heddle.Generator.Emit
                 return null;
             var tKind = Estimate(node.WhenTrue);
             var fKind = Estimate(node.WhenFalse);
+            var condition = Estimate(node.Condition);
             var armRelation = RelateOperands(node.WhenTrue, node.WhenFalse, out var armWiderFq);
-            if (NativeOperatorRules.ClassifyTernary(Estimate(node.Condition), tKind, fKind, armRelation) !=
-                OperatorVerdict.Supported)
+            var verdict = NativeOperatorRules.ClassifyTernary(condition, tKind, fKind, armRelation);
+            if (verdict == OperatorVerdict.NotDefined)
+            {
+                if (condition.Category != OperandCategory.Bool || condition.IsNullable)
+                {
+                    var conditionName = EngineTypeName(node.Condition);
+                    return RefuseAsEngine(HeddleDiagnosticIds.TernaryConditionNotBool, node.Position,
+                        conditionName == null
+                            ? null
+                            : "The conditional operator requires a bool condition, but the condition type is " +
+                              conditionName + ".",
+                        "conditional arms the shared table does not unify");
+                }
+
+                // The engine's ternary sentence names no operand types; the stray space is its exact spelling.
+                return RefuseAsEngine(HeddleDiagnosticIds.TernaryArmsNoCommonType, node.Position,
+                    "The conditional operator arms have no common type (the two arms ).",
+                    "conditional arms the shared table does not unify");
+            }
+
+            if (verdict != OperatorVerdict.Supported)
                 return Refuse("conditional arms the shared table does not unify");
 
             // Numeric arms of DIFFERING kinds unify in the ENGINE's promotion, which is written down as an
@@ -1024,6 +1181,109 @@ namespace Heddle.Generator.Emit
                 case NumericKind.Decimal: return "decimal";
                 default: return null;
             }
+        }
+
+        /// <summary>
+        /// The engine's <c>FriendlyName</c> spelling of the type this operand compiles to on the engine — the
+        /// word its refusal sentence prints — or null where the writer cannot reproduce it exactly, in which
+        /// case the refusal is not forwarded. The estimator's kinds already mirror the engine's promotions, so
+        /// a composite operand's keyword spelling needs no symbol; the non-primitive categories prefer the
+        /// resolved symbol and fall back to the kind's type identity where the simple name is unambiguous.
+        /// </summary>
+        private string EngineTypeName(ExprNode node)
+        {
+            var kind = Estimate(node);
+            switch (kind.Category)
+            {
+                case OperandCategory.NullLiteral:
+                    return "object";   // the engine types the null-literal constant as object
+                case OperandCategory.String:
+                    return "string";
+                case OperandCategory.Bool:
+                    return kind.IsNullable ? "bool?" : "bool";
+                case OperandCategory.Numeric:
+                {
+                    var keyword = KindKeyword(kind.Kind);
+                    return keyword == null ? null : kind.IsNullable ? keyword + "?" : keyword;
+                }
+                case OperandCategory.Enum:
+                case OperandCategory.Reference:
+                case OperandCategory.Other:
+                {
+                    var symbol = ArgumentType(node);
+                    if (symbol != null && IsEstablishedType(symbol))
+                        return EngineFriendlyName(symbol);
+                    return IdentitySimpleName(kind);
+                }
+                default:
+                    return null;
+            }
+        }
+
+        /// <summary>Mirrors the engine's <c>FriendlyName(Type)</c> over a symbol: C# keywords for the special
+        /// types, the underlying spelling plus <c>?</c> for <c>Nullable&lt;T&gt;</c>, reflection's
+        /// <c>Type.Name</c> for the rest.</summary>
+        private static string EngineFriendlyName(ITypeSymbol type)
+        {
+            switch (type.SpecialType)
+            {
+                case SpecialType.System_Int32: return "int";
+                case SpecialType.System_UInt32: return "uint";
+                case SpecialType.System_Int64: return "long";
+                case SpecialType.System_UInt64: return "ulong";
+                case SpecialType.System_Int16: return "short";
+                case SpecialType.System_UInt16: return "ushort";
+                case SpecialType.System_Byte: return "byte";
+                case SpecialType.System_SByte: return "sbyte";
+                case SpecialType.System_Double: return "double";
+                case SpecialType.System_Single: return "float";
+                case SpecialType.System_Decimal: return "decimal";
+                case SpecialType.System_String: return "string";
+                case SpecialType.System_Boolean: return "bool";
+                case SpecialType.System_Char: return "char";
+                case SpecialType.System_Object: return "object";
+            }
+
+            var underlying = SymbolFacts.Unwrap(type, out var lifted);
+            if (lifted)
+            {
+                var inner = EngineFriendlyName(underlying);
+                return inner == null ? null : inner + "?";
+            }
+
+            return ClrTypeName(type);
+        }
+
+        /// <summary>Reflection's <c>Type.Name</c>, which the engine's <c>FriendlyName</c> falls back to: the
+        /// metadata name — arity suffix, no type arguments, no keywords — with CLR array suffixes.</summary>
+        private static string ClrTypeName(ITypeSymbol type)
+        {
+            if (type is IArrayTypeSymbol array)
+            {
+                var element = ClrTypeName(array.ElementType);
+                if (element == null)
+                    return null;
+                return element + (array.Rank == 1 ? "[]" : "[" + new string(',', array.Rank - 1) + "]");
+            }
+
+            return string.IsNullOrEmpty(type.MetadataName) ? null : type.MetadataName;
+        }
+
+        /// <summary>The simple name off a kind's opaque type identity, for composite operands with no symbol
+        /// behind them. Only an identity whose last segment is generic-free reproduces reflection's
+        /// <c>Type.Name</c>; anything else answers null and the refusal stays a silent degrade.</summary>
+        private static string IdentitySimpleName(in OperandKind kind)
+        {
+            var identity = kind.TypeIdentity;
+            if (identity == null || identity.IndexOf('<') >= 0)
+                return null;
+            var dot = identity.LastIndexOf('.');
+            var name = dot < 0 ? identity : identity.Substring(dot + 1);
+            if (name.StartsWith("global::", StringComparison.Ordinal))
+                name = name.Substring("global::".Length);
+            if (name.Length == 0)
+                return null;
+            return kind.IsNullable ? name + "?" : name;
         }
 
         /// <summary>The caller-computed <see cref="TypeRelation"/> for a coalesce pair or ternary arms.
