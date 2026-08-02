@@ -42,12 +42,19 @@ namespace Heddle.Generator.IntegrationTests
         internal static string EngineTestModelsDll()
         {
             var path = Path.Combine(AppContext.BaseDirectory, "Heddle.Tests.dll");
-            if (!File.Exists(path))
-                throw new InvalidOperationException(
-                    "Heddle.Tests.dll is not in this project's output directory (" + path +
-                    "). It is copied there by the ProjectReference in Heddle.Generator.IntegrationTests.csproj. " +
-                    "This is a build-wiring failure, not a skippable condition.");
-            return path;
+            if (File.Exists(path))
+                return path;
+
+            // xunit v3 test projects are executables, and on .NET Framework the managed assembly IS the .exe —
+            // there is no companion .dll to copy. Same assembly, different extension.
+            var exe = Path.Combine(AppContext.BaseDirectory, "Heddle.Tests.exe");
+            if (File.Exists(exe))
+                return exe;
+
+            throw new InvalidOperationException(
+                "Heddle.Tests.dll is not in this project's output directory (" + path +
+                "). It is copied there by the ProjectReference in Heddle.Generator.IntegrationTests.csproj. " +
+                "This is a build-wiring failure, not a skippable condition.");
         }
 
         /// <summary>The engine test models as a single-element reference set — what every corpus suite passes as
@@ -107,7 +114,7 @@ namespace Heddle.Generator.IntegrationTests
 
         private static IReadOnlyList<MetadataReference> BuildReferences()
         {
-            var tpa = (string) AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES");
+            var tpa = Heddle.Generator.Tests.HostAssemblies.TrustedOrLoaded();
             var refs = tpa.Split(Path.PathSeparator)
                 .Where(p => !string.IsNullOrEmpty(p) && File.Exists(p))
                 // Exclude Heddle.Generator: its linked sources would cause name ambiguities (CS0433) in generated code.

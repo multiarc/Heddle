@@ -38,7 +38,7 @@ namespace Heddle.Generator.Tests
             var source = "class CorpusProbe { static readonly System.Type[] T = new System.Type[] { " +
                          string.Join(", ", spellings.Select(s => "typeof(" + s + ")")) + " }; }";
 
-            var tpa = (string) AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES");
+            var tpa = Heddle.Generator.Tests.HostAssemblies.TrustedOrLoaded();
             var references = tpa.Split(Path.PathSeparator)
                 .Where(p => !string.IsNullOrEmpty(p) && File.Exists(p))
                 .Where(p => !string.Equals(Path.GetFileNameWithoutExtension(p), "Heddle.Generator",

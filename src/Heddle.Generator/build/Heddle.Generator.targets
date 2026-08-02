@@ -20,4 +20,18 @@
     </AdditionalFiles>
   </ItemGroup>
 
+  <!-- The package ships one generator per Roslyn API version under analyzers/dotnet/roslyn{4.1,4.11,5.3}/cs.
+       A host that understands component versioning selects exactly one folder — the highest its compiler
+       supports. A host that does not (SDKs before 6, old NuGet) loads every folder at once, which would run
+       three copies of the generator and triple every diagnostic; this trims those hosts back to the 4.1 floor,
+       the only variant their compilers can bind anyway. -->
+  <Target Name="_HeddleRemoveVersionedRoslynAnalyzers"
+          Condition="'$(SupportsRoslynComponentVersioning)' != 'true'"
+          AfterTargets="ResolvePackageDependenciesForBuild;ResolveNuGetPackageAssets">
+    <ItemGroup>
+      <Analyzer Remove="@(Analyzer)"
+                Condition="$([System.String]::Copy('%(Analyzer.Identity)').Contains('roslyn4.11')) or $([System.String]::Copy('%(Analyzer.Identity)').Contains('roslyn5.3'))" />
+    </ItemGroup>
+  </Target>
+
 </Project>

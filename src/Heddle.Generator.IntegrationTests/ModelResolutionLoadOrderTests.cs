@@ -43,7 +43,7 @@ namespace Heddle.Generator.IntegrationTests
             var id = Guid.NewGuid().ToString("N");
             assemblyName = "HeddleLateBoundModels" + id;
             modelNamespace = "LateBoundModels" + id;
-            var references = ((string) AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES"))
+            var references = (Heddle.Generator.Tests.HostAssemblies.TrustedOrLoaded())
                 .Split(Path.PathSeparator)
                 .Where(p => !string.IsNullOrEmpty(p) && File.Exists(p))
                 .Select(p => (MetadataReference) MetadataReference.CreateFromFile(p))

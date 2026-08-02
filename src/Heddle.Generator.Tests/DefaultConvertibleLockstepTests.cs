@@ -14,13 +14,21 @@ namespace Heddle.Generator.Tests
     public class DefaultConvertibleLockstepTests
     {
         private static readonly CSharpCompilation Compilation = CSharpCompilation.Create("probe",
-            references: new[]
+            references: BuildProbeReferences(),
+            options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+
+        private static MetadataReference[] BuildProbeReferences() =>
+#if NETFRAMEWORK
+            // mscorlib is the primitives' home on .NET Framework; there is no stand-alone System.Runtime to
+            // load by simple name (the attempt is a FileNotFoundException, taking every row with it).
+            new[] { MetadataReference.CreateFromFile(typeof(object).Assembly.Location) };
+#else
+            new[]
             {
                 MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
-                MetadataReference.CreateFromFile(
-                    Assembly.Load("System.Runtime").Location)
-            },
-            options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+                MetadataReference.CreateFromFile(Assembly.Load("System.Runtime").Location)
+            };
+#endif
 
         /// <summary>Shared test vectors for both tiers.</summary>
         public static IEnumerable<object[]> Rows() => Heddle.Tests.PropDefaultConversionVectors.Rows();
@@ -48,7 +56,12 @@ namespace Heddle.Generator.Tests
         }
 
         private static object FormatterServicesCreate(Type type) =>
+#if NETFRAMEWORK
+            // RuntimeHelpers.GetUninitializedObject is .NET Core-only; this is the API it wraps there.
+            System.Runtime.Serialization.FormatterServices.GetUninitializedObject(type);
+#else
             System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(type);
+#endif
 
         private static void SetCompilationField(object emitter, Type emitterType)
         {

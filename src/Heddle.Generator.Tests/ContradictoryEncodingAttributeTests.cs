@@ -63,7 +63,7 @@ namespace Contradiction
 
         private static IReadOnlyList<MetadataReference> BuildReferences()
         {
-            var tpa = (string) AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES");
+            var tpa = Heddle.Generator.Tests.HostAssemblies.TrustedOrLoaded();
             var refs = tpa.Split(Path.PathSeparator)
                 .Where(p => !string.IsNullOrEmpty(p) && File.Exists(p))
                 // Heddle.Generator is analyzer-only; linked copies create CS0433 ambiguity with Heddle.dll.

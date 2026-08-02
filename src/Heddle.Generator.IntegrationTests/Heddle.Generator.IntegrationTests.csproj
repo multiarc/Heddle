@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
+    <TargetFrameworks>net48;net8.0;net10.0</TargetFrameworks>
     <LangVersion>latest</LangVersion>
     <Nullable>disable</Nullable>
     <IsPackable>false</IsPackable>
@@ -29,7 +29,14 @@
          Aliased because the runtime's OutputProfile/ExpressionMode/fingerprint/capabilities sources are linked into
          the generator, so those type names exist in both assemblies. The alias keeps every unqualified use in this
          suite bound to the runtime copy; DifferentialHarness reaches the generator through it. -->
-    <ProjectReference Include="..\Heddle.Generator\Heddle.Generator.csproj" Aliases="generator" />
+    <!-- Each test TFM consumes the generator VARIANT its real-world compiler host would select (see the same
+         mapping in Heddle.Generator.Tests.csproj). -->
+    <ProjectReference Include="..\Heddle.Generator\Heddle.Generator.csproj" Aliases="generator"
+                      Condition="'$(TargetFramework)' == 'net48'" />
+    <ProjectReference Include="..\Heddle.Generator\Heddle.Generator.Roslyn411.csproj" Aliases="generator"
+                      Condition="'$(TargetFramework)' == 'net8.0'" />
+    <ProjectReference Include="..\Heddle.Generator\Heddle.Generator.Roslyn530.csproj" Aliases="generator"
+                      Condition="'$(TargetFramework)' == 'net10.0'" />
     <ProjectReference Include="..\Heddle\Heddle.csproj" />
     <!-- The engine test MODELS, as a file on disk that this suite hands to the compilations it creates.
          `ReferenceOutputAssembly="false"` is the point of the shape, not a detail: this suite hands hand-filtered
@@ -53,6 +60,8 @@
     <!-- The projection-equivalence corpus, linked as the other two host suites link it. This suite is the only
          one that can run both tiers over the same bytes in one process, which is what the text-parity arm needs. -->
     <Compile Include="..\Heddle.Tests\DiagnosticCorpusVectors.cs" Link="Shared\DiagnosticCorpusVectors.cs" />
+    <!-- The TPA-or-AppDomain reference closure, stated once for both generator suites. -->
+    <Compile Include="..\Heddle.Generator.Tests\HostAssemblies.cs" Link="Shared\HostAssemblies.cs" />
   </ItemGroup>
 
   <!-- The shared test corpus, copied into this project's output directory under TestTemplate\, replacing the

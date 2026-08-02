@@ -118,7 +118,7 @@ namespace Heddle.Generator.Tests
 
         private static IReadOnlyList<MetadataReference> BuildReferences()
         {
-            var tpa = (string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES");
+            var tpa = Heddle.Generator.Tests.HostAssemblies.TrustedOrLoaded();
             var refs = tpa.Split(Path.PathSeparator)
                 .Where(p => !string.IsNullOrEmpty(p) && File.Exists(p))
                 // Exclude the generator itself; it embeds the runtime types, causing CS0433 if both are referenced.

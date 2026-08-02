@@ -15,3 +15,16 @@ internal static class ExtensionRegistration
         HeddleTemplate.Register(typeof(ExtensionRegistration).Assembly);
     }
 }
+
+#if NETFRAMEWORK
+namespace System.Runtime.CompilerServices
+{
+    // Module initializers are plain IL (<Module>.cctor); only the attribute the compiler looks for is missing
+    // from net48's BCL. A referenced package ships one as INTERNAL, which resolves but cannot be used — this
+    // local declaration is the accessible one the compiler binds.
+    [AttributeUsage(AttributeTargets.Method, Inherited = false)]
+    internal sealed class ModuleInitializerAttribute : Attribute
+    {
+    }
+}
+#endif

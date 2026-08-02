@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
+    <TargetFrameworks>net48;net8.0;net10.0</TargetFrameworks>
     <LangVersion>latest</LangVersion>
     <Nullable>disable</Nullable>
     <IsPackable>false</IsPackable>
@@ -20,6 +20,12 @@
   <ItemGroup>
     <!-- Microsoft.CodeAnalysis.CSharp (with CSharpGeneratorDriver) flows transitively from the Heddle runtime
          reference at the matching per-TFM version, avoiding a downgrade conflict. -->
+    <!-- Except on net48: Heddle's netstandard2.0 leg brings 4.1.0, but Verify.SourceGenerators' net48 asset
+         needs 4.9+, and a real net48 VS host runs a NEWER Roslyn than the 4.1-built generator variant it loads
+         anyway — that forward-hosting is the shape this leg exists to exercise, so the host is pinned to the
+         same 4.11.0 the repo pins for net8.0. -->
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.11.0"
+                      Condition="'$(TargetFramework)' == 'net48'" />
     <PackageReference Include="xunit.v3" Version="3.2.2" />
     <!-- Snapshots over CSharpGeneratorDriver: multi-file outputs plus diagnostics. -->
     <PackageReference Include="Verify.XunitV3" Version="31.28.0" />
@@ -31,7 +37,16 @@
     <!-- `gen` alias (in addition to global): the generator links the shared Heddle.Language sources, so
          ParseContext/DocumentParser/DocumentShaping exist in BOTH referenced assemblies. Shaping tests that drive
          the generator's copy disambiguate with `extern alias gen;`; every other test keeps the global alias. -->
-    <ProjectReference Include="..\Heddle.Generator\Heddle.Generator.csproj" Aliases="global,gen" />
+    <!-- Each test TFM consumes the generator VARIANT its real-world compiler host would select: net48 hosts
+         (VS 2022, msbuild.exe) load the Roslyn 4.1 floor, a .NET 8 SDK host the 4.11 build, a .NET 10 SDK host
+         the 5.3 build. This also keeps Microsoft.CodeAnalysis at one version per leg, because Heddle.csproj pins
+         the same versions for the matching TFMs. -->
+    <ProjectReference Include="..\Heddle.Generator\Heddle.Generator.csproj" Aliases="global,gen"
+                      Condition="'$(TargetFramework)' == 'net48'" />
+    <ProjectReference Include="..\Heddle.Generator\Heddle.Generator.Roslyn411.csproj" Aliases="global,gen"
+                      Condition="'$(TargetFramework)' == 'net8.0'" />
+    <ProjectReference Include="..\Heddle.Generator\Heddle.Generator.Roslyn530.csproj" Aliases="global,gen"
+                      Condition="'$(TargetFramework)' == 'net10.0'" />
     <!-- The runtime, so generated code (the manifest, referencing Heddle.Precompiled types) compiles. -->
     <ProjectReference Include="..\Heddle\Heddle.csproj" />
   </ItemGroup>
