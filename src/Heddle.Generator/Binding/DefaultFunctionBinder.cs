@@ -73,6 +73,11 @@ namespace Heddle.Generator.Binding
 
         private static readonly Dictionary<string, IReadOnlyList<DefaultFunctionRow>> RowsByName = BuildRowsByName();
 
+        /// <summary>Every shipped overload row registered under <paramref name="name"/>, or null when the name is
+        /// not a built-in.</summary>
+        internal static IReadOnlyList<DefaultFunctionRow> RowsFor(string name) =>
+            RowsByName.TryGetValue(name, out var rows) ? rows : null;
+
         private static Dictionary<string, IReadOnlyList<DefaultFunctionRow>> BuildRowsByName()
         {
             var map = new Dictionary<string, List<DefaultFunctionRow>>(System.StringComparer.Ordinal);
@@ -382,7 +387,7 @@ namespace Heddle.Generator.Binding
             KindOfName(name) != NumericKind.None || string.Equals(name, "System.Boolean", System.StringComparison.Ordinal);
 
         /// <summary>The C# spelling of a cast target, or null when the generator has no safe spelling for it.</summary>
-        private static string CSharpName(string clrName)
+        internal static string CSharpName(string clrName)
         {
             switch (clrName)
             {

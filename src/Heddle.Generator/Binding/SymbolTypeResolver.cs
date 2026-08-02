@@ -412,6 +412,11 @@ namespace Heddle.Generator.Binding
         internal static bool BindsReadableProperty(ITypeSymbol type, string name) =>
             type != null && type.TypeKind != TypeKind.Dynamic && FindProperty(type, name) != null;
 
+        /// <summary>The shared visibility facts of one property symbol — the same adapter the member walk feeds
+        /// <c>MemberVisibility</c>, exposed for the indexer filter so both ask the one policy.</summary>
+        internal static MemberFacts PropertyFacts(IPropertySymbol member) =>
+            SymbolMemberModel.Instance.FactsOf(member);
+
         /// <summary>
         /// Whether <paramref name="symbol"/> carries <c>[Obsolete(…, error: true)]</c> — the attribute form that
         /// makes every mention of the name a compile <b>error</b> (CS0619/CS0672) rather than a warning.

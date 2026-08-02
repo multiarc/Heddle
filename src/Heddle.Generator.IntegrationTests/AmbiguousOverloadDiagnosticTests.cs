@@ -167,11 +167,12 @@ namespace Heddle.Generator.IntegrationTests
 
         /// <summary>
         /// <b>The side condition, which is unchanged.</b> An argument neither the descriptor nor a symbol can name
-        /// still reports nothing: an indexed read is a construct this writer neither emits nor types, so the ranker
-        /// reaches <c>None</c> over a token standing for the generator's own ignorance, and that is not a statement
-        /// about the runtime. The runtime types <c>Tags[0]</c> as <c>string</c> and refuses the call for a reason
-        /// the generator never established — asserted here, so the silence is measured against a real refusal
-        /// rather than against nothing happening.
+        /// still reports nothing: a member path rooted at a ternary (or binary) result is typed by an operand
+        /// descriptor with no symbol behind it, so the ranker reaches <c>None</c> over a token standing for the
+        /// generator's own ignorance, and that is not a statement about the runtime. The runtime unifies the arms
+        /// to <c>Product</c>, types <c>.Name</c> as <c>string</c> and refuses the call for a reason the generator
+        /// never established — asserted here, so the silence is measured against a real refusal rather than
+        /// against nothing happening.
         /// <para>This is the half a later change is most likely to regress, and regressing it breaks the build for
         /// templates that are perfectly legal.</para>
         /// </summary>
@@ -179,11 +180,33 @@ namespace Heddle.Generator.IntegrationTests
         public void AnArgumentNeitherTheDescriptorNorASymbolCanNameStaysASilentDegrade()
         {
             const string key = "overload/unnameable-estimate.heddle";
-            var content = Template(CatalogType, "min(1, Tags[0]) > 0");
+            var content = Template(CatalogType, "min(1, (Title == Title ? Products[0] : Products[1]).Name) > 0");
             var gen = DifferentialHarness.Generate(new[] { (key, content) });
 
             Assert.Empty(Unbindable(gen));
             Assert.DoesNotContain(gen.Diagnostics, d => d.Severity == DiagnosticSeverity.Error);
+            DifferentialHarness.ExpectDegrade(gen, key);
+
+            var compiled = new HeddleTemplate(content,
+                new Runtime.CompileContext(new TemplateOptions(), typeof(Catalog)));
+            Assert.False(compiled.CompileResult.Success);
+            Assert.Contains(compiled.CompileResult.ErrorList,
+                e => e.DiagnosticId == HeddleDiagnosticIds.NoFunctionOverload);
+        }
+
+        /// <summary>An indexed read is no longer in that untypeable class: the writer types <c>Tags[0]</c> as the
+        /// array's element, so the ranker's <c>None</c> is a proof about the runtime — the same <c>HED1012</c>
+        /// verdict, reported at build instead of first render.</summary>
+        [Fact]
+        public void AnIndexTypedArgumentIsNowAProof()
+        {
+            const string key = "overload/index-estimate.heddle";
+            var content = Template(CatalogType, "min(1, Tags[0]) > 0");
+            var gen = DifferentialHarness.Generate(new[] { (key, content) });
+
+            var single = Assert.Single(Unbindable(gen));
+            Assert.Equal(DiagnosticSeverity.Error, single.Severity);
+            Assert.Contains("(int, string)", single.GetMessage());
             DifferentialHarness.ExpectDegrade(gen, key);
 
             var compiled = new HeddleTemplate(content,
