@@ -94,19 +94,43 @@ namespace Heddle.Benchmarks.Dotnet.Bench
         [GlobalCleanup]
         public void Cleanup() => RazorEngine.Shutdown();
 
-        /// <summary>Renders one gated competitor cell. The rendered string is returned so
-        /// BenchmarkDotNet consumes it and the work cannot be eliminated.</summary>
+        /// <summary>
+        /// Renders one gated cell — including Heddle's. The rendered string is returned so
+        /// BenchmarkDotNet consumes it and the work cannot be eliminated.
+        ///
+        /// <para><b>Every row, Heddle included, renders to a string.</b> Heddle's row used to render
+        /// to the UTF-8 sink instead, reasoning that UTF-8 is what the other five ecosystems emit
+        /// and that materialising a UTF-16 string would charge Heddle the CLR's 85,000-byte Large
+        /// Object Heap cliff that Go, Rust and JS never pay. That rationale holds only ABOVE the
+        /// threshold, and it was applied to all eight workloads. The five tier-1 workloads top out
+        /// at 31,098 B as UTF-16 — roughly a third of the cliff — so those cells bought no
+        /// protection and paid the sink's fixed ~65 KB buffer anyway: 2.40x on trivial-substitution,
+        /// whose whole output is 338 B. It also exempted Heddle alone from a cost its five .NET
+        /// competitors all pay, in the one table that compares them directly. Measuring the anchor
+        /// differently from the field made every `vs Heddle` ratio in the program partly a
+        /// measurement of output format.</para>
+        ///
+        /// <para>Heddle's other sinks are not hidden — <see cref="RenderHeddleSink"/> measures them
+        /// as their own rows in this same sweep, so the UTF-8 advantage on large outputs is visible
+        /// as a technique rather than baked silently into the anchor.</para>
+        /// </summary>
         protected string Render(string engineKey) => _cells[engineKey]();
 
         /// <summary>
-        /// Heddle's row, and the one place this harness deliberately does not render to a string.
-        /// The UTF-8 sink is the path comparable with the other five ecosystems — they all emit
-        /// UTF-8 or Latin-1 — and materialising a UTF-16 string here would measure an allocator
-        /// cliff (the CLR's 85,000-byte Large Object Heap threshold) that no other ecosystem pays.
-        /// The returned checksum is computed from the bytes the engine actually wrote, so the sink
-        /// cannot win by doing less; see <c>Gate/Materialisation.cs</c>.
+        /// Heddle's non-materialising sinks, measured as extra rows beside the anchor.
+        ///
+        /// <para>These use the BENCH path (<c>RenderToSink</c>), which returns a checksum folded in
+        /// as the engine writes and never materialises the output — which is the whole point of a
+        /// streaming sink and would be destroyed by building a string to return. They are therefore
+        /// NOT like-for-like with the competitor rows, which all materialise, and the report keeps
+        /// them out of the cross-stack ranking for that reason. They answer a different and equally
+        /// real question: what does Heddle cost when the caller can stream.</para>
         /// </summary>
-        protected ulong RenderHeddleUtf8()
+        protected ulong RenderHeddleUtf8Sink()
             => HeddleEngine.RenderToSink(Track, Workload, HeddleEngine.Sink.Utf8);
+
+        /// <inheritdoc cref="RenderHeddleUtf8Sink"/>
+        protected ulong RenderHeddleTextWriterSink()
+            => HeddleEngine.RenderToSink(Track, Workload, HeddleEngine.Sink.TextWriter);
     }
 }

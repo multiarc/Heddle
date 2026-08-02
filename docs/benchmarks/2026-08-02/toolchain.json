@@ -1,0 +1,37 @@
+{
+    ".NET SDK":  {
+                     "pin":  "(protocol records the observed line)",
+                     "actual":  "10.0.302",
+                     "drift":  false
+                 },
+    "Rust":  {
+                 "pin":  "1.97.1",
+                 "actual":  "rustc 1.97.1 (8bab26f4f 2026-07-14)",
+                 "drift":  false
+             },
+    "JDK":  {
+                "pin":  "Temurin 25",
+                "actual":  "java version \"25.0.4\" 2026-07-21 LTS",
+                "drift":  false
+            },
+    "Node.js":  {
+                    "pin":  "v24.18.0",
+                    "actual":  "v26.4.0",
+                    "drift":  true
+                },
+    "CPython":  {
+                    "pin":  "3.14.6",
+                    "actual":  "Python 3.13.0",
+                    "drift":  true
+                },
+    "Go":  {
+               "pin":  "go1.26.x",
+               "actual":  "go version go1.26.5 windows/amd64",
+               "drift":  false
+           },
+    "templ":  {
+                  "pin":  "v0.3.1020",
+                  "actual":  "v0.3.1020",
+                  "drift":  false
+              }
+}

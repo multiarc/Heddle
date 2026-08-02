@@ -295,6 +295,12 @@ namespace Heddle.Data
         /// instead.</summary>
         public const string BuildInaccessibleModelSymbol = "HED7030";
 
+        /// <summary>The emitter declined to precompile a template for a reason that has no more specific
+        /// channel, so it renders through the dynamic path. Before this id the decline was entirely silent:
+        /// the emitter computed a reason, the generator's <c>if (Emitted) … else if (IsMarker)</c> had no
+        /// final <c>else</c>, and the template simply produced no source and no manifest row.</summary>
+        public const string BuildTemplateNotPrecompiled = "HED7031";
+
         /// <summary>A precompiled entry failed the run-time gauntlet, so the render degrades to the dynamic
         /// tier (carried on <c>PrecompiledFallbackEvent.DiagnosticId</c>).</summary>
         public const string PrecompiledGauntletFallback = "HED7101";

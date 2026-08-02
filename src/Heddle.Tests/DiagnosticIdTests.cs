@@ -68,6 +68,10 @@ namespace Heddle.Tests
                 "HED7008", "HED7009", "HED7010", "HED7011", "HED7012", "HED7013", "HED7014",
                 "HED7015", "HED7016", "HED7017", "HED7018", "HED7019", "HED7020", "HED7021", "HED7022",
                 "HED7023", "HED7024", "HED7025", "HED7028", "HED7030",
+                // HED7031: the emitter declined to precompile and the generator now says so. Before it, the
+                // decline was silent -- no source, no manifest row, no diagnostic -- so a template could
+                // render dynamically forever while the project believed it was precompiled.
+                "HED7031",
                 "HED7101", "HED7102", "HED7103",
                 // HED7104: registered name also answered by another template; runtime id due to cross-assembly collision.
                 "HED7104"

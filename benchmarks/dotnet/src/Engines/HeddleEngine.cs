@@ -176,12 +176,23 @@ namespace Heddle.Benchmarks.Dotnet.Engines
         }
 
         /// <summary>
-        /// Gate cells: every workload through every runtime sink. Only the UTF-8 sink carries
-        /// <see cref="Cell.InCrossStack"/>; the rest are gated but stay out of the sweep.
+        /// Gate cells: every workload through every runtime sink. The STRING sink carries
+        /// <see cref="Cell.InCrossStack"/>; the other two are gated but stay out of the sweep's
+        /// competitor row.
         ///
-        /// Gating all three matters more than benchmarking all three: the gate runs inside
-        /// <c>run-all</c>, so a sink that stops producing correct bytes fails the sweep even though
-        /// nothing measures it there.
+        /// <para><b>Why string and not utf8.</b> The cross-stack cell is the one compared directly
+        /// against Fluid, Scriban, DotLiquid, Handlebars.Net and Razor, and every one of those
+        /// materialises a UTF-16 string. It is also the row every other ecosystem is ranked against,
+        /// and each of those returns its own runtime's native materialised string — Rust and Go
+        /// happen to make that UTF-8, while the JVM, JS and Python all hand back Latin-1/UTF-16
+        /// compact strings. "Materialise your runtime's native string" is the invariant the program
+        /// actually holds; "emit UTF-8" was never it. Rendering the anchor to a byte sink also made
+        /// it the one cell in the sweep that never materialised its output at all, which is the
+        /// exact failure ledger E4 added MATERIALISATION-CHECK to prevent after V8 returned a lazy
+        /// rope.</para>
+        ///
+        /// <para>Gating all three still matters more than benchmarking all three: the gate runs
+        /// inside <c>run-all</c>, so a sink that stops producing correct bytes fails the sweep.</para>
         /// </summary>
         public static IEnumerable<Cell> Cells(string track)
         {
@@ -194,10 +205,10 @@ namespace Heddle.Benchmarks.Dotnet.Engines
                     var capturedWorkload = workload;
                     yield return new Cell
                     {
-                        Engine = sink == Sink.Utf8 ? Name : $"Heddle ({SinkLabel(sink)})",
+                        Engine = sink == Sink.String ? Name : $"Heddle ({SinkLabel(sink)})",
                         Track = track,
                         Workload = workload,
-                        InCrossStack = sink == Sink.Utf8,
+                        InCrossStack = sink == Sink.String,
                         Render = () => Render(capturedTrack, capturedWorkload, capturedSink),
                     };
                 }

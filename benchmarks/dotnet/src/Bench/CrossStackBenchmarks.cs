@@ -18,7 +18,9 @@ namespace Heddle.Benchmarks.Dotnet.Bench
     {
         protected override string Workload => "composed-page";
 
-        [Benchmark(Baseline = true)] public ulong RenderHeddle() => RenderHeddleUtf8();
+        [Benchmark(Baseline = true)] public string RenderHeddle() => Render("Heddle");
+        [Benchmark] public ulong RenderHeddleUtf8() => RenderHeddleUtf8Sink();
+        [Benchmark] public ulong RenderHeddleTextWriter() => RenderHeddleTextWriterSink();
         [Benchmark] public string RenderFluid() => Render("Fluid");
         [Benchmark] public string RenderScriban() => Render("Scriban");
         [Benchmark] public string RenderDotLiquid() => Render("DotLiquid");
@@ -31,7 +33,9 @@ namespace Heddle.Benchmarks.Dotnet.Bench
     {
         protected override string Workload => "trivial-substitution";
 
-        [Benchmark(Baseline = true)] public ulong RenderHeddle() => RenderHeddleUtf8();
+        [Benchmark(Baseline = true)] public string RenderHeddle() => Render("Heddle");
+        [Benchmark] public ulong RenderHeddleUtf8() => RenderHeddleUtf8Sink();
+        [Benchmark] public ulong RenderHeddleTextWriter() => RenderHeddleTextWriterSink();
         [Benchmark] public string RenderFluid() => Render("Fluid");
         [Benchmark] public string RenderScriban() => Render("Scriban");
         [Benchmark] public string RenderDotLiquid() => Render("DotLiquid");
@@ -44,7 +48,9 @@ namespace Heddle.Benchmarks.Dotnet.Bench
     {
         protected override string Workload => "large-loop";
 
-        [Benchmark(Baseline = true)] public ulong RenderHeddle() => RenderHeddleUtf8();
+        [Benchmark(Baseline = true)] public string RenderHeddle() => Render("Heddle");
+        [Benchmark] public ulong RenderHeddleUtf8() => RenderHeddleUtf8Sink();
+        [Benchmark] public ulong RenderHeddleTextWriter() => RenderHeddleTextWriterSink();
         [Benchmark] public string RenderFluid() => Render("Fluid");
         [Benchmark] public string RenderScriban() => Render("Scriban");
         [Benchmark] public string RenderDotLiquid() => Render("DotLiquid");
@@ -57,7 +63,9 @@ namespace Heddle.Benchmarks.Dotnet.Bench
     {
         protected override string Workload => "mixed-page";
 
-        [Benchmark(Baseline = true)] public ulong RenderHeddle() => RenderHeddleUtf8();
+        [Benchmark(Baseline = true)] public string RenderHeddle() => Render("Heddle");
+        [Benchmark] public ulong RenderHeddleUtf8() => RenderHeddleUtf8Sink();
+        [Benchmark] public ulong RenderHeddleTextWriter() => RenderHeddleTextWriterSink();
         [Benchmark] public string RenderFluid() => Render("Fluid");
         [Benchmark] public string RenderScriban() => Render("Scriban");
         [Benchmark] public string RenderDotLiquid() => Render("DotLiquid");
@@ -70,7 +78,9 @@ namespace Heddle.Benchmarks.Dotnet.Bench
     {
         protected override string Workload => "conditional-heavy";
 
-        [Benchmark(Baseline = true)] public ulong RenderHeddle() => RenderHeddleUtf8();
+        [Benchmark(Baseline = true)] public string RenderHeddle() => Render("Heddle");
+        [Benchmark] public ulong RenderHeddleUtf8() => RenderHeddleUtf8Sink();
+        [Benchmark] public ulong RenderHeddleTextWriter() => RenderHeddleTextWriterSink();
         [Benchmark] public string RenderFluid() => Render("Fluid");
         [Benchmark] public string RenderScriban() => Render("Scriban");
         [Benchmark] public string RenderDotLiquid() => Render("DotLiquid");
@@ -83,7 +93,9 @@ namespace Heddle.Benchmarks.Dotnet.Bench
     {
         protected override string Workload => "fragment-heavy";
 
-        [Benchmark(Baseline = true)] public ulong RenderHeddle() => RenderHeddleUtf8();
+        [Benchmark(Baseline = true)] public string RenderHeddle() => Render("Heddle");
+        [Benchmark] public ulong RenderHeddleUtf8() => RenderHeddleUtf8Sink();
+        [Benchmark] public ulong RenderHeddleTextWriter() => RenderHeddleTextWriterSink();
         [Benchmark] public string RenderFluid() => Render("Fluid");
         [Benchmark] public string RenderScriban() => Render("Scriban");
         [Benchmark] public string RenderDotLiquid() => Render("DotLiquid");
@@ -96,7 +108,9 @@ namespace Heddle.Benchmarks.Dotnet.Bench
     {
         protected override string Workload => "fortunes-encoded";
 
-        [Benchmark(Baseline = true)] public ulong RenderHeddle() => RenderHeddleUtf8();
+        [Benchmark(Baseline = true)] public string RenderHeddle() => Render("Heddle");
+        [Benchmark] public ulong RenderHeddleUtf8() => RenderHeddleUtf8Sink();
+        [Benchmark] public ulong RenderHeddleTextWriter() => RenderHeddleTextWriterSink();
         [Benchmark] public string RenderFluid() => Render("Fluid");
         [Benchmark] public string RenderScriban() => Render("Scriban");
         [Benchmark] public string RenderDotLiquid() => Render("DotLiquid");
@@ -109,7 +123,9 @@ namespace Heddle.Benchmarks.Dotnet.Bench
     {
         protected override string Workload => "encoded-loop";
 
-        [Benchmark(Baseline = true)] public ulong RenderHeddle() => RenderHeddleUtf8();
+        [Benchmark(Baseline = true)] public string RenderHeddle() => Render("Heddle");
+        [Benchmark] public ulong RenderHeddleUtf8() => RenderHeddleUtf8Sink();
+        [Benchmark] public ulong RenderHeddleTextWriter() => RenderHeddleTextWriterSink();
         [Benchmark] public string RenderFluid() => Render("Fluid");
         [Benchmark] public string RenderScriban() => Render("Scriban");
         [Benchmark] public string RenderDotLiquid() => Render("DotLiquid");

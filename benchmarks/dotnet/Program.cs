@@ -39,6 +39,7 @@ namespace Heddle.Benchmarks.Dotnet
                 return verb.ToLowerInvariant() switch
                 {
                     "gate" => RunGate(),
+                    "gate-precompiled" => RunPrecompiledGate(),
                     "verify-corpus" => CorpusMaintenance.Verify(),
                     "export-corpus" => CorpusMaintenance.Export(
                         rest.Any(a => string.Equals(a, "--allow-dirty", StringComparison.OrdinalIgnoreCase))),
@@ -128,6 +129,83 @@ namespace Heddle.Benchmarks.Dotnet
 
             Console.WriteLine($"\ngate: {passed} passed, {failed} failed (of {cells.Count} cells).");
             return failed == 0 && materialisation.Clean ? 0 : 1;
+        }
+
+        /// <summary>
+        /// The STRICT precompiled gate: every protocol workload must be served by a real precompiled
+        /// entry, and every precompiled render must agree byte-for-byte with its runtime counterpart.
+        /// Anything less exits non-zero.
+        ///
+        /// <para>This is deliberately harsher than <c>gate</c>, which reports coverage and carries on.
+        /// Reporting is right for the measurement sweep — a partially-covered backend still produces
+        /// honest rows as long as they are labelled — but it is wrong as an engineering signal, because
+        /// "5/8 covered" reads as a status line rather than as work outstanding. This verb makes the gap
+        /// fail a build step, so precompilation coverage cannot regress unnoticed and cannot sit at
+        /// partial indefinitely without someone deciding that is acceptable.</para>
+        ///
+        /// <para>The build-time half of the same signal is <c>HED7031</c>: the generator now names each
+        /// template it declined and why, and a project can promote that to an error with
+        /// <c>&lt;WarningsAsErrors&gt;HED7031&lt;/WarningsAsErrors&gt;</c>.</para>
+        /// </summary>
+        private static int RunPrecompiledGate()
+        {
+            var covered = Engines.Precompiled.CoveredWorkloads().ToList();
+            var uncovered = Engines.Precompiled.UncoveredWorkloads().ToList();
+            var total = covered.Count + uncovered.Count;
+
+            Console.WriteLine($"PRECOMPILED-STRICT: requiring {total}/{total} workloads to be precompiled.");
+
+            var failures = 0;
+
+            // Parity first, on what IS covered: a precompiled entry that renders different bytes than the
+            // runtime tier is a worse defect than a missing one, and it would otherwise be measured and
+            // published as a straight speed win.
+            foreach (var workload in covered)
+            {
+                foreach (var sink in new[] { Engines.HeddleEngine.Sink.String,
+                                             Engines.HeddleEngine.Sink.TextWriter,
+                                             Engines.HeddleEngine.Sink.Utf8 })
+                {
+                    string dynamic, precompiled;
+                    try
+                    {
+                        dynamic = Engines.HeddleEngine.Render("controlled", workload, sink);
+                        precompiled = Engines.Precompiled.Render("controlled", workload, sink);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.Error.WriteLine(
+                            $"[FAIL] {workload} / {Engines.HeddleEngine.SinkLabel(sink)}: " +
+                            $"{ex.GetType().Name}: {ex.Message.Split('\n')[0]}");
+                        failures++;
+                        continue;
+                    }
+
+                    if (!string.Equals(dynamic, precompiled, StringComparison.Ordinal))
+                    {
+                        Console.Error.WriteLine(
+                            $"[FAIL] {workload} / {Engines.HeddleEngine.SinkLabel(sink)}: precompiled output " +
+                            $"differs from runtime ({dynamic.Length} vs {precompiled.Length} chars).");
+                        failures++;
+                    }
+                }
+            }
+
+            if (failures == 0 && covered.Count > 0)
+                Console.WriteLine(
+                    $"  parity: {covered.Count} workloads x 3 sinks agree byte-for-byte with the runtime tier.");
+
+            foreach (var workload in uncovered)
+            {
+                Console.Error.WriteLine(
+                    $"[FAIL] {workload}: no precompiled entry — this workload renders through the dynamic path. " +
+                    "Build with `-v n` and read the HED7031 warnings for the emitter's own reason.");
+                failures++;
+            }
+
+            Console.WriteLine($"\ngate-precompiled: {total - uncovered.Count}/{total} workloads precompiled, " +
+                              $"{failures} failure(s).");
+            return failures == 0 ? 0 : 1;
         }
 
         private static int Usage(int code, string message = null)

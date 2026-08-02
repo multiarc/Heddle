@@ -400,6 +400,24 @@ namespace Heddle.Generator
 
                         manifestEntries.Add(result.ManifestEntry);
                     }
+                    else
+                    {
+                        // The decline that used to be silent. Emitted=false with no fallback marker means the
+                        // emitter had a reason and nothing asked for it: no source, no manifest row, no
+                        // diagnostic. A consumer could believe a template was precompiled while it rendered
+                        // dynamically on every request, and the only way to find out was to notice the
+                        // missing manifest entry.
+                        //
+                        // A warning, not an error: falling back is a supported mode and existing builds must
+                        // keep working. A project for which precompilation is a requirement rather than an
+                        // optimisation makes it fatal with the mechanism MSBuild already has —
+                        // <WarningsAsErrors>HED7031</WarningsAsErrors> — rather than a second Heddle-specific
+                        // switch that would have to be threaded through the whole build-option surface.
+                        spc.ReportDiagnostic(Diagnostic.Create(
+                            GeneratorDiagnostics.TemplateNotPrecompiled,
+                            ToLocation(template.Text, SafeText(template.Text), default),
+                            result.UnsupportedReason ?? "no reason recorded by the emitter"));
+                    }
                 }
                 catch (Exception ex)
                 {

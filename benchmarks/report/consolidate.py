@@ -63,6 +63,12 @@ EVIDENCE = {
 # Display names, pinned to the versions in each harness's manifest.
 ENGINE_NAMES = {
     (".NET", "Heddle"): "Heddle",
+    # Heddle's streaming sinks, measured as their own rows in the cross-stack sweep. They are the
+    # SAME engine as the anchor doing the same work through a different output path, so they are
+    # reported everywhere .NET rows are reported but never ranked as if they were rival engines --
+    # see HEDDLE_TECHNIQUE_ENGINES.
+    (".NET", "HeddleUtf8"): "Heddle (utf8 sink)",
+    (".NET", "HeddleTextWriter"): "Heddle (textwriter sink)",
     (".NET", "Fluid"): "Fluid.Core 2.31.0",
     (".NET", "Scriban"): "Scriban 7.2.5",
     (".NET", "DotLiquid"): "DotLiquid 2.3.197",
@@ -121,9 +127,27 @@ def configure_run_era(run: Path) -> bool:
     return razor_is_twin
 
 
+# Display names of the Heddle rows that are NOT the anchor: the same engine measured through a
+# different sink. They are excluded from every ranking and from the "next .NET engine" margin,
+# because ranking an engine against itself would both inflate the field size and let Heddle appear
+# in its own "ahead of it" list. They remain visible in the .NET per-ecosystem tables, the
+# allocation sidebar and the dedicated techniques section.
+#
+# They are also not like-for-like with the competitor rows in a second way: the streaming sinks
+# never materialise their output, while every competitor row (and the anchor) does. That is the
+# point of measuring them, and the reason they cannot stand in a materialised-output ranking.
+HEDDLE_TECHNIQUE_ENGINES = frozenset({"Heddle (utf8 sink)", "Heddle (textwriter sink)"})
+
+
+def is_heddle_technique(cell: Cell) -> bool:
+    return cell.ecosystem == ".NET" and cell.engine in HEDDLE_TECHNIQUE_ENGINES
+
+
 def evidence_of(cell: Cell) -> str:
     if cell.ecosystem == ".NET" and cell.engine == "Heddle":
         return "anchor (baseline)"
+    if is_heddle_technique(cell):
+        return "same engine, streaming sink"
     if (cell.ecosystem, cell.engine) in NOT_PARITY_CHECKED:
         return "not parity-checked"
     return EVIDENCE[cell.ecosystem]
@@ -661,7 +685,7 @@ def load_go(run: Path) -> tuple[list[Cell], list[Cell], list[list[str]]]:
             )
         return out
 
-    render = next(iter(sorted((run / "go").glob("benchstat-render-*.txt"))), None)
+    render = newest_go_artifact(run, "benchstat-render-*.txt")
     if render is None:
         raise Fail("missing go/benchstat-render-*.txt")
     data = blocks(render)
@@ -693,7 +717,7 @@ def load_go(run: Path) -> tuple[list[Cell], list[Cell], list[list[str]]]:
                       rec.get("B/op", "—"), rec.get("allocs/op", "—")])
 
     cold: list[Cell] = []
-    coldparse = next(iter(sorted((run / "go").glob("benchstat-coldparse-*.txt"))), None)
+    coldparse = newest_go_artifact(run, "benchstat-coldparse-*.txt")
     if coldparse is not None:
         for bench, value, pct in blocks(coldparse).get("sec/op", []):
             engine = bench.split("/")[-1]
@@ -710,6 +734,18 @@ def load_go(run: Path) -> tuple[list[Cell], list[Cell], list[list[str]]]:
 def golden_entries() -> list[dict]:
     doc = json.loads(MANIFEST.read_text(encoding="utf-8"))
     return doc["entries"]
+
+
+def newest_go_artifact(run: Path, pattern: str) -> Path | None:
+    """The most recent `benchstat-*-<YYYYMMDD>.txt`, not merely the first one sorted.
+
+    `benchmarks/go/results/` is an accumulating directory and the runner copies all of it into the
+    run, so a run folder routinely holds several dates. Plain `sorted(...)[0]` took the ASCII-first
+    name, which is the OLDEST -- a report that silently described a previous session's Go leg while
+    every other ecosystem's rows came from this one. The stamp is `YYYYMMDD`, so lexical `max` is
+    chronological; mtime is deliberately not used, since copying does not preserve it reliably.
+    """
+    return max((run / "go").glob(pattern), default=None)
 
 
 def toolchain_table(run: Path) -> list[str]:
@@ -855,7 +891,8 @@ def render(run: Path) -> str:
         emitted_tier = None
         for workload in workloads:
             rows_src = sorted(
-                [c for c in cells if c.track == track and c.workload == workload],
+                [c for c in cells
+                 if c.track == track and c.workload == workload and not is_heddle_technique(c)],
                 key=lambda c: c.ns,
             )
             if not rows_src:
@@ -1140,7 +1177,7 @@ def render_summary(
     them in with VitePress's `<!--@include:-->` directive, and `--check` re-derives them from the
     artifacts alongside the consolidated tables.
     """
-    ctl = [c for c in cells if c.track == "controlled"]
+    ctl = [c for c in cells if c.track == "controlled" and not is_heddle_technique(c)]
     tiers = {t: [w for w in workloads if tier_of(w, golden_bytes) == t] for t in (1, 2)}
 
     out: list[str] = [
@@ -1159,7 +1196,8 @@ def render_summary(
             if len(field) < 2:
                 continue
             anchor = heddle[w]
-            rival = next((c for c in field if c.engine != "Heddle"), None)
+            rival = next((c for c in field
+                          if c.engine != "Heddle" and not is_heddle_technique(c)), None)
             if rival is None:
                 continue
             ratio = rival.ns / anchor

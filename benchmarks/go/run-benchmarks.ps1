@@ -96,9 +96,17 @@ Write-Host "Note: templ sidebar cells are 'AOT - no runtime parse (compiled by g
 # --- 7. benchstat ----------------------------------------------------------------------------
 $benchstatRender = "results\benchstat-render-" + $stamp + ".txt"
 $benchstatCold = "results\benchstat-coldparse-" + $stamp + ".txt"
-& go tool benchstat $renderOut | Out-File -Encoding utf8 $benchstatRender
+# Redirected inside cmd.exe, NOT piped through Out-File. benchstat draws its table with U+2502
+# box-drawing characters, and consolidate.py locates the sec/op block by looking for them. Piping
+# through PowerShell 5.1 decoded benchstat's UTF-8 stdout as the console codepage first, so the
+# three bytes E2 94 82 became three separate mis-decoded characters, and Out-File then re-encoded
+# that damage as UTF-8. The corruption was silent -- the file still looks like a table to a human
+# skimming it -- and surfaced only as consolidate.py's "no sec/op block found", one whole
+# measurement session later. cmd's `>` writes the child process's bytes straight to disk with
+# nothing in between to decode them.
+cmd /c ('go tool benchstat ' + $renderOut + ' > ' + $benchstatRender)
 Assert-LastExit "benchstat (render)"
-& go tool benchstat $coldOut | Out-File -Encoding utf8 $benchstatCold
+cmd /c ('go tool benchstat ' + $coldOut + ' > ' + $benchstatCold)
 Assert-LastExit "benchstat (coldparse)"
 
 Write-Host ("Done. benchstat summaries: " + $benchstatRender + ", " + $benchstatCold)
