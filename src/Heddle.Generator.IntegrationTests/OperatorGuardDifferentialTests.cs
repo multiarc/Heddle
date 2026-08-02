@@ -152,18 +152,104 @@ namespace Heddle.Generator.IntegrationTests
                 new Order { Tag = new Label("x") }, "value: n=tostring:x\n");
         }
 
+        /// <summary>Shift shapes the table used to hold as runtime-owned, now emitted: a wide count is
+        /// normalised with the truncating <c>(int)</c>/<c>(int?)</c> cast the runtime applies through
+        /// <c>Expression.Convert</c>, and a lifted shift lifts identically in C#. Byte parity across both
+        /// tiers — including the truncation, mask and null lanes — is what moved the verdict.</summary>
         [Fact]
-        public void WideShiftCount_DegradesAndRendersTheRuntimeResult()
+        public void WideShiftCount_NowPrecompilesAndMatchesTheRuntime()
         {
-            AssertDegradesAndRenders("guard/shift-wide-count.heddle", "Count << Big",
-                new Order { Count = 3, Big = 2 }, "value: 12\n");
+            var content = Template("Count << Big");
+            var models = new[]
+            {
+                new Order { Count = 3, Big = 2 },
+                // The mask lane: a count of 33 keeps its low five bits on both tiers, so this is << 1.
+                new Order { Count = 3, Big = 33 },
+                // The truncation lane: -1L truncates to -1, which masks to 31.
+                new Order { Count = 3, Big = -1 },
+            };
+            for (var i = 0; i < models.Length; i++)
+            {
+                var (precompiled, dyn) = DifferentialHarness.Render(
+                    "guard/shift-wide-count-" + i + ".heddle", content, typeof(Order), models[i]);
+                Assert.Equal(dyn, precompiled);
+            }
         }
 
         [Fact]
-        public void LiftedShift_DegradesAndRendersTheRuntimeResult()
+        public void LiftedShift_NowPrecompilesAndMatchesTheRuntime()
         {
-            AssertDegradesAndRenders("guard/shift-lifted.heddle", "Maybe << 2",
-                new Order { Maybe = 3 }, "value: 12\n");
+            foreach (var (key, expression, model) in new[]
+            {
+                ("guard/shift-lifted-value.heddle", "Maybe << 2", new Order { Maybe = 3 }),
+                ("guard/shift-lifted-null.heddle", "Maybe << 2", new Order { Maybe = null }),
+                ("guard/shift-lifted-count.heddle", "Count << Maybe", new Order { Count = 3, Maybe = 2 }),
+                ("guard/shift-lifted-count-null.heddle", "Count << Maybe", new Order { Count = 3, Maybe = null }),
+                // The lifted-cast lane: a nullable WIDE count takes the (int?) spelling.
+                ("guard/shift-lifted-wide.heddle", "Count << BigMaybe", new Order { Count = 3, BigMaybe = 2L }),
+                ("guard/shift-lifted-wide-null.heddle", "Count << BigMaybe", new Order { Count = 3, BigMaybe = null }),
+            })
+            {
+                var (precompiled, dyn) = DifferentialHarness.Render(key, Template(expression), typeof(Order), model);
+                Assert.Equal(dyn, precompiled);
+            }
+        }
+
+        /// <summary>Coalesce over differing numeric kinds unifies in the engine's promotion, now written down
+        /// as casts. The int? ?? uint row is the one that mattered: the table held it Supported and the writer
+        /// emitted it VERBATIM — which is CS0019 in the consumer's build while the engine renders long — so
+        /// before this spelling the pair was a latent consumer-build break, not a degrade.</summary>
+        [Fact]
+        public void NumericCoalescePromotion_NowPrecompilesAndMatchesTheRuntime()
+        {
+            foreach (var (key, expression, model) in new[]
+            {
+                ("guard/coalesce-promote.heddle", "Maybe ?? Big", new Order { Maybe = 5, Big = 9 }),
+                ("guard/coalesce-promote-null.heddle", "Maybe ?? Big", new Order { Maybe = null, Big = 9 }),
+                ("guard/coalesce-cs0019.heddle", "Maybe ?? Unsigned", new Order { Maybe = 5, Unsigned = 7 }),
+                ("guard/coalesce-cs0019-null.heddle", "Maybe ?? Unsigned",
+                    new Order { Maybe = null, Unsigned = 7 }),
+                ("guard/coalesce-lifted-right.heddle", "Maybe ?? BigMaybe",
+                    new Order { Maybe = null, BigMaybe = 4L }),
+            })
+            {
+                var (precompiled, dyn) = DifferentialHarness.Render(key, Template(expression), typeof(Order), model);
+                Assert.Equal(dyn, precompiled);
+            }
+        }
+
+        /// <summary>The cross-category coalesce mixes are refused by the engine's Coalesce on every input
+        /// (HED1007), so the verdict now matches the refusal instead of degrading around it.</summary>
+        [Fact]
+        public void StringCoalesceWithAValueOperand_IsRefusedByBothTiers()
+        {
+            AssertBothTiersReject("guard/coalesce-mixed.heddle", "Name ?? Count",
+                HeddleDiagnosticIds.TernaryArmsNoCommonType);
+        }
+
+        /// <summary>Ternary arm shapes the table used to hold as runtime-owned, now emitted: differing numeric
+        /// kinds unify through the engine's promotion spelled as a cast on both arms — including int against
+        /// uint, which verbatim C# refuses as CS0173 while the engine renders long — a null arm takes the
+        /// other arm's type verbatim, and a mixed-nullability pair lifts identically on both tiers.</summary>
+        [Fact]
+        public void TernaryArmUnification_NowPrecompilesAndMatchesTheRuntime()
+        {
+            foreach (var (key, expression, model) in new[]
+            {
+                ("guard/ternary-promote.heddle", "Count > 0 ? Count : Big", new Order { Count = 3, Big = 9 }),
+                ("guard/ternary-cs0173.heddle", "Count > 0 ? Count : Unsigned",
+                    new Order { Count = 3, Unsigned = 7 }),
+                ("guard/ternary-lifted.heddle", "Count > 0 ? Maybe : Count", new Order { Count = 3, Maybe = 5 }),
+                ("guard/ternary-lifted-null.heddle", "Count > 0 ? Maybe : Count",
+                    new Order { Count = 3, Maybe = null }),
+                ("guard/ternary-null-arm.heddle", "Count > 0 ? null : Name", new Order { Count = 3, Name = "x" }),
+                ("guard/ternary-null-arm-num.heddle", "Count > 0 ? null : Maybe",
+                    new Order { Count = 3, Maybe = 5 }),
+            })
+            {
+                var (precompiled, dyn) = DifferentialHarness.Render(key, Template(expression), typeof(Order), model);
+                Assert.Equal(dyn, precompiled);
+            }
         }
 
         [Fact]
