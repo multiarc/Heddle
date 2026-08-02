@@ -53,6 +53,24 @@ namespace Heddle.Language.Expressions
         None
     }
 
+    /// <summary>
+    /// Whether the engine's user-defined-operator lookup binds for an operand pair. Caller-supplied like
+    /// <see cref="TypeRelation"/> — the generator proves it from operator symbols, tests from reflection —
+    /// and only the sound claims are made: Bound needs an operator declared on an operand type itself with
+    /// exactly the operands' types; Absent needs no operator by that name anywhere in either base chain.
+    /// </summary>
+    internal enum OperatorWitness
+    {
+        /// <summary>No proof either way — runtime-owned.</summary>
+        Unknown = 0,
+
+        /// <summary>A user-defined operator the engine's factory binds exists for exactly this pair.</summary>
+        Bound,
+
+        /// <summary>No user-defined operator by that name exists — the factory refuses on every input.</summary>
+        Absent
+    }
+
     /// <summary>Operand classification: category, numeric kind (if applicable), and nullability. The sole shape used by operator rules, enabling one table to serve both generator and runtime.</summary>
     internal readonly struct OperandKind
     {

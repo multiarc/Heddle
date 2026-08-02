@@ -27,6 +27,22 @@ namespace Heddle.Tests
         public DayOfWeek? NE { get; set; }
         public Uri R { get; set; }
         public Guid O { get; set; }
+        public Meas M { get; set; }
+    }
+
+    /// <summary>A user struct with SOME operators — '+', '&lt;', '&gt;' — and deliberately not their
+    /// siblings, so the sweep proves Bound, Absent and Unknown witness rows against the real engine.</summary>
+    public struct Meas
+    {
+        public int V { get; set; }
+
+        public static Meas operator +(Meas a, Meas b) => new Meas { V = a.V + b.V };
+
+        public static bool operator <(Meas a, Meas b) => a.V < b.V;
+
+        public static bool operator >(Meas a, Meas b) => a.V > b.V;
+
+        public override string ToString() => "m" + V;
     }
 
     /// <summary>
@@ -55,8 +71,65 @@ namespace Heddle.Tests
             // engine sites that never consult them.
             ("R", OperandKind.Of(OperandCategory.Reference, false, "System.Uri"), typeof(Uri)),
             ("O", OperandKind.Of(OperandCategory.Other, false, "System.Guid"), typeof(Guid)),
+            ("M", OperandKind.Of(OperandCategory.Other, false, "Heddle.Tests.Meas"), typeof(Meas)),
             ("null", OperandKind.Null, null),
         };
+
+        /// <summary>The test producer's <see cref="OperatorWitness"/>, from CLR reflection — the same sound
+        /// claims the generator makes from symbols: Bound for an exact-signature operator declared on an
+        /// operand type, Absent only when the name exists nowhere in either hierarchy.</summary>
+        private static OperatorWitness Witness(ExprOperator op, Type left, Type right)
+        {
+            if (left == null || right == null)
+                return OperatorWitness.Unknown;
+            if (Nullable.GetUnderlyingType(left) != null || Nullable.GetUnderlyingType(right) != null)
+                return OperatorWitness.Unknown;
+            string name = OperatorMethodName(op);
+            if (name == null)
+                return OperatorWitness.Unknown;
+
+            const System.Reflection.BindingFlags flags = System.Reflection.BindingFlags.Public |
+                System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.FlattenHierarchy;
+            var candidates = left.GetMethods(flags).Concat(right.GetMethods(flags))
+                .Where(m => m.Name == name && m.GetParameters().Length == 2)
+                .ToList();
+            if (candidates.Count == 0)
+                return OperatorWitness.Absent;
+
+            bool boolRequired = op != ExprOperator.Add && op != ExprOperator.Subtract &&
+                                op != ExprOperator.Multiply && op != ExprOperator.Divide &&
+                                op != ExprOperator.Modulo;
+            foreach (var method in candidates)
+            {
+                var parameters = method.GetParameters();
+                if ((method.DeclaringType == left || method.DeclaringType == right) &&
+                    parameters[0].ParameterType == left && parameters[1].ParameterType == right &&
+                    method.ReturnType != typeof(void) &&
+                    (!boolRequired || method.ReturnType == typeof(bool)))
+                    return OperatorWitness.Bound;
+            }
+
+            return OperatorWitness.Unknown;
+        }
+
+        private static string OperatorMethodName(ExprOperator op)
+        {
+            switch (op)
+            {
+                case ExprOperator.Add: return "op_Addition";
+                case ExprOperator.Subtract: return "op_Subtraction";
+                case ExprOperator.Multiply: return "op_Multiply";
+                case ExprOperator.Divide: return "op_Division";
+                case ExprOperator.Modulo: return "op_Modulus";
+                case ExprOperator.Equal: return "op_Equality";
+                case ExprOperator.NotEqual: return "op_Inequality";
+                case ExprOperator.LessThan: return "op_LessThan";
+                case ExprOperator.LessThanOrEqual: return "op_LessThanOrEqual";
+                case ExprOperator.GreaterThan: return "op_GreaterThan";
+                case ExprOperator.GreaterThanOrEqual: return "op_GreaterThanOrEqual";
+                default: return null;
+            }
+        }
 
         /// <summary>The test producer's <see cref="TypeRelation"/> — the engine's own unification facts,
         /// from CLR reflection.</summary>
@@ -304,7 +377,7 @@ namespace Heddle.Tests
                 foreach (var right in Operands)
                 {
                     var verdict = NativeOperatorRules.Classify(op, left.Kind, right.Kind,
-                        Relate(left.Clr, right.Clr));
+                        Relate(left.Clr, right.Clr), Witness(op, left.Clr, right.Clr));
                     if (verdict == OperatorVerdict.RequiresRuntimeSemantics)
                         continue;   // "do not emit" — claims nothing about the runtime's own outcome
                     Check(failures, $"{left.Expr} {lexeme} {right.Expr}", verdict);

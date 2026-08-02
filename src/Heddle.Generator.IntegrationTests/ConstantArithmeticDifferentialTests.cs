@@ -67,11 +67,10 @@ namespace Heddle.Generator.IntegrationTests
         }
 
         /// <summary>
-        /// An <c>int</c> meeting a <c>uint</c>, where the two tiers do not evaluate in the same type at all: C#
-        /// converts a non-negative <b>constant</b> int to <c>uint</c> and computes there, while the engine builds an
-        /// expression tree over two operand types and gets <c>long</c>. While the result fits in a <c>uint</c> the two
-        /// agree and the row below says so; once the unsigned arithmetic wraps they cannot, so the expression belongs
-        /// to the engine.
+        /// An <c>int</c> meeting a <c>uint</c> where the unsigned arithmetic wraps, so the two tiers reach
+        /// DIFFERENT numbers: C# computes in <c>uint</c> (the implicit constant conversion) while the engine's
+        /// tree computes in <c>long</c>. The writer now spells the ENGINE's folded value as a typed literal —
+        /// <c>0u-5</c> emits as <c>(-5L)</c> — so the shape precompiles and renders the engine's number.
         /// </summary>
         [Theory]
         [InlineData("0-3000000000")]
@@ -80,18 +79,14 @@ namespace Heddle.Generator.IntegrationTests
         [InlineData("2*3000000000")]
         [InlineData("2147483648*2")]
         [InlineData("1u-2")]
-        public void AnIntMeetingAUintDegradesOnceTheUnsignedArithmeticWraps(string expression)
+        public void AnIntMeetingAUintThatWraps_NowPrecompilesToTheEnginesNumber(string expression)
         {
             var generated = DifferentialHarness.Generate(new[] { (Key, Template(expression)) });
+            Assert.Empty(generated.Diagnostics);
+            DifferentialHarness.ExpectPrecompiled(generated, Key);
 
-            // A degrade is ANNOUNCED now: HED7031 names the template and the emitter's own reason,
-            // where moving to the dynamic tier used to be silent -- the very hazard the
-            // "silently and with no diagnostic to notice" comment in this file calls out. These rows
-            // therefore pin "nothing OTHER than that notice", which still fails on any unrelated
-            // diagnostic while not demanding the notice from degrade paths that route through a more
-            // specific channel (HED7014's fallback marker, for one).
-            Assert.Empty(generated.Diagnostics.Where(d => d.Id != "HED7031"));
-            DifferentialHarness.ExpectDegrade(generated, Key);
+            var (precompiled, dyn) = DifferentialHarness.Render(Key, Template(expression), typeof(string), "hello");
+            Assert.Equal(dyn, precompiled);
         }
 
         /// <summary>The near neighbour that keeps the row above a rule rather than a refusal of every mixed pair:
@@ -115,11 +110,9 @@ namespace Heddle.Generator.IntegrationTests
         }
 
         /// <summary>
-        /// The mixed pair again, this time as the operand of a <b>second</b> operator. Agreeing on the number is not
-        /// agreeing on the type: <c>(0-0u)</c> is a <c>uint</c> zero to C# and a <c>long</c> zero to the engine, and
-        /// subtracting <c>1u</c> from each gives 4294967295 and -1. The template rendered a number 4294967296 too
-        /// large with no diagnostic on either side — the folded pair reported its own agreement and the difference
-        /// that produced it did not travel with the value.
+        /// The mixed pair as the operand of a <b>second</b> operator, where the tiers' numbers part company:
+        /// <c>(0-0u)-(1u)</c> is 4294967295 in C#'s <c>uint</c> and -1 in the engine's <c>long</c>. The
+        /// engine-literal spelling closes these too — the whole constant emits as the engine's value.
         /// </summary>
         [Theory]
         [InlineData("(0-0u)-(1u)")]
@@ -137,18 +130,14 @@ namespace Heddle.Generator.IntegrationTests
         // A shift keeps its left operand's type, so it carries the difference straight into the number: shifting a
         // uint 4294967295 left by 31 gives 2147483648 and shifting the long by 31 gives 9223372034707292160.
         [InlineData("(4294967295u-0)<<31")]
-        public void AMixedPairFeedingASecondOperatorDegrades(string expression)
+        public void AMixedPairFeedingASecondOperator_NowPrecompilesToTheEnginesNumber(string expression)
         {
             var generated = DifferentialHarness.Generate(new[] { (Key, Template(expression)) });
+            Assert.Empty(generated.Diagnostics);
+            DifferentialHarness.ExpectPrecompiled(generated, Key);
 
-            // A degrade is ANNOUNCED now: HED7031 names the template and the emitter's own reason,
-            // where moving to the dynamic tier used to be silent -- the very hazard the
-            // "silently and with no diagnostic to notice" comment in this file calls out. These rows
-            // therefore pin "nothing OTHER than that notice", which still fails on any unrelated
-            // diagnostic while not demanding the notice from degrade paths that route through a more
-            // specific channel (HED7014's fallback marker, for one).
-            Assert.Empty(generated.Diagnostics.Where(d => d.Id != "HED7031"));
-            DifferentialHarness.ExpectDegrade(generated, Key);
+            var (precompiled, dyn) = DifferentialHarness.Render(Key, Template(expression), typeof(string), "hello");
+            Assert.Equal(dyn, precompiled);
         }
 
         /// <summary>
@@ -177,36 +166,25 @@ namespace Heddle.Generator.IntegrationTests
         }
 
         /// <summary>
-        /// The same difference reaching a <b>member</b> rather than another constant, which is where the fold has no
-        /// second operand to compare against and the writer has to ask what the member's type is. Against
-        /// <c>Ticks</c> — a <c>uint</c> — C# stays in <c>uint</c> while the engine is already in <c>long</c>;
-        /// against <c>Count</c> and <c>Label</c> both tiers land on the same type and the expression stays
-        /// precompiled.
+        /// The tainted constant reaching a <b>member</b>: the engine-literal spelling types the constant as the
+        /// engine's <c>long</c>, so even the <c>uint</c> member rows — where verbatim C# would have stayed in
+        /// <c>uint</c> and wrapped — now promote to the engine's type and match its bytes.
         /// </summary>
         [Theory]
-        [InlineData("Ticks - (0-0u)", false)]
-        [InlineData("Ticks + (5-1u)", false)]
-        [InlineData("Count - (0-0u)", true)]
-        [InlineData("Count + (5-1u)", true)]
-        [InlineData("Label + (5-1u)", true)]
-        public void AMixedPairMeetingAMemberFollowsThatMembersType(string expression, bool precompiles)
+        [InlineData("Ticks - (0-0u)")]
+        [InlineData("Ticks + (5-1u)")]
+        [InlineData("Count - (0-0u)")]
+        [InlineData("Count + (5-1u)")]
+        [InlineData("Label + (5-1u)")]
+        public void AMixedPairMeetingAMemberFollowsThatMembersType(string expression)
         {
             const string key = "views/arith-member.heddle";
             var template = "@model(){{Heddle.Generator.IntegrationTests.Fixtures.UnsignedMemberModel}}@(" +
                            expression + ")";
-            var model = new Fixtures.UnsignedMemberModel { Ticks = 0, Count = 0, Label = "n" };
+            var model = new Fixtures.UnsignedMemberModel { Ticks = 5, Count = 7, Label = "n" };
 
             var generated = DifferentialHarness.Generate(new[] { (key, template) });
-            // Same rule as the degrade rows above: a template that does not precompile now says so
-            // through HED7031, so anything BUT that notice is what must be absent here. The rows
-            // with precompiles: true still assert a completely clean build, because no notice fires.
-            Assert.Empty(generated.Diagnostics.Where(d => d.Id != "HED7031"));
-            if (!precompiles)
-            {
-                DifferentialHarness.ExpectDegrade(generated, key);
-                return;
-            }
-
+            Assert.Empty(generated.Diagnostics);
             DifferentialHarness.ExpectPrecompiled(generated, key);
             var (precompiled, dyn) = DifferentialHarness.Render(key, template,
                 typeof(Fixtures.UnsignedMemberModel), model);
@@ -214,30 +192,28 @@ namespace Heddle.Generator.IntegrationTests
         }
 
         /// <summary>
-        /// The two overflows <c>unchecked</c> does <b>not</b> settle, which is why the row above is not the whole
-        /// rule. A <c>decimal</c> overflow is never governed by the checked context — <c>CS0463</c> whatever it is
-        /// written inside — and the smallest signed value over <c>-1</c> is folded silently by C# to that same value
-        /// while the engine raises <c>OverflowException</c> at render, so emitting the fold would print a number the
-        /// dynamic tier never produces. Both belong to the engine.
+        /// The two overflows <c>unchecked</c> does <b>not</b> settle. A <c>decimal</c> overflow is
+        /// <c>CS0463</c> whatever it is written inside, and the smallest signed value over <c>-1</c> is folded
+        /// silently by C# while the engine raises <c>OverflowException</c> at render. Both now emit as a
+        /// <c>RuntimeOperators</c> call the consumer's compiler cannot fold, so the template PRECOMPILES and
+        /// the render throw is the engine's own — parity here means both tiers throwing alike.
         /// </summary>
         [Theory]
         [InlineData("79228162514264337593543950335m+1m")]
         [InlineData("-79228162514264337593543950335m-1m")]
+        [InlineData("79228162514264337593543950335m*2m")]
         [InlineData("(0-2147483647-1)/(0-1)")]
         [InlineData("(0-2147483647-1)%(0-1)")]
         [InlineData("(0-9223372036854775807L-1L)/(0-1)")]
-        public void AnOverflowUncheckedDoesNotSettleStillDegrades(string expression)
+        [InlineData("(0-9223372036854775807L-1L)%(0-1)")]
+        public void AThrowingConstantFold_NowPrecompilesAndThrowsAlikeAtRender(string expression)
         {
-            var generated = DifferentialHarness.Generate(new[] { (Key, Template(expression)) });
+            var (precompiled, dyn) = DifferentialHarness.DeferredWithOptions(Key, Template(expression),
+                typeof(string), "hello", new Heddle.Data.TemplateOptions());
 
-            // A degrade is ANNOUNCED now: HED7031 names the template and the emitter's own reason,
-            // where moving to the dynamic tier used to be silent -- the very hazard the
-            // "silently and with no diagnostic to notice" comment in this file calls out. These rows
-            // therefore pin "nothing OTHER than that notice", which still fails on any unrelated
-            // diagnostic while not demanding the notice from degrade paths that route through a more
-            // specific channel (HED7014's fallback marker, for one).
-            Assert.Empty(generated.Diagnostics.Where(d => d.Id != "HED7031"));
-            DifferentialHarness.ExpectDegrade(generated, Key);
+            var precompiledThrow = Assert.ThrowsAny<System.ArithmeticException>(() => precompiled());
+            var dynamicThrow = Assert.ThrowsAny<System.ArithmeticException>(() => dyn());
+            Assert.Equal(dynamicThrow.GetType(), precompiledThrow.GetType());
         }
 
         /// <summary>
