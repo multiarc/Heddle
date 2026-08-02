@@ -48,6 +48,9 @@ namespace Heddle.Language
             parser.Interpreter.PredictionMode = PredictionMode.SLL;
             parser.RemoveErrorListeners();
             parser.AddErrorListener(syntaxErrorListener);
+            var lexerErrorListener = new HeddleLexerErrorListener(context);
+            lexer.RemoveErrorListeners();
+            lexer.AddErrorListener(lexerErrorListener);
 
             // Bounds nesting for everything below — the parser's own descent, the tree walk, and the AST and chain
             // builders, all of which recurse over a structure this keeps shallow enough to survive.
@@ -59,8 +62,8 @@ namespace Heddle.Language
             parser.AddParseListener(depthGuard);
             try
             {
-                return ParseBounded(context, settings, parser, syntaxErrorListener, stream, tokens, errorFrom,
-                    depthGuard);
+                return ParseBounded(context, settings, parser, syntaxErrorListener, lexerErrorListener, stream,
+                    tokens, errorFrom, depthGuard);
             }
             catch (ParseDepthExceededException)
             {
@@ -80,13 +83,15 @@ namespace Heddle.Language
         }
 
         private static string ParseBounded(ParseContext context, ParserSettings settings,
-            HeddleParser parser, HeddleSyntaxErrorListener syntaxErrorListener, AntlrInputStream stream,
+            HeddleParser parser, HeddleSyntaxErrorListener syntaxErrorListener,
+            HeddleLexerErrorListener lexerErrorListener, AntlrInputStream stream,
             CommonTokenStream tokens, int errorFrom, ParseDepthGuard depthGuard)
         {
             HeddleParser.HeddleContext tree;
             try
             {
-                tree = RunParse(context, settings, parser, syntaxErrorListener, stream, errorFrom, depthGuard);
+                tree = RunParse(context, settings, parser, syntaxErrorListener, lexerErrorListener, stream,
+                    errorFrom, depthGuard);
             }
             catch (InvalidOperationException)
             {
@@ -129,7 +134,8 @@ namespace Heddle.Language
         /// <summary>The parse itself, kept separate so a tokenizer fault is distinguishable from a fault in the
         /// walk that follows it — the walk runs engine code whose exceptions must not be mistaken for bad input.</summary>
         private static HeddleParser.HeddleContext RunParse(ParseContext context, ParserSettings settings,
-            HeddleParser parser, HeddleSyntaxErrorListener syntaxErrorListener, AntlrInputStream stream,
+            HeddleParser parser, HeddleSyntaxErrorListener syntaxErrorListener,
+            HeddleLexerErrorListener lexerErrorListener, AntlrInputStream stream,
             int errorFrom, ParseDepthGuard depthGuard)
         {
             HeddleParser.HeddleContext tree;
@@ -143,7 +149,7 @@ namespace Heddle.Language
                 }
                 catch (ParseCanceledException e)
                 {
-                    tree = ParseDiagnosticMode(stream, parser, syntaxErrorListener, depthGuard);
+                    tree = ParseDiagnosticMode(stream, parser, syntaxErrorListener, lexerErrorListener, depthGuard);
                     syntaxErrorListener.Context.Warnings.Add(new HeddleCompileWarning
                     {
                         Error = e.Message,
@@ -155,7 +161,7 @@ namespace Heddle.Language
 
                 if (needRetryIfFailed && context.Errors.Count > errorFrom)
                 {
-                    tree = ParseDiagnosticMode(stream, parser, syntaxErrorListener, depthGuard);
+                    tree = ParseDiagnosticMode(stream, parser, syntaxErrorListener, lexerErrorListener, depthGuard);
                 }
             }
             else
@@ -168,7 +174,8 @@ namespace Heddle.Language
         }
 
         private static HeddleParser.HeddleContext ParseDiagnosticMode(AntlrInputStream stream, HeddleParser parser,
-            HeddleSyntaxErrorListener syntaxErrorListener, ParseDepthGuard depthGuard)
+            HeddleSyntaxErrorListener syntaxErrorListener, HeddleLexerErrorListener lexerErrorListener,
+            ParseDepthGuard depthGuard)
         {
             stream.Reset();
             parser.Reset();
@@ -176,6 +183,7 @@ namespace Heddle.Language
             // partway when the attempt failed.
             depthGuard.Reset();
             syntaxErrorListener.Clear();
+            lexerErrorListener.Replay();
             parser.Interpreter.PredictionMode = PredictionMode.LL_EXACT_AMBIG_DETECTION;
             return parser.heddle();
         }
