@@ -450,6 +450,19 @@ their `.heddle` position; file/key/option‑level conditions report without a so
 | `HED7032` | A template carries **both** an in‑file `@model` directive and `ModelType` item metadata, and the two spellings resolve to **different types**. The runtime reads only the directive, so the build refuses to pick one rather than typing the same template differently on the two tiers. Equal spellings, or different spellings resolving to the same type, agree and raise nothing. Reported at the file's start — item metadata has no in‑file position. |
 | `HED7031` | The emitter declined to precompile this template for a reason with no more specific channel — embedded C# outside `FullCSharp` expression mode, or a call site that full-overrides a definition's body region — so it renders through the dynamic path. The message carries the emitter's own reason. Output is unaffected: the two tiers are parity-checked and produce identical bytes, so this costs build-time work rather than correctness. It is the catch-all for a decline that was previously **silent**: the emitter computed a reason, the generator's `if (Emitted) … else if (IsMarker)` had no final `else`, and the template produced no source, no manifest row and no diagnostic — leaving a project no way to learn that a template it believed precompiled was rendering dynamically on every request. Where precompilation is a requirement rather than an optimisation, promote it with `<WarningsAsErrors>HED7031</WarningsAsErrors>`. |
 
+**Engine ids that fire at build.** A refusal the generator can *prove* the engine repeats at its own
+template compile is not a `HED7xxx` twin but the engine's id **forwarded** as a build error — same
+fact, same id, same sentence, at the `.heddle` position: `HED1003` (method‑call syntax in a native
+expression), `HED1004` (a native expression under a declared‑`dynamic` model, or a path crossing a
+`dynamic` member), `HED1005` (`&&`/`||` over a non‑`bool` operand), `HED1007` (ternary arms or a `??`
+pair with no common type), `HED1008`/`HED1009` (a binary/unary operator not defined for its operand
+types), `HED1010` (no accessible indexer on a known target type), `HED1011` (a non‑`bool` ternary
+condition), and `HED1018` (constant division by zero). The template still degrades to the dynamic
+tier; the build now fails the way the engine's compile would, instead of hiding the error until the
+first runtime compile. A refusal the generator cannot prove — an operand it cannot type, a verdict
+that depends on runtime binding, a template whose model type is simply undeclared — keeps degrading
+silently under `HED7031`.
+
 Member/type errors in milestone 1 arrive as C# errors remapped to the template span via
 `#line`; milestone 2 replaces the covered ones with native `HED7007`/`HED7008`.
 

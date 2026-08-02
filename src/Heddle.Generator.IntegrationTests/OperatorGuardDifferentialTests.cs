@@ -13,8 +13,10 @@ namespace Heddle.Generator.IntegrationTests
     /// at all, which broke in two opposite directions: mixed-type equality produced <b>CS0019 in the consumer's
     /// build</b> for a template the runtime accepts, while enum arithmetic and <c>enum &amp; 0</c> produced valid C#
     /// that <i>renders</i> where the runtime raises a positioned error.
-    /// <para>Each entry asserts the shape that closes its half: the template degrades at build time (so no raw C#
-    /// operator reaches the consumer's compiler), and the dynamic tier supplies the single verdict both tiers share.</para>
+    /// <para>Each entry asserts the shape that closes its half: a construct the engine refuses on every input is
+    /// a build ERROR carrying the engine's own id and sentence forwarded (the template still degrades, so no raw
+    /// C# operator reaches the consumer's compiler), and a runtime-owned construct degrades silently so the
+    /// dynamic tier supplies the single verdict both tiers share.</para>
     /// </summary>
     public class OperatorGuardDifferentialTests
     {
@@ -32,8 +34,32 @@ namespace Heddle.Generator.IntegrationTests
             Assert.Empty(gen.TemplateSources);
         }
 
-        /// <summary>Asserts both tiers reject the guarded expression with the same diagnostic.</summary>
+        /// <summary>Asserts both tiers reject the guarded expression under the same id AND the same sentence:
+        /// the engine's positioned compile error, and the generator's forwarded build error carrying the
+        /// engine's exact message (the template still degrades, so HED7031's notice may ride along).</summary>
         private static void AssertBothTiersReject(string key, string expression, string diagnosticId)
+        {
+            var content = Template(expression);
+
+            var template = new HeddleTemplate(content,
+                new CompileContext(new TemplateOptions(), typeof(Order)));
+            Assert.False(template.CompileResult.Success);
+            var engineMessages = template.CompileResult.ErrorList
+                .Where(e => e.DiagnosticId == diagnosticId).Select(e => e.Error).ToList();
+            Assert.NotEmpty(engineMessages);
+
+            var gen = DifferentialHarness.Generate(new[] { (key, content) });
+            var forwarded = Assert.Single(gen.Diagnostics.Where(d => d.Id == diagnosticId));
+            Assert.Equal(DiagnosticSeverity.Error, forwarded.Severity);
+            Assert.Contains(forwarded.GetMessage(), engineMessages);
+            Assert.Empty(gen.Diagnostics.Where(d => d.Id != diagnosticId && d.Id != "HED7031"));
+            DifferentialHarness.ExpectDegrade(gen, key);
+            Assert.Empty(gen.TemplateSources);
+        }
+
+        /// <summary>Asserts the shape the writer cannot PROVE: the template degrades silently (no build error —
+        /// the verdict is runtime-owned) while the dynamic tier still rejects it with the engine's id.</summary>
+        private static void AssertDegradesAndEngineRejects(string key, string expression, string diagnosticId)
         {
             AssertDegrades(key, expression);
 
@@ -56,7 +82,7 @@ namespace Heddle.Generator.IntegrationTests
 
 
         [Fact]
-        public void MixedTypeEquality_CompilesTheConsumerProject_AndDegrades()
+        public void MixedTypeEquality_IsRefusedByBothTiers()
         {
             AssertBothTiersReject("guard/eq-mixed.heddle", "Name == Count",
                 HeddleDiagnosticIds.BinaryOperatorNotDefined);
@@ -99,7 +125,7 @@ namespace Heddle.Generator.IntegrationTests
 
 
         [Fact]
-        public void EnumArithmetic_DegradesInsteadOfRendering()
+        public void EnumArithmetic_IsRefusedByBothTiers()
         {
             AssertBothTiersReject("guard/enum-arith.heddle", "Status + 1",
                 HeddleDiagnosticIds.BinaryOperatorNotDefined);
@@ -107,17 +133,19 @@ namespace Heddle.Generator.IntegrationTests
 
 
         [Fact]
-        public void EnumBitwiseWithZeroLiteral_DegradesInsteadOfRendering()
+        public void EnumBitwiseWithZeroLiteral_IsRefusedByBothTiers()
         {
             AssertBothTiersReject("guard/enum-and-zero.heddle", "Flags & 0",
                 HeddleDiagnosticIds.BinaryOperatorNotDefined);
         }
 
 
+        /// <summary>Money declares SOME '+' operator, so the witness can prove neither Bound nor Absent for the
+        /// (Money, int) pair — the verdict stays runtime-owned and the degrade stays silent by design.</summary>
         [Fact]
         public void UserImplicitConversion_IsNeverConsultedByTheConsumersCompiler()
         {
-            AssertBothTiersReject("guard/user-conversion.heddle", "Total + 1",
+            AssertDegradesAndEngineRejects("guard/user-conversion.heddle", "Total + 1",
                 HeddleDiagnosticIds.BinaryOperatorNotDefined);
         }
 
@@ -146,7 +174,7 @@ namespace Heddle.Generator.IntegrationTests
 
 
         [Fact]
-        public void NullableBoolLogical_DegradesInsteadOfRendering()
+        public void NullableBoolLogical_IsRefusedByBothTiers()
         {
             AssertBothTiersReject("guard/nullable-logical.heddle", "Approved && Approved",
                 HeddleDiagnosticIds.LogicalOperatorRequiresBool);
@@ -154,20 +182,20 @@ namespace Heddle.Generator.IntegrationTests
 
 
         [Fact]
-        public void IllegalNumericPromotion_DegradesInsteadOfRendering()
+        public void IllegalNumericPromotion_IsRefusedByBothTiers()
         {
             AssertBothTiersReject("guard/illegal-promotion.heddle", "Total.Amount + 1.5",
                 HeddleDiagnosticIds.BinaryOperatorNotDefined);
         }
 
         [Fact]
-        public void UnaryNegateOnAnEnum_DegradesInsteadOfEmitting()
+        public void UnaryNegateOnAnEnum_IsRefusedByBothTiers()
         {
             AssertBothTiersReject("guard/unary-enum.heddle", "-Status", HeddleDiagnosticIds.UnaryOperatorNotDefined);
         }
 
         [Fact]
-        public void UnaryNegateOnAUserStruct_DegradesInsteadOfEmitting()
+        public void UnaryNegateOnAUserStruct_IsRefusedByBothTiers()
         {
             AssertBothTiersReject("guard/unary-struct.heddle", "-Total", HeddleDiagnosticIds.UnaryOperatorNotDefined);
         }
@@ -250,6 +278,44 @@ namespace Heddle.Generator.IntegrationTests
                 HeddleDiagnosticIds.TernaryArmsNoCommonType);
             AssertBothTiersReject("guard/ref-ternary-unrelated.heddle", "Count > 0 ? Maker : Where",
                 HeddleDiagnosticIds.TernaryArmsNoCommonType);
+        }
+
+        /// <summary>Method-call syntax is the engine's HED1003 on every input; the build error carries the
+        /// engine's static sentence.</summary>
+        [Fact]
+        public void MethodCallSyntax_IsRefusedByBothTiers()
+        {
+            AssertBothTiersReject("guard/method-call.heddle", "Name.Trim()",
+                HeddleDiagnosticIds.MethodCallNotAvailable);
+        }
+
+        /// <summary>A logical operand that is not exactly bool — the engine names the first offender.</summary>
+        [Fact]
+        public void NonBoolLogicalOperand_IsRefusedByBothTiers()
+        {
+            AssertBothTiersReject("guard/logical-non-bool.heddle", "Count && Count",
+                HeddleDiagnosticIds.LogicalOperatorRequiresBool);
+        }
+
+        /// <summary>The pairing the engine's promotion table has no entry for: <c>ulong</c> against a signed
+        /// operand, in the path-meets-path and path-meets-literal shapes.</summary>
+        [Fact]
+        public void UlongMeetingASignedOperand_IsRefusedByBothTiers()
+        {
+            AssertBothTiersReject("guard/ulong-signed.heddle", "Huge + Count",
+                HeddleDiagnosticIds.BinaryOperatorNotDefined);
+            AssertBothTiersReject("guard/ulong-signed-literal.heddle", "Huge - 1",
+                HeddleDiagnosticIds.BinaryOperatorNotDefined);
+        }
+
+        /// <summary>A native-expression path CROSSING a <c>dynamic</c> member is the engine's HED1004 — the
+        /// shared member walk answers DynamicHop on both tiers, and the native tier refuses that answer where
+        /// the member tier would read on through the DLR.</summary>
+        [Fact]
+        public void DynamicMemberCrossing_IsRefusedByBothTiers()
+        {
+            AssertBothTiersReject("guard/dynamic-crossing.heddle", "Meta.Length + 1",
+                HeddleDiagnosticIds.TypedModelRequired);
         }
 
         /// <summary>String concatenation with an enum or user-typed operand now emits the engine's exact
@@ -374,14 +440,14 @@ namespace Heddle.Generator.IntegrationTests
         }
 
         [Fact]
-        public void TernaryWithANonBoolCondition_DegradesInsteadOfEmitting()
+        public void TernaryWithANonBoolCondition_IsRefusedByBothTiers()
         {
             AssertBothTiersReject("guard/ternary-cond.heddle", "Count ? \"a\" : \"b\"",
                 HeddleDiagnosticIds.TernaryConditionNotBool);
         }
 
         [Fact]
-        public void TernaryWithUnrelatedArms_DegradesInsteadOfEmitting()
+        public void TernaryWithUnrelatedArms_IsRefusedByBothTiers()
         {
             AssertBothTiersReject("guard/ternary-arms.heddle", "Count > 0 ? Name : Count",
                 HeddleDiagnosticIds.TernaryArmsNoCommonType);

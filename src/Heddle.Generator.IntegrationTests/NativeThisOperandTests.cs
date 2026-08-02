@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using Heddle.Data;
 using Heddle.Generator.IntegrationTests.Fixtures;
 using Microsoft.CodeAnalysis;
@@ -64,28 +65,34 @@ namespace Heddle.Generator.IntegrationTests
         }
 
         /// <summary>
-        /// The body with no static model, which is where the operand rule and the passthrough rule visibly part.
-        /// The engine refuses the whole template — a native expression needs a typed model — so there is nothing to
-        /// reproduce and the emitter degrades; the degraded template meets that same refusal on the tier that
-        /// renders it. Emitting anything here would be the generator claiming a model local it was never given.
+        /// The body whose model is DECLARED dynamic, which is where the operand rule and the passthrough rule
+        /// visibly part. The directive pins the engine's scope dynamic on every compile — it overrides a
+        /// caller-supplied model type — so the engine refuses the expression with HED1004 on every input, and the
+        /// generator forwards that same id and sentence as a build error while the template still degrades.
+        /// A template that merely LACKS a model declaration keeps degrading silently instead: the engine types it
+        /// from whatever CompileContext the host supplies, so no refusal is proven there.
         /// </summary>
         [Theory]
         [InlineData("argument", "[@upper(this)]")]
         [InlineData("hop", "[@(this.Title)]")]
         [InlineData("operand", "[@(this + \"!\")]")]
-        public void AThisOperandUnderADynamicModelDegradesWhereTheEngineRefuses(string name, string body)
+        [InlineData("path-operand", "[@(Title + \"!\")]")]
+        public void AThisOperandUnderADeclaredDynamicModelIsRefusedByBothTiers(string name, string body)
         {
             var key = "this-operand/dynamic-" + name + ".heddle";
             var content = "@model(){{dynamic}}@\\\n" + body + "\n";
             var gen = DifferentialHarness.Generate(new[] { (key, content) });
 
-            Assert.DoesNotContain(gen.Diagnostics, d => d.Severity == DiagnosticSeverity.Error);
-            DifferentialHarness.ExpectDegrade(gen, key);
-
             var compiled = new HeddleTemplate(content, new Runtime.CompileContext(new TemplateOptions(), ExType.Dynamic));
             Assert.False(compiled.CompileResult.Success);
-            Assert.Contains(compiled.CompileResult.ErrorList,
-                e => e.DiagnosticId == HeddleDiagnosticIds.TypedModelRequired);
+            var engineError = compiled.CompileResult.ErrorList
+                .First(e => e.DiagnosticId == HeddleDiagnosticIds.TypedModelRequired);
+
+            var forwarded = Assert.Single(gen.Diagnostics,
+                d => d.Id == HeddleDiagnosticIds.TypedModelRequired);
+            Assert.Equal(DiagnosticSeverity.Error, forwarded.Severity);
+            Assert.Equal(engineError.Error, forwarded.GetMessage());
+            DifferentialHarness.ExpectDegrade(gen, key);
         }
 
         /// <summary>

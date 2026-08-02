@@ -263,8 +263,11 @@ Native expressions match C# except for a small, deliberate set of ergonomic choi
 
 Every diagnostic the native tier raises. All are **compile-time** and positioned at the offending
 construct, so none of them can reach render. The build tier raises the same id for the same input —
-that is the match requirement — and where it cannot prove the refusal it degrades the call to the
-dynamic tier instead of guessing.
+that is the match requirement: wherever the generator can **prove** the refusal, `HED1003`, `HED1004`,
+`HED1005`, `HED1007`, `HED1008`, `HED1009`, `HED1010`, `HED1011` and `HED1018` also fire at **build**
+as errors forwarded from the generator, carrying the engine's own sentence at the `.heddle` position.
+Where it cannot prove the refusal it degrades the call to the dynamic tier instead of guessing, and
+the template meets the engine's verdict at runtime.
 
 | ID | Severity | Raised when |
 | --- | --- | --- |

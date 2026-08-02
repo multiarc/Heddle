@@ -238,6 +238,13 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
         /// while the engine promotes to <c>long</c> — which the writer now spells as a cast on both arms.</summary>
         public uint Unsigned { get; set; }
 
+        /// <summary>The pairing the promotion table has no entry for: <c>ulong</c> against any signed operand.</summary>
+        public ulong Huge { get; set; }
+
+        /// <summary>A <c>dynamic</c> member: a native-expression path crossing it refuses on both tiers, where
+        /// the member tier would read it through the DLR.</summary>
+        public dynamic Meta { get; set; }
+
         public Label Tag { get; set; }
 
         public Manufacturer Maker { get; set; }
