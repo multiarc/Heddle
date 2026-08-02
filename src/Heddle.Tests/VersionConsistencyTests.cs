@@ -178,6 +178,17 @@ namespace Heddle.Tests
                     continue;
 
                 var text = File.ReadAllText(project);
+                // A project may state its signing in a shared local props file — the multi-Roslyn generator
+                // variants import Heddle.Generator.Common.props — so literal same-directory imports are
+                // inlined before a project is declared unsigned. Imports spelled through MSBuild properties
+                // are skipped: nothing signing-related hides behind one.
+                foreach (Match import in Regex.Matches(text, @"<Import\s+Project=""(?<p>[^""$]+)"""))
+                {
+                    var imported = Path.Combine(Path.GetDirectoryName(project), import.Groups["p"].Value);
+                    if (File.Exists(imported))
+                        text += File.ReadAllText(imported);
+                }
+
                 if (!Regex.IsMatch(text, @"<SignAssembly>\s*true\s*</SignAssembly>") ||
                     !text.Contains("heddle.snk"))
                     unsigned.Add(relative);

@@ -121,6 +121,24 @@ namespace Heddle.Generator.Emit
         public IReadOnlyList<(string Name, Heddle.Strings.Core.BlockPosition Position, string Display)>
             UnnameableFunctionCalls => _unnameableCalls;
 
+        /// <summary>Constant divisions and modulos with a zero divisor the fold refused, each with the
+        /// offending operator's position and lexeme. Drained by the emitter and reported as the engine's own
+        /// <b>HED1018</b> forwarded, not as a HED7xxx twin: the build tier re-derives a fact the engine also
+        /// refuses at compile time, and one fact carries one id on both tiers.</summary>
+        public IReadOnlyList<(Heddle.Strings.Core.BlockPosition Position, string Operator)>
+            DivisionsByConstantZero => _divisionsByZero;
+
+        private readonly List<(Heddle.Strings.Core.BlockPosition Position, string Operator)> _divisionsByZero =
+            new List<(Heddle.Strings.Core.BlockPosition, string)>();
+
+        /// <summary>When a fold rejection is (or contains) a constant division by zero, records the innermost
+        /// offending site for the drain. Other rejection causes stay the silent degrade they always were.</summary>
+        private void RecordDivisionByConstantZero(ExprNode node)
+        {
+            if (ConstantFolding.TryFindDivisionByConstantZero(node, out var site))
+                _divisionsByZero.Add((site.Position, OperatorLexeme.ForBinary(site.Operator)));
+        }
+
         /// <summary>The shared ranker's descriptor for what a function call returns, for callers that have to type a
         /// call-site value without emitting it. <c>Unknown</c> where the ranker refuses or the name is neither a
         /// built-in nor an export — the caller's "cannot say".</summary>
@@ -418,7 +436,10 @@ namespace Heddle.Generator.Emit
             if (op == null)
                 return null;
             if (ConstantFolding.CompilerWouldReject(node))
+            {
+                RecordDivisionByConstantZero(node);
                 return null;
+            }
             var operand = Write(node.Operand);
             if (operand == null)
                 return null;
@@ -432,11 +453,15 @@ namespace Heddle.Generator.Emit
             var op = OperatorLexeme.ForBinary(node.Operator);
             if (op == null)
                 return null;
-            // Degrade rather than emit something the host's compiler will reject: the engine discovers a constant
-            // divide-by-zero or overflow when it renders, C# refuses to build it at all, and the tier whose behaviour
-            // is the contract is the one that renders.
+            // Degrade rather than emit something the host's compiler will reject. For a constant division by
+            // zero the degrade is no longer the whole story: the engine now refuses it at compile time too
+            // (HED1018), so the writer records the site and the emitter forwards the engine's id as a build
+            // error — one fact, one id, both tiers.
             if (ConstantFolding.CompilerWouldReject(node))
+            {
+                RecordDivisionByConstantZero(node);
                 return null;
+            }
             if (TierPromotionEscapes(node.Left, node.Right) || TierPromotionEscapes(node.Right, node.Left))
                 return null;
             var left = Write(node.Left);

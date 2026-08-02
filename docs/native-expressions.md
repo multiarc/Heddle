@@ -283,6 +283,7 @@ dynamic tier instead of guessing.
 | `HED1015` | error | A composite `format` literal references an argument index beyond the supplied count. |
 | `HED1016` | warning | A standalone `@name(...)` resolved to an extension that shadows a registered function of the same name. Write `@( name(...) )` to reach the function. |
 | `HED1017` | error | A standalone registry hit was given a chain or C#‑parameter shape rather than a single expression. |
+| `HED1018` | error | An integral or `decimal` `/` or `%` over **constant** operands whose divisor is zero — `@(1/0)`, `@(1%(1&0))`, `@(1.0m/0m)`. Rendering could only throw `DivideByZeroException`, so the expression fails the compile instead, **on both tiers**: the engine raises it and the generator forwards the same id as a build error. Scoped exactly as C# scopes `CS0020` — floating‑point stays legal (`@(1.0/0)` renders `∞`), and a runtime divisor that happens to be zero still throws at render. |
 
 A member‑path segment that fails resolution is **`HED0001`**, not a `HED1xxx`: the member tier is
 shared with the C# tier and the dynamic path, so its diagnostic is shared too. It fires when a segment

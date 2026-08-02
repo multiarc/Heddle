@@ -85,7 +85,12 @@ namespace Heddle.Tests
         {
             foreach (var row in HeddleDiagnosticCatalog.All)
             {
-                var consumed = row.Id.StartsWith("HED70", StringComparison.Ordinal);
+                // HED1018 is runtime-raised AND carries a format: the generator FORWARDS the id as a build
+                // error (the same-fact-same-id registry rule) and formats the same sentence, which is exactly
+                // the second-consumer condition this column is scoped to.
+                var consumed = row.Id.StartsWith("HED70", StringComparison.Ordinal) ||
+                               string.Equals(row.Id, HeddleDiagnosticIds.DivisionByConstantZero,
+                                   StringComparison.Ordinal);
                 Assert.True(consumed == (row.MessageFormat != null),
                     row.Id + (consumed
                         ? " is projected to a Roslyn descriptor and must carry its MessageFormat"

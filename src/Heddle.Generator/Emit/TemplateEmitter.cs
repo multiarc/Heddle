@@ -3374,7 +3374,28 @@ namespace Heddle.Generator.Emit
                     _diagnostics.Add(new EmitDiagnostic(GeneratorDiagnostics.FunctionCallNotBindable,
                         call.Position, call.Detail, call.RuntimeDiagnosticId));
             }
+
+            // HED1018, FORWARDED: the writer proved a constant division by zero — the very fact the engine
+            // refuses at compile time under this id — so the build error carries the engine's id and its
+            // catalog sentence rather than a build-tier twin. The template still degrades (the entry is never
+            // emitted), which no longer matters: the error fails the build the way the engine's does.
+            foreach (var division in writer.DivisionsByConstantZero)
+            {
+                var seenKey = division.Operator + "@" + division.Position.StartIndex;
+                if (_seenZeroDivisions.Add(seenKey))
+                {
+                    HeddleDiagnosticCatalog.TryGet(HeddleDiagnosticIds.DivisionByConstantZero, out var info);
+                    _diagnostics.Add(new EmitDiagnostic(
+                        GeneratorDiagnostics.Forwarded(HeddleDiagnosticIds.DivisionByConstantZero,
+                            isWarning: false),
+                        division.Position,
+                        string.Format(System.Globalization.CultureInfo.InvariantCulture, info.MessageFormat,
+                            division.Operator)));
+                }
+            }
         }
+
+        private readonly HashSet<string> _seenZeroDivisions = new HashSet<string>(System.StringComparer.Ordinal);
 
         private readonly HashSet<string> _seenMemberFailures = new HashSet<string>(System.StringComparer.Ordinal);
 

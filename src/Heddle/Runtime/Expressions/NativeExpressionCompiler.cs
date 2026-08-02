@@ -656,6 +656,22 @@ namespace Heddle.Runtime.Expressions
                 var target = lifted ? typeof(Nullable<>).MakeGenericType(promoted) : promoted;
                 var l = ConvertTo(left, target);
                 var r = ConvertTo(right, target);
+
+                // HED1018: an integral or decimal division/modulo over CONSTANT operands with a zero divisor can
+                // only ever throw, so it fails the compile instead of arming a render-time DivideByZeroException.
+                // Scoped exactly the way C# scopes CS0020 — the whole expression constant, floating point excluded
+                // (1.0/0 folds to Infinity), a runtime divisor left to throw at render — and to what the build
+                // tier's ConstantFolding refuses, so the two tiers keep one verdict for one expression.
+                if ((node.Operator == ExprOperator.Divide || node.Operator == ExprOperator.Modulo) &&
+                    (NumericPromotion.IsIntegral(promoted) || promoted == typeof(decimal)) &&
+                    IsConstantSubtree(node.Left) && IsConstantSubtree(node.Right) && DivisorIsZero(r, promoted))
+                {
+                    HeddleDiagnosticCatalog.TryGet(HeddleDiagnosticIds.DivisionByConstantZero, out var info);
+                    return Fail(node.Position, HeddleDiagnosticIds.DivisionByConstantZero,
+                        string.Format(CultureInfo.InvariantCulture, info.MessageFormat,
+                            OperatorLexeme.ForBinary(node.Operator)));
+                }
+
                 return ArithmeticFactory(node.Operator, l, r);
             }
 
@@ -666,6 +682,45 @@ namespace Heddle.Runtime.Expressions
             catch (InvalidOperationException)
             {
                 return FailBinary(node, left.Type, right.Type);
+            }
+        }
+
+        /// <summary>Whether the node is a constant expression in C#'s sense — the same closure the build tier's
+        /// <c>ConstantFolding</c> walks: literals composed by unary, binary and conditional operators. Paths,
+        /// props and function calls are never constant, whatever they would evaluate to.</summary>
+        private static bool IsConstantSubtree(ExprNode node)
+        {
+            switch (node)
+            {
+                case LiteralNode _:
+                    return true;
+                case UnaryNode unary:
+                    return IsConstantSubtree(unary.Operand);
+                case BinaryNode binary:
+                    return IsConstantSubtree(binary.Left) && IsConstantSubtree(binary.Right);
+                case TernaryNode ternary:
+                    return IsConstantSubtree(ternary.Condition) && IsConstantSubtree(ternary.WhenTrue) &&
+                           IsConstantSubtree(ternary.WhenFalse);
+                default:
+                    return false;
+            }
+        }
+
+        /// <summary>Evaluates a constant divisor the way the whole-tree fold at the top of
+        /// <see cref="Compile"/> evaluates constants — by executing it — and asks whether it is the promoted
+        /// type's zero. Only reached for side-effect-free constant subtrees; anything that goes wrong answers
+        /// "not zero" and leaves the fault to render time, which was the behaviour before this check existed.</summary>
+        private static bool DivisorIsZero(Expression divisor, Type promoted)
+        {
+            try
+            {
+                var value = Expression.Lambda<Func<object>>(Expression.Convert(divisor, typeof(object)))
+                    .Compile()();
+                return value != null && value.Equals(Activator.CreateInstance(promoted));
+            }
+            catch (Exception)
+            {
+                return false;
             }
         }
 
