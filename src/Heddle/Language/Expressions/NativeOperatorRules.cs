@@ -26,8 +26,11 @@ namespace Heddle.Language.Expressions
     {
         #region Binary
 
-        /// <summary>Classifies <paramref name="op"/> in binary position over the two operand kinds.</summary>
-        public static OperatorVerdict Classify(ExprOperator op, in OperandKind left, in OperandKind right)
+        /// <summary>Classifies <paramref name="op"/> in binary position over the two operand kinds.
+        /// <paramref name="relation"/> is the caller-computed type relation (see <see cref="TypeRelation"/>);
+        /// only <c>??</c> consults it, and <see cref="TypeRelation.Unknown"/> is always a safe default.</summary>
+        public static OperatorVerdict Classify(ExprOperator op, in OperandKind left, in OperandKind right,
+            TypeRelation relation = TypeRelation.Unknown)
         {
             if (left.Category == OperandCategory.Unknown || right.Category == OperandCategory.Unknown)
                 return OperatorVerdict.RequiresRuntimeSemantics;
@@ -59,7 +62,7 @@ namespace Heddle.Language.Expressions
                 case ExprOperator.OrElse:
                     return ClassifyLogical(left, right);
                 case ExprOperator.Coalesce:
-                    return ClassifyCoalesce(left, right);
+                    return ClassifyCoalesce(left, right, relation);
                 default:
                     // A unary-only operator in binary position: never emitted.
                     return OperatorVerdict.NotDefined;
@@ -112,8 +115,7 @@ namespace Heddle.Language.Expressions
             if (left.Category == OperandCategory.Unknown || right.Category == OperandCategory.Unknown)
                 return OperatorVerdict.RequiresRuntimeSemantics;
 
-            // The engine gates a shift on integral operands BEFORE any factory runs — no user-operator
-            // fallback exists — so a reference or user struct is HED1008 on every input, whatever it declares.
+            // The engine gates shifts on integral operands before any factory runs — HED1008 on every input.
             if (MayCarryUserOperator(left) || MayCarryUserOperator(right))
                 return OperatorVerdict.NotDefined;
 
@@ -132,14 +134,11 @@ namespace Heddle.Language.Expressions
 
         private static OperatorVerdict ClassifyRelational(in OperandKind left, in OperandKind right)
         {
-            // Unknown has no facts; a reference or user struct may carry a user-defined comparison operator
-            // (with ANY partner type, an enum included) and the engine's relational tail binds it.
             if (IsUndecidable(left) || IsUndecidable(right))
                 return OperatorVerdict.RequiresRuntimeSemantics;
 
-            // Both sides BCL-shaped from here. Enums have no relational operator anywhere the engine looks —
-            // LINQ's arithmetic comparisons exclude enums and an enum type cannot declare one — so every enum
-            // pairing is the engine's HED1008, matched rather than degraded.
+            // Both sides BCL-shaped here, and enums have no relational operator anywhere the engine looks —
+            // every enum pairing is HED1008.
             if (left.Category == OperandCategory.Enum || right.Category == OperandCategory.Enum)
                 return OperatorVerdict.NotDefined;
 
@@ -161,8 +160,7 @@ namespace Heddle.Language.Expressions
             bool leftNull = left.Category == OperandCategory.NullLiteral;
             bool rightNull = right.Category == OperandCategory.NullLiteral;
             if (leftNull && rightNull)
-                // The engine folds this to a constant (Expression.Constant(op)); the writer spells that
-                // exact constant — 'true' for '==', 'false' for '!=' — so C#'s null-literal rules never run.
+                // The engine folds this to a constant; the writer spells that constant.
                 return OperatorVerdict.Supported;
             if (leftNull || rightNull)
             {
@@ -200,13 +198,20 @@ namespace Heddle.Language.Expressions
             if (left.IsNullAssignable && right.IsNullAssignable)
                 return OperatorVerdict.Supported;
 
-            // From here at least one side is a non-nullable value type. An enum pair stays runtime-owned:
-            // the SAME enum type binds LINQ's enum equality arm while a different type is HED1008, and the
-            // descriptor carries no identity to tell them apart. A pair touching a reference or user struct
-            // stays runtime-owned too — it may declare an equality operator taking the partner. Every other
-            // BCL-shaped pair is a guaranteed HED1008: no user operator can exist between two primitives.
+            // At least one side is a non-nullable value type from here. Same-enum-same-nullability binds the
+            // engine's enum equality (C#'s own '=='); mismatched nullability never lifts outside the numeric
+            // path, and a different enum type is HED1008 on every input.
             if (left.Category == OperandCategory.Enum && right.Category == OperandCategory.Enum)
-                return OperatorVerdict.RequiresRuntimeSemantics;
+            {
+                if (OperandKind.KnownSameType(left, right))
+                    return left.IsNullable == right.IsNullable
+                        ? OperatorVerdict.Supported
+                        : OperatorVerdict.NotDefined;
+                return OperandKind.KnownDifferentType(left, right)
+                    ? OperatorVerdict.NotDefined
+                    : OperatorVerdict.RequiresRuntimeSemantics;
+            }
+
             if (MayCarryUserOperator(left) || MayCarryUserOperator(right))
                 return OperatorVerdict.RequiresRuntimeSemantics;
             return OperatorVerdict.NotDefined;
@@ -236,9 +241,8 @@ namespace Heddle.Language.Expressions
             if (left.Category == OperandCategory.Unknown || right.Category == OperandCategory.Unknown)
                 return OperatorVerdict.RequiresRuntimeSemantics;
 
-            // The engine's bitwise visitor has exactly three arms — matched bools, one enum type,
-            // integrals — and no user-operator fallback at all: a reference or user struct is HED1008 on
-            // every input, whatever the partner and whatever it declares.
+            // The bitwise visitor has no user-operator fallback — a reference or user struct is HED1008
+            // on every input.
             if (MayCarryUserOperator(left) || MayCarryUserOperator(right))
                 return OperatorVerdict.NotDefined;
 
@@ -253,7 +257,14 @@ namespace Heddle.Language.Expressions
             bool leftEnum = left.Category == OperandCategory.Enum;
             bool rightEnum = right.Category == OperandCategory.Enum;
             if (leftEnum && rightEnum)
-                return OperatorVerdict.RequiresRuntimeSemantics;   // Same-enum bitwise is runtime-owned.
+            {
+                // Same enum type is C#'s lifted enum operator exactly; a different one is HED1008 on every input.
+                if (OperandKind.KnownSameType(left, right))
+                    return OperatorVerdict.Supported;
+                return OperandKind.KnownDifferentType(left, right)
+                    ? OperatorVerdict.NotDefined
+                    : OperatorVerdict.RequiresRuntimeSemantics;
+            }
             // Mixed enum forms — including the `enum & 0` special case C# carries — are not emittable.
             if (leftEnum || rightEnum)
                 return OperatorVerdict.NotDefined;
@@ -274,35 +285,57 @@ namespace Heddle.Language.Expressions
         {
             if (left.Category == OperandCategory.Unknown || right.Category == OperandCategory.Unknown)
                 return OperatorVerdict.RequiresRuntimeSemantics;
-            // The engine demands exactly bool — no op_true, no implicit conversion is consulted — so every
-            // non-bool operand (references and user structs included) is HED1005 on every input.
+            // The engine demands exactly bool — no op_true, no implicit conversion — HED1005 for the rest.
             if (left.Category != OperandCategory.Bool || right.Category != OperandCategory.Bool)
                 return OperatorVerdict.NotDefined;
             // Nullable bool degrades rather than using C#'s lifted form.
             return left.IsNullable || right.IsNullable ? OperatorVerdict.NotDefined : OperatorVerdict.Supported;
         }
 
-        private static OperatorVerdict ClassifyCoalesce(in OperandKind left, in OperandKind right)
+        private static OperatorVerdict ClassifyCoalesce(in OperandKind left, in OperandKind right,
+            TypeRelation relation)
         {
             if (left.Category == OperandCategory.NullLiteral)
-                // The engine coalesces a typed object null against ANY right operand — a boxing or reference
-                // conversion to object always exists — and the whole expression is just the right operand
-                // boxed. The writer spells exactly that: ((object)(right)). The result type is object, which
-                // CoalesceResult reports as Unknown so no parent overclaims it.
+                // 'null ?? x' is the right operand boxed to object on the engine; the writer spells that cast.
                 return OperatorVerdict.Supported;
             if (!left.IsNullAssignable)
                 return OperatorVerdict.NotDefined;   // '??' needs a reference or Nullable<T> left operand
-            if (IsUndecidable(left) || IsUndecidable(right))
+            if (left.Category == OperandCategory.Unknown || right.Category == OperandCategory.Unknown)
                 return OperatorVerdict.RequiresRuntimeSemantics;
 
             if (right.Category == OperandCategory.NullLiteral)
                 return OperatorVerdict.Supported;    // Coalesce(x, null-of-x's-type) on both sides
 
-            // Enum operands keep the one genuinely runtime-owned case: a nullable enum coalescing its own
-            // enum type works on the engine and a different enum throws, and the descriptor carries no
-            // identity to tell the two apart.
+            // A nullable enum coalescing its own type is verbatim on both tiers; a different enum type has
+            // no conversion anywhere the engine looks — HED1007 on every input. Enum-against-other-category
+            // stays runtime-owned.
             if (left.Category == OperandCategory.Enum || right.Category == OperandCategory.Enum)
+            {
+                if (left.Category == OperandCategory.Enum && right.Category == OperandCategory.Enum)
+                {
+                    if (OperandKind.KnownSameType(left, right))
+                        return OperatorVerdict.Supported;
+                    if (OperandKind.KnownDifferentType(left, right))
+                        return OperatorVerdict.NotDefined;
+                }
                 return OperatorVerdict.RequiresRuntimeSemantics;
+            }
+
+            // Identical or reference-widening pairs coalesce to the same object on both tiers. Anything
+            // else stays runtime-owned: Expression.Coalesce's conversion search is wider than the
+            // descriptor can see, so no NotDefined claim is safe here.
+            if (MayCarryUserOperator(left) || MayCarryUserOperator(right))
+            {
+                switch (relation)
+                {
+                    case TypeRelation.Identical:
+                    case TypeRelation.LeftWidensToRight:
+                    case TypeRelation.RightWidensToLeft:
+                        return OperatorVerdict.Supported;
+                    default:
+                        return OperatorVerdict.RequiresRuntimeSemantics;
+                }
+            }
 
             if (left.Category == OperandCategory.String)
                 return right.Category == OperandCategory.String
@@ -341,16 +374,14 @@ namespace Heddle.Language.Expressions
             if (operand.Category == OperandCategory.Unknown)
                 return OperatorVerdict.RequiresRuntimeSemantics;
 
-            // The engine's unary visitor has no user-operator fallback: every arm gates on bool/numeric/enum
-            // shape and refuses the rest with HED1009, so a reference or user struct never binds.
+            // The unary visitor has no user-operator fallback — HED1009 for references and user structs.
             if (MayCarryUserOperator(operand))
                 return OperatorVerdict.NotDefined;
 
             if (operand.Category == OperandCategory.Enum)
             {
-                // '~' is the one unary the engine defines on enums — complement over the underlying type,
-                // converted back to the operand's own (nullable) enum type — and C#'s enum '~' is
-                // byte-identical, lifted included. '!', '-' and '+' on an enum are HED1009 on every input.
+                // '~' is the one unary the engine defines on enums, and C#'s enum '~' is byte-identical,
+                // lifted included; '!', '-' and '+' are HED1009 on every input.
                 return op == ExprOperator.OnesComplement
                     ? OperatorVerdict.Supported
                     : OperatorVerdict.NotDefined;
@@ -359,7 +390,6 @@ namespace Heddle.Language.Expressions
             switch (op)
             {
                 case ExprOperator.Not:
-                    // C#'s lifted '!' on bool? is the engine's lifted Expression.Not — null in, null out.
                     return operand.Category == OperandCategory.Bool
                         ? OperatorVerdict.Supported
                         : OperatorVerdict.NotDefined;
@@ -396,7 +426,7 @@ namespace Heddle.Language.Expressions
         /// cannot decide: reference/Other arms (assignability needs type identity) and enum arm pairs (same
         /// enum unifies trivially, different enums error, and no identity tells them apart).</summary>
         public static OperatorVerdict ClassifyTernary(in OperandKind condition, in OperandKind whenTrue,
-            in OperandKind whenFalse)
+            in OperandKind whenFalse, TypeRelation armRelation = TypeRelation.Unknown)
         {
             if (condition.Category == OperandCategory.Unknown)
                 return OperatorVerdict.RequiresRuntimeSemantics;
@@ -417,8 +447,26 @@ namespace Heddle.Language.Expressions
                 return other.IsNullAssignable ? OperatorVerdict.Supported : OperatorVerdict.NotDefined;
             }
 
-            if (IsUndecidable(whenTrue) || IsUndecidable(whenFalse))
+            if (whenTrue.Category == OperandCategory.Unknown || whenFalse.Category == OperandCategory.Unknown)
                 return OperatorVerdict.RequiresRuntimeSemantics;
+
+            // The engine's arm unifier takes identical types untouched, unifies reference pairs along raw
+            // assignability (never user-defined conversions), and refuses every other pair — which is what
+            // licenses the None -> NotDefined claim.
+            if (MayCarryUserOperator(whenTrue) || MayCarryUserOperator(whenFalse))
+            {
+                switch (armRelation)
+                {
+                    case TypeRelation.Identical:
+                    case TypeRelation.LeftWidensToRight:
+                    case TypeRelation.RightWidensToLeft:
+                        return OperatorVerdict.Supported;
+                    case TypeRelation.None:
+                        return OperatorVerdict.NotDefined;
+                    default:
+                        return OperatorVerdict.RequiresRuntimeSemantics;
+                }
+            }
 
             if (whenTrue.Category == OperandCategory.Numeric && whenFalse.Category == OperandCategory.Numeric)
             {
@@ -433,7 +481,14 @@ namespace Heddle.Language.Expressions
                 return OperatorVerdict.Supported;
 
             if (whenTrue.Category == OperandCategory.Enum && whenFalse.Category == OperandCategory.Enum)
-                return OperatorVerdict.RequiresRuntimeSemantics;
+            {
+                // Same enum type unifies verbatim (the T/T? pairing included); a different one is HED1007.
+                if (OperandKind.KnownSameType(whenTrue, whenFalse))
+                    return OperatorVerdict.Supported;
+                return OperandKind.KnownDifferentType(whenTrue, whenFalse)
+                    ? OperatorVerdict.NotDefined
+                    : OperatorVerdict.RequiresRuntimeSemantics;
+            }
 
             // Every remaining mix is a value pair the engine's unification refuses with HED1007.
             return OperatorVerdict.NotDefined;
@@ -446,9 +501,10 @@ namespace Heddle.Language.Expressions
         /// <summary>The kind of the value a <see cref="OperatorVerdict.Supported"/> binary emission produces, or
         /// <see cref="OperandKind.Unknown"/> when the operator would not be emitted at all — so a sub-expression the
         /// guard refuses can never contribute a kind that makes its parent emittable.</summary>
-        public static OperandKind BinaryResult(ExprOperator op, in OperandKind left, in OperandKind right)
+        public static OperandKind BinaryResult(ExprOperator op, in OperandKind left, in OperandKind right,
+            TypeRelation relation = TypeRelation.Unknown)
         {
-            if (Classify(op, left, right) != OperatorVerdict.Supported)
+            if (Classify(op, left, right, relation) != OperatorVerdict.Supported)
                 return OperandKind.Unknown;
 
             bool lifted = left.IsNullable || right.IsNullable;
@@ -485,18 +541,21 @@ namespace Heddle.Language.Expressions
                 case ExprOperator.Or:
                     if (left.Category == OperandCategory.Bool)
                         return OperandKind.Of(OperandCategory.Bool, lifted);
+                    if (left.Category == OperandCategory.Enum)
+                        return OperandKind.Of(OperandCategory.Enum, lifted, left.TypeIdentity);
                     NumericTable.TryPromote(left.Kind, right.Kind, out var bitwise);
                     return OperandKind.Numeric(bitwise, lifted);
 
                 case ExprOperator.Coalesce:
-                    return CoalesceResult(left, right);
+                    return CoalesceResult(left, right, relation);
 
                 default:
                     return OperandKind.Unknown;
             }
         }
 
-        private static OperandKind CoalesceResult(in OperandKind left, in OperandKind right)
+        private static OperandKind CoalesceResult(in OperandKind left, in OperandKind right,
+            TypeRelation relation)
         {
             if (left.Category == OperandCategory.NullLiteral)
                 return OperandKind.Unknown;   // 'null ?? x' is the right operand boxed — the type is object
@@ -506,6 +565,22 @@ namespace Heddle.Language.Expressions
                 return OperandKind.Of(OperandCategory.String);
             if (left.Category == OperandCategory.Bool)
                 return OperandKind.Of(OperandCategory.Bool, right.IsNullable);
+            if (left.Category == OperandCategory.Enum)
+                return OperandKind.Of(OperandCategory.Enum, right.IsNullable, left.TypeIdentity);
+            if (left.Category == OperandCategory.Reference || left.Category == OperandCategory.Other)
+            {
+                switch (relation)
+                {
+                    case TypeRelation.Identical:
+                        return OperandKind.Of(left.Category, right.IsNullable, left.TypeIdentity);
+                    case TypeRelation.LeftWidensToRight:
+                        return right;
+                    case TypeRelation.RightWidensToLeft:
+                        return left;
+                    default:
+                        return OperandKind.Unknown;
+                }
+            }
             if (left.Category != OperandCategory.Numeric)
                 return OperandKind.Unknown;
             if (left.Kind == right.Kind)
@@ -559,9 +634,10 @@ namespace Heddle.Language.Expressions
         /// yields the other arm's kind; equal numeric kinds keep their own kind (the engine's unifier returns
         /// equal types untouched, so a char pair stays char and renders as a character); differing numeric
         /// kinds take the engine's promotion, lifted when either arm is; a bool pair lifts likewise.</summary>
-        public static OperandKind TernaryResult(in OperandKind whenTrue, in OperandKind whenFalse)
+        public static OperandKind TernaryResult(in OperandKind whenTrue, in OperandKind whenFalse,
+            TypeRelation armRelation = TypeRelation.Unknown)
         {
-            if (ClassifyTernary(OperandKind.Of(OperandCategory.Bool), whenTrue, whenFalse) !=
+            if (ClassifyTernary(OperandKind.Of(OperandCategory.Bool), whenTrue, whenFalse, armRelation) !=
                 OperatorVerdict.Supported)
                 return OperandKind.Unknown;
 
@@ -581,16 +657,26 @@ namespace Heddle.Language.Expressions
 
             if (whenTrue.Category == OperandCategory.Bool)
                 return OperandKind.Of(OperandCategory.Bool, whenTrue.IsNullable || whenFalse.IsNullable);
+            if (whenTrue.Category == OperandCategory.Enum ||
+                whenTrue.Category == OperandCategory.Other || whenFalse.Category == OperandCategory.Other ||
+                whenTrue.Category == OperandCategory.Reference ||
+                whenFalse.Category == OperandCategory.Reference)
+            {
+                if (armRelation == TypeRelation.LeftWidensToRight)
+                    return whenFalse;
+                if (armRelation == TypeRelation.RightWidensToLeft)
+                    return whenTrue;
+                return OperandKind.Of(whenTrue.Category, whenTrue.IsNullable || whenFalse.IsNullable,
+                    whenTrue.TypeIdentity);
+            }
             return whenTrue;   // String
         }
 
         #endregion
 
         /// <summary>A reference or user-struct operand may declare a user-defined operator the descriptor cannot
-        /// see — for the engine sites that BIND user operators (arithmetic, relational, equality tails), whether
-        /// the engine succeeds or refuses depends on type identity the table does not hold. The engine sites that
-        /// never consult user operators (shift, bitwise, logical, unary) refuse these operands on every input,
-        /// so there the same categories flip to <see cref="OperatorVerdict.NotDefined"/> instead.</summary>
+        /// see. Engine sites that bind user operators treat these as runtime-owned; sites that never consult
+        /// them (shift, bitwise, logical, unary) refuse these operands on every input.</summary>
         private static bool MayCarryUserOperator(in OperandKind kind)
         {
             switch (kind.Category)

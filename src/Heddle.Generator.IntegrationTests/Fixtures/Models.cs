@@ -188,6 +188,16 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
         public override string ToString() => Amount.ToString(System.Globalization.CultureInfo.InvariantCulture);
     }
 
+    public class Vehicle
+    {
+        public override string ToString() => "vehicle";
+    }
+
+    public sealed class Truck : Vehicle
+    {
+        public override string ToString() => "truck";
+    }
+
     /// <summary>Implicit conversion to string differs from <c>ToString()</c>; C#'s <c>+</c> prefers the conversion, while native rendering calls <c>ToString</c>.</summary>
     public readonly struct Label
     {
@@ -228,6 +238,10 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
 
         public Manufacturer Maker { get; set; }
         public Address Where { get; set; }
+
+        /// <summary>The widening reference pair: <c>Rig</c> implicitly reference-converts to <c>Ride</c>'s type.</summary>
+        public Vehicle Ride { get; set; }
+        public Truck Rig { get; set; }
 
         /// <summary>Visible to the typed member tier (an internal getter passes the runtime filter) but invisible to
         /// the dynamic tier's binder, which binds in <c>Heddle</c>'s context.</summary>

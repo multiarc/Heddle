@@ -156,11 +156,9 @@ namespace Heddle.Generator.IntegrationTests
             AssertBothTiersReject("guard/unary-struct.heddle", "-Total", HeddleDiagnosticIds.UnaryOperatorNotDefined);
         }
 
-        /// <summary>The no-machinery closures: shapes the shared table now emits verbatim (or as one spelled
-        /// constant/cast) because C# and the engine are provably byte-identical there — the engine's constant
-        /// <c>null == null</c>, C#'s lifted <c>!</c> on <c>bool?</c>, <c>~</c> over an enum at either
-        /// nullability (the engine converts the complement back to the operand's own type), and
-        /// <c>null ?? x</c>, which the engine evaluates as the right operand boxed to object.</summary>
+        /// <summary>Shapes the shared table emits verbatim (or as one spelled constant/cast) because C# and
+        /// the engine are provably byte-identical there: <c>null == null</c>, lifted <c>!</c> on <c>bool?</c>,
+        /// <c>~</c> over an enum at either nullability, and <c>null ?? x</c> (the right operand boxed).</summary>
         [Fact]
         public void VerbatimClosures_NowPrecompileAndMatchTheRuntime()
         {
@@ -180,6 +178,62 @@ namespace Heddle.Generator.IntegrationTests
                 var (precompiled, dyn) = DifferentialHarness.Render(key, Template(expression), typeof(Order), model);
                 Assert.Equal(dyn, precompiled);
             }
+        }
+
+        /// <summary>Shapes the shared table emits once operand type IDENTITY (and, for reference pairs, the
+        /// assignability relation) is known: same-enum bitwise/equality/coalesce/ternary, identical
+        /// reference and user-struct arms, and widening reference pairs, which pin the narrower operand
+        /// with a cast to the wider type.</summary>
+        [Fact]
+        public void TypeIdentityClosures_NowPrecompileAndMatchTheRuntime()
+        {
+            foreach (var (key, expression, model) in new[]
+            {
+                ("guard/enum-bitwise.heddle", "Flags & Flags",
+                    new Order { Flags = OrderFlags.Rush | OrderFlags.Gift }),
+                ("guard/enum-bitwise-lifted.heddle", "Flags & FlagsMaybe",
+                    new Order { Flags = OrderFlags.Rush, FlagsMaybe = OrderFlags.Rush }),
+                ("guard/enum-bitwise-lifted-null.heddle", "Flags | FlagsMaybe",
+                    new Order { Flags = OrderFlags.Rush, FlagsMaybe = null }),
+                ("guard/enum-equality.heddle", "Status == Status", new Order { Status = OrderStatus.Open }),
+                ("guard/enum-inequality.heddle", "Status != Status", new Order { Status = OrderStatus.Open }),
+                ("guard/enum-ternary.heddle", "Count > 0 ? Status : Status",
+                    new Order { Count = 1, Status = OrderStatus.Closed }),
+                ("guard/enum-coalesce.heddle", "FlagsMaybe ?? Flags",
+                    new Order { FlagsMaybe = null, Flags = OrderFlags.Gift }),
+                ("guard/enum-coalesce-value.heddle", "FlagsMaybe ?? Flags",
+                    new Order { FlagsMaybe = OrderFlags.Rush, Flags = OrderFlags.Gift }),
+                ("guard/struct-ternary-identical.heddle", "Count > 0 ? Total : Total",
+                    new Order { Count = 1, Total = new Money(2.5m) }),
+                ("guard/ref-ternary-identical.heddle", "Count > 0 ? Maker : Maker",
+                    new Order { Count = 0, Maker = new Manufacturer() }),
+                ("guard/ref-ternary-widening.heddle", "Count > 0 ? Rig : Ride",
+                    new Order { Count = 1, Rig = new Truck(), Ride = new Vehicle() }),
+                ("guard/ref-coalesce-identical.heddle", "Maker ?? Maker", new Order { Maker = null }),
+                ("guard/ref-coalesce-widening.heddle", "Rig ?? Ride",
+                    new Order { Rig = null, Ride = new Vehicle() }),
+            })
+            {
+                var (precompiled, dyn) = DifferentialHarness.Render(key, Template(expression), typeof(Order), model);
+                Assert.Equal(dyn, precompiled);
+            }
+        }
+
+        /// <summary>The identity-decided refusals: shapes the engine rejects on every input, now matched
+        /// (degrade + the engine's positioned id) instead of silently runtime-owned.</summary>
+        [Fact]
+        public void CrossTypeShapes_AreRefusedByBothTiers()
+        {
+            AssertBothTiersReject("guard/enum-eq-cross.heddle", "Status == Flags",
+                HeddleDiagnosticIds.BinaryOperatorNotDefined);
+            AssertBothTiersReject("guard/enum-bitwise-cross.heddle", "Flags & Status",
+                HeddleDiagnosticIds.BinaryOperatorNotDefined);
+            AssertBothTiersReject("guard/enum-relational.heddle", "Status < Status",
+                HeddleDiagnosticIds.BinaryOperatorNotDefined);
+            AssertBothTiersReject("guard/enum-ternary-cross.heddle", "Count > 0 ? Status : Flags",
+                HeddleDiagnosticIds.TernaryArmsNoCommonType);
+            AssertBothTiersReject("guard/ref-ternary-unrelated.heddle", "Count > 0 ? Maker : Where",
+                HeddleDiagnosticIds.TernaryArmsNoCommonType);
         }
 
         /// <summary>String concatenation with an enum or user-typed operand now emits the engine's exact

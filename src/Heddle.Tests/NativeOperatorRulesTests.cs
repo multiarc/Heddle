@@ -36,28 +36,48 @@ namespace Heddle.Tests
     /// </summary>
     public class NativeOperatorRulesTests
     {
-        private static readonly (string Expr, OperandKind Kind)[] Operands =
+        private static readonly (string Expr, OperandKind Kind, Type Clr)[] Operands =
         {
-            ("I32", OperandKind.Numeric(NumericKind.Int32, false)),
-            ("U32", OperandKind.Numeric(NumericKind.UInt32, false)),
-            ("I64", OperandKind.Numeric(NumericKind.Int64, false)),
-            ("U64", OperandKind.Numeric(NumericKind.UInt64, false)),
-            ("Dbl", OperandKind.Numeric(NumericKind.Double, false)),
-            ("Dec", OperandKind.Numeric(NumericKind.Decimal, false)),
-            ("Ch", OperandKind.Numeric(NumericKind.Char, false)),
-            ("B", OperandKind.Of(OperandCategory.Bool)),
-            ("S", OperandKind.Of(OperandCategory.String)),
-            ("NI32", OperandKind.Numeric(NumericKind.Int32, true)),
-            ("NB", OperandKind.Of(OperandCategory.Bool, true)),
-            ("E", OperandKind.Of(OperandCategory.Enum)),
-            ("NE", OperandKind.Of(OperandCategory.Enum, true)),
-            // A reference and a user struct WITHOUT user-defined operators: the rows that prove the
-            // NotDefined flips for the engine sites that never consult user operators (shift, bitwise,
-            // logical, unary), and the Supported adapter rows for the equality tail.
-            ("R", OperandKind.Of(OperandCategory.Reference)),
-            ("O", OperandKind.Of(OperandCategory.Other)),
-            ("null", OperandKind.Null),
+            ("I32", OperandKind.Numeric(NumericKind.Int32, false), typeof(int)),
+            ("U32", OperandKind.Numeric(NumericKind.UInt32, false), typeof(uint)),
+            ("I64", OperandKind.Numeric(NumericKind.Int64, false), typeof(long)),
+            ("U64", OperandKind.Numeric(NumericKind.UInt64, false), typeof(ulong)),
+            ("Dbl", OperandKind.Numeric(NumericKind.Double, false), typeof(double)),
+            ("Dec", OperandKind.Numeric(NumericKind.Decimal, false), typeof(decimal)),
+            ("Ch", OperandKind.Numeric(NumericKind.Char, false), typeof(char)),
+            ("B", OperandKind.Of(OperandCategory.Bool), typeof(bool)),
+            ("S", OperandKind.Of(OperandCategory.String), typeof(string)),
+            ("NI32", OperandKind.Numeric(NumericKind.Int32, true), typeof(int?)),
+            ("NB", OperandKind.Of(OperandCategory.Bool, true), typeof(bool?)),
+            ("E", OperandKind.Of(OperandCategory.Enum, false, "System.DayOfWeek"), typeof(DayOfWeek)),
+            ("NE", OperandKind.Of(OperandCategory.Enum, true, "System.DayOfWeek"), typeof(DayOfWeek?)),
+            // A reference and a user struct without user-defined operators, proving the verdicts for the
+            // engine sites that never consult them.
+            ("R", OperandKind.Of(OperandCategory.Reference, false, "System.Uri"), typeof(Uri)),
+            ("O", OperandKind.Of(OperandCategory.Other, false, "System.Guid"), typeof(Guid)),
+            ("null", OperandKind.Null, null),
         };
+
+        /// <summary>The test producer's <see cref="TypeRelation"/> — the engine's own unification facts,
+        /// from CLR reflection.</summary>
+        private static TypeRelation Relate(Type left, Type right)
+        {
+            if (left == null || right == null)
+                return TypeRelation.Unknown;
+            var leftU = Nullable.GetUnderlyingType(left) ?? left;
+            var rightU = Nullable.GetUnderlyingType(right) ?? right;
+            if (leftU == rightU)
+                return TypeRelation.Identical;
+            if (!leftU.IsValueType && !rightU.IsValueType)
+            {
+                if (rightU.IsAssignableFrom(leftU))
+                    return TypeRelation.LeftWidensToRight;
+                if (leftU.IsAssignableFrom(rightU))
+                    return TypeRelation.RightWidensToLeft;
+            }
+
+            return TypeRelation.None;
+        }
 
         private static readonly ExprOperator[] BinaryOperators = Enum.GetValues(typeof(ExprOperator))
             .Cast<ExprOperator>().Where(OperatorLexeme.IsBinary).ToArray();
@@ -122,13 +142,11 @@ namespace Heddle.Tests
             var reference = OperandKind.Of(OperandCategory.Reference);
             foreach (var op in new[] { ExprOperator.Equal, ExprOperator.NotEqual })
             {
-                // A non-nullable value side between BCL-shaped operands IS the engine's HED1008 — no user
-                // operator can exist between two primitives, so the verdict matches the refusal outright…
+                // A non-nullable value side between BCL-shaped operands is the engine's HED1008 outright;
+                // a user type beside it may carry an equality operator, so that pair stays runtime-owned.
                 Assert.Equal(OperatorVerdict.NotDefined, NativeOperatorRules.Classify(op, i32, str));
                 Assert.Equal(OperatorVerdict.NotDefined,
                     NativeOperatorRules.Classify(op, OperandKind.Of(OperandCategory.Enum), i32));
-                // …a user type beside that non-nullable side may carry an equality operator, so THAT pair
-                // stays runtime-owned…
                 Assert.Equal(OperatorVerdict.RequiresRuntimeSemantics,
                     NativeOperatorRules.Classify(op, i32, reference));
                 Assert.Equal(OperatorVerdict.RequiresRuntimeSemantics,
@@ -171,10 +189,14 @@ namespace Heddle.Tests
         {
             var e = OperandKind.Of(OperandCategory.Enum);
             var i32 = OperandKind.Numeric(NumericKind.Int32, false);
+            var sameEnum = OperandKind.Of(OperandCategory.Enum, false, "System.DayOfWeek");
+            var otherEnum = OperandKind.Of(OperandCategory.Enum, false, "System.ConsoleColor");
             foreach (var op in new[] { ExprOperator.And, ExprOperator.Or, ExprOperator.ExclusiveOr })
             {
                 Assert.Equal(OperatorVerdict.NotDefined, NativeOperatorRules.Classify(op, e, i32));
-                // Same-enum bitwise is legal in the native tier but stays runtime-owned until corpus-proven.
+                // Identity decides the enum pair; without it the shape stays runtime-owned.
+                Assert.Equal(OperatorVerdict.Supported, NativeOperatorRules.Classify(op, sameEnum, sameEnum));
+                Assert.Equal(OperatorVerdict.NotDefined, NativeOperatorRules.Classify(op, sameEnum, otherEnum));
                 Assert.Equal(OperatorVerdict.RequiresRuntimeSemantics, NativeOperatorRules.Classify(op, e, e));
             }
         }
@@ -281,7 +303,8 @@ namespace Heddle.Tests
                 foreach (var left in Operands)
                 foreach (var right in Operands)
                 {
-                    var verdict = NativeOperatorRules.Classify(op, left.Kind, right.Kind);
+                    var verdict = NativeOperatorRules.Classify(op, left.Kind, right.Kind,
+                        Relate(left.Clr, right.Clr));
                     if (verdict == OperatorVerdict.RequiresRuntimeSemantics)
                         continue;   // "do not emit" — claims nothing about the runtime's own outcome
                     Check(failures, $"{left.Expr} {lexeme} {right.Expr}", verdict);
@@ -308,12 +331,14 @@ namespace Heddle.Tests
             }
 
             foreach (var condition in Operands)
-            foreach (var arm in Operands)
+            foreach (var trueArm in Operands)
+            foreach (var falseArm in Operands)
             {
-                var verdict = NativeOperatorRules.ClassifyTernary(condition.Kind, arm.Kind, arm.Kind);
+                var verdict = NativeOperatorRules.ClassifyTernary(condition.Kind, trueArm.Kind, falseArm.Kind,
+                    Relate(trueArm.Clr, falseArm.Clr));
                 if (verdict == OperatorVerdict.RequiresRuntimeSemantics)
                     continue;
-                Check(failures, $"{condition.Expr} ? {arm.Expr} : {arm.Expr}", verdict);
+                Check(failures, $"{condition.Expr} ? {trueArm.Expr} : {falseArm.Expr}", verdict);
             }
 
             Assert.True(failures.Count == 0, string.Join("\n", failures));

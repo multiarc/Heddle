@@ -878,10 +878,8 @@ namespace Heddle.Runtime.Expressions
             {
                 var enumUnderlying = Enum.GetUnderlyingType(leftU);
                 var opType = lifted ? typeof(Nullable<>).MakeGenericType(enumUnderlying) : enumUnderlying;
-                // A lifted pair must produce the NULLABLE enum even when the left operand itself is not
-                // nullable: the combined value is Nullable<underlying>, and converting it to a bare enum
-                // throws at render the moment the nullable side is null. C# gives Color & Color? the type
-                // Color? and propagates the null; so does this.
+                // A lifted pair must yield the nullable enum even when only the right side is nullable —
+                // converting the Nullable<underlying> result to a bare enum throws at render on a null operand.
                 var resultType = lifted ? typeof(Nullable<>).MakeGenericType(leftU) : leftU;
                 var combined = BitwiseFactory(node.Operator, ConvertTo(left, opType), ConvertTo(right, opType));
                 return Expression.Convert(combined, resultType);
