@@ -471,7 +471,46 @@ namespace Heddle.Generator.Emit
             if (NativeOperatorRules.Classify(node.Operator, Estimate(node.Left), Estimate(node.Right)) !=
                 OperatorVerdict.Supported)
                 return null;
+            if (node.Operator == ExprOperator.LeftShift || node.Operator == ExprOperator.RightShift)
+                right = ShiftCountSpelling(right, Estimate(node.Right));
+
+            // A coalesce over numeric operands of DIFFERING kinds unifies in the ENGINE's promotion: the left
+            // converts to the promoted type lifted (it is nullable by construction — '??' demands it), the
+            // right at its own nullability. Verbatim C# would type some of these pairs differently and refuse
+            // others outright (int? ?? uint is CS0019), so the promotion is written down as casts.
+            if (node.Operator == ExprOperator.Coalesce)
+            {
+                var leftKind = Estimate(node.Left);
+                var rightKind = Estimate(node.Right);
+                if (leftKind.Category == OperandCategory.Numeric && rightKind.Category == OperandCategory.Numeric &&
+                    leftKind.Kind != rightKind.Kind)
+                {
+                    if (!NumericTable.TryPromote(leftKind.Kind, rightKind.Kind, out var promoted))
+                        return null;   // unreachable behind a Supported verdict; kept inert
+                    var keyword = KindKeyword(promoted);
+                    if (keyword == null)
+                        return null;
+                    left = "((" + keyword + "?)(" + left + "))";
+                    right = "((" + keyword + (rightKind.IsNullable ? "?" : string.Empty) + ")(" + right + "))";
+                }
+            }
+
             return "(" + left + " " + op + " " + right + ")";
+        }
+
+        /// <summary>C# accepts only an <c>int</c> (or implicitly-int) shift count; the runtime converts ANY
+        /// integral count with a truncating <c>Expression.Convert</c>. The same truncation in C# is the
+        /// <c>(int)</c> cast — the emission sits inside <c>unchecked</c>, so a wide count truncates to the
+        /// same bits the runtime keeps — lifted to <c>(int?)</c> when the count is nullable so C#'s lifted
+        /// shift carries the null through exactly as the runtime's lifted tree does. An implicitly-int count
+        /// needs no cast even when nullable: C# lifts the implicit conversion with the operator.</summary>
+        private static string ShiftCountSpelling(string count, in OperandKind kind)
+        {
+            if (kind.Category != OperandCategory.Numeric)
+                return count;   // unreachable behind a Supported shift verdict; kept inert
+            if (kind.Kind == NumericKind.Int32 || NumericTable.IsImplicit(kind.Kind, NumericKind.Int32))
+                return count;
+            return (kind.IsNullable ? "((int?)" : "((int)") + count + ")";
         }
 
         /// <summary>
@@ -519,10 +558,52 @@ namespace Heddle.Generator.Emit
             var f = Write(node.WhenFalse);
             if (c == null || t == null || f == null)
                 return null;
-            if (NativeOperatorRules.ClassifyTernary(Estimate(node.Condition), Estimate(node.WhenTrue),
-                    Estimate(node.WhenFalse)) != OperatorVerdict.Supported)
+            var tKind = Estimate(node.WhenTrue);
+            var fKind = Estimate(node.WhenFalse);
+            if (NativeOperatorRules.ClassifyTernary(Estimate(node.Condition), tKind, fKind) !=
+                OperatorVerdict.Supported)
                 return null;
+
+            // Numeric arms of DIFFERING kinds unify in the ENGINE's promotion, which is written down as an
+            // explicit cast on both arms so C#'s own conditional typing never gets a vote — it would pick the
+            // same type for most pairs and refuse int-against-uint outright (CS0173) where the engine renders
+            // long. Equal kinds are returned untouched by the engine's unifier (a char pair stays char), so
+            // they stay verbatim; so do null arms, whose type C# infers from the other arm as the engine does.
+            if (tKind.Category == OperandCategory.Numeric && fKind.Category == OperandCategory.Numeric &&
+                tKind.Kind != fKind.Kind)
+            {
+                if (!NumericTable.TryPromote(tKind.Kind, fKind.Kind, out var promoted))
+                    return null;   // unreachable behind a Supported verdict; kept inert
+                var keyword = KindKeyword(promoted);
+                if (keyword == null)
+                    return null;
+                var unified = keyword + (tKind.IsNullable || fKind.IsNullable ? "?" : string.Empty);
+                t = "((" + unified + ")(" + t + "))";
+                f = "((" + unified + ")(" + f + "))";
+            }
+
             return "(" + c + " ? " + t + " : " + f + ")";
+        }
+
+        /// <summary>The C# keyword for a numeric kind — what the unified-arm cast spells.</summary>
+        private static string KindKeyword(NumericKind kind)
+        {
+            switch (kind)
+            {
+                case NumericKind.SByte: return "sbyte";
+                case NumericKind.Byte: return "byte";
+                case NumericKind.Int16: return "short";
+                case NumericKind.UInt16: return "ushort";
+                case NumericKind.Int32: return "int";
+                case NumericKind.UInt32: return "uint";
+                case NumericKind.Int64: return "long";
+                case NumericKind.UInt64: return "ulong";
+                case NumericKind.Char: return "char";
+                case NumericKind.Single: return "float";
+                case NumericKind.Double: return "double";
+                case NumericKind.Decimal: return "decimal";
+                default: return null;
+            }
         }
 
         #region Operand-kind estimation

@@ -214,6 +214,13 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
 
         public int? Maybe { get; set; }
 
+        /// <summary>The nullable wide shift count — the lane the writer spells with a lifted <c>(int?)</c> cast.</summary>
+        public long? BigMaybe { get; set; }
+
+        /// <summary>The CS0173 ternary pair: verbatim C# refuses <c>int</c> against <c>uint</c> arms outright,
+        /// while the engine promotes to <c>long</c> — which the writer now spells as a cast on both arms.</summary>
+        public uint Unsigned { get; set; }
+
         public Label Tag { get; set; }
 
         public Manufacturer Maker { get; set; }

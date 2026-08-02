@@ -113,12 +113,11 @@ namespace Heddle.Language.Expressions
             if (!leftShiftable || !rightIntegral)
                 return OperatorVerdict.NotDefined;
 
-            // C# accepts only an int-typed (or implicitly-int) shift count and no lifted form; the runtime converts
-            // any integral count to int and lifts freely, so everything outside that intersection degrades.
-            bool countIsInt = right.Kind == NumericKind.Int32 || NumericTable.IsImplicit(right.Kind, NumericKind.Int32);
-            if (left.IsNullable || right.IsNullable || !countIsInt)
-                return OperatorVerdict.RequiresRuntimeSemantics;
-
+            // Every integral count and either nullability is emittable. C# lifts a shift exactly as the
+            // runtime's expression trees lift it (null in, null out), and a count outside C#'s int-only rule
+            // is normalised by the writer with the truncating (int)/(int?) cast that reproduces the runtime's
+            // Expression.Convert — see NativeExpressionWriter.ShiftCountSpelling. This used to degrade as
+            // runtime-owned; OperatorGuardDifferentialTests' shift rows pin the byte parity that closed it.
             return OperatorVerdict.Supported;
         }
 
@@ -231,15 +230,26 @@ namespace Heddle.Language.Expressions
             if (right.Category == OperandCategory.NullLiteral)
                 return OperatorVerdict.Supported;    // Coalesce(x, null-of-x's-type) on both sides
 
+            // Enum operands keep the one genuinely runtime-owned case: a nullable enum coalescing its own
+            // enum type works on the engine and a different enum throws, and the descriptor carries no
+            // identity to tell the two apart.
+            if (left.Category == OperandCategory.Enum || right.Category == OperandCategory.Enum)
+                return OperatorVerdict.RequiresRuntimeSemantics;
+
             if (left.Category == OperandCategory.String)
                 return right.Category == OperandCategory.String
                     ? OperatorVerdict.Supported
-                    : OperatorVerdict.RequiresRuntimeSemantics;
+                    // The engine's Expression.Coalesce has no conversion between a string and a value
+                    // operand and raises HED1007 — a deterministic refusal, matched rather than degraded.
+                    : OperatorVerdict.NotDefined;
 
             if (left.Category == OperandCategory.Numeric && right.Category == OperandCategory.Numeric)
             {
                 if (left.Kind == right.Kind)
                     return OperatorVerdict.Supported;
+                // Differing kinds unify in the ENGINE's promotion, which the writer spells as casts on both
+                // operands — verbatim C# would refuse some of these pairs (int? ?? uint is CS0019) while the
+                // engine renders the promoted type. See NativeExpressionWriter's coalesce spelling.
                 return NumericTable.TryPromote(left.Kind, right.Kind, out _)
                     ? OperatorVerdict.Supported
                     : OperatorVerdict.NotDefined;
@@ -248,7 +258,9 @@ namespace Heddle.Language.Expressions
             if (left.Category == OperandCategory.Bool && right.Category == OperandCategory.Bool)
                 return OperatorVerdict.Supported;
 
-            return OperatorVerdict.RequiresRuntimeSemantics;   // coalesce unification is runtime-owned
+            // Every remaining mix — a numeric against a bool, either against a string — is a pair the
+            // engine's Coalesce refuses with HED1007 on every input, so the verdict matches the refusal.
+            return OperatorVerdict.NotDefined;
         }
 
         #endregion
@@ -292,9 +304,13 @@ namespace Heddle.Language.Expressions
             }
         }
 
-        /// <summary>Classifies <c>?:</c>. Only the trivial-unification case is emittable — arm unification is
-        /// runtime-owned, and the descriptor deliberately carries no reference-type identity, so two operands that
-        /// merely share a category are never treated as the same type.</summary>
+        /// <summary>Classifies <c>?:</c>. Arm unification stopped being runtime-owned for the shapes whose
+        /// unification is SPELLABLE: numeric pairs emit through an explicit cast to the engine's promoted type
+        /// (so C#'s own conditional typing — which refuses <c>int</c> against <c>uint</c> outright — never gets
+        /// a vote), a null arm takes the other arm's type on both tiers verbatim, and bool/string pairs lift in
+        /// C# exactly as the engine converts them. What stays runtime-owned is what the descriptor genuinely
+        /// cannot decide: reference/Other arms (assignability needs type identity) and enum arm pairs (same
+        /// enum unifies trivially, different enums error, and no identity tells them apart).</summary>
         public static OperatorVerdict ClassifyTernary(in OperandKind condition, in OperandKind whenTrue,
             in OperandKind whenFalse)
         {
@@ -302,25 +318,41 @@ namespace Heddle.Language.Expressions
                 return OperatorVerdict.RequiresRuntimeSemantics;
             if (condition.Category != OperandCategory.Bool || condition.IsNullable)
                 return OperatorVerdict.NotDefined;
+
+            bool tNull = whenTrue.Category == OperandCategory.NullLiteral;
+            bool fNull = whenFalse.Category == OperandCategory.NullLiteral;
+            if (tNull && fNull)
+                return OperatorVerdict.NotDefined;   // no common type on either side
+            if (tNull || fNull)
+            {
+                // The engine types the null constant as the other arm's type; C# infers the conditional's
+                // type from the non-null arm. Verbatim, whatever the arm is — provided null can inhabit it.
+                var other = tNull ? whenFalse : whenTrue;
+                if (other.Category == OperandCategory.Unknown)
+                    return OperatorVerdict.RequiresRuntimeSemantics;
+                return other.IsNullAssignable ? OperatorVerdict.Supported : OperatorVerdict.NotDefined;
+            }
+
             if (IsUndecidable(whenTrue) || IsUndecidable(whenFalse))
                 return OperatorVerdict.RequiresRuntimeSemantics;
-            if (whenTrue.Category == OperandCategory.NullLiteral && whenFalse.Category == OperandCategory.NullLiteral)
-                return OperatorVerdict.NotDefined;   // no common type on either side
 
-            bool identical = whenTrue.Category == whenFalse.Category && whenTrue.Kind == whenFalse.Kind &&
-                             whenTrue.IsNullable == whenFalse.IsNullable;
-            if (!identical)
+            if (whenTrue.Category == OperandCategory.Numeric && whenFalse.Category == OperandCategory.Numeric)
+            {
+                return NumericTable.TryPromote(whenTrue.Kind, whenFalse.Kind, out _)
+                    ? OperatorVerdict.Supported
+                    : OperatorVerdict.NotDefined;   // decimal against a real — the engine's HED1007
+            }
+
+            if (whenTrue.Category == OperandCategory.Bool && whenFalse.Category == OperandCategory.Bool)
+                return OperatorVerdict.Supported;   // C# lifts mixed nullability exactly as the engine converts
+            if (whenTrue.Category == OperandCategory.String && whenFalse.Category == OperandCategory.String)
+                return OperatorVerdict.Supported;
+
+            if (whenTrue.Category == OperandCategory.Enum && whenFalse.Category == OperandCategory.Enum)
                 return OperatorVerdict.RequiresRuntimeSemantics;
 
-            switch (whenTrue.Category)
-            {
-                case OperandCategory.Numeric:
-                case OperandCategory.Bool:
-                case OperandCategory.String:
-                    return OperatorVerdict.Supported;
-                default:
-                    return OperatorVerdict.RequiresRuntimeSemantics;
-            }
+            // Every remaining mix is a value pair the engine's unification refuses with HED1007.
+            return OperatorVerdict.NotDefined;
         }
 
         #endregion
@@ -351,7 +383,8 @@ namespace Heddle.Language.Expressions
 
                 case ExprOperator.LeftShift:
                 case ExprOperator.RightShift:
-                    return OperandKind.Numeric(ShiftKind(left.Kind), false);
+                    // Lifted on either side lifts the result — the count too: a null count is a null result.
+                    return OperandKind.Numeric(ShiftKind(left.Kind), lifted);
 
                 case ExprOperator.LessThan:
                 case ExprOperator.LessThanOrEqual:
@@ -433,14 +466,33 @@ namespace Heddle.Language.Expressions
             }
         }
 
-        /// <summary>The kind a <see cref="OperatorVerdict.Supported"/> ternary emission produces — the arms are
-        /// identical by construction there.</summary>
+        /// <summary>The kind a <see cref="OperatorVerdict.Supported"/> ternary emission produces. A null arm
+        /// yields the other arm's kind; equal numeric kinds keep their own kind (the engine's unifier returns
+        /// equal types untouched, so a char pair stays char and renders as a character); differing numeric
+        /// kinds take the engine's promotion, lifted when either arm is; a bool pair lifts likewise.</summary>
         public static OperandKind TernaryResult(in OperandKind whenTrue, in OperandKind whenFalse)
         {
-            return ClassifyTernary(OperandKind.Of(OperandCategory.Bool), whenTrue, whenFalse) ==
-                   OperatorVerdict.Supported
-                ? whenTrue
-                : OperandKind.Unknown;
+            if (ClassifyTernary(OperandKind.Of(OperandCategory.Bool), whenTrue, whenFalse) !=
+                OperatorVerdict.Supported)
+                return OperandKind.Unknown;
+
+            if (whenTrue.Category == OperandCategory.NullLiteral)
+                return whenFalse;
+            if (whenFalse.Category == OperandCategory.NullLiteral)
+                return whenTrue;
+
+            if (whenTrue.Category == OperandCategory.Numeric)
+            {
+                bool lifted = whenTrue.IsNullable || whenFalse.IsNullable;
+                if (whenTrue.Kind == whenFalse.Kind)
+                    return OperandKind.Numeric(whenTrue.Kind, lifted);
+                NumericTable.TryPromote(whenTrue.Kind, whenFalse.Kind, out var promoted);
+                return OperandKind.Numeric(promoted, lifted);
+            }
+
+            if (whenTrue.Category == OperandCategory.Bool)
+                return OperandKind.Of(OperandCategory.Bool, whenTrue.IsNullable || whenFalse.IsNullable);
+            return whenTrue;   // String
         }
 
         #endregion
