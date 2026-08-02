@@ -100,7 +100,7 @@ escaping-on fork) serves as harness precedent only: it asserts no output equalit
 precisely the gap this project's byte gate fills.
 
 **Reporting stays in the house style.** One date-stamped `docs/benchmarks/<date>/` report in the
-established format ([2026-07-18](../benchmarks/2026-07-18/index.md) is the model): environment
+established format (2026-07-18 is the model): environment
 block, reproduce-it-yourself command, no universal-superiority claims, and every result that
 complicates Heddle's story reported as prominently as the ones that flatter it. Wall time per
 render is the only number eligible for cross-language comparison; JVM allocation/GC figures
@@ -218,7 +218,7 @@ referenced above, not duplicated here.
 | Controlled-track methodology: semantically-equivalent, disclosed-idiom implementations so the engine, not the algorithm, is measured | Marr, Daloze & Mössenböck, "Cross-Language Compiler Benchmarking: Are We Fast Yet?" (DLS 2016); [smarr/are-we-fast-yet](https://github.com/smarr/are-we-fast-yet) |
 | Allocation/GC numbers are not comparable across runtimes with different allocator designs | BenchmarkDotNet documentation ([benchmarkdotnet.org](https://benchmarkdotnet.org/)); standing ruling 5 |
 | Parity gate, golden corpus, dual-track gate definitions, exclusion policy, metrics/publication protocol | [Phase 1 — cross-stack-foundation](phase-1-cross-stack-foundation.md) |
-| Honest-reporting posture model (losses reported as prominently as wins) | [docs/benchmarks/2026-07-18/index.md](../benchmarks/2026-07-18/index.md) |
+| Honest-reporting posture model (losses reported as prominently as wins) | docs/benchmarks/2026-07-18/index.md |
 
 Assumptions to verify in the spec (flagged, not grounded here): exact JTE whitespace-control syntax
 (carried from phase 1's flagged list); Thymeleaf's concrete escaped-entity output spellings (feeds

@@ -152,10 +152,11 @@ export default withMermaid(
           text: 'Benchmarks',
           collapsed: true,
           items: [
-            { text: 'Cross-stack run — 2026-07-25', link: '/benchmarks/2026-07-25/' },
-            { text: '· consolidated tables', link: '/benchmarks/2026-07-25/consolidated-tables' },
-            { text: 'Run — 2026-07-18', link: '/benchmarks/2026-07-18/' },
-            { text: 'Run — 2026-07-11', link: '/benchmarks/2026-07-11/' }
+            // The 2026-07-11, 2026-07-18 and 2026-07-25 entries were removed with the reports
+            // themselves. The 2026-08-02 run's tables are published but its index.md is not written
+            // yet, so it gains its entry when that lands rather than shipping a sidebar 404.
+            { text: '· consolidated tables', link: '/benchmarks/2026-08-02/consolidated-tables' },
+            { text: '· summary tables', link: '/benchmarks/2026-08-02/summary-tables' }
           ]
         }
       ],

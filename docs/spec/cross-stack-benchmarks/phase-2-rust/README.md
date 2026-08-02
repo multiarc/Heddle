@@ -412,7 +412,7 @@ order).
   committing Criterion's full `sample.json`/HTML tree (megabytes of derived artifacts; the
   estimates + console output are the numbers the report states).
 - **Grounding.** [metrics-protocol.md — presentation rules, publication format, honest-reporting rules](../phase-1-cross-stack-foundation/metrics-protocol.md#presentation-rules-q22--a-q62);
-  [docs/benchmarks/2026-07-18/index.md](../../../benchmarks/2026-07-18/index.md) *(read)*.
+  docs/benchmarks/2026-07-18/index.md *(read)*.
 
 ### D14 — Errata are recorded upstream via the amendments ledger; nothing is patched locally
 - **Decision.** Two findings from this spec's verification are filed as entries in the cross-spec

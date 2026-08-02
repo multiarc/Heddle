@@ -123,7 +123,7 @@ than ASP.NET Core Razor (30.52 μs vs 41.66 μs) and allocated less memory**, on
 output under the same parity gate — and led all five other .NET engines on seven of the eight
 protocol workloads. For the numbers see the
 [README Performance section](../README.md#performance) and the
-[full report](benchmarks/2026-07-25/); for *why*, see
+full report; for *why*, see
 [Architecture → Performance characteristics](architecture.md#performance-characteristics).
 
 > Benchmark numbers are hardware‑ and workload‑specific — run the suite on your target machine

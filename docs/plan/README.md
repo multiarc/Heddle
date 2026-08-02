@@ -23,7 +23,7 @@
 | 4 | [js](phase-4-js.md) | 1 | Handlebars + Eta under mitata — reach/context evidence against what the largest practitioner audience actually uses, with explicit not-fair-fight framing | harness shipped, 32/32 cells gated; measured off-protocol only |
 | 5 | [python](phase-5-python.md) | 1 | Jinja2 + Mako under pyperf — the survey's most relatable data point, quantifying the cross-runtime gap credibly | harness shipped, 32/32 cells gated; measured off-protocol only |
 | 6 | [go](phase-6-go.md) | 1 | html/template + templ under Go testing/benchstat — the cast's only runtime contextual encoder and the program's third compiled/typed data point | harness shipped, 32/32 cells gated; measured off-protocol only |
-| 7 | [consolidated-report](phase-7-consolidated-report.md) | 1, 2–6 (any shipped subset) | The single consolidated cross-stack report — every shipped ecosystem's protocol-conformant results juxtaposed on wall time per render, dual-track, with the workload-shape strengths-and-weaknesses analysis | assembled and published once ([2026-07-25](../benchmarks/2026-07-25/index.md)), self-declared as carrying no protocol standing; re-issue pending |
+| 7 | [consolidated-report](phase-7-consolidated-report.md) | 1, 2–6 (any shipped subset) | The single consolidated cross-stack report — every shipped ecosystem's protocol-conformant results juxtaposed on wall time per render, dual-track, with the workload-shape strengths-and-weaknesses analysis | assembled and published once (2026-07-25), self-declared as carrying no protocol standing; re-issue pending |
 | 8 | [linux-crosscheck](phase-8-linux-crosscheck.md) | 1, 2–7 (any shipped subset) | The same physical machine booted into Ubuntu 24.04 — the full protocol suite re-run across every shipped ecosystem, separately published as a Linux cross-check validating that the program's rankings, relative gaps, and dispersion findings hold under Linux CPU-isolation conditions | tooling shipped and green on WSL; the bare-metal run has never happened |
 
 ## Where this stands (2026-08-01)
@@ -106,7 +106,7 @@ measure, not whether the sweep executes.
 - **Phase 1's protocol run (WI8) has never been performed.** The Windows attempt of 2026-07-22 was
   invalidated by the JS ConsString rope defect and its report withdrawn. The .NET SDK pin in
   [benchmarks/README.md](../../benchmarks/README.md) is still **TBD** for exactly this reason.
-- **The only published cross-stack run is [2026-07-25](../benchmarks/2026-07-25/index.md)**, and it
+- **The only published cross-stack run is 2026-07-25**, and it
   says of itself that it is the Linux side of the protocol box, run through `run-all.sh` rather than
   either protocol, with no CPU isolation — internally consistent, but carrying no protocol standing
   and corroborated by no second platform. Two of its nineteen recorded limitations (#8, no .NET

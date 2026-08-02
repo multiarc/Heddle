@@ -319,5 +319,5 @@ links the generated tables rather than restating their numbers. Note this keeps 
 runners-never-write-into-`docs/` invariant intact: `consolidate.py` is run by hand after a run,
 never by `run-all.ps1`/`run-all.sh`.
 
-Worked example: [docs/benchmarks/2026-07-25](../docs/benchmarks/2026-07-25) is the first
+Worked example: docs/benchmarks/2026-07-25 is the first
 six-ecosystem report published this way.

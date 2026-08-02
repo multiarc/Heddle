@@ -179,15 +179,39 @@ namespace Heddle.Tests
         // On .NET Core "R" is shortest-round-trippable, so round-trip tests alone cannot catch a revert.
         // This guard asserts the formatter uses G17/G9, not "R", which is the property that keeps .NET Framework safe.
 
+        /// <summary>
+        /// The fixed-digit form with the sign of negative zero restored.
+        ///
+        /// <para>The formatter deliberately does NOT emit the runtime's raw G17/G9 text for negative
+        /// zero: .NET Framework renders <c>-0.0</c> as <c>"0"</c>, which decodes back to POSITIVE
+        /// zero and breaks the bit-for-bit round-trip these tests exist to protect. Comparing
+        /// against the raw form would therefore demand the bug. .NET Core keeps the sign, so this
+        /// helper is the identity there.</para>
+        /// </summary>
+        private static string RestoreNegativeZero(string text, double value) =>
+            text.Length != 0 && text[0] != '-'
+            && value == 0d && BitConverter.DoubleToInt64Bits(value) < 0
+                ? "-" + text
+                : text;
+
+        // Separate overloads deliberately: formatting a float THROUGH double would change the text
+        // (G9 of (double)0.1f is "0.1", of the float itself "0.100000001"). Only the sign test is
+        // shared, and widening to double preserves the sign bit.
+        private static string G17(double value) =>
+            RestoreNegativeZero(value.ToString("G17", CultureInfo.InvariantCulture), value);
+
+        private static string G9(float value) =>
+            RestoreNegativeZero(value.ToString("G9", CultureInfo.InvariantCulture), value);
+
         [Theory]
         [MemberData(nameof(DoubleCorners))]
         public void DoubleText_IsExactlyTheG17Form(double value) =>
-            Assert.Equal(value.ToString("G17", CultureInfo.InvariantCulture) + "D", LiteralFormatter.Format(value));
+            Assert.Equal(G17(value) + "D", LiteralFormatter.Format(value));
 
         [Theory]
         [MemberData(nameof(SingleCorners))]
         public void SingleText_IsExactlyTheG9Form(float value) =>
-            Assert.Equal(value.ToString("G9", CultureInfo.InvariantCulture) + "F", LiteralFormatter.Format(value));
+            Assert.Equal(G9(value) + "F", LiteralFormatter.Format(value));
 
         [Fact]
         public void EveryFormattedReal_IsTheFixedDigitForm_OverTheRandomizedValueSpace()
@@ -216,10 +240,22 @@ namespace Heddle.Tests
             }
 
             // Guard is reliable only if "R" and G17/G9 disagree on a large portion of the value space.
-            Assert.True(doubleChanged > 4000,
+            //
+            // The floor is runtime-specific. On .NET Core "R" is shortest-round-trippable, so it
+            // disagrees with the fixed-digit forms across most of the space. On .NET Framework "R"
+            // is itself a (defective) 15-to-17-digit form, so it COINCIDES with G17/G9 far more
+            // often — measured at ~964 of the sampled doubles here. A single Core-calibrated floor
+            // therefore reddened netfx for having the very behaviour that motivates this test.
+            // Both floors are still large enough that a revert to "R" would be caught.
+#if NETFRAMEWORK
+            const int floor = 500;
+#else
+            const int floor = 4000;
+#endif
+            Assert.True(doubleChanged > floor,
                 $"'R' and G17 produced different text for only {doubleChanged} of the sampled doubles — the " +
                 "format-identity guard above would no longer reliably detect a revert to \"R\".");
-            Assert.True(singleChanged > 4000,
+            Assert.True(singleChanged > floor,
                 $"'R' and G9 produced different text for only {singleChanged} of the sampled singles.");
         }
 
@@ -235,8 +271,16 @@ namespace Heddle.Tests
             foreach (var value in new[] { 0.1d, 0.2d, 0.3d, 1d / 3d, 2d / 3d })
             {
                 var text = LiteralFormatter.Format(value);
-                Assert.Equal(value.ToString("G17", CultureInfo.InvariantCulture) + "D", text);
-                Assert.NotEqual(value.ToString("R", CultureInfo.InvariantCulture) + "D", text);
+                var g17 = value.ToString("G17", CultureInfo.InvariantCulture);
+                var r = value.ToString("R", CultureInfo.InvariantCulture);
+                Assert.Equal(g17 + "D", text);
+
+                // The NotEqual is the anti-revert guard: it proves the formatter is not using "R".
+                // It can only prove that where the two forms actually differ on this runtime. On
+                // .NET Framework "R" and G17 coincide for some of these values (1/3 renders
+                // "0.33333333333333331" either way), and asserting inequality there would be
+                // asserting a property of the runtime's formatter, not of ours.
+                if (r != g17) Assert.NotEqual(r + "D", text);
             }
         }
     }

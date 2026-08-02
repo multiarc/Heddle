@@ -161,7 +161,7 @@ engines and allocates far more up front — a cost amortized across every subseq
 where it leads. Handlebars.Net compiles slower still (8.29 ms, 31.3× Heddle).
 
 Raw BenchmarkDotNet artifacts (md/csv/html) for this run are committed under
-[docs/benchmarks/2026-07-11](docs/benchmarks/2026-07-11). Numbers are hardware‑ and date‑specific;
+docs/benchmarks/2026-07-11. Numbers are hardware‑ and date‑specific;
 reproduce them yourself with:
 
 ```
@@ -169,7 +169,7 @@ dotnet run -c Release --project benchmarks/dotnet -- bench-crossstack
 ```
 
 **Workload breadth.** The composition page above is one of three published workloads. A
-[trivial-substitution and a large-loop workload](docs/benchmarks/2026-07-18) bracket it — the
+trivial-substitution and a large-loop workload bracket it — the
 former (scalar output, no composition) is the shape where Heddle's lead is workload-dependent
 rather than universal (in the 2026‑07‑18 run Heddle rendered it fastest but Handlebars.Net
 allocated less than half the memory), and the latter (one large iteration) is where the time race
@@ -181,7 +181,7 @@ date-specific; reproduce with the command above filtered to `*SubstitutionRender
 ### Cross‑stack — 2026‑07‑25
 
 The two runs above compare Heddle only against other .NET engines. The
-[cross‑stack run](docs/benchmarks/2026-07-25) widens that to **thirteen engines across six
+cross‑stack run widens that to **thirteen engines across six
 ecosystems** — .NET, Rust, the JVM, JS/Node, Python and Go — over **eight workloads** in two
 tracks, all on one machine in one session, every controlled cell held to byte‑identical output
 against a shared golden corpus.
@@ -280,7 +280,7 @@ inferred here. Numbers are hardware-, platform- and date-specific; reproduce the
 ```
 
 Full analysis, every workload and track, the per‑ecosystem tables, allocation sidebars and the
-complete caveat register: **[docs/benchmarks/2026-07-25](docs/benchmarks/2026-07-25)**.
+complete caveat register: **docs/benchmarks/2026-07-25**.
 
 ## Building
 

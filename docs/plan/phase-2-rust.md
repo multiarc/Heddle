@@ -15,7 +15,7 @@ under Criterion, and published as a per-ecosystem report in the repo's establish
 
 Rust is priority 1 by standing ruling, and the reason is the fair-fight argument. Every engine
 Heddle has beaten so far — Fluid, Scriban, DotLiquid, Handlebars.Net
-([2026-07-11](../benchmarks/2026-07-11/index.md), [2026-07-18](../benchmarks/2026-07-18/index.md))
+(2026-07-11, 2026-07-18)
 — processes its templates at runtime with no ahead-of-time typed-codegen step. An AOT-compiled
 typed engine outrunning runtime-processing engines is the expected
 result, and a skeptical reader can dismiss the whole body of evidence as a strawman. Askama is the
@@ -128,7 +128,7 @@ ruling. Criterion has no built-in allocation diagnoser (unlike BenchmarkDotNet's
 the reporting rule, not the tooling.
 
 **Report in the existing style.** One date-stamped `docs/benchmarks/<date>/` directory in the
-mold of the [2026-07-18 report](../benchmarks/2026-07-18/index.md): environment block (rustc and
+mold of the 2026-07-18 report: environment block (rustc and
 crate versions, machine, commit), reproduce-it-yourself command, per-suite artifacts, and prose
 that reports every workload where Heddle's numbers trail an engine's as prominently as where they
 lead — for this phase in particular, that posture is the product. Per the Phase 1 publication
@@ -244,8 +244,8 @@ row) are resolved (user, 2026-07-20) and integrated above.
 | Controlled-track methodology (semantically-equivalent, equivalently-authored implementations so the engine is measured) | Marr, Daloze & Mössenböck, "Cross-Language Compiler Benchmarking: Are We Fast Yet?" (DLS 2016); [smarr/are-we-fast-yet](https://github.com/smarr/are-we-fast-yet) |
 | Idiomatic-track posture (per-implementation idiomatic authoring, functional gate) | TechEmpower posture per research spike 1 (grounding dossier, 2026-07-19); [TechEmpower/FrameworkBenchmarks](https://github.com/TechEmpower/FrameworkBenchmarks) |
 | maud excluded by structure (macro DSL, not file-based templating) | Research spike 2 exclusions (grounding dossier, 2026-07-19); standing ruling 4 |
-| Existing .NET comparisons cover only competitors with no ahead-of-time typed-codegen step (Fluid, Scriban, DotLiquid, Handlebars.Net — all process templates at runtime) — the basis of the strawman objection Rust answers | [2026-07-11 report](../benchmarks/2026-07-11/index.md); [2026-07-18 report](../benchmarks/2026-07-18/index.md); [Runners README](../../benchmarks/dotnet/GoldenCorpus/README.md) |
-| Honest-reporting posture: losses reported as prominently as wins; workload-shape-dependence already demonstrated | [2026-07-18 report](../benchmarks/2026-07-18/index.md) |
+| Existing .NET comparisons cover only competitors with no ahead-of-time typed-codegen step (Fluid, Scriban, DotLiquid, Handlebars.Net — all process templates at runtime) — the basis of the strawman objection Rust answers | 2026-07-11 report; 2026-07-18 report; [Runners README](../../benchmarks/dotnet/GoldenCorpus/README.md) |
+| Honest-reporting posture: losses reported as prominently as wins; workload-shape-dependence already demonstrated | 2026-07-18 report |
 | Golden corpus, parity contract v2 (both gates, exclusion policy), metrics/publication protocol, and the Phase 1 resolutions Q1.1/Q1.2/Q1.3/Q1.5/Q1.6/Q1.7 referenced here | [Phase 1 — cross-stack-foundation](phase-1-cross-stack-foundation.md) |
 
 Assumptions to verify in the spec (flagged, not grounded here — inherited from the dossier's

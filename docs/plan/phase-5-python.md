@@ -116,7 +116,7 @@ engines — a cross-runtime gap measurement, not a like-for-like engine craftsma
 expected large-factor Heddle wins are reported *and*, with equal prominence, every place Python
 narrows the gap or inverts a metric (Mako vs Jinja2 internally, per-workload shape effects,
 bulk-output amortization) — the same posture the
-[2026-07-18 report](../benchmarks/2026-07-18/index.md) models intra-.NET; the report carries the
+2026-07-18 report models intra-.NET; the report carries the
 Mako-vs-Jinja2 and shape-effect findings alongside the Heddle reference row that Q2.2 places here. Alternatives weighed and rejected: leading with a single headline speedup
 factor (invites the universal-superiority claim the repo's reporting style forbids), and skipping
 Python entirely as "unfair" (forfeits the survey's most relatable data point; honesty in framing
@@ -238,7 +238,7 @@ idiomatic evidence standard).
 | No maintained Python template-benchmark suite exists; the closest recent precedent is the minijinja-vs-jinja2 study (Oct 2025): realistic ~65 KB e-commerce template, published transparent scripts, mean/median/std reporting | Research spike 1 survey (grounding dossier, 2026-07-19); simonw/research, minijinja-vs-jinja2 study |
 | Controlled-track methodology: semantically-equivalent, equivalently-authored implementations so the engine, not the algorithm, is measured | Marr, Daloze & Mössenböck, "Cross-Language Compiler Benchmarking: Are We Fast Yet?" (DLS 2016); [smarr/are-we-fast-yet](https://github.com/smarr/are-we-fast-yet) |
 | Allocation/GC numbers are not comparable across runtimes with different allocator designs; wall time per render is the sole cross-comparable metric | Standing ruling 5 (grounding dossier); [phase 1 metrics & publication protocol](phase-1-cross-stack-foundation.md) |
-| Honest-reporting posture: losses and narrowings reported as prominently as wins; no universal-superiority claims; numbers hardware- and date-specific | [docs/benchmarks/2026-07-18/index.md](../benchmarks/2026-07-18/index.md) |
+| Honest-reporting posture: losses and narrowings reported as prominently as wins; no universal-superiority claims; numbers hardware- and date-specific | docs/benchmarks/2026-07-18/index.md |
 | Parity gate, golden corpus, dual-track definitions, exclusion policy, workload set (eight workloads incl. two encoded) | [phase 1 — cross-stack-foundation](phase-1-cross-stack-foundation.md); parity contract v1 in [benchmarks/dotnet/GoldenCorpus/README.md](../../benchmarks/dotnet/GoldenCorpus/README.md) |
 
 Assumptions to verify in the spec (flagged, not grounded here): Mako's exact whitespace-control

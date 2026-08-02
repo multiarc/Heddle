@@ -26,8 +26,17 @@ namespace Heddle.Tests
         public void FullPathComposesThroughThePathCombineRule(string root, string name, string postfix,
             string expected)
         {
-            Assert.Equal(expected, Options(root, name, postfix).FullPath);
+            // Separators are normalised because the rule under test is the COMPOSITION -- exactly one
+            // separator between root and name, and none invented when the root already ends in one --
+            // not which character the platform writes. Path.Combine inserts '\' on Windows, so pinning
+            // the POSIX spelling failed there while the behaviour was correct. Normalising still
+            // catches both shipped bugs these rows exist for: a MISSING separator ("/a/bt.heddle") and
+            // a doubled one both survive it. That FullPath and the reader agree is pinned separately
+            // by TheFileReaderResolvesExactlyFullPath, which compares them to each other.
+            Assert.Equal(expected, Normalise(Options(root, name, postfix).FullPath));
         }
+
+        private static string Normalise(string path) => path.Replace('\\', '/');
 
         /// <summary>Whatever <c>FullPath</c> says, the reader must open that exact file.</summary>
         [Theory]

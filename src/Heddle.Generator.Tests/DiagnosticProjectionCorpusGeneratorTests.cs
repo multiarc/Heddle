@@ -62,6 +62,12 @@ namespace Heddle.Generator.Tests
 
             var twins = Report(c.Template)
                 .Where(d => d.Id.StartsWith("HED7", StringComparison.Ordinal))
+                // HED7031 (BuildTemplateNotPrecompiled) is not a twin. A twin is a build-tier
+                // diagnostic mirroring one the engine raises for the same bytes; HED7031 reports
+                // that the emitter DECLINED to precompile, a build-tier capability notice with no
+                // run-tier counterpart at all. Counting it here would make every degrading corpus
+                // case look as though it had grown a new authoring diagnostic.
+                .Where(d => !string.Equals(d.Id, "HED7031", StringComparison.Ordinal))
                 .Select(d => d.Id)
                 .Distinct()
                 .OrderBy(id => id, StringComparer.Ordinal)

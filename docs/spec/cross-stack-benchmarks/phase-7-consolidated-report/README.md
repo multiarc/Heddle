@@ -44,8 +44,8 @@ metric** (the only arithmetic permitted anywhere is unit conversion to ns/render
 Heddle-anchored ratio only where a source table did not already publish it — D4), and publishes
 **no ranking of non-Heddle engines across ecosystems** and **no aggregate cross-workload
 score** (Q6.2; plan non-goals). The pre-protocol reports
-([2026-07-11](../../../benchmarks/2026-07-11/index.md),
-[2026-07-18](../../../benchmarks/2026-07-18/index.md)) are cited as history only and are never
+(2026-07-11,
+2026-07-18) are cited as history only and are never
 aggregated.
 
 ## Assumed state
@@ -500,7 +500,7 @@ decisions below fix *what* and *why*.
   defining "narrows" qualitatively (the dispersion-overlap definition uses only published
   numbers — no new statistics).
 - **Grounding.** Plan §Success criteria (losses item, no-ranking item),
-  [2026-07-18 report](../../../benchmarks/2026-07-18/index.md) (posture model);
+  2026-07-18 report (posture model);
   [metrics-protocol — honest-reporting rules](../phase-1-cross-stack-foundation/metrics-protocol.md#honest-reporting-rules).
 
 ### D13 — Assembly tooling: `consolidate.py`, stdlib-only, inside the published directory
@@ -778,8 +778,8 @@ source artifacts — and is structural: everything consumed is read-only committ
 - Phase 2–6 specs (binding, read-only): [Rust](../phase-2-rust/README.md),
   [JVM](../phase-3-jvm/README.md), [JS](../phase-4-js/README.md),
   [Python](../phase-5-python/README.md), [Go](../phase-6-go/README.md)
-- Published report style models: [2026-07-18](../../../benchmarks/2026-07-18/index.md),
-  [2026-07-11](../../../benchmarks/2026-07-11/index.md)
+- Published report style models: 2026-07-18,
+  2026-07-11
 - Repo conventions bound by this spec:
   [spec-conventions](../../common/spec-conventions.md),
   [testing-standards](../../common/testing-standards.md),

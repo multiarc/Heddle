@@ -38,7 +38,17 @@ namespace Heddle.Tests
 
             var references = RoslynReferenceProvider.Build(new[] { inMemory });
 
+#if NETFRAMEWORK
+            // .NET Framework has no raw-metadata accessor -- Assembly.TryGetRawMetadata is .NET Core
+            // only -- so RoslynReferenceProvider.FromLoadedImage declares itself null on that target:
+            // "a location is the only way in on this target". A location-less assembly therefore
+            // cannot yield metadata here, and the single-file shape this test describes does not
+            // exist on .NET Framework either. Asserting the limitation keeps the row meaningful
+            // rather than skipping it, and turns red if netfx ever gains the capability.
+            Assert.Empty(references);
+#else
             Assert.Single(references);
+#endif
         }
 
         /// <summary>
@@ -59,7 +69,16 @@ namespace Heddle.Tests
             Assert.NotEmpty(offered);
             offered.Add(Assembly.Load(EmitProbe()));
 
-            Assert.Equal(offered.Count, RoslynReferenceProvider.Build(offered).Count);
+#if NETFRAMEWORK
+            // Same structural limitation as AnAssemblyWithNoFileBehindItStillYieldsMetadata: on this
+            // framework only an assembly with a file behind it can produce metadata, and a netfx
+            // AppDomain routinely holds several without one. The invariant that still bites -- and
+            // the one the thinning bug violated -- is that nothing WITH a location is dropped.
+            var expected = offered.Count(a => !string.IsNullOrEmpty(a.Location));
+#else
+            var expected = offered.Count;
+#endif
+            Assert.Equal(expected, RoslynReferenceProvider.Build(offered).Count);
         }
 
         /// <summary>
