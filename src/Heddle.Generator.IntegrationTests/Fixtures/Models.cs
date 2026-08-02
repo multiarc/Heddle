@@ -206,6 +206,9 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
         public int Count { get; set; }
         public OrderStatus Status { get; set; }
         public OrderFlags Flags { get; set; }
+
+        /// <summary>The lifted-complement lane: <c>~FlagsMaybe</c> keeps the nullable enum type on both tiers.</summary>
+        public OrderFlags? FlagsMaybe { get; set; }
         public Money Total { get; set; }
         public bool? Approved { get; set; }
 
