@@ -256,6 +256,8 @@ namespace Heddle.Helpers
         /// type's namespace, which is what keeps <c>using A;</c> + <c>Outer.Inner</c> resolving while
         /// <c>using A;</c> + <c>Sub.Deep</c> stops: the first is a type in <c>A</c> with a type inside it, the
         /// second is a type in <c>A.Sub</c>, a namespace nobody imported.
+        /// <para>Every import is read before any candidate wins: a spelling two imports each complete is the
+        /// ambiguity C# reports as CS0104, not a question <c>@using</c> declaration order may answer.</para>
         /// <para>A namespace <b>alias</b> is the opposite case and does not come through here: <c>using X = A;</c>
         /// names the namespace itself, so <c>X.Sub.Deep</c> binds — see <see cref="TryResolveThroughAlias"/>.</para>
         /// </summary>
@@ -264,34 +266,32 @@ namespace Heddle.Helpers
         {
             type = null;
             ambiguous = false;
+            Type declared = null;
             foreach (var import in imports)
             {
                 if (!maps.FullNames.TryGetValue(import + "." + typeName, out var types))
                     continue;
 
-                Type declared = null;
-                int matches = 0;
                 foreach (var candidate in types)
                 {
                     if (!string.Equals(candidate.Namespace, import, StringComparison.Ordinal))
                         continue;
-                    matches++;
+                    // The same type reached twice (a duplicate import) is no tie; two distinct types are.
+                    if (declared != null && declared != candidate)
+                    {
+                        type = null;
+                        ambiguous = true;
+                        return false;
+                    }
+
                     declared = candidate;
                 }
-
-                if (matches == 0)
-                    continue;
-                if (matches == 1)
-                {
-                    type = declared;
-                    return true;
-                }
-
-                ambiguous = true;
-                return false;
             }
 
-            return false;
+            if (declared == null)
+                return false;
+            type = declared;
+            return true;
         }
 
         /// <summary>Looks a fully-qualified spelling up in the global namespace, consulting no import and no alias.

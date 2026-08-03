@@ -71,14 +71,11 @@ namespace Heddle.Generator.IntegrationTests
 
         /// <summary>
         /// A type nested inside a generic outer carries its outer's type parameters but declares none of its own.
-        /// The engine counts <c>GetGenericArguments().Length</c>, which includes the outer's; the build tier counts
-        /// <see cref="INamedTypeSymbol.Arity"/>, which does not. So a spelling naming the nested type with the
-        /// outer's argument satisfies one arity check and fails the other, and no diagnostic is raised either way.
+        /// The engine counts <c>GetGenericArguments().Length</c>, which includes the outer's; a build tier counting
+        /// <see cref="INamedTypeSymbol.Arity"/> alone excludes them and degraded on a spelling the engine binds.
+        /// Both tiers now match the spelling's argument total against the whole containment chain.
         /// </summary>
-        [Fact(Skip = "known defect — generator: a type nested in a generic outer is counted with Arity, which " +
-                     "excludes the outer's parameters, where the engine counts GetGenericArguments().Length, " +
-                     "which includes them, so the build tier degrades on a spelling the engine binds; " +
-                     "un-skip with that fix")]
+        [Fact]
         public void ATypeNestedInAGenericOuterIsCountedTheSameWayOnBothTiers()
         {
             const string key = "views/nested-in-generic-arity.heddle";
@@ -93,8 +90,7 @@ namespace Heddle.Generator.IntegrationTests
         /// ambiguous (CS0104) rather than letting the first or last directive win; whichever tier lets declaration
         /// order decide is answering a question the language says has no answer.
         /// </summary>
-        [Fact(Skip = "known defect — both tiers: a dotted spelling reachable through two imports is decided by " +
-                     "@using declaration order, where C# raises CS0104 and refuses it; un-skip with that fix")]
+        [Fact]
         public void ADottedSpellingReachableThroughTwoImportsIsRefusedOnBothTiers()
         {
             const string key = "views/dotted-import-ambiguous.heddle";
