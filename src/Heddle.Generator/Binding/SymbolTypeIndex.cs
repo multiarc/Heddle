@@ -246,16 +246,14 @@ namespace Heddle.Generator.Binding
         /// alias beside the metadata form, so both spellings are looked up by the one map read.
         /// <para>The assembly half is parsed by Roslyn's own display-name parser rather than by cutting the string.
         /// A component the spelling does not state binds to any, which is what the CLR's own load does with it.</para>
-        /// <para><b>A stated version binds nothing.</b> Measured against the loader the engine goes through:
-        /// <c>Type.GetType("X, Asm, Version=99.0.0.0")</c> resolves whenever <c>Asm</c> is already loaded in the
-        /// default load context, strong-named or not — the loaded assembly is matched by simple name and the rest of
-        /// the identity is advice. An assembly the template names is one the host runs on, so that is the case that
-        /// happens; requiring an exact match instead took a template off the precompiled tier every time a host
-        /// bumped an assembly version without editing the template, silently and with nothing reported.
-        /// <para>The public key token is still required when stated, and the asymmetry is deliberate: a version
-        /// drifts on its own with every build, a public key token does not. For an assembly the default context has
-        /// <b>not</b> loaded the CLR's binder is stricter than either rule — it refuses a version above the one on
-        /// disk — but which assemblies are loaded is not a question a build can ask.</para></para>
+        /// <para><b>A stated version binds at or below the assembly's own and refuses above it.</b> Measured against
+        /// the loader the engine goes through: the default load context satisfies a request from an already-loaded
+        /// assembly only when the loaded version is at least the requested one — an older request is advice the
+        /// loaded assembly upgrades, a newer one falls through to probing and finds the same too-old file. Requiring
+        /// an exact match instead took a template off the precompiled tier every time a host bumped an assembly
+        /// version without editing the template, silently and with nothing reported.
+        /// <para>The public key token is likewise required when stated: a version drifts on its own with every
+        /// build, a public key token does not.</para></para>
         /// </summary>
         private bool TryResolveAssemblyQualified(string name, out INamedTypeSymbol type, out TypeSpellingFault fault)
         {
@@ -265,7 +263,7 @@ namespace Heddle.Generator.Binding
             int comma = name.IndexOf(',');
             var typeName = name.Substring(0, comma).Trim();
             if (typeName.Length == 0 ||
-                !AssemblyIdentity.TryParseDisplayName(name.Substring(comma + 1).Trim(), out var wanted))
+                !AssemblyIdentity.TryParseDisplayName(name.Substring(comma + 1).Trim(), out var wanted, out var parts))
                 return false;
 
             // The second spelling is how a type in the global namespace is keyed here: the index carries the
@@ -283,6 +281,8 @@ namespace Heddle.Generator.Binding
                     continue;
                 if (!wanted.PublicKeyToken.IsDefaultOrEmpty &&
                     !SameToken(identity.PublicKeyToken, wanted.PublicKeyToken))
+                    continue;
+                if ((parts & AssemblyIdentityParts.Version) != 0 && wanted.Version > identity.Version)
                     continue;
 
                 type = candidate;
@@ -312,41 +312,43 @@ namespace Heddle.Generator.Binding
         /// a candidate counts only when its own containing namespace <i>is</i> the import. A nested type reports its
         /// outer type's namespace, which is what keeps <c>using A;</c> + <c>Outer.Inner</c> resolving while
         /// <c>using A;</c> + <c>Sub.Deep</c> stops.
+        /// <para>Every import is read before any candidate wins: a spelling two imports each complete is the
+        /// ambiguity C# reports as CS0104, not a question <c>@using</c> declaration order may answer.</para>
         /// </summary>
         private bool TryResolveThroughImports(string name, IReadOnlyList<string> imports,
             out INamedTypeSymbol type, out TypeSpellingFault fault)
         {
             type = null;
+            INamedTypeSymbol declared = null;
             foreach (var import in imports)
             {
                 if (!_fullNames.TryGetValue(import + "." + name, out var candidates))
                     continue;
 
-                INamedTypeSymbol declared = null;
-                int matches = 0;
                 foreach (var candidate in candidates)
                 {
                     if (!string.Equals(NamespaceNameOf(candidate), import, System.StringComparison.Ordinal))
                         continue;
-                    matches++;
+                    // The same type reached twice (a duplicate import) is no tie; two distinct types are.
+                    if (declared != null && !SymbolEqualityComparer.Default.Equals(declared, candidate))
+                    {
+                        fault = TypeSpellingFault.Ambiguous;
+                        return false;
+                    }
+
                     declared = candidate;
                 }
+            }
 
-                if (matches == 0)
-                    continue;
-                if (matches == 1)
-                {
-                    type = declared;
-                    fault = TypeSpellingFault.None;
-                    return true;
-                }
-
-                fault = TypeSpellingFault.Ambiguous;
+            if (declared == null)
+            {
+                fault = TypeSpellingFault.Unresolved;
                 return false;
             }
 
-            fault = TypeSpellingFault.Unresolved;
-            return false;
+            type = declared;
+            fault = TypeSpellingFault.None;
+            return true;
         }
 
         /// <summary>The runtime's <c>Type.Namespace</c>: the nearest enclosing namespace, which for a nested type is

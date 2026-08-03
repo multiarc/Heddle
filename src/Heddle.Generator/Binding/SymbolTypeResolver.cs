@@ -138,14 +138,52 @@ namespace Heddle.Generator.Binding
                 out ITypeSymbol constructed)
             {
                 constructed = null;
-                if (!(definition is INamedTypeSymbol named) || named.Arity != arguments.Count)
+                if (!(definition is INamedTypeSymbol named))
                     return false;
 
-                var array = new ITypeSymbol[arguments.Count];
-                for (int i = 0; i < arguments.Count; i++)
-                    array[i] = arguments[i];
-                constructed = named.ConstructedFrom.Construct(array);
+                // Reflection counts a nested type's generic arguments including the enclosing types' parameters,
+                // so the spelling's argument total is matched against the whole containment chain — the nested
+                // symbol's own Arity alone refused `Outer<int>.Inner`, a spelling the engine binds.
+                var chain = new List<INamedTypeSymbol>();
+                for (var link = named; link != null; link = link.ContainingType)
+                    chain.Add(link);
+                chain.Reverse();
+
+                var total = 0;
+                foreach (var link in chain)
+                    total += link.Arity;
+                if (total != arguments.Count)
+                    return false;
+
+                var next = 0;
+                INamedTypeSymbol current = null;
+                foreach (var link in chain)
+                {
+                    var target = current == null ? link.ConstructedFrom : FindNested(current, link);
+                    if (target == null)
+                        return false;
+                    if (link.Arity > 0)
+                    {
+                        var slice = new ITypeSymbol[link.Arity];
+                        for (int i = 0; i < link.Arity; i++)
+                            slice[i] = arguments[next++];
+                        target = target.Construct(slice);
+                    }
+
+                    current = target;
+                }
+
+                constructed = current;
                 return true;
+            }
+
+            /// <summary>The <paramref name="definition"/>'s counterpart inside a (possibly constructed)
+            /// <paramref name="outer"/>, so the nested symbol's containing type carries the outer's arguments.</summary>
+            private static INamedTypeSymbol FindNested(INamedTypeSymbol outer, INamedTypeSymbol definition)
+            {
+                foreach (var member in outer.GetTypeMembers(definition.Name, definition.Arity))
+                    return member;
+                return null;
             }
 
             public bool TryGetValueTupleDefinition(int arity, out ITypeSymbol definition)
