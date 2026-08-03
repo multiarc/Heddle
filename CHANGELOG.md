@@ -78,6 +78,41 @@ judgements that predate the window's ratification remain in
 
 ### Added
 
+- **The expression-tier parity program: the generator now emits what it used to degrade.** Five classes
+  of native-expression construct that previously fell back to the dynamic tier now precompile, each by
+  reproducing the engine's own semantics rather than trusting verbatim C# to agree with them: shifts,
+  ternaries and coalesces over mixed numeric kinds (the engine's promotion is spelled as explicit
+  casts); mixed-type equality and string concatenation (through `Heddle.Precompiled.RuntimeOperators`
+  adapters that replay the engine's own decision chain, so parity holds by construction); constant
+  subtrees the two tiers type or value differently (emitted as the engine's folded value with a typed
+  literal spelling); same-enum and reference operand shapes (the shared operator table now carries type
+  identity, not just a category); and the structural shapes — `::`-rooted paths, indexers, targeted
+  paths, collided extension names, and `params` exports. Rendered bytes are unchanged — the two tiers
+  are parity-checked — this only moves templates off the slower dynamic path.
+- **`HED1018` — constant division by zero is a compile error, on both tiers.** `@(1/0)` used to compile
+  and throw `DivideByZeroException` at render; rendering it can only ever throw, so both the engine and
+  the generator now refuse it at compile time under one id. Scoped exactly where C# draws `CS0020`'s
+  lines: integral and `decimal` only, the divisor folded rather than spelled (`1/(1-1)` counts),
+  floating point stays legal (`@(1.0/0)` renders `∞`), and a runtime divisor that happens to be zero
+  still throws at render.
+- **The engine's refusals fire at build: `HED1003`–`HED1011` forwarded as build errors.** Where the
+  generator can *prove* the engine would refuse a construct on every input — method-call syntax,
+  declared-`dynamic` roots, logical operators over non-`bool`, ununifiable ternary/coalesce arms,
+  undefined binary/unary operator pairings, a known indexer target with no matching indexer, a
+  non-`bool` condition — it raises the engine's own id with the engine's own sentence at build time
+  instead of degrading silently and letting the consumer's runtime say so. Where it cannot prove the
+  refusal it still degrades silently: never an error on a guess.
+- **`ModelType` item metadata** types a template from the project file:
+  `<HeddleTemplate Update="Templates/invoice.heddle" ModelType="My.App.InvoiceModel" />` feeds the same
+  pipeline the in-file `@model` directive feeds (resolution, `@using` imports, the `HED7007`/`HED7023`
+  gating), so a template can be typed without a directive in its text. When both channels are present
+  they must agree: different resolved types are **`HED7032`**, a build error, because the runtime reads
+  only the directive and the build refuses to type the same template differently on the two tiers.
+- **A zero-allocation clean-span path in `HtmlEncodedRenderer`.** The span path used to materialize
+  every write twice (span → string → encoded string) before the sink saw a byte; a span with nothing to
+  encode now writes straight through to a span-accepting sink with zero allocation, and a dirty span
+  pays only from the first character that needs encoding. Byte identity holds on both encoder paths; a
+  fortunes-style encoded loop drops 29 % of its per-render bytes.
 - **`Name` item metadata** as an **additional** name for a template — not a rename:
   `<HeddleTemplate Update="t/report.heddle" Name="BuildReport" />` leaves the key
   `t/report.heddle` and the class `Heddle.Generated.T_Report` exactly as they were, and makes
@@ -122,6 +157,31 @@ judgements that predate the window's ratification remain in
 
 ### Fixed
 
+- **A model the template cannot accept is refused as a Heddle fault.** The top-level render now checks
+  the model against the compiled model type once per render, in every build configuration, and throws
+  `TemplateProcessingException` on a mismatch; the wrong-typed value used to reach the compiled
+  accessor's cast and escape as a raw `InvalidCastException`, which is not the shape any other render
+  fault has. A `null` model stays legal, the recursive path is untouched, and the precompiled adapter —
+  which has no compile-time model type to check against — skips the check as it always has.
+  `TemplateOptions.ValidateModelType` is left in place but no longer read; removing it would be a break.
+- **The build tier no longer precompiles a body the engine refuses to render.** A body containing a
+  branch terminal with no opener (a bare `@else` continuation) precompiled while the engine rejects it —
+  the shared branch scan's error arm was never wired to the emitter. The emitter now declines the body
+  and the template falls back to the dynamic tier.
+- **Lexer errors reach the compile error list.** A character the lexer could not tokenize went to
+  ANTLR's console listener — a template engine writing to its host's console — and skip-recovery then
+  compiled the template as if the character were never typed (`4 +` compiled as `4` with zero
+  diagnostics). It is now a positioned syntax error on the compile result.
+- **`&`/`|`/`^` over a lifted same-enum pair no longer throws at render.** The engine computed the
+  result type from the left operand alone, so `Color & Color?` built a conversion that threw
+  `InvalidOperationException` the moment the nullable side was null; the result now lifts to the
+  nullable enum and the null propagates — exactly C#'s answer.
+- **Three build-tier type-binding defects.** A type nested in a generic (`Outer<int>.Inner`) degraded
+  because the generator compared per-type arity against a cumulative spelling; a dotted spelling
+  reachable through two `@using` imports was decided by declaration order on both tiers instead of
+  being ambiguous (now the engine's ambiguity error / the generator's `HED7023`, matching `CS0104`);
+  and an assembly-qualified model spelling stating a `Version` **ahead** of the referenced assembly
+  bound at build and threw at runtime — it now degrades, while exact and behind versions bind.
 - **`#line` directives in generated code name the template file, not its registration key.** The two
   were always equal for a path-derived key; an explicit `Key` made the difference observable and would
   have pointed every mapped span at a path that does not exist. A template **outside**
@@ -135,6 +195,21 @@ judgements that predate the window's ratification remain in
 
 ### Build and packaging
 
+- **`Heddle.Generator` ships one build per Roslyn generation, with a .NET Framework leg.** The single
+  netstandard2.0 build against Microsoft.CodeAnalysis 4.4.0 matched no compiler the engine pins; the
+  package now carries three builds of the same sources (Roslyn 4.1.0 / 4.11.0 / 5.3.0, mirroring the
+  engine's per-TFM pins) under `analyzers/dotnet/roslyn{4.1,4.11,5.3}/cs`, so a versioning-aware host
+  selects the newest folder its compiler can bind and the `buildTransitive` targets trim older hosts to
+  the 4.1 floor — the only variant a VS 2022-era `msbuild.exe` can use. Standing the net48 test legs up
+  surfaced and fixed four generator defects a VS-hosted consumer could hit: `u8` literals emitted to
+  consumers parsing below C# 11, entry points that boxed `TypedReference` on net48 (whose mscorlib
+  predates `IsByRefLikeAttribute`), template keys derived through `Path.GetFileName` (which validates
+  characters on .NET Framework and silently dropped templates), and a reference closure read from
+  `TRUSTED_PLATFORM_ASSEMBLIES` where it does not exist.
+- The dedicated `net6.0` target is retired: the libraries now target `netstandard2.0;net8.0;net10.0`.
+  A .NET 6 host still runs Heddle — it binds the `netstandard2.0` build, as .NET 7 always has — losing
+  only the modern-BCL extras that build carries anyway (`Range.FromSystemRange`, the span/UTF-8
+  formatting fast paths).
 - The release line is stated once, as `<VersionPrefix>` in `Directory.Build.props`, replacing nine
   per-project `<Version>` elements; a version-consistency test holds the statements that cannot live
   there (the npm manifests, the VS Code extension's pinned tool version, the LSP workflow's

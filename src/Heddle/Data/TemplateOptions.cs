@@ -56,9 +56,10 @@ namespace Heddle.Data {
         /// Absent from cache keys — does not affect compiled structure or bytes of successful renders.</summary>
         public RenderBudget RenderBudget { get; set; }
 
-        /// <summary>When <c>true</c>, validates data against the template's compiled model type; throws
-        /// <see cref="Heddle.Exceptions.TemplateProcessingException"/> on mismatch. Default: <c>false</c>.
-        /// Absent from cache keys — changes failure handling, not successful output.</summary>
+        /// <summary>No longer read: the model-type check it once opted into is always on — every top-level render
+        /// validates the model against the compiled model type and throws
+        /// <see cref="Heddle.Exceptions.TemplateProcessingException"/> on mismatch. Retained so existing code keeps
+        /// compiling. Absent from cache keys.</summary>
         public bool ValidateModelType { get; set; }
 
         public TemplateOptions() : this((string) null)
