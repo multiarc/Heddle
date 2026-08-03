@@ -28,8 +28,9 @@ field, redo the grid row.
 **C. Generated code spells a name the consumer's assembly cannot use.** Everything reaching `.g.cs`
 must pass `ClassifyTypeName`/`CanWriteTypeName` — types, type arguments, containers of exported
 calls, `@using` text. Sinks are `CodeWriter.Line`/`Raw`, `_fieldDecls`, `_methodDecls`, the manifest
-builder — all in `Emit/TemplateEmitter.cs` and `Emit/PieceWriter.cs`. Open gap: the export argument
-cast (`Binding/ExportFunctionBinder.cs:133`) has no gate.
+builder — all in `Emit/TemplateEmitter.cs` and `Emit/PieceWriter.cs`. The last open gap — the export
+argument cast — closed when `TryComputeCasts` grew the classifier check, pinned by
+`ExportArgumentTypingTests.AParameterTypeGeneratedCodeMayNotNameDegradesRatherThanBreakingTheConsumersBuild`.
 
 **D. A rule implemented only for the case in front of the author.** Sibling sites keep the bug.
 Either enumerate every site, or read the authority (the attribute, the declared type, the adapter)
@@ -119,8 +120,6 @@ Also open, without their own ids:
   `AssemblyRegistrationTests` and `PreparseCacheGenerationTests`.
 - The no-load pin cannot catch a one-shot startup walk; catching it needs a child process comparing
   the loaded set before and after first touch (the future-work shape; no suite spawns one today).
-- The export argument cast has no gate (class C above); widening the argument estimator re-opens it
-  silently.
 
 ## Weak pins — a regression here is invisible
 

@@ -11,9 +11,9 @@ using Xunit;
 namespace Heddle.Generator.IntegrationTests
 {
     /// <summary>
-    /// The <b>quarantine register</b>. Each fixture below is a guarded, gauntlet-crossing test of a known live drift.
-    /// Every one of them fails on today's code, so each ships explicitly skipped with its issue named in the <c>Skip</c>
-    /// string: the fix group un-skips its fixture as acceptance evidence. The register is:
+    /// The <b>quarantine register</b>. Each fixture below is a guarded, gauntlet-crossing test of a drift that was
+    /// live when it was registered: a fixture ships explicitly skipped with its issue named in the <c>Skip</c>
+    /// string, and the fix group un-skips it as acceptance evidence. The register is:
     /// <list type="table">
     /// <item><description>content-hash input mismatch — BOM'd file under file-backed staleness (<b>fixed</b>, un-skipped).</description></item>
     /// <item><description>nested/generic AQN identity — a nested extension type (<b>fixed</b>, un-skipped).</description></item>
