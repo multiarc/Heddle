@@ -52,7 +52,7 @@
          the only release with the 2026 GHSA advisory fixes — requires System.Text.Json 10, which
          dropped net6.0; older Scriban versions carry the unfixed advisories. The Scriban twins are
          compiled out of the net6.0 leg with `#if !NET6_0` rather than suppressing either warning. -->
-    <PackageReference Include="Scriban" Version="7.2.5" />
+    <PackageReference Include="Scriban" Version="7.2.6" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
