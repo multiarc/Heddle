@@ -9,11 +9,10 @@ namespace Heddle.Generator.IntegrationTests
     /// The engine substitutes <c>default(T)</c> at the hop that failed and keeps walking, so the read lands on that
     /// default; C#'s <c>?.</c> abandons the whole rest of the chain instead. The two answers are different values,
     /// and for <c>HasValue</c> they are both renderable — the divergence shows up as wrong output, not as an error.
-    /// <para><b>Quarantined (open — skip-listed):</b>
-    /// <see cref="ARefStructModelFaultsWithTheEnginesOwnExceptionEvenWithoutTheGuard"/> — a red test for a known
-    /// defect, checked in skipped. Rehearsed red in Release (raw <see cref="System.InvalidCastException"/> from the
-    /// compiled accessor's cast) and green in Debug (the guard is forced on there); un-skipping it is the fix's
-    /// acceptance evidence.</para>
+    /// <para><see cref="ARefStructModelFaultsWithTheEnginesOwnExceptionEvenWithoutTheGuard"/> shipped skipped as a
+    /// red test while the unguarded path leaked a raw <see cref="System.InvalidCastException"/> in Release; the
+    /// top-level model check made it green in every configuration and it runs un-skipped as that fix's acceptance
+    /// evidence.</para>
     /// </summary>
     public class NullSafeHopChainTests
     {
@@ -208,12 +207,12 @@ namespace Heddle.Generator.IntegrationTests
         }
 
         /// <summary>
-        /// What the engine's contract says the unguarded path should do, and today does not: a wrong-typed model
-        /// reaching the compiled accessor's cast escapes as a raw <see cref="System.InvalidCastException"/> instead
-        /// of the wrapped, Heddle-shaped <see cref="Heddle.Exceptions.TemplateProcessingException"/> every other
-        /// render fault produces. The contract does not depend on configuration and no longer depends on the
-        /// opt-in: the model is refused at the top level before the accessor's cast is reached, which is why this
-        /// still sets <c>ValidateModelType = false</c> — it asserts the unguarded path, not the guard.
+        /// A wrong-typed model used to reach the compiled accessor's cast and escape as a raw
+        /// <see cref="System.InvalidCastException"/> instead of the wrapped, Heddle-shaped
+        /// <see cref="Heddle.Exceptions.TemplateProcessingException"/> every other render fault produces. The
+        /// contract does not depend on configuration and no longer depends on the opt-in: the model is refused at
+        /// the top level before the accessor's cast is reached, which is why this still sets
+        /// <c>ValidateModelType = false</c> — it asserts the unguarded path, not the guard.
         /// </summary>
         [Fact]
         public void ARefStructModelFaultsWithTheEnginesOwnExceptionEvenWithoutTheGuard()
