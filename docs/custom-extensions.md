@@ -132,7 +132,7 @@ using Heddle.Data;
 // Span write — dispatches to the sink's native span path when available, else materializes a string.
 scope.Renderer.Render(mySpan);
 
-// Value format — no intermediate string on the span/UTF-8 tiers (net6+):
+// Value format — no intermediate string on the span/UTF-8 tiers (net8+):
 //   IUtf8SpanFormattable straight to bytes on a UTF-8 sink (net8+), else ISpanFormattable into a
 //   stackalloc char span, else ToString(format, provider). Identical characters on every tier.
 scope.Renderer.Render(count, "N0", CultureInfo.InvariantCulture);   // where count : struct, ISpanFormattable

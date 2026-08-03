@@ -21,8 +21,10 @@ process. The precompiled assembly is a *cache seeded at build time*, never a cag
 
 ## Setup
 
-Add the generator package (it ships the emitter in `analyzers/dotnet/cs`; the core `Heddle`
-package stays runtime‑only and unrestricted):
+Add the generator package (it ships one emitter build per Roslyn generation under
+`analyzers/dotnet/roslyn{4.1,4.11,5.3}/cs` — a versioning‑aware host loads the newest folder its
+compiler can bind, and older hosts are trimmed to the 4.1 floor by the package targets; the core
+`Heddle` package stays runtime‑only and unrestricted):
 
 ```xml
 <ItemGroup>

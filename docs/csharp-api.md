@@ -72,8 +72,11 @@ Behavior notes:
 
 - Throws `TemplateInitException` if you never compiled, or `TemplateCompileException` if
   compilation failed — guard with `CompileResult.Success`.
-- In **`DEBUG`** builds, `Generate` validates that `data`'s type matches the compiled model
-  type and throws `TemplateProcessingException` on a mismatch. Release builds skip this check.
+- Every top‑level render validates that `data`'s type matches the compiled model type and
+  throws `TemplateProcessingException` on a mismatch — once per `Generate` call, in every build
+  configuration. Without the check a wrong‑typed model would escape as a raw
+  `InvalidCastException` from the compiled accessor. A `null` model is legal and skips the
+  check, as does the precompiled adapter (it has no compile‑time model type to check against).
 - The output buffer auto‑sizes: each call grows an internal capacity estimate (with ~10 %
   margin) so repeated renders avoid reallocations.
 
@@ -141,14 +144,15 @@ don't flush the partial output as if it were complete.
 | `HeddleCompileResult Compile(string document, ExType modelType = null)` | Compile an inline string. |
 | `HeddleCompileResult Recompile(string newDocument, CompileContext context = null)` | Replace the current template with a new string. |
 | `HeddleCompileResult Recompile(ExType newModelType)` | Recompile the current source against a new model type. |
-| `HeddleCompileResult TryCompilation(CompileContext context)` | **Dry run**: runs the parse and extension/type‑check passes but discards the compiled output. |
+| `HeddleCompileResult TryCompilation(CompileContext context)` | **Dry run**: runs the full compile pipeline but publishes nothing onto the instance. |
 | `HeddleCompileResult TryCompilation(string document, TemplateOptions options = null, ExType modelType = null)` | Dry run for an inline string. |
 
-`TryCompilation` is useful for CI/linting — it tells you whether a template's parse and
-extension/type‑check passes succeed, without producing a renderer. Note it does **not** run
-the deferred‑finalization or embedded‑C# (Roslyn) steps, so a `FullCSharp` template (or one
-whose delayed subtemplate fails finalization) can pass the dry run and still fail a real
-`Compile`. A template can only be compiled once per instance; compiling an
+`TryCompilation` is useful for CI/linting — it runs the **same pipeline as a real `Compile`**,
+including deferred‑extension finalization and the embedded‑C# (Roslyn) compile, so its result
+reports exactly what a real `Compile` of the same input would. The difference is that nothing
+is published: the compiled output is discarded, the instance stays uncompiled (`Compiled`
+remains `false`), and `CompileResult` is not set — the outcome is only the returned result. A
+template can only be compiled once per instance; compiling (or dry‑running) an
 already‑compiled instance throws `TemplateInitException`.
 
 ### State properties
@@ -196,9 +200,11 @@ superseded document is released once no render holds it.
 ### Disposal
 
 `HeddleTemplate` owns its compiled runtime document and any file watcher. Dispose it when done.
-Disposal is **best‑effort deferred** while a render is in progress (it aims to dispose once the
-last in‑flight `Generate` returns); the in‑flight counter is not fully synchronized, so avoid
-disposing an instance that is still being rendered concurrently on other threads.
+`Dispose()` is **non‑blocking, idempotent, and safe to call concurrently with active renders**:
+it marks the template disposed immediately — a `Generate` that starts afterwards throws
+`ObjectDisposedException` — and the actual teardown (watcher, compiled documents) is deferred
+until the last in‑flight render exits, so renders already running complete normally. Teardown
+runs exactly once across the `Dispose`, deferred‑last‑exit, and finalizer paths.
 
 ---
 
@@ -220,6 +226,7 @@ Controls where templates are read from and which features are enabled
 | `AllowCSharp` | `false` | **Obsolete** bridge over `ExpressionMode` (use `ExpressionMode` directly): `true` == `FullCSharp`. Enables embedded C# (`@( @expr )`, `@new`, LINQ, typed `@model()`). Setting `false` leaves `MemberPathsOnly` untouched, otherwise selects `Native`. Reads and writes keep working; new code sets `ExpressionMode`. |
 | `MaxRecursionCount` | `100` | Upper bound on definition recursion depth. |
 | `RenderBudget` | `null` (unlimited) | Per‑render resource caps for untrusted templates: `RenderBudget.MaxOutputChars`, `MaxRenderOps`, and `MaxRenderTime` (each nullable — a null limit is unbounded). `null` (the default) is today's unlimited behavior with **zero render‑path cost** (no wrapper is created). A breach throws `TemplateRenderBudgetException`. Does **not** participate in `Equals`/`GetHashCode` (it changes no bytes of a successful render — same rule as `MaxRecursionCount`). See [Render budgets](#render-budgets). |
+| `ValidateModelType` | `false` | **No longer read.** It once opted renders into the model‑type check; that check is now always on — every top‑level `Generate` validates the model against the compiled model type and throws `TemplateProcessingException` on a mismatch, whatever this property says (see [Rendering](#rendering-generate)). The property is retained so existing code keeps compiling. Does not participate in `Equals`/`GetHashCode`. |
 | `EnableFileChangeCheck` | `false` | Install an armed `FileSystemWatcher` on the source file and recompile on change/create/rename‑onto‑target (see [File watching](#file-watching)). |
 | `ProvideLanguageFeatures` | `false` | Parse in a tooling mode that emits a token list for editors/highlighters (used by the IDE integrations). |
 | `Data` | `null` | Optional ambient data carried on the options. |
@@ -427,7 +434,7 @@ to descend into elements or swap model/chained values. See
   `ParseContext.Warnings` (reachable via `CompileResult.Context.Warnings`), not
   `CompileContext.CompileWarnings` (see [Architecture](architecture.md#2-parsing)).
 - **Render errors** surface as exceptions from `Generate`
-  (`TemplateInitException`, `TemplateCompileException`, and — in DEBUG —
+  (`TemplateInitException`, `TemplateCompileException`, and
   `TemplateProcessingException` for a model‑type mismatch).
 
 ## End‑to‑end example

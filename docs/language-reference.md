@@ -1356,8 +1356,8 @@ slightly between a definition header and a body. For the full picture see
   [Output profiles](#output-profiles) and
   [Built‑in Extensions → Output profiles](built-in-extensions.md#output-profiles).
 - **Recursion is capped** by `TemplateOptions.MaxRecursionCount` (default 100).
-- **Type mismatches and unknown members fail at compile time** (or, in `DEBUG`, when
-  `Generate` is given a model of the wrong type) — see
+- **Type mismatches and unknown members fail at compile time** (or, when `Generate` is
+  given a model of the wrong type, with a `TemplateProcessingException` at render) — see
   [error handling](csharp-api.md#errors-and-diagnostics).
 
 Continue to the **[Built‑in Extensions](built-in-extensions.md)** reference for the helpers

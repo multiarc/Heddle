@@ -22,7 +22,7 @@ From the repository root (the commands pick up [Heddle.sln](../Heddle.sln)):
 ```bash
 dotnet restore
 dotnet build -c Release
-dotnet test               # runs all test projects, as CI does
+dotnet test               # runs all test projects
 ```
 
 ## Target frameworks
@@ -43,26 +43,31 @@ The current release line is **2.1.0**; the published version is set from the rel
 - `Antlr4.Runtime.Standard` 4.13.1 — runtime for the generated parser.
 - `Microsoft.CodeAnalysis.CSharp` (Roslyn) — compiles embedded C# expressions; the version is
   pinned per target framework (4.1.0 on netstandard2.0, 4.11.0 on net8.0, 5.3.0 on net10.0).
-- `Microsoft.Extensions.DependencyModel` / `Microsoft.Extensions.FileProviders.Embedded` —
-  assembly discovery and embedded resources.
+- `Microsoft.Extensions.FileProviders.Embedded` — embedded resources (the C#‑tier class
+  template).
 
 ## Testing
 
-Tests use **xUnit**. The core engine suite lives in [src/Heddle.Tests](../src/Heddle.Tests) — its
+Tests use **xUnit v3** on Microsoft.Testing.Platform — each suite builds as a self‑contained
+test executable, and `dotnet test` drives them per project or per solution. The core engine
+suite lives in [src/Heddle.Tests](../src/Heddle.Tests) — its
 key file is [HeddleTemplateTests.cs](../src/Heddle.Tests/HeddleTemplateTests.cs), with other suites
 covering the compiler, reflection helpers, and string builders. Four more test projects cover the
 rest of the toolchain: `Heddle.Generator.Tests` and `Heddle.Generator.IntegrationTests` (the source
 generator), `Heddle.Tool.Tests` (the `heddle` CLI), and `Heddle.LanguageServices.Tests` (the editor
 language services).
 
-Run the whole solution — this is what CI does
-([dotnet.yml](../.github/workflows/dotnet.yml) runs `dotnet test -c Debug --no-restore`):
+Run the whole solution:
 
 ```bash
 dotnet test
 ```
 
-Or scope to a single project, e.g. `dotnet test src/Heddle.Tests`.
+Or scope to a single project, e.g. `dotnet test src/Heddle.Tests`. CI
+([dotnet.yml](../.github/workflows/dotnet.yml)) runs each suite as its own step through a
+guarded wrapper that fails the run unless the suite's expected number of tests actually
+executed — a whole‑solution run would report one aggregate count, which would let a single
+suite going quiet pass unnoticed.
 
 Many tests are **golden‑file** comparisons: a `.heddle` template under
 [TestTemplate/](../src/Heddle.Tests/TestTemplate) is rendered and compared against an
