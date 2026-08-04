@@ -1042,13 +1042,25 @@ def render(run: Path) -> str:
         "The JS phase shipped **time-only** (Phase 4 D3): no memory sidebar exists, so none is",
         "published here even though mitata emits a heap estimate.",
         "",
-        "### Rust — allocation report absent",
-        "",
-        "`alloc-report.txt` was produced by the run (`rust / measure / alloc-report` = OK in",
-        "`summary.txt`) but the `copy-criterion` step copied only `target/criterion`, so the",
-        "artifact is not in this directory and no Rust allocation figures are published.",
-        "",
     ]
+    if (run / "rust" / "alloc-report.txt").exists():
+        out += [
+            "### Rust — allocation report",
+            "",
+            "The counting-allocator report ships as the raw artifact",
+            "[rust/alloc-report.txt](rust/alloc-report.txt); this script does not parse it into",
+            "a table, so no Rust allocation figures appear here.",
+            "",
+        ]
+    else:
+        out += [
+            "### Rust — allocation report absent",
+            "",
+            "`alloc-report.txt` was produced by the run (`rust / measure / alloc-report` = OK in",
+            "`summary.txt`) but the `copy-criterion` step copied only `target/criterion`, so the",
+            "artifact is not in this directory and no Rust allocation figures are published.",
+            "",
+        ]
 
     # ---- 5. the plausibility register ----
     out += [
