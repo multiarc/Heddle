@@ -1,0 +1,45 @@
+goos: windows
+goarch: amd64
+pkg: heddle.dev/benchmarks/go/suites
+cpu: AMD Ryzen 9 9950X 16-Core Processor            
+BenchmarkColdParse/stdlib-text-32         	   30027	     39946 ns/op	   46576 B/op	     764 allocs/op
+BenchmarkColdParse/stdlib-text-32         	   31117	     39138 ns/op	   46576 B/op	     764 allocs/op
+BenchmarkColdParse/stdlib-text-32         	   30806	     40147 ns/op	   46576 B/op	     764 allocs/op
+BenchmarkColdParse/stdlib-text-32         	   29354	     41055 ns/op	   46576 B/op	     764 allocs/op
+BenchmarkColdParse/stdlib-text-32         	   28920	     41257 ns/op	   46576 B/op	     764 allocs/op
+BenchmarkColdParse/stdlib-text-32         	   29134	     41492 ns/op	   46576 B/op	     764 allocs/op
+BenchmarkColdParse/stdlib-text-32         	   29766	     40316 ns/op	   46576 B/op	     764 allocs/op
+BenchmarkColdParse/stdlib-text-32         	   29216	     40353 ns/op	   46576 B/op	     764 allocs/op
+BenchmarkColdParse/stdlib-text-32         	   29986	     40434 ns/op	   46576 B/op	     764 allocs/op
+BenchmarkColdParse/stdlib-text-32         	   28166	     41460 ns/op	   46576 B/op	     764 allocs/op
+BenchmarkColdParse/stdlib-text-32         	   28969	     41416 ns/op	   46576 B/op	     764 allocs/op
+BenchmarkColdParse/stdlib-text-32         	   29230	     40589 ns/op	   46576 B/op	     764 allocs/op
+BenchmarkColdParse/stdlib-text-32         	   29748	     40597 ns/op	   46576 B/op	     764 allocs/op
+BenchmarkColdParse/stdlib-text-32         	   29160	     40896 ns/op	   46576 B/op	     764 allocs/op
+BenchmarkColdParse/stdlib-text-32         	   29319	     41056 ns/op	   46576 B/op	     764 allocs/op
+BenchmarkColdParse/stdlib-text-32         	   29469	     40154 ns/op	   46576 B/op	     764 allocs/op
+BenchmarkColdParse/stdlib-text-32         	   30477	     40183 ns/op	   46576 B/op	     764 allocs/op
+BenchmarkColdParse/stdlib-text-32         	   29944	     40305 ns/op	   46576 B/op	     764 allocs/op
+BenchmarkColdParse/stdlib-text-32         	   29619	     40520 ns/op	   46576 B/op	     764 allocs/op
+BenchmarkColdParse/stdlib-text-32         	   29974	     40574 ns/op	   46576 B/op	     764 allocs/op
+BenchmarkColdParse/stdlib-html-32         	  180472	      6094 ns/op	   10096 B/op	     147 allocs/op
+BenchmarkColdParse/stdlib-html-32         	  175222	      6743 ns/op	   10096 B/op	     147 allocs/op
+BenchmarkColdParse/stdlib-html-32         	  202586	      6237 ns/op	   10096 B/op	     147 allocs/op
+BenchmarkColdParse/stdlib-html-32         	  199506	      6363 ns/op	   10096 B/op	     147 allocs/op
+BenchmarkColdParse/stdlib-html-32         	  184910	      6406 ns/op	   10096 B/op	     147 allocs/op
+BenchmarkColdParse/stdlib-html-32         	  195705	      6559 ns/op	   10096 B/op	     147 allocs/op
+BenchmarkColdParse/stdlib-html-32         	  199135	      6229 ns/op	   10096 B/op	     147 allocs/op
+BenchmarkColdParse/stdlib-html-32         	  190362	      6479 ns/op	   10096 B/op	     147 allocs/op
+BenchmarkColdParse/stdlib-html-32         	  201326	      6474 ns/op	   10096 B/op	     147 allocs/op
+BenchmarkColdParse/stdlib-html-32         	  187563	      6495 ns/op	   10096 B/op	     147 allocs/op
+BenchmarkColdParse/stdlib-html-32         	  192411	      6632 ns/op	   10096 B/op	     147 allocs/op
+BenchmarkColdParse/stdlib-html-32         	  201589	      6523 ns/op	   10096 B/op	     147 allocs/op
+BenchmarkColdParse/stdlib-html-32         	  192201	      6367 ns/op	   10096 B/op	     147 allocs/op
+BenchmarkColdParse/stdlib-html-32         	  170646	      6446 ns/op	   10096 B/op	     147 allocs/op
+BenchmarkColdParse/stdlib-html-32         	  196143	      6479 ns/op	   10096 B/op	     147 allocs/op
+BenchmarkColdParse/stdlib-html-32         	  183381	      6508 ns/op	   10096 B/op	     147 allocs/op
+BenchmarkColdParse/stdlib-html-32         	  201074	      6436 ns/op	   10096 B/op	     147 allocs/op
+BenchmarkColdParse/stdlib-html-32         	  200470	      6261 ns/op	   10096 B/op	     147 allocs/op
+BenchmarkColdParse/stdlib-html-32         	  172131	      6536 ns/op	   10096 B/op	     147 allocs/op
+BenchmarkColdParse/stdlib-html-32         	  192820	      6470 ns/op	   10096 B/op	     147 allocs/op
+PASS
