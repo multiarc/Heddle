@@ -49,6 +49,10 @@ function Invoke-BenchRun([string]$stdoutPath) {
             -RedirectStandardOutput $stdoutPath `
             -RedirectStandardError $stderrPath `
             -NoNewWindow -PassThru
+        # Cache the process handle before it can exit: without this read, ExitCode comes back
+        # null after WaitForExit and a null code walked through 'exit' as success (one observed
+        # run collapsed to a single pass exactly this way).
+        $null = $p.Handle
         # High priority class immediately after start (D13 launcher posture; never Realtime).
         try { $p.PriorityClass = [System.Diagnostics.ProcessPriorityClass]::High } catch {
             Write-Warning "run.ps1: could not set High priority class: $_"
@@ -56,6 +60,10 @@ function Invoke-BenchRun([string]$stdoutPath) {
         $p.WaitForExit()
         $err = Get-Content -Raw -ErrorAction SilentlyContinue $stderrPath
         if ($err) { Write-Host $err }
+        if ($null -eq $p.ExitCode) {
+            Write-Warning "run.ps1: exit code unreadable for $Script - treating the pass as failed."
+            return 1
+        }
         return $p.ExitCode
     }
     finally {
