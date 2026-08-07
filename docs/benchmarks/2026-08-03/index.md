@@ -181,6 +181,18 @@ while the normative protocol numbering 1–8 stays recorded in `manifest.json` a
 There is **no aggregate score, no overall winner and no single-number verdict** in this program.
 One ranking per workload, and that is all that may be quoted.
 
+> **The two `Heddle (utf8 sink)` / `Heddle (textwriter sink)` rows are techniques, not
+> competitors.** They stream the render into a caller-owned buffer that is allocated once in
+> untimed setup, pre-sized past the output's high-water mark, and reused across iterations —
+> the sink's output is byte-verified against the gated string render in the same process before
+> anything is timed, so the bytes are produced on every iteration, but nothing is materialised.
+> Every competitor row, Heddle's own anchor included, materialises a string. Consequently their
+> time is a streaming floor, their `Allocated` is steady-state GC pressure rather than the cost
+> of owning the output (the buffer's working set is on the order of the output itself), and
+> both columns compare different work from every other row. They are **excluded from every
+> ranking and every margin** in this report; the tables mark them `‡` with the same caveat
+> where they appear.
+
 Full tables, per workload and per ecosystem, plus the allocation sidebars and the plausibility
 register: **[consolidated tables](consolidated-tables.md)**.
 
