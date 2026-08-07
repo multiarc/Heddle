@@ -23,7 +23,7 @@ The specs are the source of truth; nothing in this file overrides them:
 | Rust | rustc/cargo 1.97.1 | `rust-toolchain.toml` in `benchmarks/rust` |
 | JDK | Temurin 25 | `pom.xml` pins `maven.compiler.release=25`; on a JDK < 25 the runner passes `-Dmaven.compiler.release=23` |
 | Node.js | v24.x (major pin, ledger E18; was the exact v24.18.0) | `package.json` `engines: 24.x`; on a non-24 node the runner uses `npm ci --engine-strict=false` and records the delta |
-| CPython | 3.14.6 | harness venv at `benchmarks/python/.venv`; pyperf 2.10.0 + psutil 7.2.2 from `requirements.txt` |
+| CPython | 3.14.x (minor pin, ledger E19; was the exact 3.14.6) | harness venv at `benchmarks/python/.venv`; pyperf 2.10.0 + psutil 7.2.2 from `requirements.txt` |
 | Go | go1.26.x (1.26.5 asserted by `run-benchmarks.ps1`) | templ CLI v0.3.1020 via `go tool templ` |
 
 **Version deltas (SR-3 posture):** the Windows master runner *warns* on any delta from a pin

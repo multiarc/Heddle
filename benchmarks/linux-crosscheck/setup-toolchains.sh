@@ -29,7 +29,7 @@ GO_VERSION="1.26.5"                     # go.dev/dl official linux-amd64 tarball
 TEMURIN_MAJOR="25"                      # Temurin 25 GA linux-x64 (Phase 3)
 TEMURIN_FALLBACK_MAJOR="23"             # SR-3 fallback (flag-gated, delta-recorded)
 PYTHON_MINOR="3.14"                     # deadsnakes python3.14 (D5)
-PYTHON_SOURCE_FALLBACK="3.14.6"         # D5 fallback: source build --enable-optimizations --with-lto
+PYTHON_SOURCE_FALLBACK="3.14.6"         # D5 fallback source build; concrete instance of the 3.14.x minor pin (E19)
 PYTHON_SR3_FALLBACK_MINOR="3.13"        # SR-3 fallback (flag-gated, delta-recorded)
 
 # .NET SDK: the spec pins "the exact Windows-run SDK version" read from the published
