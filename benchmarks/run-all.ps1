@@ -295,8 +295,8 @@ if (-not $NodeIsPinned) { Note '   WARN: node differs from the pinned major v24.
 $vPy = 'NOT FOUND'
 if (Test-Path $VenvPy) { $vPy = Get-ToolVersion ($VenvPy + ' --version') }
 else { $vPy = Get-ToolVersion 'python --version' }
-Note ('   python     : ' + $vPy + '   (pin: CPython 3.14.6; harness venv at benchmarks\python\.venv)')
-if ($vPy -notmatch '3\.14\.6') { Note '   WARN: python differs from the pinned CPython 3.14.6 (record as a version delta).' 'Yellow' }
+Note ('   python     : ' + $vPy + '   (pin: CPython 3.14.x, E19; harness venv at benchmarks\python\.venv)')
+if ($vPy -notmatch '3\.14\.') { Note '   WARN: python differs from the pinned minor CPython 3.14.x (record as a version delta).' 'Yellow' }
 
 $vGo = Get-ToolVersion 'go version'
 Note ('   go         : ' + $vGo + '   (pin: go1.26.x; run-benchmarks.ps1 hard-asserts go1.26.5)')
@@ -317,7 +317,7 @@ $toolchain = [ordered]@{
     'Rust'     = @{ pin = '1.97.1';     actual = $vRustc; drift = ($vRustc -notmatch '1\.97\.1') }
     'JDK'      = @{ pin = 'Temurin 25'; actual = $vJava;  drift = ($JdkMajor -ne 25) }
     'Node.js'  = @{ pin = 'v24.x';      actual = $vNode;  drift = (-not $NodeIsPinned) }
-    'CPython'  = @{ pin = '3.14.6';     actual = $vPy;    drift = ($vPy -notmatch '3\.14\.6') }
+    'CPython'  = @{ pin = '3.14.x';     actual = $vPy;    drift = ($vPy -notmatch '3\.14\.') }
     'Go'       = @{ pin = 'go1.26.x';   actual = $vGo;    drift = ($vGo -notmatch 'go1\.26\.') }
     'templ'    = @{ pin = 'v0.3.1020';  actual = $vTempl; drift = ($vTempl -notmatch 'v0\.3\.1020') }
 }

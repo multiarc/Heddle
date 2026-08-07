@@ -357,10 +357,10 @@ if [ -x "$VENV_PY" ]; then
 else
   V_PY="$(tool_version python3 --version)"
 fi
-note "   python     : $V_PY   (pin: CPython 3.14.6; harness venv at benchmarks/python/.venv)"
+note "   python     : $V_PY   (pin: CPython 3.14.x, E19; harness venv at benchmarks/python/.venv)"
 case "$V_PY" in
-  *3.14.6*) : ;;
-  *) note "   WARN: python differs from the pinned CPython 3.14.6 (record as a version delta)." ;;
+  *3.14.*) : ;;
+  *) note "   WARN: python differs from the pinned minor CPython 3.14.x (record as a version delta)." ;;
 esac
 
 V_GO="$(tool_version go version)"
@@ -392,7 +392,7 @@ write_toolchain_json() {
   case "$V_RUSTC" in *1.97.1*) drift_rustc=false ;; *) drift_rustc=true ;; esac
   [ "$JDK_MAJOR" = "25" ] && drift_jdk=false || drift_jdk=true
   [ "$NODE_IS_PINNED" = "1" ] && drift_node=false || drift_node=true
-  case "$V_PY" in *3.14.6*) drift_py=false ;; *) drift_py=true ;; esac
+  case "$V_PY" in *3.14.*) drift_py=false ;; *) drift_py=true ;; esac
   case "$V_GO" in *go1.26.*) drift_go=false ;; *) drift_go=true ;; esac
   case "$V_TEMPL" in *v0.3.1020*) drift_templ=false ;; *) drift_templ=true ;; esac
   {
@@ -401,7 +401,7 @@ write_toolchain_json() {
     json_row "Rust"     "1.97.1"     "$V_RUSTC" "$drift_rustc"; echo ','
     json_row "JDK"      "Temurin 25" "$V_JAVA"  "$drift_jdk";   echo ','
     json_row "Node.js"  "v24.x"      "$V_NODE"  "$drift_node";  echo ','
-    json_row "CPython"  "3.14.6"     "$V_PY"    "$drift_py";    echo ','
+    json_row "CPython"  "3.14.x"     "$V_PY"    "$drift_py";    echo ','
     json_row "Go"       "go1.26.x"   "$V_GO"    "$drift_go";    echo ','
     json_row "templ"    "v0.3.1020"  "$V_TEMPL" "$drift_templ"; echo
     echo '}'
