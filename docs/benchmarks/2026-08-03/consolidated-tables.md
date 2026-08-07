@@ -443,70 +443,72 @@ Outputs that exceed the 85,000-byte Large Object Heap threshold as UTF-16, so ev
 
 | Workload | Engine | harness statistic | harness dispersion | ns/render | vs Heddle |
 | --- | --- | ---: | ---: | ---: | ---: |
-| trivial-substitution | Heddle (textwriter sink) | 142.8 ns | ±12.03 ns (SD 7.16 ns) | 143 | 0.96 |
+| trivial-substitution | Heddle (textwriter sink) ‡ | 142.8 ns | ±12.03 ns (SD 7.16 ns) | 143 | 0.96 |
 | trivial-substitution | Heddle | 149.0 ns | ±5.98 ns (SD 3.56 ns) | 149 | 1.00 |
-| trivial-substitution | Heddle (utf8 sink) | 161.3 ns | ±3.09 ns (SD 1.84 ns) | 161 | 1.08 |
+| trivial-substitution | Heddle (utf8 sink) ‡ | 161.3 ns | ±3.09 ns (SD 1.84 ns) | 161 | 1.08 |
 | trivial-substitution | Handlebars.Net 2.1.6 | 380.6 ns | ±4.56 ns (SD 2.71 ns) | 381 | 2.55 |
 | trivial-substitution | Fluid.Core 2.31.0 | 497.3 ns | ±5.78 ns (SD 3.44 ns) | 497 | 3.34 |
 | trivial-substitution | DotLiquid 2.3.197 | 1,877.9 ns | ±23.00 ns (SD 13.69 ns) | 1,878 | 12.60 |
 | trivial-substitution | Razor (ASP.NET Core MVC) | 5,510.2 ns | ±74.67 ns (SD 44.43 ns) | 5,510 | 36.98 |
 | trivial-substitution | Scriban 7.2.5 | 39,503.0 ns | ±4,883.57 ns (SD 2,906.13 ns) | 39,503 | 265.12 |
-| fortunes-encoded | Heddle (textwriter sink) | 651.4 ns | ±12.18 ns (SD 7.25 ns) | 651 | 0.89 |
-| fortunes-encoded | Heddle (utf8 sink) | 727.5 ns | ±10.04 ns (SD 5.97 ns) | 728 | 1.00 |
+| fortunes-encoded | Heddle (textwriter sink) ‡ | 651.4 ns | ±12.18 ns (SD 7.25 ns) | 651 | 0.89 |
+| fortunes-encoded | Heddle (utf8 sink) ‡ | 727.5 ns | ±10.04 ns (SD 5.97 ns) | 728 | 1.00 |
 | fortunes-encoded | Heddle | 729.6 ns | ±15.24 ns (SD 9.07 ns) | 730 | 1.00 |
 | fortunes-encoded | Handlebars.Net 2.1.6 | 1,686.4 ns | ±86.08 ns (SD 51.23 ns) | 1,686 | 2.31 |
 | fortunes-encoded | Fluid.Core 2.31.0 | 2,132.8 ns | ±29.58 ns (SD 17.60 ns) | 2,133 | 2.92 |
 | fortunes-encoded | Razor (ASP.NET Core MVC) | 8,232.7 ns | ±90.09 ns (SD 53.61 ns) | 8,233 | 11.28 |
 | fortunes-encoded | Scriban 7.2.5 | 16,132.0 ns | ±1,704.17 ns (SD 1,014.12 ns) | 16,132 | 22.11 |
 | fortunes-encoded | DotLiquid 2.3.197 | 25,046.4 ns | ±223.93 ns (SD 133.25 ns) | 25,046 | 34.33 |
-| fragment-heavy | Heddle (textwriter sink) | 2.970 μs | ±0.2487 μs (SD 0.1480 μs) | 2,970 | 0.91 |
+| fragment-heavy | Heddle (textwriter sink) ‡ | 2.970 μs | ±0.2487 μs (SD 0.1480 μs) | 2,970 | 0.91 |
 | fragment-heavy | Heddle | 3.275 μs | ±0.3837 μs (SD 0.2283 μs) | 3,275 | 1.00 |
-| fragment-heavy | Heddle (utf8 sink) | 3.400 μs | ±0.3080 μs (SD 0.1833 μs) | 3,400 | 1.04 |
+| fragment-heavy | Heddle (utf8 sink) ‡ | 3.400 μs | ±0.3080 μs (SD 0.1833 μs) | 3,400 | 1.04 |
 | fragment-heavy | Fluid.Core 2.31.0 | 11.450 μs | ±1.2786 μs (SD 0.7609 μs) | 11,450 | 3.50 |
 | fragment-heavy | Handlebars.Net 2.1.6 | 20.311 μs | ±0.3458 μs (SD 0.2058 μs) | 20,311 | 6.20 |
 | fragment-heavy | Razor (ASP.NET Core MVC) | 43.338 μs | ±1.6195 μs (SD 0.9637 μs) | 43,338 | 13.23 |
 | fragment-heavy | Scriban 7.2.5 | 47.295 μs | ±1.8583 μs (SD 1.1058 μs) | 47,295 | 14.44 |
 | fragment-heavy | DotLiquid 2.3.197 | 168.546 μs | ±3.1179 μs (SD 1.8554 μs) | 168,546 | 51.46 |
-| mixed-page | Heddle (textwriter sink) | 2.251 μs | ±0.0128 μs (SD 0.0076 μs) | 2,251 | 0.85 |
+| mixed-page | Heddle (textwriter sink) ‡ | 2.251 μs | ±0.0128 μs (SD 0.0076 μs) | 2,251 | 0.85 |
 | mixed-page | Heddle | 2.634 μs | ±0.0442 μs (SD 0.0263 μs) | 2,634 | 1.00 |
-| mixed-page | Heddle (utf8 sink) | 2.785 μs | ±0.1109 μs (SD 0.0660 μs) | 2,785 | 1.06 |
+| mixed-page | Heddle (utf8 sink) ‡ | 2.785 μs | ±0.1109 μs (SD 0.0660 μs) | 2,785 | 1.06 |
 | mixed-page | Handlebars.Net 2.1.6 | 7.184 μs | ±0.1556 μs (SD 0.0926 μs) | 7,184 | 2.73 |
 | mixed-page | Fluid.Core 2.31.0 | 9.021 μs | ±0.1812 μs (SD 0.1078 μs) | 9,021 | 3.42 |
 | mixed-page | Razor (ASP.NET Core MVC) | 20.014 μs | ±0.3720 μs (SD 0.2214 μs) | 20,014 | 7.60 |
 | mixed-page | DotLiquid 2.3.197 | 55.131 μs | ±1.3857 μs (SD 0.8246 μs) | 55,131 | 20.93 |
 | mixed-page | Scriban 7.2.5 | 58.213 μs | ±0.4857 μs (SD 0.2890 μs) | 58,213 | 22.10 |
-| conditional-heavy | Heddle (textwriter sink) | 14.28 μs | ±0.316 μs (SD 0.188 μs) | 14,280 | 0.97 |
+| conditional-heavy | Heddle (textwriter sink) ‡ | 14.28 μs | ±0.316 μs (SD 0.188 μs) | 14,280 | 0.97 |
 | conditional-heavy | Heddle | 14.74 μs | ±0.562 μs (SD 0.335 μs) | 14,740 | 1.00 |
-| conditional-heavy | Heddle (utf8 sink) | 18.12 μs | ±0.193 μs (SD 0.115 μs) | 18,120 | 1.23 |
+| conditional-heavy | Heddle (utf8 sink) ‡ | 18.12 μs | ±0.193 μs (SD 0.115 μs) | 18,120 | 1.23 |
 | conditional-heavy | Handlebars.Net 2.1.6 | 34.62 μs | ±0.803 μs (SD 0.478 μs) | 34,620 | 2.35 |
 | conditional-heavy | Razor (ASP.NET Core MVC) | 37.13 μs | ±0.351 μs (SD 0.209 μs) | 37,130 | 2.52 |
 | conditional-heavy | Fluid.Core 2.31.0 | 39.27 μs | ±0.903 μs (SD 0.537 μs) | 39,270 | 2.66 |
 | conditional-heavy | Scriban 7.2.5 | 114.73 μs | ±15.396 μs (SD 9.162 μs) | 114,730 | 7.78 |
 | conditional-heavy | DotLiquid 2.3.197 | 344.39 μs | ±4.813 μs (SD 2.864 μs) | 344,390 | 23.36 |
-| composed-page | Heddle (textwriter sink) | 1.250 μs | ±0.0275 μs (SD 0.0163 μs) | 1,250 | 0.04 |
-| composed-page | Heddle (utf8 sink) | 1.827 μs | ±0.3204 μs (SD 0.1907 μs) | 1,827 | 0.06 |
+| composed-page | Heddle (textwriter sink) ‡ | 1.250 μs | ±0.0275 μs (SD 0.0163 μs) | 1,250 | 0.04 |
+| composed-page | Heddle (utf8 sink) ‡ | 1.827 μs | ±0.3204 μs (SD 0.1907 μs) | 1,827 | 0.06 |
 | composed-page | Heddle | 32.743 μs | ±8.5992 μs (SD 5.1173 μs) | 32,743 | 1.00 |
 | composed-page | Fluid.Core 2.31.0 | 59.495 μs | ±2.4224 μs (SD 1.4415 μs) | 59,495 | 1.82 |
 | composed-page | Razor (ASP.NET Core MVC) | 60.316 μs | ±12.9126 μs (SD 7.6841 μs) | 60,316 | 1.84 |
 | composed-page | Handlebars.Net 2.1.6 | 63.980 μs | ±6.8241 μs (SD 4.0609 μs) | 63,980 | 1.95 |
 | composed-page | DotLiquid 2.3.197 | 162.243 μs | ±26.5785 μs (SD 15.8164 μs) | 162,243 | 4.96 |
 | composed-page | Scriban 7.2.5 | 412.535 μs | ±35.1875 μs (SD 20.9395 μs) | 412,535 | 12.60 |
-| large-loop | Heddle (textwriter sink) | 129.2 μs | ±0.76 μs (SD 0.46 μs) | 129,200 | 0.26 |
-| large-loop | Heddle (utf8 sink) | 155.1 μs | ±1.86 μs (SD 1.11 μs) | 155,100 | 0.31 |
+| large-loop | Heddle (textwriter sink) ‡ | 129.2 μs | ±0.76 μs (SD 0.46 μs) | 129,200 | 0.26 |
+| large-loop | Heddle (utf8 sink) ‡ | 155.1 μs | ±1.86 μs (SD 1.11 μs) | 155,100 | 0.31 |
 | large-loop | Heddle | 494.5 μs | ±13.17 μs (SD 7.84 μs) | 494,500 | 1.00 |
 | large-loop | Handlebars.Net 2.1.6 | 722.4 μs | ±27.03 μs (SD 16.08 μs) | 722,400 | 1.46 |
 | large-loop | Razor (ASP.NET Core MVC) | 737.8 μs | ±7.23 μs (SD 4.30 μs) | 737,800 | 1.49 |
 | large-loop | Fluid.Core 2.31.0 | 781.4 μs | ±14.15 μs (SD 8.42 μs) | 781,400 | 1.58 |
 | large-loop | Scriban 7.2.5 | 1,549.9 μs | ±24.30 μs (SD 14.46 μs) | 1,549,900 | 3.13 |
 | large-loop | DotLiquid 2.3.197 | 3,813.7 μs | ±157.86 μs (SD 93.94 μs) | 3,813,700 | 7.71 |
-| encoded-loop | Heddle (textwriter sink) | 596.3 μs | ±5.52 μs (SD 3.28 μs) | 596,300 | 0.34 |
-| encoded-loop | Heddle (utf8 sink) | 724.2 μs | ±19.90 μs (SD 11.84 μs) | 724,200 | 0.41 |
+| encoded-loop | Heddle (textwriter sink) ‡ | 596.3 μs | ±5.52 μs (SD 3.28 μs) | 596,300 | 0.34 |
+| encoded-loop | Heddle (utf8 sink) ‡ | 724.2 μs | ±19.90 μs (SD 11.84 μs) | 724,200 | 0.41 |
 | encoded-loop | Handlebars.Net 2.1.6 | 1,722.8 μs | ±12.35 μs (SD 7.35 μs) | 1,722,800 | 0.97 |
 | encoded-loop | Razor (ASP.NET Core MVC) | 1,758.7 μs | ±62.27 μs (SD 37.05 μs) | 1,758,700 | 0.99 |
 | encoded-loop | Heddle | 1,773.7 μs | ±29.97 μs (SD 17.83 μs) | 1,773,700 | 1.00 |
 | encoded-loop | Fluid.Core 2.31.0 | 2,557.4 μs | ±42.60 μs (SD 25.35 μs) | 2,557,400 | 1.44 |
 | encoded-loop | Scriban 7.2.5 | 6,822.5 μs | ±94.76 μs (SD 56.39 μs) | 6,822,500 | 3.85 |
 | encoded-loop | DotLiquid 2.3.197 | 7,701.1 μs | ±180.18 μs (SD 107.22 μs) | 7,701,100 | 4.34 |
+
+‡ **Streaming-sink rows** — the same engine streaming into a caller-owned buffer that is pre-sized in untimed setup and reused across iterations, so the row is engine cost with no output materialisation. Every other row, the Heddle anchor included, materialises a string. The `vs Heddle` ratio therefore compares different work; the rows are excluded from every ranking and exist to show what a caller that can stream avoids paying.
 
 *Source: docs/benchmarks/2026-08-03 — fair fight evidence. The Heddle row is the .NET anchor measured in this same run on the same machine.*
 
@@ -671,70 +673,72 @@ Outputs that exceed the 85,000-byte Large Object Heap threshold as UTF-16, so ev
 
 | Workload | Engine | harness statistic | harness dispersion | ns/render | vs Heddle |
 | --- | --- | ---: | ---: | ---: | ---: |
-| trivial-substitution | Heddle (textwriter sink) | 140.0 ns | ±12.74 ns (SD 7.58 ns) | 140 | 0.94 |
+| trivial-substitution | Heddle (textwriter sink) ‡ | 140.0 ns | ±12.74 ns (SD 7.58 ns) | 140 | 0.94 |
 | trivial-substitution | Heddle | 143.9 ns | ±2.75 ns (SD 1.63 ns) | 144 | 0.97 |
-| trivial-substitution | Heddle (utf8 sink) | 160.1 ns | ±5.52 ns (SD 3.28 ns) | 160 | 1.07 |
+| trivial-substitution | Heddle (utf8 sink) ‡ | 160.1 ns | ±5.52 ns (SD 3.28 ns) | 160 | 1.07 |
 | trivial-substitution | Handlebars.Net 2.1.6 | 457.6 ns | ±5.56 ns (SD 3.31 ns) | 458 | 3.07 |
 | trivial-substitution | Fluid.Core 2.31.0 | 491.1 ns | ±9.21 ns (SD 5.48 ns) | 491 | 3.30 |
 | trivial-substitution | DotLiquid 2.3.197 | 1,900.3 ns | ±56.52 ns (SD 33.63 ns) | 1,900 | 12.75 |
 | trivial-substitution | Razor (ASP.NET Core MVC) | 4,781.1 ns | ±55.55 ns (SD 33.06 ns) | 4,781 | 32.09 |
 | trivial-substitution | Scriban 7.2.5 | 37,077.3 ns | ±373.64 ns (SD 222.35 ns) | 37,077 | 248.84 |
-| fortunes-encoded | Heddle (textwriter sink) | 664.5 ns | ±30.51 ns (SD 18.15 ns) | 664 | 0.91 |
-| fortunes-encoded | Heddle (utf8 sink) | 729.1 ns | ±13.58 ns (SD 8.08 ns) | 729 | 1.00 |
+| fortunes-encoded | Heddle (textwriter sink) ‡ | 664.5 ns | ±30.51 ns (SD 18.15 ns) | 664 | 0.91 |
+| fortunes-encoded | Heddle (utf8 sink) ‡ | 729.1 ns | ±13.58 ns (SD 8.08 ns) | 729 | 1.00 |
 | fortunes-encoded | Heddle | 769.4 ns | ±8.01 ns (SD 4.77 ns) | 769 | 1.05 |
 | fortunes-encoded | Handlebars.Net 2.1.6 | 1,643.1 ns | ±157.76 ns (SD 93.88 ns) | 1,643 | 2.25 |
 | fortunes-encoded | Fluid.Core 2.31.0 | 2,173.4 ns | ±59.90 ns (SD 35.64 ns) | 2,173 | 2.98 |
 | fortunes-encoded | Razor (ASP.NET Core MVC) | 8,315.5 ns | ±75.53 ns (SD 44.94 ns) | 8,316 | 11.40 |
 | fortunes-encoded | Scriban 7.2.5 | 16,694.1 ns | ±590.35 ns (SD 351.31 ns) | 16,694 | 22.88 |
 | fortunes-encoded | DotLiquid 2.3.197 | 25,178.1 ns | ±198.39 ns (SD 118.06 ns) | 25,178 | 34.51 |
-| fragment-heavy | Heddle (textwriter sink) | 2.774 μs | ±0.0640 μs (SD 0.0381 μs) | 2,774 | 0.85 |
+| fragment-heavy | Heddle (textwriter sink) ‡ | 2.774 μs | ±0.0640 μs (SD 0.0381 μs) | 2,774 | 0.85 |
 | fragment-heavy | Heddle | 3.104 μs | ±0.0481 μs (SD 0.0286 μs) | 3,104 | 0.95 |
-| fragment-heavy | Heddle (utf8 sink) | 3.533 μs | ±0.0334 μs (SD 0.0199 μs) | 3,533 | 1.08 |
+| fragment-heavy | Heddle (utf8 sink) ‡ | 3.533 μs | ±0.0334 μs (SD 0.0199 μs) | 3,533 | 1.08 |
 | fragment-heavy | Fluid.Core 2.31.0 | 11.748 μs | ±0.4178 μs (SD 0.2486 μs) | 11,748 | 3.59 |
 | fragment-heavy | Handlebars.Net 2.1.6 | 20.967 μs | ±1.3732 μs (SD 0.8172 μs) | 20,967 | 6.40 |
 | fragment-heavy | Razor (ASP.NET Core MVC) | 36.565 μs | ±0.8851 μs (SD 0.5267 μs) | 36,565 | 11.16 |
 | fragment-heavy | Scriban 7.2.5 | 52.589 μs | ±1.0664 μs (SD 0.6346 μs) | 52,589 | 16.06 |
 | fragment-heavy | DotLiquid 2.3.197 | 273.964 μs | ±3.5135 μs (SD 2.0909 μs) | 273,964 | 83.65 |
-| mixed-page | Heddle (textwriter sink) | 2.318 μs | ±0.0410 μs (SD 0.0244 μs) | 2,318 | 0.88 |
-| mixed-page | Heddle (utf8 sink) | 2.730 μs | ±0.0340 μs (SD 0.0202 μs) | 2,730 | 1.04 |
+| mixed-page | Heddle (textwriter sink) ‡ | 2.318 μs | ±0.0410 μs (SD 0.0244 μs) | 2,318 | 0.88 |
+| mixed-page | Heddle (utf8 sink) ‡ | 2.730 μs | ±0.0340 μs (SD 0.0202 μs) | 2,730 | 1.04 |
 | mixed-page | Heddle | 2.853 μs | ±0.0204 μs (SD 0.0121 μs) | 2,853 | 1.08 |
 | mixed-page | Fluid.Core 2.31.0 | 9.196 μs | ±0.2404 μs (SD 0.1430 μs) | 9,196 | 3.49 |
 | mixed-page | Handlebars.Net 2.1.6 | 10.366 μs | ±0.3297 μs (SD 0.1962 μs) | 10,366 | 3.94 |
 | mixed-page | Razor (ASP.NET Core MVC) | 15.428 μs | ±0.0819 μs (SD 0.0487 μs) | 15,428 | 5.86 |
 | mixed-page | DotLiquid 2.3.197 | 56.129 μs | ±0.8642 μs (SD 0.5143 μs) | 56,129 | 21.31 |
 | mixed-page | Scriban 7.2.5 | 59.114 μs | ±0.5779 μs (SD 0.3439 μs) | 59,114 | 22.44 |
-| conditional-heavy | Heddle (textwriter sink) | 14.64 μs | ±0.083 μs (SD 0.050 μs) | 14,640 | 0.99 |
+| conditional-heavy | Heddle (textwriter sink) ‡ | 14.64 μs | ±0.083 μs (SD 0.050 μs) | 14,640 | 0.99 |
 | conditional-heavy | Heddle | 15.57 μs | ±0.050 μs (SD 0.030 μs) | 15,570 | 1.06 |
-| conditional-heavy | Heddle (utf8 sink) | 18.57 μs | ±0.137 μs (SD 0.082 μs) | 18,570 | 1.26 |
+| conditional-heavy | Heddle (utf8 sink) ‡ | 18.57 μs | ±0.137 μs (SD 0.082 μs) | 18,570 | 1.26 |
 | conditional-heavy | Razor (ASP.NET Core MVC) | 24.51 μs | ±0.796 μs (SD 0.474 μs) | 24,510 | 1.66 |
 | conditional-heavy | Handlebars.Net 2.1.6 | 36.74 μs | ±1.083 μs (SD 0.645 μs) | 36,740 | 2.49 |
 | conditional-heavy | Fluid.Core 2.31.0 | 41.70 μs | ±1.545 μs (SD 0.920 μs) | 41,700 | 2.83 |
 | conditional-heavy | Scriban 7.2.5 | 112.42 μs | ±13.427 μs (SD 7.990 μs) | 112,420 | 7.63 |
 | conditional-heavy | DotLiquid 2.3.197 | 347.63 μs | ±7.351 μs (SD 4.374 μs) | 347,630 | 23.58 |
-| composed-page | Heddle (textwriter sink) | 1.253 μs | ±0.0072 μs (SD 0.0043 μs) | 1,253 | 0.04 |
-| composed-page | Heddle (utf8 sink) | 1.862 μs | ±0.2146 μs (SD 0.1277 μs) | 1,862 | 0.06 |
+| composed-page | Heddle (textwriter sink) ‡ | 1.253 μs | ±0.0072 μs (SD 0.0043 μs) | 1,253 | 0.04 |
+| composed-page | Heddle (utf8 sink) ‡ | 1.862 μs | ±0.2146 μs (SD 0.1277 μs) | 1,862 | 0.06 |
 | composed-page | Heddle | 32.046 μs | ±5.2019 μs (SD 3.0956 μs) | 32,046 | 0.98 |
 | composed-page | Fluid.Core 2.31.0 | 59.352 μs | ±1.5640 μs (SD 0.9307 μs) | 59,352 | 1.81 |
 | composed-page | Razor (ASP.NET Core MVC) | 60.701 μs | ±12.2054 μs (SD 7.2632 μs) | 60,701 | 1.85 |
 | composed-page | Handlebars.Net 2.1.6 | 63.347 μs | ±4.4589 μs (SD 2.6534 μs) | 63,347 | 1.93 |
 | composed-page | DotLiquid 2.3.197 | 182.695 μs | ±5.1167 μs (SD 3.0449 μs) | 182,695 | 5.58 |
 | composed-page | Scriban 7.2.5 | 422.155 μs | ±19.3341 μs (SD 11.5054 μs) | 422,155 | 12.89 |
-| large-loop | Heddle (textwriter sink) | 129.3 μs | ±1.43 μs (SD 0.85 μs) | 129,300 | 0.26 |
-| large-loop | Heddle (utf8 sink) | 155.0 μs | ±1.20 μs (SD 0.71 μs) | 155,000 | 0.31 |
+| large-loop | Heddle (textwriter sink) ‡ | 129.3 μs | ±1.43 μs (SD 0.85 μs) | 129,300 | 0.26 |
+| large-loop | Heddle (utf8 sink) ‡ | 155.0 μs | ±1.20 μs (SD 0.71 μs) | 155,000 | 0.31 |
 | large-loop | Razor (ASP.NET Core MVC) | 562.5 μs | ±7.65 μs (SD 4.55 μs) | 562,500 | 1.14 |
 | large-loop | Heddle | 574.3 μs | ±9.67 μs (SD 5.75 μs) | 574,300 | 1.16 |
 | large-loop | Handlebars.Net 2.1.6 | 746.8 μs | ±24.12 μs (SD 14.35 μs) | 746,800 | 1.51 |
 | large-loop | Fluid.Core 2.31.0 | 858.1 μs | ±10.19 μs (SD 6.06 μs) | 858,100 | 1.74 |
 | large-loop | Scriban 7.2.5 | 1,462.3 μs | ±240.43 μs (SD 143.08 μs) | 1,462,300 | 2.96 |
 | large-loop | DotLiquid 2.3.197 | 3,873.8 μs | ±160.03 μs (SD 95.23 μs) | 3,873,800 | 7.83 |
-| encoded-loop | Heddle (textwriter sink) | 603.5 μs | ±4.90 μs (SD 2.92 μs) | 603,500 | 0.34 |
-| encoded-loop | Heddle (utf8 sink) | 708.7 μs | ±10.45 μs (SD 6.22 μs) | 708,700 | 0.40 |
+| encoded-loop | Heddle (textwriter sink) ‡ | 603.5 μs | ±4.90 μs (SD 2.92 μs) | 603,500 | 0.34 |
+| encoded-loop | Heddle (utf8 sink) ‡ | 708.7 μs | ±10.45 μs (SD 6.22 μs) | 708,700 | 0.40 |
 | encoded-loop | Razor (ASP.NET Core MVC) | 1,788.9 μs | ±39.26 μs (SD 23.36 μs) | 1,788,900 | 1.01 |
 | encoded-loop | Heddle | 1,993.2 μs | ±75.10 μs (SD 44.69 μs) | 1,993,200 | 1.12 |
 | encoded-loop | Handlebars.Net 2.1.6 | 2,027.7 μs | ±25.65 μs (SD 15.27 μs) | 2,027,700 | 1.14 |
 | encoded-loop | Fluid.Core 2.31.0 | 2,358.1 μs | ±348.17 μs (SD 207.19 μs) | 2,358,100 | 1.33 |
 | encoded-loop | Scriban 7.2.5 | 6,366.1 μs | ±100.39 μs (SD 59.74 μs) | 6,366,100 | 3.59 |
 | encoded-loop | DotLiquid 2.3.197 | 7,806.4 μs | ±185.68 μs (SD 110.49 μs) | 7,806,400 | 4.40 |
+
+‡ **Streaming-sink rows** — the same engine streaming into a caller-owned buffer that is pre-sized in untimed setup and reused across iterations, so the row is engine cost with no output materialisation. Every other row, the Heddle anchor included, materialises a string. The `vs Heddle` ratio therefore compares different work; the rows are excluded from every ranking and exist to show what a caller that can stream avoids paying.
 
 *Source: docs/benchmarks/2026-08-03 — fair fight evidence. The Heddle row is the .NET anchor measured in this same run on the same machine.*
 
@@ -990,133 +994,135 @@ runtimes (Phase 7 D6(e), unchanged).
 | Workload | Engine | Track | Allocated | Alloc ratio | Gen0 / Gen1 / Gen2 |
 | --- | --- | --- | ---: | ---: | ---: |
 | composed-page | Heddle | controlled | 233390 B | 1.000 | 2.8076 / 2.8076 / 2.8076 |
-| composed-page | Heddle (utf8 sink) | controlled | 184 B | 0.001 | 0.0095 / 0.0000 / 0.0000 |
-| composed-page | Heddle (textwriter sink) | controlled | 128 B | 0.001 | 0.0076 / 0.0000 / 0.0000 |
+| composed-page | Heddle (utf8 sink) ‡ | controlled | 184 B | 0.001 | 0.0095 / 0.0000 / 0.0000 |
+| composed-page | Heddle (textwriter sink) ‡ | controlled | 128 B | 0.001 | 0.0076 / 0.0000 / 0.0000 |
 | composed-page | Fluid.Core 2.31.0 | controlled | 237548 B | 1.018 | 11.1084 / 5.5542 / 3.6011 |
 | composed-page | Scriban 7.2.5 | controlled | 1182110 B | 5.065 | 58.5938 / 24.4141 / 15.6250 |
 | composed-page | DotLiquid 2.3.197 | controlled | 415489 B | 1.780 | 18.5547 / 9.5215 / 7.0801 |
 | composed-page | Handlebars.Net 2.1.6 | controlled | 233055 B | 0.999 | 10.9863 / 5.3711 / 3.7842 |
 | composed-page | Razor (ASP.NET Core MVC) | controlled | 245441 B | 1.052 | 8.6670 / 2.0752 / 0.7324 |
 | composed-page | Heddle | idiomatic | 233415 B | 1.000 | 3.1433 / 3.1433 / 3.1433 |
-| composed-page | Heddle (utf8 sink) | idiomatic | 184 B | 0.001 | 0.0095 / 0.0000 / 0.0000 |
-| composed-page | Heddle (textwriter sink) | idiomatic | 128 B | 0.001 | 0.0076 / 0.0000 / 0.0000 |
+| composed-page | Heddle (utf8 sink) ‡ | idiomatic | 184 B | 0.001 | 0.0095 / 0.0000 / 0.0000 |
+| composed-page | Heddle (textwriter sink) ‡ | idiomatic | 128 B | 0.001 | 0.0076 / 0.0000 / 0.0000 |
 | composed-page | Fluid.Core 2.31.0 | idiomatic | 237763 B | 1.019 | 11.1694 / 5.6763 / 3.6621 |
 | composed-page | Scriban 7.2.5 | idiomatic | 1212574 B | 5.195 | 60.5469 / 23.4375 / 16.6016 |
 | composed-page | DotLiquid 2.3.197 | idiomatic | 429753 B | 1.841 | 19.5313 / 10.0098 / 7.3242 |
 | composed-page | Handlebars.Net 2.1.6 | idiomatic | 233305 B | 1.000 | 10.9863 / 5.2490 / 3.7842 |
 | composed-page | Razor (ASP.NET Core MVC) | idiomatic | 245665 B | 1.052 | 8.6670 / 2.0752 / 0.7324 |
 | trivial-substitution | Heddle | controlled | 1720 B | 1.00 | 0.1028 / 0.0000 / - |
-| trivial-substitution | Heddle (utf8 sink) | controlled | 208 B | 0.12 | 0.0124 / 0.0000 / - |
-| trivial-substitution | Heddle (textwriter sink) | controlled | 200 B | 0.12 | 0.0119 / 0.0000 / - |
+| trivial-substitution | Heddle (utf8 sink) ‡ | controlled | 208 B | 0.12 | 0.0124 / 0.0000 / - |
+| trivial-substitution | Heddle (textwriter sink) ‡ | controlled | 200 B | 0.12 | 0.0119 / 0.0000 / - |
 | trivial-substitution | Fluid.Core 2.31.0 | controlled | 2344 B | 1.36 | 0.1392 / 0.0000 / - |
 | trivial-substitution | Scriban 7.2.5 | controlled | 343936 B | 199.96 | 20.5078 / 1.7090 / - |
 | trivial-substitution | DotLiquid 2.3.197 | controlled | 10384 B | 6.04 | 0.6199 / 0.0038 / - |
 | trivial-substitution | Handlebars.Net 2.1.6 | controlled | 736 B | 0.43 | 0.0439 / 0.0000 / - |
 | trivial-substitution | Razor (ASP.NET Core MVC) | controlled | 13360 B | 7.77 | 0.7935 / 0.2594 / - |
 | trivial-substitution | Heddle | idiomatic | 1920 B | 1.00 | 0.1147 / 0.0000 / - |
-| trivial-substitution | Heddle (utf8 sink) | idiomatic | 208 B | 0.11 | 0.0124 / 0.0000 / - |
-| trivial-substitution | Heddle (textwriter sink) | idiomatic | 200 B | 0.10 | 0.0119 / 0.0000 / - |
+| trivial-substitution | Heddle (utf8 sink) ‡ | idiomatic | 208 B | 0.11 | 0.0124 / 0.0000 / - |
+| trivial-substitution | Heddle (textwriter sink) ‡ | idiomatic | 200 B | 0.10 | 0.0119 / 0.0000 / - |
 | trivial-substitution | Fluid.Core 2.31.0 | idiomatic | 2424 B | 1.26 | 0.1440 / 0.0000 / - |
 | trivial-substitution | Scriban 7.2.5 | idiomatic | 343965 B | 179.15 | 20.5078 / 1.7090 / - |
 | trivial-substitution | DotLiquid 2.3.197 | idiomatic | 10464 B | 5.45 | 0.6237 / 0.0038 / - |
 | trivial-substitution | Handlebars.Net 2.1.6 | idiomatic | 816 B | 0.42 | 0.0486 / 0.0000 / - |
 | trivial-substitution | Razor (ASP.NET Core MVC) | idiomatic | 13200 B | 6.88 | 0.7858 / 0.2594 / - |
 | large-loop | Heddle | controlled | 1172.35 KB | 1.00 | 52.7344 / 30.2734 / 30.2734 |
-| large-loop | Heddle (utf8 sink) | controlled | 381.41 KB | 0.33 | 23.1934 / 0.0000 / 0.0000 |
-| large-loop | Heddle (textwriter sink) | controlled | 381.41 KB | 0.33 | 23.1934 / 0.0000 / 0.0000 |
+| large-loop | Heddle (utf8 sink) ‡ | controlled | 381.41 KB | 0.33 | 23.1934 / 0.0000 / 0.0000 |
+| large-loop | Heddle (textwriter sink) ‡ | controlled | 381.41 KB | 0.33 | 23.1934 / 0.0000 / 0.0000 |
 | large-loop | Fluid.Core 2.31.0 | controlled | 1668.61 KB | 1.42 | 93.7500 / 51.7578 / 15.6250 |
 | large-loop | Scriban 7.2.5 | controlled | 2819.19 KB | 2.40 | 156.2500 / 80.0781 / 31.2500 |
 | large-loop | DotLiquid 2.3.197 | controlled | 17257.6 KB | 14.72 | 1042.9688 / 449.2188 / 11.7188 |
 | large-loop | Handlebars.Net 2.1.6 | controlled | 1033.68 KB | 0.88 | 55.6641 / 30.2734 / 15.6250 |
 | large-loop | Razor (ASP.NET Core MVC) | controlled | 1363.37 KB | 1.16 | 58.5938 / 56.6406 / 0.0000 |
 | large-loop | Heddle | idiomatic | 1295.42 KB | 1.00 | 57.6172 / 35.1563 / 35.1563 |
-| large-loop | Heddle (utf8 sink) | idiomatic | 381.41 KB | 0.29 | 23.1934 / 0.0000 / 0.0000 |
-| large-loop | Heddle (textwriter sink) | idiomatic | 381.41 KB | 0.29 | 23.1934 / 0.0000 / 0.0000 |
+| large-loop | Heddle (utf8 sink) ‡ | idiomatic | 381.41 KB | 0.29 | 23.1934 / 0.0000 / 0.0000 |
+| large-loop | Heddle (textwriter sink) ‡ | idiomatic | 381.41 KB | 0.29 | 23.1934 / 0.0000 / 0.0000 |
 | large-loop | Fluid.Core 2.31.0 | idiomatic | 1790.03 KB | 1.38 | 99.6094 / 17.5781 / 17.5781 |
 | large-loop | Scriban 7.2.5 | idiomatic | 2920.84 KB | 2.25 | 140.6250 / 62.5000 / 15.6250 |
 | large-loop | DotLiquid 2.3.197 | idiomatic | 17363.3 KB | 13.40 | 1046.8750 / 453.1250 / 15.6250 |
 | large-loop | Handlebars.Net 2.1.6 | idiomatic | 1104.16 KB | 0.85 | 58.5938 / 32.2266 / 16.6016 |
 | large-loop | Razor (ASP.NET Core MVC) | idiomatic | 1351.8 KB | 1.04 | 55.6641 / 44.9219 / 0.0000 |
 | mixed-page | Heddle | controlled | 43.96 KB | 1.00 | 2.6855 / 0.1755 / - |
-| mixed-page | Heddle (utf8 sink) | controlled | 3.92 KB | 0.09 | 0.2365 / 0.0000 / - |
-| mixed-page | Heddle (textwriter sink) | controlled | 3.91 KB | 0.09 | 0.2365 / 0.0000 / - |
+| mixed-page | Heddle (utf8 sink) ‡ | controlled | 3.92 KB | 0.09 | 0.2365 / 0.0000 / - |
+| mixed-page | Heddle (textwriter sink) ‡ | controlled | 3.91 KB | 0.09 | 0.2365 / 0.0000 / - |
 | mixed-page | Fluid.Core 2.31.0 | controlled | 28.99 KB | 0.66 | 1.7700 / 0.0000 / - |
 | mixed-page | Scriban 7.2.5 | controlled | 453.25 KB | 10.31 | 27.3438 / 2.4414 / - |
 | mixed-page | DotLiquid 2.3.197 | controlled | 283.67 KB | 6.45 | 17.3340 / 1.3428 / - |
 | mixed-page | Handlebars.Net 2.1.6 | controlled | 43.83 KB | 1.00 | 2.6779 / 0.2060 / - |
 | mixed-page | Razor (ASP.NET Core MVC) | controlled | 62.54 KB | 1.42 | 3.7842 / 1.2207 / - |
 | mixed-page | Heddle | idiomatic | 62.3 KB | 1.00 | 3.8033 / 0.3777 / - |
-| mixed-page | Heddle (utf8 sink) | idiomatic | 3.92 KB | 0.06 | 0.2365 / 0.0000 / - |
-| mixed-page | Heddle (textwriter sink) | idiomatic | 3.91 KB | 0.06 | 0.2365 / 0.0000 / - |
+| mixed-page | Heddle (utf8 sink) ‡ | idiomatic | 3.92 KB | 0.06 | 0.2365 / 0.0000 / - |
+| mixed-page | Heddle (textwriter sink) ‡ | idiomatic | 3.91 KB | 0.06 | 0.2365 / 0.0000 / - |
 | mixed-page | Fluid.Core 2.31.0 | idiomatic | 35.49 KB | 0.57 | 2.1667 / 0.0000 / - |
 | mixed-page | Scriban 7.2.5 | idiomatic | 481.21 KB | 7.72 | 29.2969 / 0.9766 / - |
 | mixed-page | DotLiquid 2.3.197 | idiomatic | 306.88 KB | 4.93 | 18.7378 / 2.1973 / - |
 | mixed-page | Handlebars.Net 2.1.6 | idiomatic | 66.41 KB | 1.07 | 4.0588 / 0.4425 / - |
 | mixed-page | Razor (ASP.NET Core MVC) | idiomatic | 85.91 KB | 1.38 | 5.2490 / 1.3123 / - |
 | conditional-heavy | Heddle | controlled | 98.43 KB | 1.00 | 6.0120 / 0.6561 / - |
-| conditional-heavy | Heddle (utf8 sink) | controlled | 34.55 KB | 0.35 | 2.1057 / 0.0000 / - |
-| conditional-heavy | Heddle (textwriter sink) | controlled | 34.55 KB | 0.35 | 2.1057 / 0.0000 / - |
+| conditional-heavy | Heddle (utf8 sink) ‡ | controlled | 34.55 KB | 0.35 | 2.1057 / 0.0000 / - |
+| conditional-heavy | Heddle (textwriter sink) ‡ | controlled | 34.55 KB | 0.35 | 2.1057 / 0.0000 / - |
 | conditional-heavy | Fluid.Core 2.31.0 | controlled | 54.94 KB | 0.56 | 3.2959 / 0.1221 / - |
 | conditional-heavy | Scriban 7.2.5 | controlled | 301.96 KB | 3.07 | 17.5781 / 1.9531 / - |
 | conditional-heavy | DotLiquid 2.3.197 | controlled | 1485.26 KB | 15.09 | 90.8203 / 0.0000 / - |
 | conditional-heavy | Handlebars.Net 2.1.6 | controlled | 67.08 KB | 0.68 | 4.0894 / 0.3662 / - |
 | conditional-heavy | Razor (ASP.NET Core MVC) | controlled | 93.04 KB | 0.95 | 5.6152 / 2.8076 / - |
 | conditional-heavy | Heddle | idiomatic | 136.98 KB | 1.00 | 8.3618 / 1.3733 / - |
-| conditional-heavy | Heddle (utf8 sink) | idiomatic | 34.55 KB | 0.25 | 2.1057 / 0.0000 / - |
-| conditional-heavy | Heddle (textwriter sink) | idiomatic | 34.55 KB | 0.25 | 2.1057 / 0.0000 / - |
+| conditional-heavy | Heddle (utf8 sink) ‡ | idiomatic | 34.55 KB | 0.25 | 2.1057 / 0.0000 / - |
+| conditional-heavy | Heddle (textwriter sink) ‡ | idiomatic | 34.55 KB | 0.25 | 2.1057 / 0.0000 / - |
 | conditional-heavy | Fluid.Core 2.31.0 | idiomatic | 76.83 KB | 0.56 | 4.6387 / 0.0000 / - |
 | conditional-heavy | Scriban 7.2.5 | idiomatic | 341.52 KB | 2.49 | 20.8740 / 4.2725 / - |
 | conditional-heavy | DotLiquid 2.3.197 | idiomatic | 1538.55 KB | 11.23 | 93.7500 / 17.5781 / - |
 | conditional-heavy | Handlebars.Net 2.1.6 | idiomatic | 118.02 KB | 0.86 | 7.2021 / 0.9766 / - |
 | conditional-heavy | Razor (ASP.NET Core MVC) | idiomatic | 146.8 KB | 1.07 | 8.9417 / 2.2278 / - |
 | fragment-heavy | Heddle | controlled | 22.54 KB | 1.00 | 1.3771 / 0.0496 / - |
-| fragment-heavy | Heddle (utf8 sink) | controlled | 3.05 KB | 0.14 | 0.1831 / 0.0000 / - |
-| fragment-heavy | Heddle (textwriter sink) | controlled | 3.04 KB | 0.13 | 0.1831 / 0.0000 / - |
+| fragment-heavy | Heddle (utf8 sink) ‡ | controlled | 3.05 KB | 0.14 | 0.1831 / 0.0000 / - |
+| fragment-heavy | Heddle (textwriter sink) ‡ | controlled | 3.04 KB | 0.13 | 0.1831 / 0.0000 / - |
 | fragment-heavy | Fluid.Core 2.31.0 | controlled | 34.37 KB | 1.52 | 2.0905 / 0.0153 / - |
 | fragment-heavy | Scriban 7.2.5 | controlled | 190.42 KB | 8.45 | 11.2305 / 1.4648 / - |
 | fragment-heavy | DotLiquid 2.3.197 | controlled | 937.89 KB | 41.61 | 57.3730 / 4.1504 / - |
 | fragment-heavy | Handlebars.Net 2.1.6 | controlled | 476.2 KB | 21.13 | 29.1443 / 2.4719 / - |
 | fragment-heavy | Razor (ASP.NET Core MVC) | controlled | 135.57 KB | 6.02 | 8.0566 / 1.9531 / - |
 | fragment-heavy | Heddle | idiomatic | 30.04 KB | 1.00 | 1.8349 / 0.0839 / - |
-| fragment-heavy | Heddle (utf8 sink) | idiomatic | 3.05 KB | 0.10 | 0.1831 / 0.0000 / - |
-| fragment-heavy | Heddle (textwriter sink) | idiomatic | 3.04 KB | 0.10 | 0.1831 / 0.0000 / - |
+| fragment-heavy | Heddle (utf8 sink) ‡ | idiomatic | 3.05 KB | 0.10 | 0.1831 / 0.0000 / - |
+| fragment-heavy | Heddle (textwriter sink) ‡ | idiomatic | 3.04 KB | 0.10 | 0.1831 / 0.0000 / - |
 | fragment-heavy | Fluid.Core 2.31.0 | idiomatic | 36.82 KB | 1.23 | 2.2430 / 0.0153 / - |
 | fragment-heavy | Scriban 7.2.5 | idiomatic | 201.28 KB | 6.70 | 12.2070 / 1.9531 / - |
 | fragment-heavy | DotLiquid 2.3.197 | idiomatic | 1503.44 KB | 50.05 | 91.7969 / 7.3242 / - |
 | fragment-heavy | Handlebars.Net 2.1.6 | idiomatic | 477.89 KB | 15.91 | 29.2358 / 2.5635 / - |
 | fragment-heavy | Razor (ASP.NET Core MVC) | idiomatic | 135.15 KB | 4.50 | 8.2397 / 2.0752 / - |
 | fortunes-encoded | Heddle | controlled | 6.95 KB | 1.00 | 0.4253 / 0.0038 / - |
-| fortunes-encoded | Heddle (utf8 sink) | controlled | 2.25 KB | 0.32 | 0.1373 / 0.0000 / - |
-| fortunes-encoded | Heddle (textwriter sink) | controlled | 2.24 KB | 0.32 | 0.1364 / 0.0000 / - |
+| fortunes-encoded | Heddle (utf8 sink) ‡ | controlled | 2.25 KB | 0.32 | 0.1373 / 0.0000 / - |
+| fortunes-encoded | Heddle (textwriter sink) ‡ | controlled | 2.24 KB | 0.32 | 0.1364 / 0.0000 / - |
 | fortunes-encoded | Fluid.Core 2.31.0 | controlled | 5.61 KB | 0.81 | 0.3433 / 0.0000 / - |
 | fortunes-encoded | Scriban 7.2.5 | controlled | 77.42 KB | 11.13 | 4.6387 / 0.4883 / - |
 | fortunes-encoded | DotLiquid 2.3.197 | controlled | 73.22 KB | 10.53 | 4.4556 / 0.2747 / - |
 | fortunes-encoded | Handlebars.Net 2.1.6 | controlled | 2.22 KB | 0.32 | 0.1354 / 0.0000 / - |
 | fortunes-encoded | Razor (ASP.NET Core MVC) | controlled | 21.87 KB | 3.15 | 1.3275 / 0.6561 / - |
 | fortunes-encoded | Heddle | idiomatic | 8.18 KB | 1.00 | 0.5007 / 0.0057 / - |
-| fortunes-encoded | Heddle (utf8 sink) | idiomatic | 2.25 KB | 0.28 | 0.1373 / 0.0000 / - |
-| fortunes-encoded | Heddle (textwriter sink) | idiomatic | 2.24 KB | 0.27 | 0.1364 / 0.0000 / - |
+| fortunes-encoded | Heddle (utf8 sink) ‡ | idiomatic | 2.25 KB | 0.28 | 0.1373 / 0.0000 / - |
+| fortunes-encoded | Heddle (textwriter sink) ‡ | idiomatic | 2.24 KB | 0.27 | 0.1364 / 0.0000 / - |
 | fortunes-encoded | Fluid.Core 2.31.0 | idiomatic | 6 KB | 0.73 | 0.3662 / 0.0000 / - |
 | fortunes-encoded | Scriban 7.2.5 | idiomatic | 78.61 KB | 9.61 | 4.7607 / 0.3662 / - |
 | fortunes-encoded | DotLiquid 2.3.197 | idiomatic | 74.37 KB | 9.09 | 4.5471 / 0.2136 / - |
 | fortunes-encoded | Handlebars.Net 2.1.6 | idiomatic | 2.46 KB | 0.30 | 0.1488 / 0.0000 / - |
 | fortunes-encoded | Razor (ASP.NET Core MVC) | idiomatic | 22.26 KB | 2.72 | 1.3580 / 0.6714 / - |
 | encoded-loop | Heddle | controlled | 5.79 MB | 1.00 | 275.3906 / 109.3750 / 109.3750 |
-| encoded-loop | Heddle (utf8 sink) | controlled | 2.66 MB | 0.46 | 166.0156 / 0.0000 / 0.0000 |
-| encoded-loop | Heddle (textwriter sink) | controlled | 2.66 MB | 0.46 | 166.0156 / 0.0000 / 0.0000 |
+| encoded-loop | Heddle (utf8 sink) ‡ | controlled | 2.66 MB | 0.46 | 166.0156 / 0.0000 / 0.0000 |
+| encoded-loop | Heddle (textwriter sink) ‡ | controlled | 2.66 MB | 0.46 | 166.0156 / 0.0000 / 0.0000 |
 | encoded-loop | Fluid.Core 2.31.0 | controlled | 5.86 MB | 1.01 | 324.2188 / 218.7500 / 50.7813 |
 | encoded-loop | Scriban 7.2.5 | controlled | 12.15 MB | 2.10 | 671.8750 / 445.3125 / 101.5625 |
 | encoded-loop | DotLiquid 2.3.197 | controlled | 29.99 MB | 5.18 | 1828.1250 / 828.1250 / 46.8750 |
 | encoded-loop | Handlebars.Net 2.1.6 | controlled | 3.11 MB | 0.54 | 152.3438 / 113.2813 / 52.7344 |
 | encoded-loop | Razor (ASP.NET Core MVC) | controlled | 4.91 MB | 0.85 | 210.9375 / 207.0313 / 0.0000 |
 | encoded-loop | Heddle | idiomatic | 6.38 MB | 1.00 | 285.1563 / 121.0938 / 121.0938 |
-| encoded-loop | Heddle (utf8 sink) | idiomatic | 2.66 MB | 0.42 | 166.0156 / 0.0000 / 0.0000 |
-| encoded-loop | Heddle (textwriter sink) | idiomatic | 2.66 MB | 0.42 | 166.0156 / 0.0000 / 0.0000 |
+| encoded-loop | Heddle (utf8 sink) ‡ | idiomatic | 2.66 MB | 0.42 | 166.0156 / 0.0000 / 0.0000 |
+| encoded-loop | Heddle (textwriter sink) ‡ | idiomatic | 2.66 MB | 0.42 | 166.0156 / 0.0000 / 0.0000 |
 | encoded-loop | Fluid.Core 2.31.0 | idiomatic | 6.47 MB | 1.01 | 351.5625 / 226.5625 / 62.5000 |
 | encoded-loop | Scriban 7.2.5 | idiomatic | 12.97 MB | 2.03 | 710.9375 / 445.3125 / 125.0000 |
 | encoded-loop | DotLiquid 2.3.197 | idiomatic | 30.61 MB | 4.80 | 1843.7500 / 921.8750 / 46.8750 |
 | encoded-loop | Handlebars.Net 2.1.6 | idiomatic | 3.64 MB | 0.57 | 179.6875 / 125.0000 / 62.5000 |
 | encoded-loop | Razor (ASP.NET Core MVC) | idiomatic | 5.82 MB | 0.91 | 238.2813 / 234.3750 / 0.0000 |
+
+‡ **The two streaming-sink rows measure a different quantity from every other row, and their `Allocated` figures must not be compared with the materialising rows'.** A materialising row's `Allocated` includes the rendered output; the sink rows stream into a caller-owned buffer that is allocated once in untimed setup, pre-sized past the output's high-water mark, and reused across iterations. Their `Allocated` is therefore the engine's per-render bookkeeping — the steady-state GC pressure a pooled streaming consumer (a `PipeWriter`-shaped caller) sees — and NOT the cost of owning the output: the buffer's working set, on the order of the rendered output itself, is real memory the caller holds for the render's duration and simply is not a per-render allocation. Read an `Alloc ratio` of 0.001 as "streaming retires the per-render allocation", never as "the render fits in a few hundred bytes".
 
 #### .NET — Heddle-internal suites (not competitor tables)
 

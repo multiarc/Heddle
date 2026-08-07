@@ -427,8 +427,11 @@ def load_dotnet(run: Path) -> tuple[list[Cell], list[list[str]]]:
             )
             allocated = (row.get("Allocated") or "").strip()
             if allocated and allocated != "NA":
+                display = name(".NET", engine)
                 alloc.append([
-                    workload, name(".NET", engine), track, allocated,
+                    workload,
+                    display + " ‡" if display in HEDDLE_TECHNIQUE_ENGINES else display,
+                    track, allocated,
                     (row.get("Alloc Ratio") or "").strip() or "—",
                     " / ".join((row.get(g) or "-").strip() or "-" for g in ("Gen0", "Gen1", "Gen2")),
                 ])
@@ -966,6 +969,8 @@ def render(run: Path) -> str:
                     label = c.engine
                     if (c.ecosystem, c.engine) in NOT_PARITY_CHECKED:
                         label += " †"
+                    if is_heddle_technique(c):
+                        label += " ‡"
                     rows.append([
                         workload, label, c.stat, c.dispersion, fmt_ns(c.ns),
                         fmt_ratio(c.ns / anchor),
@@ -983,6 +988,14 @@ def render(run: Path) -> str:
                     out += [f"† **{e_engine}** — {reason}. Excluded from the cross-stack "
                             "rankings for that reason; its ratio column above is indicative "
                             "only.", ""]
+            if any(is_heddle_technique(c) for c in eco_cells):
+                out += ["‡ **Streaming-sink rows** — the same engine streaming into a "
+                        "caller-owned buffer that is pre-sized in untimed setup and reused "
+                        "across iterations, so the row is engine cost with no output "
+                        "materialisation. Every other row, the Heddle anchor included, "
+                        "materialises a string. The `vs Heddle` ratio therefore compares "
+                        "different work; the rows are excluded from every ranking and exist "
+                        "to show what a caller that can stream avoids paying.", ""]
             out += [
                 f"*Source: {run.as_posix()} — {EVIDENCE[eco]} evidence. The Heddle row is "
                 "the .NET anchor measured in this same run on the same machine.*",
@@ -1022,6 +1035,21 @@ def render(run: Path) -> str:
     out += ["### .NET — allocation (BenchmarkDotNet `[MemoryDiagnoser]`)", ""]
     out += table(["Workload", "Engine", "Track", "Allocated", "Alloc ratio", "Gen0 / Gen1 / Gen2"],
                  ["l", "l", "l", "r", "r", "r"], dotnet_alloc)
+    if any(r[1].endswith(" ‡") for r in dotnet_alloc):
+        out += [
+            "",
+            "‡ **The two streaming-sink rows measure a different quantity from every other row, "
+            "and their `Allocated` figures must not be compared with the materialising rows'.** A "
+            "materialising row's `Allocated` includes the rendered output; the sink rows stream "
+            "into a caller-owned buffer that is allocated once in untimed setup, pre-sized past "
+            "the output's high-water mark, and reused across iterations. Their `Allocated` is "
+            "therefore the engine's per-render bookkeeping — the steady-state GC pressure a "
+            "pooled streaming consumer (a `PipeWriter`-shaped caller) sees — and NOT the cost of "
+            "owning the output: the buffer's working set, on the order of the rendered output "
+            "itself, is real memory the caller holds for the render's duration and simply is not "
+            "a per-render allocation. Read an `Alloc ratio` of 0.001 as \"streaming retires the "
+            "per-render allocation\", never as \"the render fits in a few hundred bytes\".",
+        ]
     internal = load_dotnet_internal(run)
     if internal:
         out += ["", "#### .NET — Heddle-internal suites (not competitor tables)", ""]
