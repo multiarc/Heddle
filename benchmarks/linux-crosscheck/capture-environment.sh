@@ -177,7 +177,7 @@ GO_V="$(tool_version go version)"
   echo "| .NET | \`$DOTNET_V\` | dotnet-install.sh --version (D4.2; SR-1-parameterized) | linux-x64 (RID) | glibc | .NET GC (Server GC off — BenchmarkDotNet defaults, as on Windows) |"
   echo "| Rust | \`$RUSTC_V\` | rustup toolchain install 1.97.1 | x86_64-unknown-linux-gnu | glibc | System allocator (std), same as Windows build |"
   echo "| JVM | \`$JAVA_V\` | Temurin 25 linux-x64 tar.gz (JMH '# VM version' line is the runtime identity of record) | linux-x64 | glibc | JVM heap; GC as reported by the JMH VM line (defaults, no jvmArgs) |"
-  echo "| JS/Node | \`$NODE_V\` | nodejs.org official linux-x64 tarball 24.18.0 | linux-x64 | glibc | V8 heap; npm ci against the committed lockfile |"
+  echo "| JS/Node | \`$NODE_V\` | nodejs.org official linux-x64 tarball, v24.x major pin (E18) | linux-x64 | glibc | V8 heap; npm ci against the committed lockfile |"
   echo "| Python | \`$PY_V\` | deadsnakes PPA python3.14 (D5; fallback recorded if used) | x86_64-linux-gnu | glibc | pymalloc (default); CONFIG_ARGS: \`$PY_CFG\` |"
   echo "| Go | \`$GO_V\` | go.dev/dl official linux-amd64 tarball 1.26.5 | linux/amd64 | glibc (cgo-linked stdlib parts) | Go runtime allocator + Green Tea GC (1.26 default), GOGC=100; GOMAXPROCS recorded as the runtime reports it |"
   echo

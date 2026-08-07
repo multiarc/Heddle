@@ -287,10 +287,10 @@ Note ('   maven      : ' + $vMvn + '   (harness builds use its own mvnw.cmd wrap
 
 $vNode = Get-ToolVersion 'node --version'
 $vNpm = Get-ToolVersion 'npm --version'
-Note ('   node       : ' + $vNode + '   (pin: v24.18.0)')
+Note ('   node       : ' + $vNode + '   (pin: v24.x, E18)')
 Note ('   npm        : ' + $vNpm)
-$NodeIsPinned = ($vNode.Trim() -eq 'v24.18.0')
-if (-not $NodeIsPinned) { Note '   WARN: node differs from the pinned v24.18.0 (npm ci will run with --engine-strict=false; record as a version delta).' 'Yellow' }
+$NodeIsPinned = ($vNode.Trim() -like 'v24.*')
+if (-not $NodeIsPinned) { Note '   WARN: node differs from the pinned major v24.x (npm ci will run with --engine-strict=false; record as a version delta).' 'Yellow' }
 
 $vPy = 'NOT FOUND'
 if (Test-Path $VenvPy) { $vPy = Get-ToolVersion ($VenvPy + ' --version') }
@@ -316,7 +316,7 @@ $toolchain = [ordered]@{
     '.NET SDK' = @{ pin = '(protocol records the observed line)'; actual = $vDotnet; drift = $false }
     'Rust'     = @{ pin = '1.97.1';     actual = $vRustc; drift = ($vRustc -notmatch '1\.97\.1') }
     'JDK'      = @{ pin = 'Temurin 25'; actual = $vJava;  drift = ($JdkMajor -ne 25) }
-    'Node.js'  = @{ pin = 'v24.18.0';   actual = $vNode;  drift = (-not $NodeIsPinned) }
+    'Node.js'  = @{ pin = 'v24.x';      actual = $vNode;  drift = (-not $NodeIsPinned) }
     'CPython'  = @{ pin = '3.14.6';     actual = $vPy;    drift = ($vPy -notmatch '3\.14\.6') }
     'Go'       = @{ pin = 'go1.26.x';   actual = $vGo;    drift = ($vGo -notmatch 'go1\.26\.') }
     'templ'    = @{ pin = 'v0.3.1020';  actual = $vTempl; drift = ($vTempl -notmatch 'v0\.3\.1020') }

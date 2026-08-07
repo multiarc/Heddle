@@ -22,7 +22,7 @@ The specs are the source of truth; nothing in this file overrides them:
 | .NET SDK | **TBD** — pinned to the SDK of the Windows protocol run, which is pending re-test. The published 2026-07-25 Linux run used SDK 10.0.110 / runtime .NET 10.0.10 | suites target `net10.0`, `-c Release` |
 | Rust | rustc/cargo 1.97.1 | `rust-toolchain.toml` in `benchmarks/rust` |
 | JDK | Temurin 25 | `pom.xml` pins `maven.compiler.release=25`; on a JDK < 25 the runner passes `-Dmaven.compiler.release=23` |
-| Node.js | v24.18.0 | `package.json` `engines`; on any other node the runner uses `npm ci --engine-strict=false` |
+| Node.js | v24.x (major pin, ledger E18; was the exact v24.18.0) | `package.json` `engines: 24.x`; on a non-24 node the runner uses `npm ci --engine-strict=false` and records the delta |
 | CPython | 3.14.6 | harness venv at `benchmarks/python/.venv`; pyperf 2.10.0 + psutil 7.2.2 from `requirements.txt` |
 | Go | go1.26.x (1.26.5 asserted by `run-benchmarks.ps1`) | templ CLI v0.3.1020 via `go tool templ` |
 

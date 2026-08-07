@@ -344,12 +344,12 @@ note "   maven      : $V_MVN   (harness builds use its own mvnw wrapper)"
 
 V_NODE="$(tool_version node --version)"
 V_NPM="$(tool_version npm --version)"
-note "   node       : $V_NODE   (pin: v24.18.0)"
+note "   node       : $V_NODE   (pin: v24.x, E18)"
 note "   npm        : $V_NPM"
 NODE_IS_PINNED=0
-[ "$V_NODE" = "v24.18.0" ] && NODE_IS_PINNED=1
+case "$V_NODE" in v24.*) NODE_IS_PINNED=1 ;; esac
 if [ "$NODE_IS_PINNED" = "0" ]; then
-  note "   WARN: node differs from the pinned v24.18.0 (npm ci will run with --engine-strict=false; record as a version delta)."
+  note "   WARN: node differs from the pinned major v24.x (npm ci will run with --engine-strict=false; record as a version delta)."
 fi
 
 if [ -x "$VENV_PY" ]; then
@@ -400,7 +400,7 @@ write_toolchain_json() {
     json_row ".NET SDK" "(protocol records the observed line)" "$V_DOTNET" false; echo ','
     json_row "Rust"     "1.97.1"     "$V_RUSTC" "$drift_rustc"; echo ','
     json_row "JDK"      "Temurin 25" "$V_JAVA"  "$drift_jdk";   echo ','
-    json_row "Node.js"  "v24.18.0"   "$V_NODE"  "$drift_node";  echo ','
+    json_row "Node.js"  "v24.x"      "$V_NODE"  "$drift_node";  echo ','
     json_row "CPython"  "3.14.6"     "$V_PY"    "$drift_py";    echo ','
     json_row "Go"       "go1.26.x"   "$V_GO"    "$drift_go";    echo ','
     json_row "templ"    "v0.3.1020"  "$V_TEMPL" "$drift_templ"; echo
