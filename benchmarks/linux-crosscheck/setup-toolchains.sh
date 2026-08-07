@@ -24,7 +24,7 @@ set -euo pipefail
 
 # --- Pins (D4.2 platform artifacts; version NUMBERS mirror the Windows pins) ---
 RUST_TOOLCHAIN="1.97.1"                 # rustup toolchain, host x86_64-unknown-linux-gnu (Phase 2 D1 pin)
-NODE_VERSION="24.18.0"                  # nodejs.org official linux-x64 tarball (Phase 4 pin)
+NODE_VERSION="24.18.0"                  # nodejs.org official linux-x64 tarball; concrete instance of the v24.x major pin (E18)
 GO_VERSION="1.26.5"                     # go.dev/dl official linux-amd64 tarball (Phase 6 pin)
 TEMURIN_MAJOR="25"                      # Temurin 25 GA linux-x64 (Phase 3)
 TEMURIN_FALLBACK_MAJOR="23"             # SR-3 fallback (flag-gated, delta-recorded)

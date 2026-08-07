@@ -11,7 +11,7 @@ The golden corpus is consumed read-only from `benchmarks/dotnet/GoldenCorpus/`.
 
 ## Pins
 
-- Node **24.18.0** (exact; `engines` + `engine-strict=true` — any other Node version is refused)
+- Node **24.x** (major pin, ledger E18; `engines` + `engine-strict=true` — any non-24 Node is refused, and the run records the exact version it used)
 - handlebars **4.7.9**, eta **4.6.0**, mitata **1.0.34** (exact pins, committed lockfile)
 - The only sanctioned install command is `npm ci`.
 
