@@ -6,10 +6,12 @@ namespace Heddle.Benchmarks.ThirdParty
 {
     /// <summary>
     /// The head-to-head that adds Heddle to the upstream product-render comparison. It replicates the
-    /// upstream <c>ComparisonBenchmarks</c> configuration verbatim — <see cref="MemoryDiagnoserAttribute"/>,
-    /// <c>GroupBenchmarksBy(ByCategory)</c>, <c>ShortRunJob</c>, Fluid as the <c>Baseline</c> — over the
+    /// upstream <c>ComparisonBenchmarks</c> configuration — <see cref="MemoryDiagnoserAttribute"/>,
+    /// <c>GroupBenchmarksBy(ByCategory)</c>, Fluid as the <c>Baseline</c> — over the
     /// same <c>Parse</c> and <c>Render</c> categories, and drives each engine through the shared
-    /// <see cref="BaseBenchmarks"/> methods (same model, same output oracle).
+    /// <see cref="BaseBenchmarks"/> methods (same model, same output oracle). The one budget change
+    /// from upstream's <c>ShortRunJob</c>: five measurement iterations instead of three, the
+    /// repo-wide per-run sample floor (ledger E28); warmup and launch counts stay ShortRun's.
     ///
     /// <para>Two deliberate differences from upstream <c>ComparisonBenchmarks</c>, both documented in
     /// <c>ThirdParty/README.md</c>: (1) it adds the <c>Heddle_*</c> rows; (2) it omits Liquid.NET, which
@@ -18,7 +20,8 @@ namespace Heddle.Benchmarks.ThirdParty
     /// <c>ParseBig</c> category is dropped because Heddle (like Handlebars upstream) carries no big-template
     /// twin. Nothing else about the methodology changes.</para>
     /// </summary>
-    [MemoryDiagnoser, GroupBenchmarksBy(BenchmarkLogicalGroupRule.ByCategory), ShortRunJob]
+    [MemoryDiagnoser, GroupBenchmarksBy(BenchmarkLogicalGroupRule.ByCategory)]
+    [SimpleJob(launchCount: 1, warmupCount: 3, iterationCount: 5)]
     public class HeddleComparisonBenchmarks
     {
         private readonly FluidBenchmarks _fluidBenchmarks = new FluidBenchmarks();

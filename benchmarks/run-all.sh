@@ -99,7 +99,7 @@ fi
 # rather than by accident. Every leg's committed source/script default IS its `short` shape.
 case "$BUDGET" in
   short)
-    DOTNET_PROFILE_ARGS=()                                   # harness default job: L3/W3/I3
+    DOTNET_PROFILE_ARGS=()                                   # harness default job: L3/W3/I5 (E28 five-sample floor)
     RUST_PROFILE_ARGS=()                                     # source: warm-up 5 s, measure 26 s
     JMH_PROFILE_ARGS=()                                      # annotations: F5, W 1x2s, M 5x1s
     PY_VALUES_ARGS=(--values 6 --warmups 1)
@@ -114,7 +114,8 @@ case "$BUDGET" in
     # counts instead runs through BenchmarkDotNet's pilot stage and does not. More to the point,
     # a single launch never samples the cross-process term AT ALL: one process, one JIT, one heap
     # layout. That is the same gap JMH closes with plural forks and JS with repeat passes, and
-    # the .NET leg was the one that had never bought it.
+    # the .NET leg was the one that had never bought it. The launches multiply the harness job's
+    # E28 five-iteration floor: 10 x 5 = 50 samples per cell here, against short's 3 x 5 = 15.
     DOTNET_PROFILE_ARGS=(--launchCount 10)
     RUST_PROFILE_ARGS=(--warm-up-time 10 --measurement-time 84)
     JMH_PROFILE_ARGS=(-f 5 -wi 2 -i 17)
