@@ -178,109 +178,109 @@ the same four engines. No universal-superiority claim follows. Numbers are hardw
 date-specific; reproduce with the command above filtered to `*SubstitutionRenderBenchmarks*` /
 `*LoopRenderBenchmarks*`.
 
-### Cross‑stack — 2026‑07‑25
+### Cross-stack — 2026-08-08
 
 The two runs above compare Heddle only against other .NET engines. The
-cross‑stack run widens that to **thirteen engines across six
+cross-stack run widens that to **fifteen engines across six
 ecosystems** — .NET, Rust, the JVM, JS/Node, Python and Go — over **eight workloads** in two
-tracks, all on one machine in one session, every controlled cell held to byte‑identical output
+tracks, all on one machine in one session, every controlled cell held to byte-identical output
 against a shared golden corpus.
 
 ```
-Ubuntu 24.04.4 LTS · AMD Ryzen 9 9950X, 16 physical / 32 logical cores · boost off, no CPU isolation
-.NET 10.0.10 · Rust 1.97.1 · OpenJDK 25.0.3 · node v24.18.0 · CPython 3.12.3 · go1.26.5
-BenchmarkDotNet 0.15.8 · Criterion · JMH 1.37 · mitata 1.0.34 · pyperf 2.10.0 · benchstat
+Windows 11 (10.0.26200.8894/25H2) · AMD Ryzen 9 9950X, 16 physical / 32 logical cores
+.NET 10.0.10 · rustc 1.97.1 · JDK 25.0.4 · node v24.19.0 · CPython 3.14.7 · go1.26.5 · templ v0.3.1020
+BenchmarkDotNet 0.15.8 · Criterion · JMH 1.37 · mitata 1.0.34 (38 passes per track) · pyperf 2.10.0 · benchstat
 ```
 
-This run is on the **Linux** side of the benchmark box, which is not the program's Windows
-protocol machine, and CPU boost was off. Rankings are internally consistent — one machine, one
-session, all engines under identical conditions — but absolute figures are not comparable with
-runs on other platforms or clock states. The report states the full caveat set.
+This run executed on the program's **Windows protocol machine** — the box its metrics protocol
+pins for cross-compared runs — with **every toolchain on its pin, zero drift**, and it is
+unreplicated: no cross-check on a second platform is currently published. Windows has no captured
+tuned state (the posture is procedural: quiet machine, AC power, High Performance plan), so
+absolute figures are not comparable with tuned boost-off runs on other platforms or clock states.
+The report states the full caveat set.
 
 The eight workloads split into two sizing regimes, and the report leads with the realistic one.
 The boundary is not editorial: the CLR allocates any object of **85,000 bytes or more on the Large
-Object Heap**, and .NET strings are UTF‑16, so a page crosses that line at 42,500 characters and
+Object Heap**, and .NET strings are UTF-16, so a page crosses that line at 42,500 characters and
 every render past it drives a full Gen2 collection. Five workloads sit below it; three sit above.
 
 #### Tier 1 — realistic sizing (338 B – 15.5 KB)
 
-**Heddle is the fastest of the six .NET engines on all five**, by 2.36×–3.66× (controlled track,
-lower is better):
+**Heddle is the fastest of the six .NET engines on all five**, by 2.25×–3.64× (controlled track,
+next-fastest .NET engine shown; lower is better):
 
-| Engine | trivial‑subst. | fortunes‑enc. | fragment‑heavy | mixed‑page | conditional‑heavy |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| **Heddle** (baseline) | **164.6 ns** | **938.7 ns** | **3.907 μs** | **3.591 μs** | **19.78 μs** |
-| Handlebars.Net 2.1.6 | 517.3 ns | 2,399.7 ns | 29.368 μs | 9.854 μs | 46.72 μs |
-| Fluid.Core 2.31.0 | 660.8 ns | 2,994.3 ns | 14.294 μs | 11.939 μs | 55.77 μs |
-| DotLiquid 2.3.197 | 2,628.7 ns | 35,797.0 ns | 221.247 μs | 79.000 μs | 483.23 μs |
-| Scriban 7.2.5 | 5,836.8 ns | 12,385.8 ns | 47.704 μs | 28.637 μs | 136.82 μs |
+| Workload | Golden | Heddle | Next .NET engine | Margin |
+| --- | ---: | ---: | --- | ---: |
+| trivial-substitution | 338 B | 149 ns | Handlebars.Net 2.1.6 — 385.8 ns | **2.59×** |
+| fortunes-encoded | 1,156 B | 739.1 ns | Handlebars.Net 2.1.6 — 1.66 μs | **2.25×** |
+| fragment-heavy | 4,730 B | 3.081 μs | Fluid.Core 2.31.0 — 11.22 μs | **3.64×** |
+| mixed-page | 9,712 B | 2.636 μs | Handlebars.Net 2.1.6 — 7.247 μs | **2.75×** |
+| conditional-heavy | 15,549 B | 15.02 μs | Handlebars.Net 2.1.6 — 34.51 μs | **2.30×** |
 
-Cross‑stack it is **top‑4 on all five**, beaten only by Askama (Rust, compile‑time), JTE (JVM,
+Cross-stack it is **top-4 on all five**, beaten only by Askama (Rust, compile-time), JTE (JVM,
 compiled to Java source) and, on two of the five, eta (JS):
 
-| Workload | Golden | Heddle | Rank | Ahead of it |
-| --- | ---: | ---: | ---: | --- |
-| fortunes‑encoded | 1,156 B | 938.7 ns | **2 of 15** | Askama |
-| trivial‑substitution | 338 B | 164.6 ns | **3 of 15** | Askama, eta |
-| fragment‑heavy | 4,730 B | 3.907 μs | **3 of 15** | Askama, JTE |
-| mixed‑page | 9,712 B | 3.591 μs | **3 of 15** | Askama, JTE |
-| conditional‑heavy | 15,549 B | 19.78 μs | **4 of 15** | Askama, JTE, eta |
+| Workload | Golden | Heddle rank | Ahead of it |
+| --- | ---: | ---: | --- |
+| trivial-substitution | 338 B | **#3** of 16 | Askama, eta |
+| fortunes-encoded | 1,156 B | **#2** of 16 | Askama |
+| fragment-heavy | 4,730 B | **#3** of 16 | Askama, JTE |
+| mixed-page | 9,712 B | **#2** of 16 | Askama |
+| conditional-heavy | 15,549 B | **#4** of 16 | Askama, JTE, eta |
 
-It is ahead of Tera, templ, `text/template`, `html/template`, handlebars, Thymeleaf, Jinja2 and
+It is ahead of Tera, templ, `text/template`, handlebars, Thymeleaf, Jinja2 and
 Mako on every one of the five. **Askama is the only engine faster than Heddle on all eight
-workloads** — a Rust compile‑time engine making the same architectural bet, without a managed
+workloads** — a Rust compile-time engine making the same architectural bet, without a managed
 runtime.
 
-#### Tier 2 — edge‑case sizing (35 KB – 832 KB), read with the caveat
+#### Tier 2 — edge-case sizing (54 KB – 852 KB rendered), read with the caveats
 
-| Workload | Golden | Heddle | .NET rank | Cross‑stack rank |
+| Workload | Golden | Heddle | .NET field | Cross-stack rank |
 | --- | ---: | ---: | --- | ---: |
-| composed‑page | 34,847 B | 30.52 μs | 1 of 6 — 1.35× over Fluid.Core | **11 of 16** |
-| large‑loop | 192,780 B | 379.3 μs | 1 of 6 — 1.72× over Handlebars.Net | 5 of 15 |
-| encoded‑loop | 831,685 B | 1.882 ms | **2 of 6 — Handlebars.Net 1.460 ms** | 6 of 15 |
+| composed-page | 34,847 B | 34.07 μs | 1 of 6 — 1.77× over Fluid.Core | **#11** of 16 |
+| large-loop | 192,780 B | 492.1 μs | 1 of 6 — 1.51× over Handlebars.Net | #6 of 16 |
+| encoded-loop | 831,685 B | 1.766 ms | **2 of 6 — Handlebars.Net 1.72 ms** | #7 of 16 |
 
-**Heddle loses `encoded-loop`** to Handlebars.Net by a gap far wider than either engine's
-dispersion — reproduced from the previous run. It is the largest‑output workload in the set,
-escaping every field, where Heddle's per‑node dispatch advantage is amortised away.
+**Heddle loses `encoded-loop`** — Handlebars.Net leads at 0.97×, and Razor sits at 1.00×, inside
+overlapping dispersion. Handlebars.Net led this workload on the prior (since-removed) runs as
+well, across two rebuilds of the .NET harness, so the ordering is a reproduced result rather than
+noise. It is escaping throughput over an 852 KB output no page produces — a real signal about the
+encoder's bulk path, not a page render.
 
-**`composed-page`'s 11 of 16 is not a statement about composition machinery.** That workload is
-17 pre‑existing string fragments concatenated — no loop body, no branch, no escaping — so every
+**`composed-page`'s #11 of 16 is not a statement about composition machinery.** That workload is
+17 pre-existing string fragments concatenated — no loop body, no branch, no escaping — so every
 compiled engine reduces it to about 17 `memcpy` calls, and the row measures memory bandwidth and
-the allocator rather than template execution. Measured on the same box: a raw 55,466‑byte `memcpy`
-costs 438 ns, `string.Concat` of those same 17 fragments costs **12.5 μs in .NET**, a plain
-`StringBuilder` costs 26.3 μs, and Heddle costs 26.4 μs. Heddle is within ~2× of the .NET floor
-and marginally faster than `StringBuilder`; there is very little engine work left to win. The
+the allocator rather than template execution. The floor measurements behind that analysis (a
+hand-written .NET `string.Concat` of the same fragments sits within ~2× of Heddle's figure) were
+taken on an earlier run's box and are carried in the program's ledger as prior evidence; the
 report quantifies the LOH cliff (throughput falls 4.5× across the threshold) and the
-whitespace‑normalization effect on the published `implied B/ns` column.
+whitespace-normalization effect on the published `implied B/ns` column.
 
-**Heddle renders the composed page 1.37× faster than ASP.NET Core Razor**, on byte‑identical
-output and under the same parity gate as the four Liquid/Handlebars twins. This is the first
-parity‑checked version of that comparison: before 2026‑07‑25 the Razor benchmark rendered a
-larger, different page outside every gate, so earlier Razor figures are not comparable. Note that
-**Razor is measured on `composed-page` only** — a Tier 2 workload — so 1.37× is a floor taken from
-the least favourable shape, not Heddle's typical margin over the other .NET engines (2.36×–3.66×
-at Tier 1).
+**ASP.NET Core Razor is a full member of all eight workloads and both tracks**, under the same
+parity gate as every other engine — the earlier single-workload Razor comparison is superseded.
+Heddle leads it by 2.51×–37.07× at Tier 1 sizes and 1.90× on `composed-page`; on `encoded-loop`
+Razor is marginally ahead (a 1.00× ratio in the tables, within overlapping dispersion).
 
-Read the cross‑stack rows with their evidence class in mind: Rust, JVM and Go are compiled or
-same‑class **fair‑fight** peers, while JS and Python are **reach/context** — they show where a
-workload lands in those ecosystems, not a like‑for‑like engine contest. CPython also ran two minor
-versions behind its pin (3.12.3 against 3.14.6), which leaves the within‑ecosystem comparison
-intact but makes the Python rows a pessimistic reading of that ecosystem.
+Read the cross-stack rows with their evidence class in mind: Rust, JVM and Go are compiled or
+same-class **fair-fight** peers, while JS and Python are **reach/context** — they show where a
+workload lands in those ecosystems, not a like-for-like engine contest.
 
-Every figure is materialised output. The JS harness forces its rendered string flat and fails the
-run outright if the check does not hold, so the JS rows are real work rather than the `ConsString`
-rope artifact earlier runs of this suite reported — verified directly: rendering alone costs 345 ns
-where rendering plus flattening costs 2,470 ns.
+Every figure is materialised output. The JS leg ran **38 aggregated passes per render track**,
+each a separate node process asserting a materialisation check before writing its artifact, so
+the JS rows are real work rather than the V8 `ConsString` rope artifact earlier runs of this
+suite reported. Its cross-process stability verdict is `verified-with-disclosure` on the
+controlled track (one cell of sixteen at 5.11% cross-pass RSD; median 1.41%) and `verified` on
+the idiomatic track.
 
 There is **no aggregate score, geomean or overall winner** in the full report, and none should be
 inferred here. Numbers are hardware-, platform- and date-specific; reproduce them yourself with:
 
-```bash
-./benchmarks/run-all.sh --tune-no-isolation --budget baseline
+```powershell
+powershell -ExecutionPolicy Bypass -File benchmarks\run-all.ps1
 ```
 
-Full analysis, every workload and track, the per‑ecosystem tables, allocation sidebars and the
-complete caveat register: **docs/benchmarks/2026-07-25**.
+Full analysis, every workload and track, the per-ecosystem tables, allocation sidebars and the
+complete caveat register: **[docs/benchmarks/2026-08-08](docs/benchmarks/2026-08-08/index.md)**.
 
 ## Building
 

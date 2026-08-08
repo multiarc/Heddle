@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+<meta charset='utf-8' />
+<title>Heddle.Benchmarks.Dotnet.Bench.MixedPageBenchmarks-20260808-020201</title>
+
+<style type="text/css">
+	table { border-collapse: collapse; display: block; width: 100%; overflow: auto; }
+	td, th { padding: 6px 13px; border: 1px solid #ddd; text-align: right; }
+	tr { background-color: #fff; border-top: 1px solid #ccc; }
+	tr:nth-child(even) { background: #f8f8f8; }
+</style>
+</head>
+<body>
+<pre><code>
+BenchmarkDotNet v0.15.8, Windows 11 (10.0.26200.8894/25H2/2025Update/HudsonValley2)
+AMD Ryzen 9 9950X 4.30GHz, 1 CPU, 32 logical and 16 physical cores
+.NET SDK 10.0.302
+  [Host]   : .NET 10.0.10 (10.0.10, 10.0.1026.32716), X64 RyuJIT x86-64-v4
+  ShortRun : .NET 10.0.10 (10.0.10, 10.0.1026.32716), X64 RyuJIT x86-64-v4
+</code></pre>
+<pre><code>Job=ShortRun  IterationCount=3  LaunchCount=3  
+WarmupCount=3  
+</code></pre>
+
+<table>
+<thead><tr><th>Method          </th><th>Track</th><th>Mean</th><th>Error</th><th>StdDev</th><th>Ratio</th><th>RatioSD</th><th>Gen0</th><th>Gen1</th><th>Allocated</th><th>Alloc Ratio</th>
+</tr>
+</thead><tbody><tr><td>RenderHeddle</td><td>controlled</td><td>2.636 &mu;s</td><td>0.0337 &mu;s</td><td>0.0200 &mu;s</td><td>1.00</td><td>0.01</td><td>2.6855</td><td>0.1755</td><td>43.96 KB</td><td>1.00</td>
+</tr><tr><td>RenderHeddleUtf8</td><td>controlled</td><td>2.788 &mu;s</td><td>0.1047 &mu;s</td><td>0.0623 &mu;s</td><td>1.06</td><td>0.02</td><td>0.2365</td><td>-</td><td>3.92 KB</td><td>0.09</td>
+</tr><tr><td>RenderHeddleTextWriter</td><td>controlled</td><td>2.265 &mu;s</td><td>0.0121 &mu;s</td><td>0.0072 &mu;s</td><td>0.86</td><td>0.01</td><td>0.2365</td><td>-</td><td>3.91 KB</td><td>0.09</td>
+</tr><tr><td>RenderFluid</td><td>controlled</td><td>8.918 &mu;s</td><td>0.2473 &mu;s</td><td>0.1472 &mu;s</td><td>3.38</td><td>0.06</td><td>1.7700</td><td>-</td><td>28.99 KB</td><td>0.66</td>
+</tr><tr><td>RenderScriban</td><td>controlled</td><td>71.202 &mu;s</td><td>24.5102 &mu;s</td><td>14.5856 &mu;s</td><td>27.01</td><td>5.25</td><td>27.3438</td><td>2.4414</td><td>453.25 KB</td><td>10.31</td>
+</tr><tr><td>RenderDotLiquid</td><td>controlled</td><td>56.338 &mu;s</td><td>2.6957 &mu;s</td><td>1.6042 &mu;s</td><td>21.37</td><td>0.60</td><td>17.3340</td><td>1.3428</td><td>283.67 KB</td><td>6.45</td>
+</tr><tr><td>RenderHandlebars</td><td>controlled</td><td>7.247 &mu;s</td><td>0.1362 &mu;s</td><td>0.0811 &mu;s</td><td>2.75</td><td>0.04</td><td>2.6779</td><td>0.2060</td><td>43.83 KB</td><td>1.00</td>
+</tr><tr><td>RenderRazor</td><td>controlled</td><td>20.131 &mu;s</td><td>0.4106 &mu;s</td><td>0.2444 &mu;s</td><td>7.64</td><td>0.10</td><td>3.7842</td><td>1.2207</td><td>62.54 KB</td><td>1.42</td>
+</tr><tr><td>RenderHeddle</td><td>idiomatic</td><td>2.906 &mu;s</td><td>0.0269 &mu;s</td><td>0.0160 &mu;s</td><td>1.00</td><td>0.01</td><td>3.8033</td><td>0.3777</td><td>62.3 KB</td><td>1.00</td>
+</tr><tr><td>RenderHeddleUtf8</td><td>idiomatic</td><td>2.754 &mu;s</td><td>0.0365 &mu;s</td><td>0.0217 &mu;s</td><td>0.95</td><td>0.01</td><td>0.2365</td><td>-</td><td>3.92 KB</td><td>0.06</td>
+</tr><tr><td>RenderHeddleTextWriter</td><td>idiomatic</td><td>2.304 &mu;s</td><td>0.0205 &mu;s</td><td>0.0122 &mu;s</td><td>0.79</td><td>0.01</td><td>0.2365</td><td>-</td><td>3.91 KB</td><td>0.06</td>
+</tr><tr><td>RenderFluid</td><td>idiomatic</td><td>9.115 &mu;s</td><td>0.4819 &mu;s</td><td>0.2868 &mu;s</td><td>3.14</td><td>0.10</td><td>2.1667</td><td>-</td><td>35.49 KB</td><td>0.57</td>
+</tr><tr><td>RenderScriban</td><td>idiomatic</td><td>68.265 &mu;s</td><td>13.4083 &mu;s</td><td>7.9790 &mu;s</td><td>23.49</td><td>2.61</td><td>29.2969</td><td>0.9766</td><td>481.21 KB</td><td>7.72</td>
+</tr><tr><td>RenderDotLiquid</td><td>idiomatic</td><td>59.112 &mu;s</td><td>1.9223 &mu;s</td><td>1.1439 &mu;s</td><td>20.34</td><td>0.39</td><td>18.7378</td><td>2.1973</td><td>306.88 KB</td><td>4.93</td>
+</tr><tr><td>RenderHandlebars</td><td>idiomatic</td><td>10.260 &mu;s</td><td>0.2998 &mu;s</td><td>0.1784 &mu;s</td><td>3.53</td><td>0.06</td><td>4.0588</td><td>0.4425</td><td>66.41 KB</td><td>1.07</td>
+</tr><tr><td>RenderRazor</td><td>idiomatic</td><td>15.505 &mu;s</td><td>0.2166 &mu;s</td><td>0.1289 &mu;s</td><td>5.34</td><td>0.05</td><td>5.2490</td><td>1.3123</td><td>85.91 KB</td><td>1.38</td>
+</tr></tbody></table>
+</body>
+</html>
