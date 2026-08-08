@@ -20,7 +20,7 @@
         @elif(IsGold){{<span class="t2">gold</span>}}
         @else(){{<span class="t3">platinum</span>}}
         <em>@(Name)</em>
-        @if(HasNote){{<small>@(Note)</small>}}
+        @if(HasNote){{<small>note @(Seq)</small>}}
         @if(IsActive){{<b>active</b>}}
     </li>
 }}

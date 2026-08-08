@@ -40,10 +40,14 @@ namespace Heddle.Benchmarks.Dotnet.Models
         public sealed class MixedProduct
         {
             public string Name { get; set; }
-            public string Sku { get; set; }
+            /// <summary>Numeric SKU. The templates compose the display SKU
+            /// (<c>MX-@(SkuNumber)</c>) — the model never pre-formats it.</summary>
+            public int SkuNumber { get; set; }
             public int Price { get; set; }
             public bool OnSale { get; set; }
-            public string Blurb { get; set; }
+            /// <summary>Batch ordinal. The templates compose the blurb sentence around it —
+            /// the model never pre-formats display text.</summary>
+            public int Batch { get; set; }
         }
 
         public const int ProductCount = 36;
@@ -59,10 +63,10 @@ namespace Heddle.Benchmarks.Dotnet.Models
                 products.Add(new MixedProduct
                 {
                     Name = $"Product {i:D2}",
-                    Sku = $"MX-{1000 + i}",
+                    SkuNumber = 1000 + i,
                     Price = 950 + i * 7,
                     OnSale = i % 3 == 0,
-                    Blurb = $"A dependable workshop staple from batch {i}, checked for daily use and backed by our lifetime guarantee.",
+                    Batch = i,
                 });
             return new MixedModel
             {
@@ -87,10 +91,10 @@ namespace Heddle.Benchmarks.Dotnet.Models
                 products.Add(new Hash
                 {
                     ["name"] = p.Name,
-                    ["sku"] = p.Sku,
+                    ["sku_number"] = p.SkuNumber,
                     ["price"] = p.Price,
                     ["on_sale"] = p.OnSale,
-                    ["blurb"] = p.Blurb,
+                    ["batch"] = p.Batch,
                 });
             return new Hash
             {
@@ -115,10 +119,10 @@ namespace Heddle.Benchmarks.Dotnet.Models
                 products.Add(new Dictionary<string, object>
                 {
                     ["name"] = p.Name,
-                    ["sku"] = p.Sku,
+                    ["sku_number"] = p.SkuNumber,
                     ["price"] = p.Price,
                     ["on_sale"] = p.OnSale,
-                    ["blurb"] = p.Blurb,
+                    ["batch"] = p.Batch,
                 });
             return new Dictionary<string, object>
             {

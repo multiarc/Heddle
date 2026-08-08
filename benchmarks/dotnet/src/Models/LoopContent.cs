@@ -27,7 +27,8 @@ namespace Heddle.Benchmarks.Dotnet.Models
 
         public sealed class LoopRow
         {
-            public string Name { get; set; }
+            /// <summary>The one datum per row. The templates compose the display name
+            /// (<c>row-@(Value)</c>) — the model never pre-formats it.</summary>
             public int Value { get; set; }
         }
 
@@ -44,7 +45,7 @@ namespace Heddle.Benchmarks.Dotnet.Models
         {
             var items = new List<LoopRow>(RowCount);
             for (var i = 0; i < RowCount; i++)
-                items.Add(new LoopRow { Name = "row-" + i, Value = i });
+                items.Add(new LoopRow { Value = i });
             return new LoopModel { Items = items };
         }
 
@@ -52,7 +53,7 @@ namespace Heddle.Benchmarks.Dotnet.Models
         {
             var rows = new List<Hash>(RowCount);
             foreach (var row in Shared.Items)
-                rows.Add(new Hash { ["name"] = row.Name, ["value"] = row.Value });
+                rows.Add(new Hash { ["value"] = row.Value });
             return new Hash { ["items"] = rows };
         }
 
@@ -60,7 +61,7 @@ namespace Heddle.Benchmarks.Dotnet.Models
         {
             var rows = new List<Dictionary<string, object>>(RowCount);
             foreach (var row in Shared.Items)
-                rows.Add(new Dictionary<string, object> { ["name"] = row.Name, ["value"] = row.Value });
+                rows.Add(new Dictionary<string, object> { ["value"] = row.Value });
             return new Dictionary<string, object> { ["items"] = rows };
         }
 
