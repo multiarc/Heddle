@@ -1,1 +1,1 @@
-@list(Items){{<tr><td>@(Name)</td><td>@(Value)</td></tr>}}
+@list(Items){{<tr><td>row-@(Value)</td><td>@(Value)</td></tr>}}

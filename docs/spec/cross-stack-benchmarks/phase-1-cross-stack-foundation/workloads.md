@@ -59,8 +59,9 @@ twins on net8.0/net10.0; the Scriban twin is `#if !NET6_0`, so on net6.0 four en
   (`Title, Sku, Price, Brand, Category, Availability, Url, ImageUrl, Summary, Rating`), rendered
   raw (`OutputProfile.Text`, `ExpressionMode.Native`). Model values are plain ASCII
   (`SubstitutionContent.SubstitutionModel`).
-- **`large-loop`** — `@list(Items){{<tr><td>@(Name)</td><td>@(Value)</td></tr>}}` over 5,000 rows
-  (`LoopContent.RowCount = 5000`, `Name = "row-" + i`, `Value = i`), rendered raw.
+- **`large-loop`** — `@list(Items){{<tr><td>row-@(Value)</td><td>@(Value)</td></tr>}}` over 5,000 rows
+  (`LoopContent.RowCount = 5000`, `Value = i`; the display name `row-{i}` is composed by the
+  template as `row-` + the value substitution — E21), rendered raw.
 
 ## Shared authoring rules for the five new workloads
 
@@ -253,10 +254,10 @@ public sealed class MixedModel
 public sealed class MixedProduct
 {
     public string Name { get; set; }   // $"Product {i:D2}"
-    public string Sku { get; set; }    // $"MX-{1000 + i}"
+    public int SkuNumber { get; set; } // 1000 + i (templates compose the display SKU: MX-@(SkuNumber) — E21)
     public int Price { get; set; }     // 950 + i * 7
     public bool OnSale { get; set; }   // i % 3 == 0
-    public string Blurb { get; set; }  // $"A dependable workshop staple from batch {i}, checked for daily use and backed by our lifetime guarantee."
+    public int Batch { get; set; }     // i (templates compose the blurb sentence around @(Batch) — E21)
 }
 ```
 
@@ -286,7 +287,7 @@ idiomatic port is tempted to treat it as a linkable address).
 <p>@(HeroTagline)</p>
 </section>
 <section class="grid">
-@list(Products){{<article class="card"><h3>@(Name)</h3><p class="sku">@(Sku)</p><p class="price">@(Price)</p>@if(OnSale){{<p class="sale">On sale</p>}}<p class="blurb">@(Blurb)</p></article>}}
+@list(Products){{<article class="card"><h3>@(Name)</h3><p class="sku">MX-@(SkuNumber)</p><p class="price">@(Price)</p>@if(OnSale){{<p class="sale">On sale</p>}}<p class="blurb">A dependable workshop staple from batch @(Batch), checked for daily use and backed by our lifetime guarantee.</p></article>}}
 </section>
 @if(ShowDebugPanel){{<pre class="debug">debug</pre>}}
 </main>
@@ -305,7 +306,7 @@ Fluid and DotLiquid share one Liquid source (new file `Runners/MixedLiquidTempla
 
 - `{{ page_title }}`, `{{ store_name }}`, … for scalars;
 - `{% if show_banner %}<div class="banner">{{ banner_text }}</div>{% endif %}`;
-- `{% for p in products %}<article class="card"><h3>{{ p.name }}</h3><p class="sku">{{ p.sku }}</p><p class="price">{{ p.price }}</p>{% if p.on_sale %}<p class="sale">On sale</p>{% endif %}<p class="blurb">{{ p.blurb }}</p></article>{% endfor %}`;
+- `{% for p in products %}<article class="card"><h3>{{ p.name }}</h3><p class="sku">MX-{{ p.sku_number }}</p><p class="price">{{ p.price }}</p>{% if p.on_sale %}<p class="sale">On sale</p>{% endif %}<p class="blurb">A dependable workshop staple from batch {{ p.batch }}, checked for daily use and backed by our lifetime guarantee.</p></article>{% endfor %}`;
 - `{% if show_debug_panel %}<pre class="debug">debug</pre>{% endif %}`.
 
 Scriban mirrors with `{{ if show_banner }} … {{ end }}`, `{{ for p in products }} … {{ end }}`,
@@ -344,7 +345,7 @@ public sealed class ConditionalModel { public List<ConditionalRow> Rows { get; s
 public sealed class ConditionalRow
 {
     public string Name { get; set; }   // $"unit-{i:D3}"
-    public string Note { get; set; }   // $"note {i}"
+    public int Seq { get; set; }       // i (templates compose the note text: note @(Seq) — E21)
     public bool IsBronze { get; set; } // i % 4 == 0
     public bool IsSilver { get; set; } // i % 4 == 1
     public bool IsGold { get; set; }   // i % 4 == 2  (else branch fires when i % 4 == 3)
@@ -357,12 +358,12 @@ public sealed class ConditionalRow
 evaluates integer comparisons — so the workload measures branch *dispatch* on identical data, and
 the four-way chain is expressible in vanilla Handlebars (`{{#if}}/{{else if}}` needs truthy
 operands only; equality helpers are not in the common-denominator set). The dictionary views
-expose `name, note, is_bronze, is_silver, is_gold, has_note, is_active`.
+expose `name, seq, is_bronze, is_silver, is_gold, has_note, is_active`.
 
 ### Heddle template — `TestTemplates/conditional-heavy.heddle`
 
 ```heddle
-<ul class="matrix">@list(Rows){{<li>@if(IsBronze){{<span class="t0">bronze</span>}}@elif(IsSilver){{<span class="t1">silver</span>}}@elif(IsGold){{<span class="t2">gold</span>}}@else(){{<span class="t3">platinum</span>}}<em>@(Name)</em>@if(HasNote){{<small>@(Note)</small>}}@if(IsActive){{<b>active</b>}}</li>}}</ul>
+<ul class="matrix">@list(Rows){{<li>@if(IsBronze){{<span class="t0">bronze</span>}}@elif(IsSilver){{<span class="t1">silver</span>}}@elif(IsGold){{<span class="t2">gold</span>}}@else(){{<span class="t3">platinum</span>}}<em>@(Name)</em>@if(HasNote){{<small>note @(Seq)</small>}}@if(IsActive){{<b>active</b>}}</li>}}</ul>
 ```
 
 (The tier chain is one Heddle branch set — opener, two continuations, terminal; the two toggles
@@ -372,12 +373,12 @@ tier set, so no `HED3001` gap warning fires.)
 ### Twin templates
 
 - Liquid (Fluid + DotLiquid, shared source `Runners/ConditionalLiquidTemplates.cs`):
-  `{% for r in rows %}<li>{% if r.is_bronze %}<span class="t0">bronze</span>{% elsif r.is_silver %}<span class="t1">silver</span>{% elsif r.is_gold %}<span class="t2">gold</span>{% else %}<span class="t3">platinum</span>{% endif %}<em>{{ r.name }}</em>{% if r.has_note %}<small>{{ r.note }}</small>{% endif %}{% if r.is_active %}<b>active</b>{% endif %}</li>{% endfor %}`
+  `{% for r in rows %}<li>{% if r.is_bronze %}<span class="t0">bronze</span>{% elsif r.is_silver %}<span class="t1">silver</span>{% elsif r.is_gold %}<span class="t2">gold</span>{% else %}<span class="t3">platinum</span>{% endif %}<em>{{ r.name }}</em>{% if r.has_note %}<small>note {{ r.seq }}</small>{% endif %}{% if r.is_active %}<b>active</b>{% endif %}</li>{% endfor %}`
   wrapped in the same `<ul class="matrix">…</ul>`.
 - Scriban: same structure with `{{ if r.is_bronze }} … {{ else if r.is_silver }} … {{ else }} …
   {{ end }}` (chained `else if` verified against Scriban 7.2.5 — probe E, spike record in the
   [README Assumed state](README.md#assumed-state)).
-- Handlebars: `{{#each rows}}<li>{{#if is_bronze}}<span class="t0">bronze</span>{{else if is_silver}}<span class="t1">silver</span>{{else if is_gold}}<span class="t2">gold</span>{{else}}<span class="t3">platinum</span>{{/if}}<em>{{{name}}}</em>{{#if has_note}}<small>{{{note}}}</small>{{/if}}{{#if is_active}}<b>active</b>{{/if}}</li>{{/each}}`
+- Handlebars: `{{#each rows}}<li>{{#if is_bronze}}<span class="t0">bronze</span>{{else if is_silver}}<span class="t1">silver</span>{{else if is_gold}}<span class="t2">gold</span>{{else}}<span class="t3">platinum</span>{{/if}}<em>{{{name}}}</em>{{#if has_note}}<small>note {{{seq}}}</small>{{/if}}{{#if is_active}}<b>active</b>{{/if}}</li>{{/each}}`
   (chained `{{else if}}` verified against Handlebars.Net 2.1.6 — probe E).
 
 ### Expected output characteristics

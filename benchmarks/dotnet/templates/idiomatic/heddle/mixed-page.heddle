@@ -34,10 +34,10 @@
         @list(Products){{
             <article class="card">
                 <h3>@(Name)</h3>
-                <p class="sku">@(Sku)</p>
+                <p class="sku">MX-@(SkuNumber)</p>
                 <p class="price">@(Price)</p>
                 @if(OnSale){{<p class="sale">On sale</p>}}
-                <p class="blurb">@(Blurb)</p>
+                <p class="blurb">A dependable workshop staple from batch @(Batch), checked for daily use and backed by our lifetime guarantee.</p>
             </article>
         }}
         </section>

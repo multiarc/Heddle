@@ -29,7 +29,9 @@ namespace Heddle.Benchmarks.Dotnet.Models
         public sealed class ConditionalRow
         {
             public string Name { get; set; }
-            public string Note { get; set; }
+            /// <summary>Row ordinal. The templates compose the note text (<c>note @(Seq)</c>) —
+            /// the model never pre-formats it.</summary>
+            public int Seq { get; set; }
             public bool IsBronze { get; set; }
             public bool IsSilver { get; set; }
             public bool IsGold { get; set; }
@@ -50,7 +52,7 @@ namespace Heddle.Benchmarks.Dotnet.Models
                 rows.Add(new ConditionalRow
                 {
                     Name = $"unit-{i:D3}",
-                    Note = $"note {i}",
+                    Seq = i,
                     IsBronze = i % 4 == 0,
                     IsSilver = i % 4 == 1,
                     IsGold = i % 4 == 2,
@@ -67,7 +69,7 @@ namespace Heddle.Benchmarks.Dotnet.Models
                 rows.Add(new Hash
                 {
                     ["name"] = row.Name,
-                    ["note"] = row.Note,
+                    ["seq"] = row.Seq,
                     ["is_bronze"] = row.IsBronze,
                     ["is_silver"] = row.IsSilver,
                     ["is_gold"] = row.IsGold,
@@ -84,7 +86,7 @@ namespace Heddle.Benchmarks.Dotnet.Models
                 rows.Add(new Dictionary<string, object>
                 {
                     ["name"] = row.Name,
-                    ["note"] = row.Note,
+                    ["seq"] = row.Seq,
                     ["is_bronze"] = row.IsBronze,
                     ["is_silver"] = row.IsSilver,
                     ["is_gold"] = row.IsGold,
