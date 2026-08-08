@@ -1,4 +1,4 @@
-"""pyperf cold parse/compile bench -- both engines, controlled sources (Phase 5 WI5; D10).
+"""pyperf cold parse/compile bench -- both engines, controlled sources.
 
 Measures, per workload x engine, the cold template-construction cost on the
 controlled-track source text preloaded into a string:
@@ -11,15 +11,12 @@ controlled-track source text preloaded into a string:
 No parity gate applies to the timed operation (nothing is rendered); instead the
 script asserts once per worker -- at module top level, before any registration -- that
 compiling + rendering each controlled source still passes the byte gate, so the cold
-pass can never time a non-conformant source (harness.md). Results are per-ecosystem
-and non-comparable (Q1.3); benchmark names are ``<engine>/cold-compile/<workload-id>``.
+pass can never time a non-conformant source. Results are per-ecosystem and never
+compared across ecosystems; benchmark names are ``<engine>/cold-compile/<workload-id>``.
 
-Protocol invocation (elevated shell, from ``benchmarks/python/`` -- harness.md):
+Protocol invocation (elevated shell, from ``benchmarks/python/``):
 
     python bench_cold_compile.py --affinity=4 -o results\\cold-compile.json
-
-Spec: docs/spec/cross-stack-benchmarks/phase-5-python/README.md (D10);
-      docs/spec/cross-stack-benchmarks/phase-5-python/harness.md (bench script shape).
 """
 
 import jinja2
@@ -31,7 +28,7 @@ from runner import data, engines, gates
 ENGINES = ["jinja2", "mako"]
 WORKLOADS = gates.WORKLOADS
 
-# Controlled-track source texts preloaded into strings before any timing (D10).
+# Controlled-track source texts preloaded into strings before any timing.
 sources = {
     (engine, w): (
         engines.TEMPLATES_DIR
@@ -44,8 +41,8 @@ sources = {
 }
 
 # Hard gate, every worker: compiling + rendering each controlled source (through the
-# WI3 engine wiring, which compiles from the same files) must still pass the byte
-# gate -- the cold pass can never time a non-conformant source (D7/D10).
+# runner engine wiring, which compiles from the same files) must still pass the byte
+# gate -- the cold pass can never time a non-conformant source.
 for engine in ENGINES:
     for w in WORKLOADS:
         out = engines.render(engines.load(engine, "controlled", w), data.MODELS[w])
@@ -53,7 +50,7 @@ for engine in ENGINES:
         del out
 
 # One long-lived plain Environment; ``from_string`` compiles fresh every call (no
-# loader, hence no template cache; no bytecode cache configured -- D10).
+# loader, hence no template cache; no bytecode cache configured).
 _JINJA2_ENV = jinja2.Environment()
 
 

@@ -186,8 +186,8 @@ namespace Heddle.Tests
             return Regex.IsMatch(text, @"\bHED" + id.Substring(3) + @"\b");
         }
 
-        /// <summary>Every published page, keyed by file name — <c>docs/*.md</c> only. The spec, plan and research
-        /// trees are excluded on purpose: they are not what a user reads.</summary>
+        /// <summary>Every published page, keyed by file name — <c>docs/*.md</c> only. The spec tree is
+        /// excluded on purpose: it is not what a user reads.</summary>
         private static Dictionary<string, string> PublishedDocs([CallerFilePath] string here = null)
         {
             var dir = Path.Combine(RepoRoot(here), "docs");

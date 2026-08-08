@@ -1,13 +1,13 @@
 @param heddle.benchmarks.jvm.model.Models.ComposedModel m
 @param gg.jte.Content bodySlot
 <%--
-  Idiomatic jte authoring (Q1.7/D7) — official doc citations:
+  Idiomatic jte authoring — official doc citations:
   https://jte.gg/syntax/#content (gg.jte.Content parameters — the native jte layout
       mechanism: the page passes its body as a content block, rendered at ${bodySlot})
   https://jte.gg/syntax/ (template calls: @template, loops: @for, conditions: @if)
   https://jte.gg/pre-compiling/ (precompiled engine setup)
 
-  Native full-page layout (ledger E20/E22, workloads.md workload 1): the chrome is
+  Native full-page layout: the chrome is
   literal template text transcribed from the Heddle reference layout; inert chrome
   fragments are per-fragment sub-templates; the two mega menus and the footer columns
   render from the structured nav model through nested sub-templates

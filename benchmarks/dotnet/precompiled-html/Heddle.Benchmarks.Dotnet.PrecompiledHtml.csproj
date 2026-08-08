@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    The Html-profile precompiled satellite (ledger E25).
+    The Html-profile precompiled satellite.
 
     HeddleOutputProfile is compilation-wide by design, and the harness project compiles the six raw
     workloads under Text. The two ENCODED workloads need Html — including them there produced a

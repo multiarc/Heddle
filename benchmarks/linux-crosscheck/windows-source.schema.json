@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:heddle:linux-crosscheck:windows-source:1",
   "title": "windows-source.json — transcribed Windows ranks, ratios (r_W) and dimensionless dispersions (d)",
-  "description": "Schema for the Phase 8 hand transcription of the published Windows source runs (spec D18, harness-settings-and-validation.md 'Tooling'). STRUCTURAL RULE (D17.4): this file stores ONLY ranks, ratio-to-Heddle values quoted from each report's own ratio column, and dimensionless dispersions d — NEVER absolute times, point estimates, or any wall-time figure; validate.py additionally rejects any key containing an absolute-time token (time/ns/ms/mean/score/point/estimate/...). SR-1 NOTE (STILL STANDING as of 2026-07-25): the transcription remains deferred because there is no valid published Windows protocol report to transcribe from. One was published at docs/benchmarks/2026-07-22/ and then WITHDRAWN — its results were found invalid — so it is not a sourceRuns entry and has been removed from the tree. A Windows protocol re-test is TBD; until it is published this schema plus validate.py's structural checks are all that exist, and sourceRuns must stay empty. The Linux run at docs/benchmarks/2026-07-25/ is NOT a substitute: this file transcribes Windows source runs specifically, and that run is off-protocol (Linux, boost off, no CPU isolation). When the re-test lands, transcribe its rank and ratio columns only, never its ns/render column (D17.4 below). Every transcribed value must carry a 'source' citation naming its file within the published Windows directory, and the transcription is spot-checked (>= 3 values per ecosystem) as a WI5 completion check.",
+  "description": "Schema for the hand transcription of the published Windows source runs. STRUCTURAL RULE: this file stores ONLY ranks, ratio-to-Heddle values quoted from each report's own ratio column, and dimensionless dispersions d — NEVER absolute times, point estimates, or any wall-time figure; validate.py additionally rejects any key containing an absolute-time token (time/ns/ms/mean/score/point/estimate/...). STANDING NOTE (as of 2026-07-25): the transcription remains deferred because there is no valid published Windows protocol report to transcribe from. One was published at docs/benchmarks/2026-07-22/ and then WITHDRAWN — its results were found invalid — so it is not a sourceRuns entry and has been removed from the tree. A Windows protocol re-test is TBD; until it is published this schema plus validate.py's structural checks are all that exist, and sourceRuns must stay empty. The Linux run at docs/benchmarks/2026-07-25/ is NOT a substitute: this file transcribes Windows source runs specifically, and that run is off-protocol (Linux, boost off, no CPU isolation). When the re-test lands, transcribe its rank and ratio columns only, never its ns/render column. Every transcribed value must carry a 'source' citation naming its file within the published Windows directory, and the transcription is spot-checked (>= 3 values per ecosystem) as a completion check.",
   "type": "object",
   "required": ["schema", "sourceRuns", "ecosystems"],
   "additionalProperties": false,
@@ -11,7 +11,7 @@
       "const": "heddle-linux-crosscheck/windows-source@1"
     },
     "sourceRuns": {
-      "description": "The published Windows report directories this transcription draws from (links/dates only — D17.1).",
+      "description": "The published Windows report directories this transcription draws from (links/dates only — never copied numbers).",
       "type": "array",
       "minItems": 1,
       "items": {
@@ -27,7 +27,7 @@
       }
     },
     "ecosystems": {
-      "description": "One entry per shipped ecosystem (Q7.2 subset semantics; absent ecosystems are simply absent).",
+      "description": "One entry per shipped ecosystem (absent ecosystems are simply absent).",
       "type": "object",
       "minProperties": 1,
       "additionalProperties": {
@@ -36,11 +36,11 @@
         "additionalProperties": false,
         "properties": {
           "harness": {
-            "description": "The harness whose native d-form (D15) the d values below carry.",
+            "description": "The harness whose native dispersion form the d values below carry.",
             "enum": ["benchmarkdotnet", "criterion", "jmh", "mitata", "pyperf", "benchstat"]
           },
           "dForm": {
-            "description": "The D15 d-form as transcribed, for the reader (e.g. 'StdDev/Mean').",
+            "description": "The harness-native dispersion form as transcribed, for the reader (e.g. 'StdDev/Mean').",
             "type": "string"
           },
           "tracks": {
@@ -77,19 +77,19 @@
   },
   "$defs": {
     "windowsValue": {
-      "description": "One transcribed engine cell: rank + ratio + dimensionless dispersion + citation. additionalProperties:false IS the D17.4 structural weld — no absolute-time field can exist here.",
+      "description": "One transcribed engine cell: rank + ratio + dimensionless dispersion + citation. additionalProperties:false IS the structural weld — no absolute-time field can exist here.",
       "type": "object",
       "required": ["rank", "r", "d", "source"],
       "additionalProperties": false,
       "properties": {
         "rank": { "type": "integer", "minimum": 1 },
         "r": {
-          "description": "Wall-time ratio to the same OS's Heddle anchor, quoted from the report's own ratio column — never recomputed from absolute times (D17.4).",
+          "description": "Wall-time ratio to the same OS's Heddle anchor, quoted from the report's own ratio column — never recomputed from absolute times.",
           "type": "number",
           "exclusiveMinimum": 0
         },
         "d": {
-          "description": "Dimensionless relative dispersion in the harness-native D15 form.",
+          "description": "Dimensionless relative dispersion in the harness-native form.",
           "type": "number",
           "minimum": 0
         },

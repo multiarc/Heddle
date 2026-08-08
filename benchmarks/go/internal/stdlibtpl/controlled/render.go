@@ -1,7 +1,7 @@
 // Controlled-track render path for the stdlib surfaces: every render executes the parsed
 // template into a reused per-cell bytes.Buffer, Reset() at the top of each call and
 // pre-grown once to the workload's output size so neither growth policy nor the reset is a
-// per-engine variable (harness-and-measurement.md §Benchmark shape), returning buf.String().
+// per-engine variable, returning buf.String().
 package controlled
 
 import (

@@ -1,14 +1,13 @@
-# grub-isolation.cfg.example — "Ubuntu — benchmark isolation" boot entry template
-# (Phase 8 spec D1.6 / D2.1; environment-and-toolchains.md "Boot-parameter configuration").
+# grub-isolation.cfg.example — "Ubuntu — benchmark isolation" boot entry template.
 #
-# BARE-METAL ONLY. WSL2 has no GRUB and no isolable topology; under SR-2 this file
-# is committed as a template and instantiated only during the D1 bare-metal install.
+# BARE-METAL ONLY. WSL2 has no GRUB and no isolable topology; this file
+# is committed as a template and instantiated only during the bare-metal install.
 #
 # HOW TO INSTANTIATE (do NOT copy this file verbatim):
 #
 # 1. On the installed bare-metal system, read the actual SMT thread-sibling pair of
-#    CPU 4's physical core — NEVER assume an enumeration scheme (spec: "verify at
-#    implementation"):
+#    CPU 4's physical core — NEVER assume an enumeration scheme; verify on the
+#    installed system:
 #
 #        cat /sys/devices/system/cpu/cpu4/topology/thread_siblings_list
 #
@@ -21,11 +20,11 @@
 #    equivalently add the three parameters to a dedicated entry via your preferred
 #    mechanism. Do NOT put them in GRUB_CMDLINE_LINUX_DEFAULT — the default entry
 #    must stay un-isolated; the isolation entry is selected only for measurement
-#    sessions (D2.1).
+#    sessions.
 #
 # 4. sudo update-grub
 #
-# 5. Boot the entry and verify (recorded in the run log, D1 "done when"):
+# 5. Boot the entry and verify (recorded in the run log):
 #        cat /proc/cmdline                          # contains all three parameters, verbatim
 #        cat /sys/devices/system/cpu/isolated       # prints exactly <PAIR>
 #

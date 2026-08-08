@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""test_validate.py — threshold-straddling fixtures for validate.py (spec WI5 /
-Testing plan): D16.1 resolved/unresolved flips, D16.2 movement on both sides of
-max(D, 0.05), D16.3 dispersion ratio and 1% floor boundaries, the min(d)=0
-zero-dispersion guard, and the D17.4 structural rejection of absolute-time fields.
+"""test_validate.py — threshold-straddling fixtures for validate.py:
+resolved/unresolved rank flips, gap movement on both sides of max(D, 0.05),
+dispersion ratio and 1% floor boundaries, the min(d)=0 zero-dispersion guard,
+and the structural rejection of absolute-time fields.
 stdlib-only; run: python3 test_validate.py
 """
 
@@ -44,7 +44,7 @@ def linux_doc(cell):
 
 
 class TestRankFlip(unittest.TestCase):
-    """D16.1 — flip material iff order differs AND resolved on BOTH OSes."""
+    """A rank flip is material iff order differs AND resolved on BOTH OSes."""
 
     def test_resolved_flip_is_material(self):
         verdict = v.rank_flip_verdict(
@@ -81,7 +81,7 @@ class TestRankFlip(unittest.TestCase):
 
 
 class TestGapMovement(unittest.TestCase):
-    """D16.2 — |r_L/r_W − 1| > max(D, 0.05); D is a LINEAR sum."""
+    """Gap movement |r_L/r_W − 1| is material above max(D, 0.05); D is a LINEAR sum."""
 
     def test_linear_sum_not_quadrature(self):
         self.assertAlmostEqual(v.combined_dispersion(0.01, 0.02, 0.03, 0.04), 0.10)
@@ -119,7 +119,7 @@ class TestGapMovement(unittest.TestCase):
 
 
 class TestDispersionCharacter(unittest.TestCase):
-    """D16.3 — ratio ≥ 2 AND max ≥ 0.01, with the zero-dispersion guard."""
+    """Dispersion character: ratio ≥ 2 AND max ≥ 0.01, with the zero-dispersion guard."""
 
     def test_ratio_exactly_two_with_max_at_floor_is_material(self):
         self.assertTrue(v.dispersion_character_change(0.005, 0.01))   # ratio 2, max 0.01
@@ -149,11 +149,11 @@ class TestDispersionCharacter(unittest.TestCase):
             v.dispersion_character_change(0.0, 0.5)
             v.dispersion_character_change(0.5, 0.0)
         except ZeroDivisionError:  # pragma: no cover
-            self.fail("D16.3 zero-dispersion guard divided by zero")
+            self.fail("zero-dispersion guard divided by zero")
 
 
-class TestStructuralD174(unittest.TestCase):
-    """D17.4 — any absolute-time field is rejected; citations are mandatory."""
+class TestStructuralRejection(unittest.TestCase):
+    """Any absolute-time field is rejected; Windows-side citations are mandatory."""
 
     def test_valid_input_loads(self):
         doc = windows_doc(wcell(1.2, 0.01, 0.008))
@@ -164,7 +164,7 @@ class TestStructuralD174(unittest.TestCase):
         doc["meanTimeNs"] = 123.4
         with self.assertRaises(v.ValidationError) as ctx:
             v.load_side(doc, windows=True)
-        self.assertIn("D17.4", str(ctx.exception))
+        self.assertIn("absolute-time", str(ctx.exception))
 
     def test_absolute_time_field_rejected_inside_cell(self):
         doc = windows_doc(wcell(1.2, 0.01, 0.008))
@@ -172,7 +172,7 @@ class TestStructuralD174(unittest.TestCase):
         cell["engines"]["engineA"]["point_estimate"] = 41.5
         with self.assertRaises(v.ValidationError) as ctx:
             v.load_side(doc, windows=True)
-        self.assertIn("D17.4", str(ctx.exception))
+        self.assertIn("absolute-time", str(ctx.exception))
 
     def test_absolute_time_field_rejected_on_linux_side_too(self):
         doc = linux_doc(lcell(1.2, 0.01, 0.008))
@@ -242,7 +242,7 @@ class TestEndToEnd(unittest.TestCase):
         self.assertTrue(cell["engines"]["engineA"]["gap_material"])  # 10% > max(0.02, 0.05)
 
     def test_zero_dispersion_cell_end_to_end(self):
-        # The WI5-named fixture: a min(d)=0 cell flows through validate_all safely.
+        # A min(d)=0 cell flows through validate_all safely.
         w = v.load_side(windows_doc(wcell(1.2, 0.0, 0.0)), windows=True)
         l = v.load_side(linux_doc(lcell(1.2, 0.012, 0.0)), windows=False)
         cell = v.validate_all(w, l)["rust"]["controlled"]["composed-page"]

@@ -1,5 +1,5 @@
 @*
-    Idiomatic Heddle -- trivial-substitution (phase 9; authoring standard D16).
+    Idiomatic Heddle -- trivial-substitution.
 
     Patterns followed, from Heddle's own documentation:
       Language reference   docs/language-reference.md

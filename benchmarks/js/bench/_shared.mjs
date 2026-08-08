@@ -1,14 +1,13 @@
-// Shared bench-script machinery — Phase 4 WI6 (spec: README D10–D12, harness-and-run.md
-// §mitata run shape). Provides: the in-process gates (run BEFORE any bench() registration —
-// a failure exits 1 before run(), so no numbers exist for a failed gate, contract v2
-// controlled-gate rule 2), the group/bench registration helper (one group per workload,
-// bodies `() => do_not_optimize(flatten(render()))` per D11 as amended by records.md E4),
+// Shared bench-script machinery. Provides: the in-process gates (run BEFORE any bench()
+// registration — a failure exits 1 before run(), so no numbers exist for a failed gate),
+// the group/bench registration helper (one group per workload, bodies
+// `() => do_not_optimize(flatten(render()))` so no engine can defer or skip work),
 // the single-run() capture (a `print` tap feeds
 // the same lines that reach stdout into an in-process buffer), the artifact writer (one
 // process, one sample set, two views: `<name>.txt` from the capture buffer + `<name>.json`
-// from run()'s returned benchmarks, BigInt-safe), the D12 DEOPT-CHECK trailer (scans the
+// from run()'s returned benchmarks, BigInt-safe), the DEOPT-CHECK trailer (scans the
 // in-process capture buffer — never the externally redirected .txt — for mitata's `!`
-// "likely optimized out" marker), and its E4 companion MATERIALISATION-CHECK (implied output
+// "likely optimized out" marker), and its companion MATERIALISATION-CHECK (implied output
 // throughput against a physical ceiling; fatal, unlike DEOPT-CHECK).
 import { mkdirSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -22,13 +21,13 @@ import { verify } from "../src/gate/verifier.mjs";
 /** The two engines of this phase, in disclosure order (Handlebars = credibility pick). */
 export const ENGINES = Object.freeze(["handlebars", "eta"]);
 
-/** The eight workload ids in workload order (Phase 1 workloads.md). */
+/** The eight workload ids in workload order. */
 export const WORKLOAD_IDS = Object.freeze(WORKLOADS.map((w) => w.id));
 
 // benchmarks/js/bench/_shared.mjs -> artifacts live at benchmarks/js/artifacts/ (gitignored).
 const artifactsDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "artifacts");
 
-// ---- the materialisation primitive (D11 as amended, records.md E4) ---------------------------
+// ---- the materialisation primitive: flatten the rendered value so no engine can defer work ---
 
 // Both engines build their output with `+=`, so `render()` hands back an unflattened V8
 // ConsString rope. mitata's `do_not_optimize(v)` is `{ $._ = v; }` in full: it makes the value
@@ -79,14 +78,13 @@ const PLAUSIBILITY_CEILING_B_PER_NS = 50.0;
 function failGate(messages) {
   for (const message of Array.isArray(messages) ? messages : [messages]) console.error(message);
   console.error(
-    "gate failed — exiting before any benchmark registration; no numbers exist for a failed gate " +
-      "(parity-contract-v2 §Controlled-track gate rule 2; Phase 4 README D10).",
+    "gate failed — exiting before any benchmark registration; no numbers exist for a failed gate.",
   );
   process.exit(1);
 }
 
 /**
- * Controlled byte gate + encoded security floor over all 16 engine×workload cells (D10).
+ * Controlled byte gate + encoded security floor over all 16 engine×workload cells.
  * `renderers` is a per-track table: `renderers[engine][workloadId] -> () => string`.
  * Exits 1 with the contract's failure surface before any bench() registration on any miss.
  */
@@ -110,7 +108,7 @@ export function assertControlledGate(renderers, label = "controlled") {
 }
 
 /**
- * Idiomatic functional-equivalence verifier over all 16 cells (D10), fed from the corpus
+ * Idiomatic functional-equivalence verifier over all 16 cells, fed from the corpus
  * `<id>.verify.json` definitions. Exits 1 before any bench() registration on any miss.
  */
 export function assertIdiomaticGate(renderers) {
@@ -141,9 +139,9 @@ export function namedBench(name, fn) {
 }
 
 /**
- * D11 registration shape for the two track scripts: one `group('<workload-id> [<track>]')`
+ * Registration shape for the two track scripts: one `group('<workload-id> [<track>]')`
  * per workload containing the `handlebars` and `eta` benches, every body
- * `() => do_not_optimize(flatten(render()))` — `flatten` materialises the rope (E4) and
+ * `() => do_not_optimize(flatten(render()))` — `flatten` materialises the rope and
  * mitata's documented DCE guard then consumes the flat string.
  */
 export function registerTrackGroups(track, renderers) {
@@ -160,13 +158,14 @@ export function registerTrackGroups(track, renderers) {
 // ---- single run() + capture ------------------------------------------------------------------
 
 // In-process capture buffer: the print tap hands run() a sink that both echoes to stdout and
-// collects the identical lines here (harness-and-run.md §mitata run shape, DEOPT-CHECK note).
+// collects the identical lines here, so the DEOPT-CHECK trailer never depends on the
+// externally redirected .txt being flushed.
 const captured = [];
 
 /**
  * The SINGLE `run()` of a bench script: default 'mitata' format to stdout, with every line
  * also collected in the in-process buffer. One process, one sample set — the text and JSON
- * artifacts are two views of the same run, never two runs (D11).
+ * artifacts are two views of the same run, never two runs.
  */
 export async function runAndCapture() {
   return await run({
@@ -203,7 +202,7 @@ export function writeArtifacts(name, result) {
   console.log(`artifacts: ${name}.txt + ${name}.json written under benchmarks/js/artifacts/ (single run, two views).`);
 }
 
-// ---- DEOPT-CHECK trailer (D12) ---------------------------------------------------------------
+// ---- DEOPT-CHECK trailer ---------------------------------------------------------------------
 
 // eslint-disable-next-line no-control-regex
 const ANSI = /\x1b\[[0-9;]*m/g;
@@ -212,7 +211,7 @@ const ANSI = /\x1b\[[0-9;]*m/g;
  * Scans the in-process capture buffer (never the redirected .txt, which may be unflushed at
  * trailer time) for mitata's `!` marker ("benchmark was likely optimized out"), and prints the
  * publication-checklist trailer: `DEOPT-CHECK: clean` or `DEOPT-CHECK: flagged <bench names>`.
- * Advisory (exit 0); publication-blocking via the checklist (D12). Returns the flagged list.
+ * Advisory (exit 0); publication-blocking via the checklist. Returns the flagged list.
  */
 export function deoptCheckTrailer() {
   const flagged = [];
@@ -235,14 +234,14 @@ export function deoptCheckTrailer() {
   return flagged;
 }
 
-// ---- MATERIALISATION-CHECK trailer (D12 companion, records.md E4) -----------------------------
+// ---- MATERIALISATION-CHECK trailer ------------------------------------------------------------
 
 /**
  * Divides each cell's golden output size by its reported `avg` and fails the run if any cell
  * claims more throughput than the machine can physically deliver — the signature of a harness
  * that is not materialising its output.
  *
- * This is the companion D12 cannot be: mitata's `!` marker fires only when
+ * This is the companion DEOPT-CHECK cannot be: mitata's `!` marker fires only when
  * `avg < 1.42 * noop.avg` against an EMPTY FUNCTION, so a cell can skip nearly all of its work
  * and still sit three orders of magnitude above the trigger. The 2026-07-22 run reported
  * `DEOPT-CHECK: clean` while measuring rope construction.
@@ -260,7 +259,7 @@ export function materialisationCheckTrailer(result) {
     console.error(
       "MATERIALISATION-CHECK: FAILED — %FlattenString is unavailable, so the benchmark bodies " +
         "fell back to a non-sanctioned materialisation path. Run through run.ps1/run.sh or " +
-        "npm run bench:* so node receives --allow-natives-syntax (D11 as amended, records.md E4).",
+        "npm run bench:* so node receives --allow-natives-syntax.",
     );
     process.exit(1);
   }
@@ -302,8 +301,7 @@ export function materialisationCheckTrailer(result) {
     console.error(`MATERIALISATION-CHECK: flagged ${flagged.join(", ")}`);
     console.error(
       `every flagged cell exceeds the ${PLAUSIBILITY_CEILING_B_PER_NS} B/ns ceiling, so its ` +
-        "output cannot be being produced — the numbers from this run are not publishable " +
-        "(D12 companion, records.md E4).",
+        "output cannot be being produced — the numbers from this run are not publishable.",
     );
     process.exit(1);
   }

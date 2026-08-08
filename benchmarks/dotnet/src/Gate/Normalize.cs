@@ -4,9 +4,8 @@ using System.Text;
 namespace Heddle.Benchmarks.Dotnet.Gate
 {
     /// <summary>
-    /// Parity contract v2 normalization (normative shape in
-    /// docs/spec/cross-stack-benchmarks/phase-1-cross-stack-foundation/parity-contract-v2.md
-    /// §normalization-pipeline).
+    /// Parity contract v2 normalization — the shared pipeline every ecosystem must implement
+    /// identically, byte for byte.
     ///
     /// Whitespace everywhere below is the contract's explicit six-character closed set
     /// { TAB, LF, VT, FF, CR, SPACE } — never <c>char.IsWhiteSpace</c>, never a <c>\s</c> regex
@@ -134,7 +133,7 @@ namespace Heddle.Benchmarks.Dotnet.Gate
             return sb.ToString();
         }
 
-        /// <summary>The canonical spelling per codepoint (contract v2 N5 rule 3).</summary>
+        /// <summary>The canonical spelling per codepoint (N5 rule 3).</summary>
         private static string CanonicalFor(int codepoint) => codepoint switch
         {
             38 => "&amp;",

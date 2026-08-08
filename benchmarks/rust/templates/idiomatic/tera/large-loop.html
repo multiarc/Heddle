@@ -1,7 +1,7 @@
-{# Idiomatic Tera template (WI5, README D8/Q1.7). Patterns follow the Tera docs
+{# Idiomatic Tera template. Patterns follow the Tera docs
    (keats.github.io/tera): "Control structures - For loops"; default auto-escaping on.
    The display name is template-composed as the literal `row-` + the value substitution
-   (ledger E21 - the model carries data only). #}
+   (the model carries data only). #}
 {% for item in items %}
   <tr>
     <td>row-{{ item.value }}</td>

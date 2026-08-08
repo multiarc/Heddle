@@ -1,5 +1,5 @@
 @*
-    Idiomatic Heddle -- conditional-heavy (phase 9; authoring standard D16).
+    Idiomatic Heddle -- conditional-heavy.
 
     Patterns followed, from Heddle's own documentation:
       Language reference   docs/language-reference.md

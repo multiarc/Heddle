@@ -7,13 +7,13 @@ The specs are the source of truth; nothing in this file overrides them:
 
 | Ecosystem | Harness | Normative spec |
 |---|---|---|
-| .NET (anchor) | `benchmarks/dotnet` (BenchmarkDotNet) | [phase 1 — metrics-protocol.md](../docs/spec/cross-stack-benchmarks/phase-1-cross-stack-foundation/metrics-protocol.md) |
-| Rust | `benchmarks/rust` (Criterion) | [phase 2 — README.md](../docs/spec/cross-stack-benchmarks/phase-2-rust/README.md) (D9/WI10) |
-| JVM | `benchmarks/jvm` (JMH) | [phase 3 — harness-and-jmh.md](../docs/spec/cross-stack-benchmarks/phase-3-jvm/harness-and-jmh.md) |
-| JS | `benchmarks/js` (mitata) | [phase 4 — harness-and-run.md](../docs/spec/cross-stack-benchmarks/phase-4-js/harness-and-run.md) |
-| Python | `benchmarks/python` (pyperf) | [phase 5 — harness.md](../docs/spec/cross-stack-benchmarks/phase-5-python/harness.md) |
-| Go | `benchmarks/go` (testing + benchstat) | [phase 6 — harness-and-measurement.md](../docs/spec/cross-stack-benchmarks/phase-6-go/harness-and-measurement.md) |
-| Linux cross-check | `benchmarks/linux-crosscheck` | [phase 8 — README.md](../docs/spec/cross-stack-benchmarks/phase-8-linux-crosscheck/README.md) |
+| .NET (anchor) | `benchmarks/dotnet` (BenchmarkDotNet) | [metrics-protocol.md](docs/metrics-protocol.md) |
+| Rust | `benchmarks/rust` (Criterion) | [rust-workload-ports.md](docs/rust-workload-ports.md) |
+| JVM | `benchmarks/jvm` (JMH) | [jvm-harness-and-jmh.md](docs/jvm-harness-and-jmh.md) |
+| JS | `benchmarks/js` (mitata) | [js-harness-and-run.md](docs/js-harness-and-run.md) |
+| Python | `benchmarks/python` (pyperf) | [python-harness.md](docs/python-harness.md) |
+| Go | `benchmarks/go` (testing + benchstat) | [go-harness-and-measurement.md](docs/go-harness-and-measurement.md) |
+| Linux cross-check | `benchmarks/linux-crosscheck` | [linux-harness-settings-and-validation.md](docs/linux-harness-settings-and-validation.md), [linux-environment-and-toolchains.md](docs/linux-environment-and-toolchains.md) |
 
 ## Prerequisites (toolchain pins)
 
@@ -22,8 +22,8 @@ The specs are the source of truth; nothing in this file overrides them:
 | .NET SDK | **TBD** — pinned to the SDK of the Windows protocol run, which is pending re-test. The published 2026-07-25 Linux run used SDK 10.0.110 / runtime .NET 10.0.10 | suites target `net10.0`, `-c Release` |
 | Rust | rustc/cargo 1.97.1 | `rust-toolchain.toml` in `benchmarks/rust` |
 | JDK | Temurin 25 | `pom.xml` pins `maven.compiler.release=25`; on a JDK < 25 the runner passes `-Dmaven.compiler.release=23` |
-| Node.js | v24.x (major pin, ledger E18; was the exact v24.18.0) | `package.json` `engines: 24.x`; on a non-24 node the runner uses `npm ci --engine-strict=false` and records the delta |
-| CPython | 3.14.x (minor pin, ledger E19; was the exact 3.14.6) | harness venv at `benchmarks/python/.venv`; pyperf 2.10.0 + psutil 7.2.2 from `requirements.txt` |
+| Node.js | v24.x (major pin, amendment E18; was the exact v24.18.0) | `package.json` `engines: 24.x`; on a non-24 node the runner uses `npm ci --engine-strict=false` and records the delta |
+| CPython | 3.14.x (minor pin, amendment E19; was the exact 3.14.6) | harness venv at `benchmarks/python/.venv`; pyperf 2.10.0 + psutil 7.2.2 from `requirements.txt` |
 | Go | go1.26.x (1.26.5 asserted by `run-benchmarks.ps1`) | templ CLI v0.3.1020 via `go tool templ` |
 
 **Version deltas (SR-3 posture):** the Windows master runner *warns* on any delta from a pin
@@ -148,7 +148,7 @@ overall exit at the end.
 ### Measurement budget — `--budget short` (default) / `baseline`
 
 Each harness sets its own run lengths, so before
-[ledger E6](../docs/spec/records.md#cross-spec-amendments-ledger) "one cell" cost wildly
+amendment E6 "one cell" cost wildly
 different amounts of wall clock per ecosystem. These are **measured** figures from the
 withdrawn 2026-07-22 Windows run's `summary.txt`, not estimates. That run's *render figures* are
 invalid and its report has been removed pending a Windows re-test (**TBD**), but its per-step
@@ -164,7 +164,7 @@ wall-clock durations are simply how long each harness took, which is what this c
 | JVM | 32 | **4.47 h** | **503** | 16–34× above the band; **83% of the whole session** |
 
 Neither extreme was chosen — both are what the harness happened to default to. E6 replaced that
-with one selectable budget; [E13](../docs/spec/records.md#cross-spec-amendments-ledger) then changed
+with one selectable budget; amendment E13 then changed
 the unit it is measured in from **one ecosystem** to **one engine**:
 
 ```bash
@@ -294,7 +294,7 @@ per platform, the Windows form is given first and the Linux twin second.
 ## Publication
 
 Assembling a published report is **manual**, per
-[metrics-protocol.md](../docs/spec/cross-stack-benchmarks/phase-1-cross-stack-foundation/metrics-protocol.md):
+[metrics-protocol.md](docs/metrics-protocol.md):
 copy the run's artifacts into `docs/benchmarks/<run-date>/` with the environment block,
 the two-track tables, the allocation labels/caveats, and the honest-reporting rules — the
 runners never write into `docs/`. The Linux cross-check report additionally goes through

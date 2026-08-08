@@ -1,6 +1,6 @@
 # Golden oracle corpus
 
-The committed parity reference for the cross-stack benchmark program (phases 2–6): one
+The committed parity reference for the cross-stack benchmark program: one
 `<workload>.golden.html` per workload containing **Heddle's rendered output in the stored
 normalized form**, plus `manifest.json` (byte length, SHA-256, generating commit per entry),
 one `<workload>.verify.json` per workload (the idiomatic-verifier definition, exported from
@@ -28,16 +28,16 @@ the manifest's `fixtures` section with the same hash discipline as the goldens).
 - **Git handling** — `.gitattributes` pins `*.golden.html -text` (byte-exact round-trip; the
   files intentionally end without a newline) and the JSON sidecars as `text eol=lf`.
 
-Normative definitions: [golden-corpus.md](../../../docs/spec/cross-stack-benchmarks/phase-1-cross-stack-foundation/golden-corpus.md)
+Normative definitions: [golden-corpus.md](../../docs/golden-corpus.md)
 (on-disk format, manifest schema, export tool, verification, verifier definitions),
-[parity-contract-v2.md](../../../docs/spec/cross-stack-benchmarks/phase-1-cross-stack-foundation/parity-contract-v2.md)
+[parity-contract-v2.md](../../docs/parity-contract-v2.md)
 (normalization pipeline N1–N5 + N3b, gates, exclusion policy), and
-[workloads.md](../../../docs/spec/cross-stack-benchmarks/phase-1-cross-stack-foundation/workloads.md)
+[workloads.md](../../docs/workloads.md)
 (the eight workload shapes).
 
-## Full-page composition — what the composed page contains (ledger E20)
+## Full-page composition — what the composed page contains
 
-Since the E20 redesign the `composed-page` entry is a genuine **full HTML page**, rendered
+Since the full-page redesign the `composed-page` entry is a genuine **full HTML page**, rendered
 through Heddle's documented layout-as-definition idiom
 (docs/language-reference.md §"Composition without coupling" — **no engine change**):
 
@@ -48,7 +48,7 @@ through Heddle's documented layout-as-definition idiom
   calls `@layout(){{ …slider markup… }}`, whose body splices at the slot (both tracks carry the
   same slider body — the verifier's removed-segment calibration pin is that slider, so an empty
   body FAILS);
-- the model is **pure structured data** (ledger E22): `ComposedModel { Nav }` and nothing
+- the model is **pure structured data**: `ComposedModel { Nav }` and nothing
   else. The inert chrome fragments — the alert banner, both secondary menus, the pinned-empty
   alert-below slot, and the fixed asset/script snippets — are named definitions in the
   definition-only `shared/chrome-fragments.heddle` library (imported by the layout via `@<<`) that
@@ -66,4 +66,4 @@ through Heddle's documented layout-as-definition idiom
 Every twin composes with its **own native layout mechanism** (Razor `Layout`/`@RenderBody`,
 Liquid capture-then-include, Handlebars partial blocks, …) — the normative per-engine table is
 in
-[workloads.md — workload 1](../../../docs/spec/cross-stack-benchmarks/phase-1-cross-stack-foundation/workloads.md).
+[workloads.md — workload 1](../../docs/workloads.md).

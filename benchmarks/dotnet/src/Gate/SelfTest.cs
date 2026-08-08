@@ -140,7 +140,7 @@ namespace Heddle.Benchmarks.Dotnet.Gate
         }
 
         /// <summary>
-        /// Model-fidelity check for the composed-page fixtures. Since E22 the model IS the
+        /// Model-fidelity check for the composed-page fixtures. The model IS the
         /// structured nav — every fragment of literal page text (chrome, alert banner, secondary
         /// menus, asset/script snippets) lives in the templates, so there is no C# fixture side
         /// left to compare the chrome against: its presence and ORDER are proven by the
@@ -275,9 +275,9 @@ namespace Heddle.Benchmarks.Dotnet.Gate
         {
             var expected = new (string Id, int NonWhitespaceBytes)[]
             {
-                // composed-page and fragment-heavy were re-pinned at the E20 redesign export from
+                // composed-page and fragment-heavy were re-pinned at the full-page redesign export from
                 // this harness's own N3b over the regenerated corpus; they MUST be re-confirmed
-                // against the JS reference implementation when the Stage-3 ports land.
+                // against the JS reference implementation when the remaining ecosystem ports land.
                 ("composed-page", 39481),
                 ("trivial-substitution", 319),
                 ("large-loop", 192780),

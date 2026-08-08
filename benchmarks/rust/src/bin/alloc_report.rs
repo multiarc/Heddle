@@ -1,14 +1,14 @@
-//! `alloc_report` binary — the separate, non-timed allocation pass (README D10, WI8).
+//! `alloc_report` binary — the separate, non-timed allocation pass.
 //!
 //! Built only with `--features alloc-count` (`required-features` in Cargo.toml), so the timed
-//! Criterion binaries never link the counting global allocator. Per D10, for each of the 32
+//! Criterion binaries never link the counting global allocator. For each of the 32
 //! registered cells this binary renders once as an uncounted warm-up and then reports
-//! `count_total` / `bytes_total` for a single counted render. Gates run first (D11 — no
-//! number without a green gate, allocation numbers included).
+//! `count_total` / `bytes_total` for a single counted render. Gates run first — no
+//! number without a green gate, allocation numbers included.
 //!
 //! Usage: `cargo run --release --features alloc-count --bin alloc_report [-- --out <path>]`
 //!
-//! Report artifact: `alloc-report.txt` (D13 `## Files`), written next to the crate by default.
+//! Report artifact: `alloc-report.txt`, written next to the crate by default.
 //! Until 2026-07-25 this binary only printed to stdout despite documenting that artifact, so the
 //! master runners — which copy `target/criterion` and nothing else — had nothing to collect and
 //! every published report carried a "Rust allocation report absent" note. It now writes the file
@@ -38,13 +38,13 @@ fn out_path() -> PathBuf {
 }
 
 fn main() {
-    // D11: parity before any number. Panics with the Diagnostics message on a red cell.
+    // Parity before any number. Panics with the diagnostic message on a red cell.
     gates::assert_all();
 
     let mut out = String::new();
-    out.push_str("# alloc-report — allocation-counter 0.8.1, one counted render per cell (D10)\n");
+    out.push_str("# alloc-report — allocation-counter 0.8.1, one counted render per cell\n");
     out.push_str("# Per-ecosystem figures only; Tera is the baseline. Allocation counts are NOT\n");
-    out.push_str("# comparable across ecosystems (metrics-protocol metric rule 2).\n\n");
+    out.push_str("# comparable across ecosystems.\n\n");
     out.push_str(&format!(
         "{:<11} {:<7} {:<21} {:>12} {:>14}\n",
         "track", "engine", "workload", "count_total", "bytes_total"

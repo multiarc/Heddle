@@ -1,5 +1,5 @@
 @*
-    Idiomatic Heddle -- large-loop (phase 9; authoring standard D16).
+    Idiomatic Heddle -- large-loop.
 
     Patterns followed, from Heddle's own documentation:
       Language reference   docs/language-reference.md

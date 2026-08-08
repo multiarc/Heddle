@@ -191,7 +191,7 @@ The repository's [BenchmarkDotNet suite](../benchmarks/dotnet) measures Heddle a
 other .NET template engines (Fluid, Scriban, DotLiquid, Handlebars.Net and ASP.NET Core Razor) over
 a component‑heavy composition workload, every one of them rendering byte‑identical parity‑checked
 output (`[MemoryDiagnoser]` enabled). Razor joined the parity assertion on 2026‑07‑25
-([ledger E5](../docs/spec/records.md#cross-spec-amendments-ledger)); before that it rendered a larger,
+(benchmarks amendment E5); before that it rendered a larger,
 different page outside every gate. The published
 2026‑07‑25 cross‑stack run is the first to measure it under parity:
 **Heddle 30.52 μs vs Razor 41.66 μs**, with Heddle fastest of all six .NET engines on that

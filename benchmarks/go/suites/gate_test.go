@@ -1,12 +1,9 @@
-// Package suites hosts the phase's gates and benchmarks. TestMain runs every registered
+// Package suites hosts the harness's gates and benchmarks. TestMain runs every registered
 // gate — corpus integrity, the untrusted-data alphabet assert, every controlled cell's byte
 // gate, and every idiomatic cell's verification — before m.Run(), so no benchmark in the
-// package can time until every gate passed in the same invocation (parity-contract-v2
-// §Controlled-track gate 2). The same checks are exposed as ordinary Test functions so plain
-// `go test ./suites` is the phase's parity command (the Go analogue of the .NET `-- parity`
-// verb).
-//
-// Spec: docs/spec/cross-stack-benchmarks/phase-6-go/harness-and-measurement.md
+// package can time until every gate passed in the same invocation. The same checks are
+// exposed as ordinary Test functions so plain `go test ./suites` is the harness's parity
+// command (the Go analogue of the .NET `-- parity` verb).
 package suites
 
 import (
@@ -25,18 +22,17 @@ import (
 // cell is one gated workload × engine × track combination.
 type cell struct {
 	Track    string // "controlled" | "idiomatic"
-	Engine   string // "stdlib-text" | "stdlib-html" | "templ" (+ "quicktemplate" if D10 fires)
-	Workload string // Phase 1 workload id
+	Engine   string // "stdlib-text" | "stdlib-html" | "templ"
+	Workload string // shared workload id
 	Suite    string // "raw" | "encoded"
 	Render   func() string
 }
 
-// cells is the gate registry. Engines register their cells here as they land:
-// WI3 adds the eight stdlib controlled cells, WI4 the eight templ controlled cells,
-// WI5 the sixteen idiomatic cells.
+// cells is the gate registry: every engine × workload × track combination that must pass
+// before anything in this package times.
 var cells = []cell{
-	// WI3 — stdlib controlled: text/template on the six raw workloads, html/template on
-	// the two encoded (README D1 / Q6.1).
+	// stdlib controlled: text/template on the six raw workloads, html/template on
+	// the two encoded.
 	{"controlled", "stdlib-text", "composed-page", "raw", stdlibcontrolled.RenderComposedPage},
 	{"controlled", "stdlib-text", "trivial-substitution", "raw", stdlibcontrolled.RenderTrivialSubstitution},
 	{"controlled", "stdlib-text", "large-loop", "raw", stdlibcontrolled.RenderLargeLoop},
@@ -45,8 +41,8 @@ var cells = []cell{
 	{"controlled", "stdlib-text", "fragment-heavy", "raw", stdlibcontrolled.RenderFragmentHeavy},
 	{"controlled", "stdlib-html", "fortunes-encoded", "encoded", stdlibcontrolled.RenderFortunesEncoded},
 	{"controlled", "stdlib-html", "encoded-loop", "encoded", stdlibcontrolled.RenderEncodedLoop},
-	// WI4 — templ controlled: all eight workloads (templ.Raw for the composed-page
-	// HTML-fragment data; the default escaping path on the encoded pair).
+	// templ controlled: all eight workloads (@templ.Raw only over pinned literal template
+	// text; the default escaping path on the encoded pair).
 	{"controlled", "templ", "composed-page", "raw", templcontrolled.RenderComposedPage},
 	{"controlled", "templ", "trivial-substitution", "raw", templcontrolled.RenderTrivialSubstitution},
 	{"controlled", "templ", "large-loop", "raw", templcontrolled.RenderLargeLoop},
@@ -55,8 +51,8 @@ var cells = []cell{
 	{"controlled", "templ", "fragment-heavy", "raw", templcontrolled.RenderFragmentHeavy},
 	{"controlled", "templ", "fortunes-encoded", "encoded", templcontrolled.RenderFortunesEncoded},
 	{"controlled", "templ", "encoded-loop", "encoded", templcontrolled.RenderEncodedLoop},
-	// WI5 — stdlib idiomatic: the same Q6.1 surface split as controlled, authored per the
-	// official docs (port-mapping.md §Idiomatic track), gated by the Phase 1 verifier.
+	// stdlib idiomatic: the same surface split as controlled, authored per the
+	// official docs, gated by the shared idiomatic verifier.
 	{"idiomatic", "stdlib-text", "composed-page", "raw", stdlibidiomatic.RenderComposedPage},
 	{"idiomatic", "stdlib-text", "trivial-substitution", "raw", stdlibidiomatic.RenderTrivialSubstitution},
 	{"idiomatic", "stdlib-text", "large-loop", "raw", stdlibidiomatic.RenderLargeLoop},
@@ -65,7 +61,7 @@ var cells = []cell{
 	{"idiomatic", "stdlib-text", "fragment-heavy", "raw", stdlibidiomatic.RenderFragmentHeavy},
 	{"idiomatic", "stdlib-html", "fortunes-encoded", "encoded", stdlibidiomatic.RenderFortunesEncoded},
 	{"idiomatic", "stdlib-html", "encoded-loop", "encoded", stdlibidiomatic.RenderEncodedLoop},
-	// WI5 — templ idiomatic: all eight workloads, naturally formatted with idiomatic
+	// templ idiomatic: all eight workloads, naturally formatted with idiomatic
 	// component decomposition (internal/templeng/idiomatic).
 	{"idiomatic", "templ", "composed-page", "raw", templidiomatic.RenderComposedPage},
 	{"idiomatic", "templ", "trivial-substitution", "raw", templidiomatic.RenderTrivialSubstitution},
@@ -118,8 +114,7 @@ func runAllGates() error {
 	return nil
 }
 
-// TestMain gates before any benchmark can time (contract gate rule 2: before any timing, in
-// the same invocation). Any failure prints the failure surface and exits 1 — no numbers.
+// TestMain gates before any benchmark can time, in the same invocation. Any failure prints the failure surface and exits 1 — no numbers.
 func TestMain(m *testing.M) {
 	if err := runAllGates(); err != nil {
 		fmt.Fprintln(os.Stderr, err)

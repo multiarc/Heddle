@@ -1,8 +1,8 @@
-// Workload 1 — composed-page, templ idiomatic port (workloads.md workload 1, ledger
-// E20/E22). templ's native layout mechanism with a live body slot: a layout component
+// Workload 1 — composed-page, templ idiomatic port: verifier-gated, authored the way
+// the official docs teach. templ's native layout mechanism with a live body slot: a layout component
 // takes { children... } at the body-slot position and the page invokes
 // @layout(m) { …slider markup… } — the documented children-composition idiom. The inert
-// chrome fragments are literal template text in per-fragment components (E22); the
+// chrome fragments are literal template text in per-fragment components; the
 // structured navigation renders through nested components (megaMenu → navColumn →
 // navSection → navLink) over the nav model loaded from the corpus fixture.
 //
@@ -12,7 +12,7 @@
 // exact pinned literal (the engine's documented raw mechanism, applied to constant
 // template text, not data).
 //
-// Doc citations (Q1.7):
+// Official templ documentation for the constructs used here:
 //   - https://templ.guide/syntax-and-usage/template-composition/  (layout with children,
 //     component nesting)
 //   - https://templ.guide/syntax-and-usage/statements/  (for loops, if/else)
@@ -39,7 +39,7 @@ templ pageScriptsSection() {
 templ endpageScriptsSection() {
 }
 
-// ---- chrome fragments (literal template text — E22) --------------------------------------------
+// ---- chrome fragments (literal template text) --------------------------------------------
 templ alertTop() {
 	<div class="top-banner" style="">
 		<a href="/content/shipping-information#Holidays">
@@ -223,7 +223,7 @@ templ bodyEndScripts() {
 	<script src="/bodyend.js"></script>
 }
 
-// ---- structured nav (nested components — E20) --------------------------------------------------
+// ---- structured nav (nested components) --------------------------------------------------
 templ navLink(l model.NavLink) {
 	<li class="nav-link"><a href={ l.Href }>{ l.Label }</a></li>
 }
@@ -395,7 +395,7 @@ templ layout(m model.ComposedModel) {
 	</html>
 }
 
-// ---- the page (both tracks carry the SAME slider body — E20) -----------------------------------
+// ---- the page (both tracks carry the SAME slider body) -----------------------------------
 templ composedPage(m model.ComposedModel) {
 	@layout(m) {
 		<div class="slider-wrapper theme-default">

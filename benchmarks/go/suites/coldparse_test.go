@@ -1,5 +1,4 @@
-// BenchmarkColdParse — the per-ecosystem, non-comparable cold-cost sidebar
-// (harness-and-measurement.md §Cold parse/compile sidebar, Q1.3). Two cells only:
+// BenchmarkColdParse — the per-ecosystem, non-comparable cold-cost sidebar. Two cells only:
 //
 //	BenchmarkColdParse/stdlib-text — parse the six raw-suite template sources per iteration
 //	BenchmarkColdParse/stdlib-html — parse the two encoded-suite template sources per iteration

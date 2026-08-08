@@ -1,5 +1,6 @@
-"""Idiomatic-track verifier -- the Python implementation of parity-contract-v2
-"Idiomatic-track gate", driven by the Phase 1 ``<id>.verify.json`` definitions (D12).
+"""Idiomatic-track verifier -- the Python implementation of the parity contract's
+idiomatic-track gate, driven by the per-workload ``<id>.verify.json`` definitions
+in the golden corpus.
 
 Matching semantics: the candidate is normalized (N1-N4, +N5 for encoded suites), then
 the N3b whitespace strip is applied to the output AND to every needle string before
@@ -35,7 +36,7 @@ def load_verify(workload: str) -> dict:
 @dataclass(frozen=True)
 class Failure:
     """One failed check: its kind (``value``/``marker``/``forbidden``/``required``)
-    plus the Diagnostics-table message tail."""
+    plus the failure-message tail."""
 
     kind: str
     message: str
@@ -111,7 +112,7 @@ def check_verified(workload: str, raw_output: str) -> list[Failure]:
 
 
 def assert_verified(workload: str, raw_output: str, engine: str = "?") -> None:
-    """Hard gate: prints ``VERIFY FAIL`` lines and exits 1 on any failed check (D7/D12)."""
+    """Hard gate: prints ``VERIFY FAIL`` lines and exits 1 on any failed check."""
     failures = check_verified(workload, raw_output)
     if not failures:
         return

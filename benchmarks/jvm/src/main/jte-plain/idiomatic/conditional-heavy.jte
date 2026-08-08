@@ -1,6 +1,6 @@
 @param java.util.List<heddle.benchmarks.jvm.model.Models.ConditionalRow> rows
 <%--
-  Idiomatic jte authoring (Q1.7/D7) — official doc citations:
+  Idiomatic jte authoring — official doc citations:
   https://jte.gg/syntax/ (conditions: @if/@elseif/@else/@endif, loops: @for)
   https://jte.gg/pre-compiling/ (precompiled engine setup)
 --%>

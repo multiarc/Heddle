@@ -12,10 +12,8 @@ namespace Heddle.Benchmarks.Dotnet.Corpus
     /// <summary>
     /// The authoring side of the idiomatic verifier: the eight per-workload definitions, in C#,
     /// from which <c>export-corpus</c> writes the committed <c>&lt;id&gt;.verify.json</c> files that
-    /// all six ecosystems then read (normative tables in
-    /// docs/spec/cross-stack-benchmarks/phase-1-cross-stack-foundation/golden-corpus.md
-    /// §Idiomatic verifier definitions, including the 2026-07-20 amendment weakening the
-    /// text-context quote-entity needles).
+    /// all six ecosystems then read (the committed JSON is the normative form, including the
+    /// 2026-07-20 amendment weakening the text-context quote-entity needles).
     ///
     /// <para><b>Authoring lives here; matching lives in <see cref="Verifier"/>.</b> That split is
     /// deliberate. The gate must read the same committed JSON every other ecosystem reads, or the
@@ -73,9 +71,9 @@ namespace Heddle.Benchmarks.Dotnet.Corpus
 
         private static Authored ComposedPage()
         {
-            // Since the E20 full-page redesign the nav needles and counts are COMPUTED — walked
+            // Since the full-page redesign the nav needles and counts are COMPUTED — walked
             // from the very NavData model every engine renders from. The chrome and fragment
-            // anchors are literal needles (E22): all of that text now lives in the templates, so
+            // anchors are literal needles: all of that text now lives in the templates, so
             // there is no C# fixture left to compute them from; the byte gate and verify-corpus
             // freshness police the template text itself.
             var nav = NavData.Model();

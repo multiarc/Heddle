@@ -1,5 +1,4 @@
-// BenchmarkRender — one sub-benchmark per gated cell, named for benchstat grouping
-// (harness-and-measurement.md §Benchmark shape, D8):
+// BenchmarkRender — one sub-benchmark per gated cell, named for benchstat grouping:
 //
 //	BenchmarkRender/<track>/<workload>/<engine>
 //
@@ -16,7 +15,7 @@ import "testing"
 // elimination, alongside b.Loop's own guarantee).
 var sink string
 
-// workloadOrder fixes the benchmark ordering to the Phase 1 workload numbering.
+// workloadOrder fixes the benchmark ordering to the pinned workload numbering.
 var workloadOrder = []string{
 	"composed-page",
 	"trivial-substitution",

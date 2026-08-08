@@ -1,4 +1,4 @@
-// The fixtures every engine renders this workload from (ledger E8).
+// The fixtures every engine renders this workload from.
 //
 // Load-bearing values: the golden corpus is Heddle's render OF THESE, so changing one changes the
 // oracle every ecosystem is gated against. Change them only with a corpus re-export in the same
@@ -14,7 +14,7 @@ using DotLiquid;
 namespace Heddle.Benchmarks.Dotnet.Models
 {
     /// <summary>
-    /// Shared, engine-neutral model for the conditional-heavy workload (cross-stack phase 1 WI1):
+    /// Shared, engine-neutral model for the conditional-heavy workload:
     /// 200 rows, each carrying precomputed booleans for one four-way tier chain plus two
     /// independent toggles — every engine branches on the same booleans, so the workload measures
     /// branch dispatch on identical data. Every per-engine view is materialized once (static).

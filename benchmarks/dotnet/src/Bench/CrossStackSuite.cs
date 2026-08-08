@@ -10,7 +10,7 @@ namespace Heddle.Benchmarks.Dotnet.Bench
 {
     /// <summary>
     /// Shared machinery for the eight cross-stack suites — one suite per protocol workload, one
-    /// <c>[Benchmark]</c> per engine, both fairness tracks (ledger E8/E9/E10).
+    /// <c>[Benchmark]</c> per engine, both fairness tracks.
     ///
     /// <para><b>The benchmark methods are declared on the concrete suites, not here.</b> A suite is
     /// six one-line methods over this base; the repetition is deliberate. Inherited

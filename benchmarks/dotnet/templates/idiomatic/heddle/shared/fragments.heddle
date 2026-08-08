@@ -1,9 +1,9 @@
 @*
-    Idiomatic Heddle -- fragment-heavy fragment library (phase 9; authoring standard D16).
+    Idiomatic Heddle -- fragment-heavy fragment library.
 
     Patterns followed, from Heddle's own documentation:
       Language reference   docs/language-reference.md ("Composition without coupling" --
-                           definition libraries imported via @<<, Q1.7)
+                           definition libraries imported via @<<)
       Architecture         docs/architecture.md
 
     Definition-only library: the six fragment kinds (tile, badge, price, card, media_row,

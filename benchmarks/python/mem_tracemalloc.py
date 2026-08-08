@@ -1,11 +1,11 @@
-"""Memory pass -- tracemalloc single-render boundaries, one fresh child per cell
-(Phase 5 WI6; README D11; harness.md "Memory pass"). Never pyperf; no timing number is
-ever taken in this process, and no memory number in a timing process.
+"""Memory pass -- tracemalloc single-render boundaries, one fresh child per cell.
+Never pyperf; no timing number is ever taken in this process, and no memory number
+in a timing process.
 
 Per engine x track x workload cell the parent spawns one fresh child process (same
 interpreter) which: builds the engine object, template, and model; performs one
-untimed warm-up render gated exactly as the bench scripts' warm-up gate is (D7:
-``assert_parity`` on the controlled track, ``assert_verified`` on the idiomatic
+untimed warm-up render gated exactly as the bench scripts' warm-up gate is
+(``assert_parity`` on the controlled track, ``assert_verified`` on the idiomatic
 track -- before any tracing starts); then, with tracemalloc active, runs R measured
 repetitions with single-render boundaries:
 
@@ -18,13 +18,13 @@ Output (``-o``, default ``results/memory.json``): per cell
 sample standard deviation. Any cell failure (including a warm-up gate failure) exits 1
 and writes no partial memory.json.
 
-Protocol invocation (from ``benchmarks/python/`` -- harness.md):
+Protocol invocation (from ``benchmarks/python/``):
 
     python mem_tracemalloc.py -o results\\memory.json
 
-``--reps`` (default 100 -- the D11 R), ``--engine``/``--track``/``--workload`` filters
-exist for smoke validation only; the protocol run uses the defaults (all 32 cells,
-100 repetitions).
+``--reps`` (default 100 -- the protocol's R), ``--engine``/``--track``/``--workload``
+filters exist for smoke validation only; the protocol run uses the defaults (all 32
+cells, 100 repetitions).
 """
 
 from __future__ import annotations
@@ -41,7 +41,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 ENGINES = ["jinja2", "mako"]
 TRACKS = ["controlled", "idiomatic"]
-DEFAULT_REPS = 100  # D11: R = 100 measured repetitions
+DEFAULT_REPS = 100  # the protocol's R: measured repetitions per cell
 
 
 def _stats(values: list[int]) -> dict:
@@ -53,14 +53,14 @@ def _stats(values: list[int]) -> dict:
 
 
 def run_cell(engine: str, track: str, workload: str, reps: int) -> dict:
-    """Executes one cell's D11 measurement inside this (child) process."""
+    """Executes one cell's memory measurement inside this (child) process."""
     from runner import data, engines, gates, verify
 
     template = engines.load(engine, track, workload)
     ctx = data.MODELS[workload]
 
     # One untimed warm-up render (populates engine caches), gated exactly as the
-    # bench scripts' warm-up gate is (D7) -- BEFORE any tracing starts, so a
+    # bench scripts' warm-up gate is -- BEFORE any tracing starts, so a
     # non-conformant template can never enter the traced measurement loop.
     out = engines.render(template, ctx)
     if track == "controlled":
@@ -98,7 +98,7 @@ def child_main(cell: str, reps: int) -> int:
     except SystemExit:
         # Gate/verifier failure: its own error-surface message is already on stderr.
         raise
-    except Exception as e:  # noqa: BLE001 -- the D11 error surface wants the exception
+    except Exception as e:  # noqa: BLE001 -- the error surface reports any exception
         print(f"MEM FAIL {cell}: {type(e).__name__}: {e}", file=sys.stderr)
         return 1
     json.dump(result, sys.stdout)
@@ -117,7 +117,7 @@ def parent_main(args: argparse.Namespace) -> int:
         for engine in engines_sel:
             for workload in workloads:
                 cell = f"{engine}/{track}/{workload}"
-                # One fresh child process per cell (D11) -- same venv interpreter.
+                # One fresh child process per cell -- same venv interpreter.
                 proc = subprocess.run(
                     [sys.executable, str(HERE / "mem_tracemalloc.py"),
                      "--cell", cell, "--reps", str(args.reps)],
@@ -155,12 +155,12 @@ def parent_main(args: argparse.Namespace) -> int:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="python mem_tracemalloc.py",
-        description="Separate tracemalloc memory pass (Phase 5 D11) -- never pyperf.",
+        description="Separate tracemalloc memory pass -- never pyperf.",
     )
     parser.add_argument("-o", "--output", default="results/memory.json",
                         help="output JSON path (default: results/memory.json)")
     parser.add_argument("--reps", type=int, default=DEFAULT_REPS,
-                        help=f"measured repetitions per cell (default {DEFAULT_REPS} -- D11;"
+                        help=f"measured repetitions per cell (default {DEFAULT_REPS};"
                              " lower values are for smoke validation only)")
     parser.add_argument("--engine", choices=ENGINES, help="smoke filter: one engine only")
     parser.add_argument("--track", choices=TRACKS, help="smoke filter: one track only")

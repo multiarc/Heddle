@@ -1,5 +1,4 @@
-// Idiomatic-track functional-equivalence verifier (Phase 4 WI3; spec: harness-and-run.md
-// §Gate implementation; contract: parity-contract-v2.md §Idiomatic-track gate). Definitions
+// Idiomatic-track functional-equivalence verifier. Definitions
 // are consumed from the corpus `<id>.verify.json` files — never re-authored here. All matching
 // runs on the whitespace-stripped projection of the normalized candidate (N1–N5, then N3b)
 // with the same strip applied to every needle, mirroring IdiomaticChecks.Verify in the
@@ -51,7 +50,7 @@ export function verify(definition, rawOutput, context = `${definition.workload}`
   for (const f of definition.forbidden ?? []) {
     const needle = stripWhitespace(f);
     // Zero occurrences in raw AND normalized output; both scanned whitespace-stripped, which
-    // only strengthens detection (harness-and-run.md §Gate implementation).
+    // only strengthens detection.
     const found = Math.max(countOccurrences(strippedRaw, needle), countOccurrences(stripped, needle));
     if (found !== 0) fail("forbidden", f, 0, found);
   }

@@ -8,12 +8,10 @@ import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 
 /**
- * Contract-literal implementation of the parity-contract-v2 normalization pipeline
+ * Contract-literal implementation of the parity contract's normalization pipeline
  * (N1-N5 plus the N3b comparison-time whitespace strip). Nothing outside the closed list
  * is applied; the whitespace set is the explicit six-character set
  * {TAB, LF, VT, FF, CR, SPACE} - never a language {@code \s} class.
- * Spec: docs/spec/cross-stack-benchmarks/phase-1-cross-stack-foundation/parity-contract-v2.md
- * and phase-3-jvm/harness-and-jmh.md (gate runner implementation contract, D11).
  */
 public final class Normalizer {
 
@@ -102,7 +100,7 @@ public final class Normalizer {
     }
 
     /**
-     * N3b (2026-07-20 maintainer step): remove every run of six-set whitespace anywhere,
+     * N3b: remove every run of six-set whitespace anywhere,
      * to nothing (not to a space). Applied symmetrically at comparison time to both the
      * normalized candidate and the loaded golden, and to every verifier needle - never
      * baked into the stored oracle.

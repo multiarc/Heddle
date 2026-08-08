@@ -1,8 +1,8 @@
 # Phase 8 — Linux cross-check tooling (reproduce book)
 
-Tooling for the [Phase 8 — linux-crosscheck spec](../../docs/spec/cross-stack-benchmarks/phase-8-linux-crosscheck/README.md)
-(supplements: [environment-and-toolchains.md](../../docs/spec/cross-stack-benchmarks/phase-8-linux-crosscheck/environment-and-toolchains.md),
-[harness-settings-and-validation.md](../../docs/spec/cross-stack-benchmarks/phase-8-linux-crosscheck/harness-settings-and-validation.md)).
+Tooling for the Phase 8 — linux-crosscheck spec
+(supplements: [linux-environment-and-toolchains.md](../docs/linux-environment-and-toolchains.md),
+[linux-harness-settings-and-validation.md](../docs/linux-harness-settings-and-validation.md)).
 
 This directory is the reproduce path the published Linux cross-check report points at (spec D18).
 It was authored **before any bare-metal Ubuntu session exists**, under two standing rulings:

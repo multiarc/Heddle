@@ -1,15 +1,15 @@
 @*
-    Idiomatic Heddle -- composed-page chrome fragments (phase 9; authoring standard D16).
+    Idiomatic Heddle -- composed-page chrome fragments.
 
     Patterns followed, from Heddle's own documentation:
       Language reference   docs/language-reference.md ("Composition without coupling" --
-                           definition libraries imported via @<<, Q1.7)
+                           definition libraries imported via @<<)
       Architecture         docs/architecture.md
 
     Definition-only library: the page's inert literal text (alert banner, secondary menus,
     fixed asset/script fragments) as named definitions the layout calls at its composition
     points. Importing it renders nothing; any piece is overridable with <name:name>. All
-    display text lives in templates -- the C# tier carries only model data (ledger E22).
+    display text lives in templates -- the C# tier carries only model data.
 *@
 @%
     <alert_top>

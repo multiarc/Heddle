@@ -16,8 +16,7 @@ import java.util.Set;
 import java.util.function.UnaryOperator;
 
 /**
- * Gate runner CLI (spec D11; verbs and message shapes per README &sect;Diagnostics and
- * harness-and-jmh.md &sect;Gate runner implementation contract):
+ * Gate runner CLI:
  *
  * <pre>
  *   GateCli probe
@@ -34,9 +33,11 @@ public final class GateCli {
     private static final String ESCAPED_PAYLOAD = "&lt;script&gt;alert(";
 
     /**
-     * Controlled cells recorded as excluded via the feasibility-doc evidence procedure
-     * ("engine/workload"). None exist at WI1 time; WI2 populates this if the Thymeleaf
-     * ladder hits a beyond-whitespace divergence (thymeleaf-exclusion-evidence.md).
+     * Controlled cells ("engine/workload") excluded from the byte gate. A Thymeleaf cell
+     * may be excluded only for a beyond-whitespace divergence that no controlled authoring
+     * attempt removes, and every exclusion is recorded with its evidence - the divergent
+     * bytes and the authoring attempts that failed to remove them - captured alongside the
+     * gate output. Currently empty: no cell has earned an exclusion.
      */
     private static final Set<String> EXCLUDED_CONTROLLED_CELLS = Set.of();
 
@@ -68,7 +69,7 @@ public final class GateCli {
         }
     }
 
-    // ---- probe (D5) --------------------------------------------------------------------
+    // ---- probe -------------------------------------------------------------------------
 
     private record ProbePath(String name, Map<Character, String> spellings,
                              UnaryOperator<String> escape) {
@@ -98,10 +99,10 @@ public final class GateCli {
                 new ProbePath("thymeleaf/attribute", canonical,
                         ThymeleafEngines::escapeAttributeViaEngine));
 
-        // The pinned probe payload set (D5).
+        // The pinned probe payload set.
         String[] payloads = {"&<>\"'", "こんにちは", "<script>alert('xss')</script>"};
 
-        System.out.println("Escaper probe (D5) — spellings per escaping path:");
+        System.out.println("Escaper probe — spellings per escaping path:");
         System.out.println();
         System.out.printf("%-22s %-7s %-7s %-7s %-7s %-7s%n",
                 "path", "&", "<", ">", "\"", "'");
@@ -133,13 +134,13 @@ public final class GateCli {
         }
         System.out.println();
         if (failures == 0) {
-            System.out.println("[PASS] all 6 escaping paths match the D5 spelling table"
+            System.out.println("[PASS] all 6 escaping paths match the pinned spelling table"
                     + " byte-for-byte (payload set: &<>\"' / こんにちは /"
                     + " <script>alert('xss')</script>)");
             return 0;
         }
-        System.out.println(failures + " probe failure(s) — contract evidence; escalate per"
-                + " Phase 1 machinery, never normalize away.");
+        System.out.println(failures + " probe failure(s) — contract evidence; escalate the"
+                + " divergence, never normalize it away.");
         return 1;
     }
 
@@ -275,7 +276,7 @@ public final class GateCli {
     }
 
     /**
-     * The controlled byte gate (contract &sect;Controlled-track gate): normalize N1-N5,
+     * The controlled byte gate: normalize N1-N5,
      * apply N3b to both sides, compare non-whitespace UTF-8 bytes; encoded suites also
      * assert the security floor on the un-normalized candidate. Returns null on pass.
      */
@@ -399,8 +400,8 @@ public final class GateCli {
     }
 
     /**
-     * The contract's synthesized corruptions (golden-corpus.md &sect;Verification), pinned
-     * per workload exactly as Phase 1's {@code IdiomaticChecks} pins them: removed
+     * The synthesized corruptions calibration must reject, pinned per workload exactly as
+     * the .NET harness's {@code IdiomaticChecks} pins them: removed
      * row/segment, reordered sections, and (encoded only) unescaped payload -
      * encoded-loop's pinned escaped-&gt;raw pair is {@code &lt;angle&gt;} -&gt;
      * {@code <angle>} (the workload carries no script payload).
@@ -429,7 +430,7 @@ public final class GateCli {
         Map<String, String[]> pins = new LinkedHashMap<>();
         switch (entry.workload) {
             case "composed-page" -> {
-                // E20 pins, mirroring Phase 1's VerifierDefinitions.ComposedPage(): the
+                // Mirrors the .NET harness's VerifierDefinitions.ComposedPage() pins: the
                 // removed segment is the slider fragment the page splices into the layout's
                 // live body slot - so an idiomatic page with an EMPTY body fails - and the
                 // swap pair is one anchor unique to each mega menu (wholesale vs retail).
@@ -458,7 +459,7 @@ public final class GateCli {
                 pins.put("swap", new String[] {"unit-000", "unit-100"});
             }
             case "fragment-heavy" -> {
-                // E20 pins, mirroring Phase 1's VerifierDefinitions.FragmentHeavy(): row 0
+                // Mirrors the .NET harness's VerifierDefinitions.FragmentHeavy() pins: row 0
                 // is a tile; its whole fragment is the removed-row corruption, computed
                 // from the model so the pin cannot drift. Rows 0 and 24 are both tiles.
                 Models.FragmentRow row0 = Models.FRAGMENT_ROWS.get(0);
@@ -485,7 +486,7 @@ public final class GateCli {
                         + FiveEntityHtmlOutput.escape(row0.getComment()) + "</td></tr>";
                 pins.put("removed", new String[] {firstRow, "value"});
                 pins.put("swap", new String[] {tag0, "item &lt;2500&gt;"});
-                // Phase 1 pin: no script payload in this workload; the escaped->raw pair is
+                // This workload carries no script payload; the escaped->raw pair is
                 // the comment's angle text (forbidden: <angle>).
                 pins.put("unescape", new String[] {"&lt;angle&gt;", "<angle>"});
             }

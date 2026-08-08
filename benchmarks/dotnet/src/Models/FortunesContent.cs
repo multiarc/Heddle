@@ -1,4 +1,4 @@
-// The fixtures every engine renders this workload from (ledger E8).
+// The fixtures every engine renders this workload from.
 //
 // Load-bearing values: the golden corpus is Heddle's render OF THESE, so changing one changes the
 // oracle every ecosystem is gated against. Change them only with a corpus re-export in the same
@@ -14,10 +14,10 @@ using DotLiquid;
 namespace Heddle.Benchmarks.Dotnet.Models
 {
     /// <summary>
-    /// Shared, engine-neutral model for the fortunes-encoded workload (cross-stack phase 1 WI1):
+    /// Shared, engine-neutral model for the fortunes-encoded workload:
     /// the 12 pinned fortune rows — including the TechEmpower XSS payload (row 11) and the
     /// Japanese UTF-8 string (row 12) — rendered through each engine's escaping path in HTML text
-    /// context. The strings are pinned byte-for-byte by the workloads spec; every per-engine view
+    /// context. The strings are pinned byte-for-byte across every ecosystem; every per-engine view
     /// is materialized once (static).
     /// </summary>
     public static class FortunesContent

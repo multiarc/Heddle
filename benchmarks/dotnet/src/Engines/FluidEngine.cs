@@ -10,18 +10,18 @@ using Microsoft.Extensions.Primitives;
 namespace Heddle.Benchmarks.Dotnet.Engines
 {
     /// <summary>
-    /// Fluid (Liquid) twin, all eight workloads (ledger E8; composed-page/fragment-heavy redesign
-    /// per E20/E22, model/display separation per E21).
+    /// Fluid (Liquid) twin, all eight workloads.
     ///
     /// Template sources are dialect-suffixed (<c>*.fluid.liquid</c>) wherever this twin's authoring
     /// diverges from DotLiquid's ownership: the composed-page layout family, the fragment-heavy
-    /// partial family, and the three E21-composed workloads. The remaining flat workloads
+    /// partial family, and the three workloads whose display strings are composed
+    /// template-side. The remaining flat workloads
     /// (trivial-substitution and the two encoded ones) still share one un-suffixed Liquid source
     /// with <see cref="DotLiquidEngine"/>.
     ///
-    /// composed-page follows the workloads.md Liquid layout idiom: the page captures its body into
-    /// <c>body_content</c> and <c>{% include %}</c>s the layout, which emits the slot; ALL literal
-    /// chrome is template text (E22), the ten inert fragments living as per-fragment partials
+    /// composed-page follows the Liquid layout idiom pinned for this workload: the page captures its
+    /// body into <c>body_content</c> and <c>{% include %}</c>s the layout, which emits the slot; ALL
+    /// literal chrome is template text, the ten inert fragments living as per-fragment partials
     /// mirroring <c>shared/chrome-fragments.heddle</c>, and the nav rendering through nested loops +
     /// nested partials (mega-menu, nav-column, nav-section, nav-link) bound with the documented
     /// <c>{% include ... with ... %}</c> form. fragment-heavy dispatches per row over the
@@ -54,8 +54,8 @@ namespace Heddle.Benchmarks.Dotnet.Engines
                 return new TemplateOptions { FileProvider = new DictionaryFileProvider(files) };
             }
 
-            // ---- composed-page: capture-then-include layout, per-fragment chrome partials (E22),
-            //      nested nav partials (E20)
+            // ---- composed-page: capture-then-include layout, per-fragment chrome partials,
+            //      nested nav partials
             var composedOptions = Options(
                 "layout",
                 "alert-top", "secondary-wholesale-menu", "secondary-retail-menu", "alert-below",
@@ -69,7 +69,7 @@ namespace Heddle.Benchmarks.Dotnet.Engines
                 Render = () =>
                 {
                     var ctx = new TemplateContext(composedOptions);
-                    // E22: the model carries structured nav DATA only — all literal chrome and
+                    // The model carries structured nav DATA only — all literal chrome and
                     // fragment text lives in the templates.
                     ctx.SetValue("nav", ComposedContent.LiquidModel()["nav"]);
                     return composed.Render(ctx);

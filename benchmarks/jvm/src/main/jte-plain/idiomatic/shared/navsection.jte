@@ -1,6 +1,6 @@
 @param heddle.benchmarks.jvm.model.Models.NavSection section
 <%--
-  Idiomatic jte authoring (Q1.7/D7) — official doc citations:
+  Idiomatic jte authoring — official doc citations:
   https://jte.gg/syntax/ (conditions: @if/@else/@endif, loops: @for, template calls)
   https://jte.gg/pre-compiling/ (precompiled engine setup)
 --%>

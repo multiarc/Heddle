@@ -1,8 +1,8 @@
 // Package idiomatic hosts the templ idiomatic-track ports (one .templ file per workload,
-// generated *_templ.go committed — README D3), authored per port-mapping.md §Idiomatic
-// track: naturally formatted (templ fmt), idiomatic component decomposition, doc citations
-// per file (Q1.7/D16). Render path is identical to the controlled track (port-mapping.md
-// rule 8): component.Render(ctx, buf) into a reused pre-grown bytes.Buffer with a
+// generated *_templ.go committed, regenerated only with the pinned CLI): naturally
+// formatted (templ fmt), idiomatic component decomposition, official-doc citations per
+// file. Render path is identical to the controlled track:
+// component.Render(ctx, buf) into a reused pre-grown bytes.Buffer with a
 // background context.Context created once; construction of the component value (a cheap
 // closure) is inside the render — templ's per-render entry point.
 package idiomatic
@@ -16,7 +16,7 @@ import (
 	"heddle.dev/benchmarks/go/internal/model"
 )
 
-// ctx is the background context, built once (rule 8).
+// ctx is the background context, built once and shared by every render.
 var ctx = context.Background()
 
 // newBuf returns a buffer pre-grown to the workload's output size, so growth never lands

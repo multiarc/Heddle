@@ -1,9 +1,7 @@
-// Package corpus implements the Phase 1 parity-contract-v2 machinery for the Go harness:
-// the normalization pipeline (N1–N5), the controlled byte gate, the idiomatic verifier, and
-// the untrusted-data alphabet assert.
-//
-// Contract: docs/spec/cross-stack-benchmarks/phase-1-cross-stack-foundation/parity-contract-v2.md
-// Go implementation rules: docs/spec/cross-stack-benchmarks/phase-6-go/harness-and-measurement.md
+// Package corpus implements the cross-stack parity contract for the Go harness: the
+// normalization pipeline (N1–N5), the controlled byte gate, the idiomatic verifier, and
+// the untrusted-data alphabet assert. Every step must match the other harnesses'
+// implementations byte-for-byte — all of them compare against the same committed corpus.
 package corpus
 
 import (
@@ -23,7 +21,7 @@ var (
 	// so replacements cannot create new matches.
 	n3Pattern = regexp.MustCompile(">[\t\n\v\f\r ]+<")
 
-	// N3b — every whitespace run, anywhere, removed to nothing (the 2026-07-20 maintainer step).
+	// N3b — every whitespace run, anywhere, removed to nothing.
 	n3bPattern = regexp.MustCompile("[\t\n\v\f\r ]+")
 )
 

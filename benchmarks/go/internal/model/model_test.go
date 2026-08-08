@@ -8,8 +8,8 @@ import (
 	"heddle.dev/benchmarks/go/internal/model"
 )
 
-// Model pins (README Testing plan) — expected counts restated as literals against the
-// pinned formulas of workloads.md / port-mapping.md §Model transcription.
+// Model pins: expected strings and counts restated as literals against the pinned
+// generation formulas, so a transcription slip fails here before it reaches a byte gate.
 
 func TestSubstitutionPins(t *testing.T) {
 	m := model.Substitution
@@ -24,7 +24,7 @@ func TestLargeLoopHas5000RowsWithPinnedEdges(t *testing.T) {
 	if len(rows) != 5000 {
 		t.Fatalf("got %d rows", len(rows))
 	}
-	// E21: the row carries ONLY Value — the display name `row-{i}` is template-composed.
+	// The row carries ONLY Value — the display name `row-{i}` is template-composed.
 	if rows[0].Value != 0 || rows[4999].Value != 4999 {
 		t.Errorf("edge rows drifted: %+v %+v", rows[0], rows[4999])
 	}
@@ -44,7 +44,7 @@ func TestMixedHas36ProductsWith12OnSale(t *testing.T) {
 	if onSale != 12 {
 		t.Errorf("got %d on-sale products, want 12", onSale)
 	}
-	// E21: SkuNumber/Batch are ints — templates compose `MX-@(SkuNumber)` and the blurb.
+	// SkuNumber/Batch are ints — templates compose `MX-@(SkuNumber)` and the blurb.
 	if m.Products[0].Name != "Product 01" || m.Products[0].SkuNumber != 1001 ||
 		m.Products[0].Batch != 1 ||
 		m.Products[35].Name != "Product 36" || m.Products[35].SkuNumber != 1036 ||
@@ -84,7 +84,7 @@ func TestConditionalHas200RowsWithPinnedDistributions(t *testing.T) {
 	if bronze != 50 || silver != 50 || gold != 50 || platinum != 50 || note != 100 || active != 160 {
 		t.Errorf("distributions drifted: %d/%d/%d/%d note %d active %d", bronze, silver, gold, platinum, note, active)
 	}
-	// E21: Seq is an int — the template composes `note @(Seq)`.
+	// Seq is an int — the template composes `note @(Seq)`.
 	if rows[0].Name != "unit-000" || rows[199].Name != "unit-199" || rows[7].Seq != 7 {
 		t.Errorf("row pins drifted")
 	}
@@ -95,7 +95,7 @@ func TestFragmentHas48RowsWithPinnedKindsAndPromos(t *testing.T) {
 	if len(items) != 48 {
 		t.Fatalf("got %d items", len(items))
 	}
-	// E20 pins: item-{i:D2} identity names, Value = i*11, Delta = i%7-3, Promo on every row.
+	// Pinned formulas: item-{i:D2} identity names, Value = i*11, Delta = i%7-3, Promo on every row.
 	if items[0].Name != "item-00" || items[47].Name != "item-47" || items[47].Value != 47*11 ||
 		items[1].Badge != "hot" || items[0].Delta != -3 || items[6].Delta != 3 ||
 		items[47].Delta != 47%7-3 {
@@ -164,7 +164,7 @@ func TestEncodedLoopHas5000RowsWithPinnedRow0(t *testing.T) {
 	}
 }
 
-// ---- composed-page nav model (E20 structured nav; E22 no text blobs) -------------------------
+// ---- composed-page nav model (structured nav; no text blobs) ---------------------------------
 
 func TestComposedNavHasThePinnedShape(t *testing.T) {
 	m := model.Composed()
@@ -211,7 +211,7 @@ func TestComposedNavLoadsOnce(t *testing.T) {
 	}
 }
 
-// Rule-4 sanitization (workloads.md workload 1, blocking pre-decision for every port):
+// Nav-value sanitization (a blocking precondition for every port):
 // every nav text value is printable ASCII with none of & < > " ' — raw and would-be-escaped
 // renderings coincide, so no default-escaping engine can double-escape.
 func TestComposedNavValuesAreRule4Clean(t *testing.T) {
@@ -219,7 +219,7 @@ func TestComposedNavValuesAreRule4Clean(t *testing.T) {
 		t.Helper()
 		for _, r := range value {
 			if r < 0x20 || r > 0x7E || strings.ContainsRune(`&<>"'`, r) {
-				t.Errorf("%s violates rule 4: %q U+%04X in %q", where, r, r, value)
+				t.Errorf("%s violates nav sanitization: %q U+%04X in %q", where, r, r, value)
 				return
 			}
 		}

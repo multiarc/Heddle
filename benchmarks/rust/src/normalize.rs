@@ -1,10 +1,8 @@
-//! Parity-contract-v2 normalization pipeline (N1–N5), hand-rolled per README D5 — no regex
+//! Parity-contract normalization pipeline (N1–N5), hand-rolled deliberately — no regex
 //! dependency. *Whitespace* is exactly the six-character set
 //! `{ TAB, LF, VT, FF, CR, SPACE }` (the contract's closed, portable definition — never a
 //! language `\s`). N1 (UTF-8 decode) is inherent: engine output is a Rust `String`, and the
 //! corpus loader fails on invalid UTF-8 (`corpus.rs`).
-//!
-//! Contract: `docs/spec/cross-stack-benchmarks/phase-1-cross-stack-foundation/parity-contract-v2.md`.
 
 /// The contract's six-character whitespace set — TAB, LF, VT, FF, CR, SPACE.
 #[inline]

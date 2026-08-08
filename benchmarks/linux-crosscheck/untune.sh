@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# untune.sh — exit the D2 measurement-session state (Phase 8 spec D2 step 6):
+# untune.sh — exit the measurement-session state:
 # pyperf system reset, boost restored, session state file retired.
 #
-# BARE-METAL ONLY. Under WSL2 (SR-2) this fails cleanly by design — there is no
+# BARE-METAL ONLY. Under WSL2 this fails cleanly by design — there is no
 # tuned state to undo; that failure is the designed outcome, not a defect.
 #
 # Run as: sudo ./untune.sh
@@ -12,8 +12,8 @@ set -euo pipefail
 
 fail_bare_metal_only() {
   echo "untune.sh: BARE-METAL-ONLY OPERATION — $1" >&2
-  echo "untune.sh: there is no D2 tuned state to undo except on the bare-metal measurement" >&2
-  echo "untune.sh: boot; under WSL2 this failure is the designed outcome (SR-2, deferred)." >&2
+  echo "untune.sh: there is no tuned state to undo except on the bare-metal measurement" >&2
+  echo "untune.sh: boot; under WSL2 this failure is the designed outcome (deferred to bare metal)." >&2
   exit 1
 }
 
@@ -48,5 +48,5 @@ if [ -f "$LCX_STATE_FILE" ]; then
   lcx_note "session state file retired — run-*.sh pre-flights will now refuse to run."
 fi
 
-lcx_note "D2 state exited. Reboot to the DEFAULT GRUB entry before any non-measurement use"
+lcx_note "Tuned state exited. Reboot to the DEFAULT GRUB entry before any non-measurement use"
 lcx_note "(the isolation entry must not remain the running boot outside a session)."

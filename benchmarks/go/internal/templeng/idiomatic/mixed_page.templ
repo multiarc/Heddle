@@ -1,9 +1,9 @@
-// Workload 4 — mixed-page, templ idiomatic port. Single-file, no layout/body split (E20:
+// Workload 4 — mixed-page, templ idiomatic port. Single-file, no layout/body split (by rule,
 // layout composition is composed-page's dimension — an idiomatic mixed-page that split
 // into a layout plus body would measure the wrong thing on the wrong row); idiomatic
 // decomposition is limited to a product-card component invoked from the loop. The display
 // SKU is composed in the template as the literal "MX-" plus the SkuNumber substitution and
-// the blurb sentence lives in the template around the Batch substitution (E21 — the model
+// the blurb sentence lives in the template around the Batch substitution (the model
 // carries data only).
 //
 // Doctype authoring note (same variant as the controlled port): templ's generator
@@ -12,7 +12,7 @@
 // is emitted via @templ.Raw over the exact pinned literal (the engine's documented raw
 // mechanism, applied to constant template text, not data).
 //
-// Doc citations (Q1.7):
+// Official templ documentation for the constructs used here:
 //   - https://templ.guide/syntax-and-usage/expressions/
 //   - https://templ.guide/syntax-and-usage/statements/
 //   - https://templ.guide/syntax-and-usage/template-composition/  (component call in loop)

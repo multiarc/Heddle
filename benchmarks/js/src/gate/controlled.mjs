@@ -1,5 +1,4 @@
-// Controlled-track byte gate + encoded security floor (Phase 4 WI3; spec: harness-and-run.md
-// §Gate implementation; contract: parity-contract-v2.md §Controlled-track gate). Per cell:
+// Controlled-track byte gate + encoded security floor. Per cell:
 // render once, normalize (N1–N5), then N3b-strip BOTH the candidate output and the loaded
 // corpus text, TextEncoder-encode (UTF-8, never emits a BOM), and compare the resulting byte
 // sequences. Failure carries the contract's surface: workload, engine, byte lengths,

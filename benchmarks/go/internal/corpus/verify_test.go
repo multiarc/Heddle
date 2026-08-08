@@ -7,10 +7,10 @@ import (
 	"heddle.dev/benchmarks/go/internal/corpus"
 )
 
-// Verifier calibration (README D12; golden-corpus.md §Verification): the Go verifier must
+// Verifier calibration: the Go verifier must
 // accept each workload's committed golden and reject every synthesized corruption with the
 // correct failing check kind — two corruptions per raw workload, three per encoded workload
-// (6×2 + 2×3 = 18 rejections). The corruption pins mirror the Phase 1 verify-corpus command
+// (6×2 + 2×3 = 18 rejections). The corruption pins mirror the .NET verify-corpus command
 // (IdiomaticChecks.cs). This proves the Go verifier is the same verifier, not a lookalike.
 
 // pins holds one workload's calibration corruption recipes.
@@ -29,7 +29,7 @@ const encodedLoopRow0 = `<tr><td data-tag="tag-0&amp;&#39;0&#39;">item &lt;0&gt;
 
 var calibrationPins = [8]pins{
 	{
-		// E20 pins (VerifierDefinitions.ComposedPage): the removed segment is the slider
+		// Pins (VerifierDefinitions.ComposedPage): the removed segment is the slider
 		// fragment composed-page.heddle splices into the layout's body slot — an idiomatic page
 		// with an EMPTY body must fail; the swap crosses the wholesale-only and
 		// retail-only mega-menu anchors.
@@ -68,7 +68,7 @@ var calibrationPins = [8]pins{
 		swapB:          "unit-100",
 	},
 	{
-		// E20 pins (VerifierDefinitions.FragmentHeavy): row 0's whole tile fragment is
+		// Pins (VerifierDefinitions.FragmentHeavy): row 0's whole tile fragment is
 		// the removed-row corruption; rows 0 and 24 are both tiles (i % 4 == 0), so the
 		// swap crosses the dispatch cycle.
 		workload:       "fragment-heavy",
@@ -92,14 +92,14 @@ var calibrationPins = [8]pins{
 		removedKind:    corpus.KindValue,
 		swapA:          "tag-0&amp;&#39;0&#39;",
 		swapB:          "item &lt;2500&gt;",
-		// Phase 1 pin: the workload carries no script payload; its escaped→raw corruption
+		// Pinned: the workload carries no script payload; its escaped→raw corruption
 		// is the comment's angle text, which must always be escaped (forbidden: <angle>).
 		unescapeFrom: "&lt;angle&gt;",
 		unescapeTo:   "<angle>",
 	},
 }
 
-// ---- corruption synthesis (golden-corpus.md §Verification rules) -----------------------------
+// ---- corruption synthesis --------------------------------------------------------------------
 
 // removeFirst deletes the first occurrence of segment ('removed row').
 func removeFirst(t *testing.T, golden, segment string) string {

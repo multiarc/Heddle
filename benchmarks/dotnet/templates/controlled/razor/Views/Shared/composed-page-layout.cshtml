@@ -1,15 +1,15 @@
 @*
-    Razor parity twin -- composed-page layout (ledger E20/E22).
+    Razor parity twin -- composed-page layout.
 
     A genuine full-page layout with a LIVE body slot: Razor's native Layout/@RenderBody
     mechanism, mirroring Heddle's layout-as-definition idiom (layout.heddle's @out() slot).
     The inert chrome fragments -- the alert banner, the two secondary menus, the fixed
     asset/script snippets -- are literal template text transcribed from
-    templates/controlled/heddle/{layout,chrome-fragments}.heddle (E22: all display text
+    templates/controlled/heddle/{layout,chrome-fragments}.heddle (all display text
     lives in templates; the C# tier carries only model DATA). The structured navigation
     renders from ComposedModel.Nav through nested loops and partials
-    (menu -> column -> section -> link), matching the normative per-engine table in
-    workloads.md. The transcribed chrome contains no literal '@', so no @@ escapes were
+    (menu -> column -> section -> link), the composition shape pinned for every
+    engine. The transcribed chrome contains no literal '@', so no @@ escapes were
     needed. Whitespace is free -- N3b strips every whitespace run from both sides before
     the byte comparison.
 

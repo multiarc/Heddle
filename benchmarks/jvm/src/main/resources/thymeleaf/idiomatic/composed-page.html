@@ -1,5 +1,5 @@
 <!--/*
-  Idiomatic Thymeleaf authoring (Q1.7/D7) — official doc citations:
+  Idiomatic Thymeleaf authoring — official doc citations:
   https://www.thymeleaf.org/doc/tutorials/3.1/usingthymeleaf.html
     §8.2 (fragment signatures and parameters), §8.3 (flexible layouts: fragment
     expressions as arguments, ~{:: selector} against this template),
@@ -8,7 +8,7 @@
   The page hands its body fragment to the layout's live slot: th:replace on the
   root block swaps the whole page for the composed layout, and the slider body —
   defined as a local fragment — splices where the layout inserts ${bodySlot}
-  (ledger E20: native layout mechanism with a live body slot on every engine).
+  (the native layout mechanism, with a live body slot, on every engine).
 */-->
 <th:block th:replace="~{idiomatic/shared/layout :: layout(~{:: slider-body})}">
     <th:block th:fragment="slider-body">

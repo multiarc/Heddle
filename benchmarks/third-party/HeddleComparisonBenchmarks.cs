@@ -11,7 +11,7 @@ namespace Heddle.Benchmarks.ThirdParty
     /// same <c>Parse</c> and <c>Render</c> categories, and drives each engine through the shared
     /// <see cref="BaseBenchmarks"/> methods (same model, same output oracle). The one budget change
     /// from upstream's <c>ShortRunJob</c>: five measurement iterations instead of three, the
-    /// repo-wide per-run sample floor (ledger E28); warmup and launch counts stay ShortRun's.
+    /// repo-wide per-run sample floor; warmup and launch counts stay ShortRun's.
     ///
     /// <para>Two deliberate differences from upstream <c>ComparisonBenchmarks</c>, both documented in
     /// <c>ThirdParty/README.md</c>: (1) it adds the <c>Heddle_*</c> rows; (2) it omits Liquid.NET, which

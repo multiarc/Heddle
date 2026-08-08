@@ -1,12 +1,11 @@
 # Go benchmark harness (Phase 6 — go)
 
-The Go module for the cross-stack benchmarks Phase 6
-([spec](../../docs/spec/cross-stack-benchmarks/phase-6-go/README.md)): the stdlib engine
-(text/template on the raw suites, html/template on the encoded suite — Q6.1) and templ, both
+The Go module for the cross-stack benchmarks: the stdlib engine
+(text/template on the raw suites, html/template on the encoded suite) and templ, both
 fairness tracks, gated against the Phase 1 golden corpus at
 `benchmarks/dotnet/GoldenCorpus/` (read repo-relative; the corpus does not move).
 
-Module: `heddle.dev/benchmarks/go` (repo-local, never published). Pins (spec D3): `go 1.26` /
+Module: `heddle.dev/benchmarks/go` (repo-local, never published). Pins: `go 1.26` /
 `toolchain go1.26.5`; `github.com/a-h/templ v0.3.1020` (runtime require + CLI `tool`
 directive); benchstat via `tool golang.org/x/perf/cmd/benchstat` at
 `golang.org/x/perf v0.0.0-20260709024250-82a0b07e230d`. Generated `*_templ.go` files are
@@ -26,31 +25,31 @@ go test ./internal/...  # unit tests: N1–N5 pipeline, verifier calibration, al
 go test ./suites      # the phase's parity command: TestMain runs every registered gate before anything times
 ```
 
-Layout (harness-and-measurement.md §Module layout):
+Layout ([go-harness-and-measurement.md](../docs/go-harness-and-measurement.md) §Module layout):
 
 - `internal/corpus/` — corpus loader + manifest SHA-256 check, N1–N5 pipeline (N3b comparison
   strip included), controlled byte gate + encoded security floor, idiomatic verifier,
-  untrusted-data alphabet assert (D5).
+  untrusted-data alphabet assert.
 - `internal/model/` — the eight pinned models (C# field spellings, `strconv`/`%d` numerics);
-  the composed-page model is pure structured data (`ComposedModel{Nav}` — ledger E20/E22),
+  the composed-page model is pure structured data (`ComposedModel{Nav}` — the model carries data only; templates hold all text),
   loaded once from the corpus fixture `fixtures/composed-page/nav.json`; every fragment of
   literal page text lives in the templates as `{{define}}`d chrome fragments, never in Go
   data files.
 - `internal/spike/` — the S1 templ feasibility probes (evidence, excluded from timing).
-- `suites/` — `gate_test.go` (TestMain + gate registry; engine cells register here as WI3–WI5
+- `suites/` — `gate_test.go` (TestMain + gate registry; engine cells register here as they
   land), later `bench_test.go` / `coldparse_test.go`.
 
-Benchmarks, the runner script (`run-benchmarks.ps1`), and the engine ports land with WI3–WI9.
+Benchmarks, the runner script (`run-benchmarks.ps1`), and the engine ports are all landed.
 
-## S1 results (templ feasibility spike — WI2)
+## Templ feasibility spike results
 
 Executed 2026-07-21 at the pinned toolchain (`go1.26.5`, templ `v0.3.1020`, Windows 11).
 Command: `go test ./internal/spike/ -v` (probes are the committed tests in
 `internal/spike/spike_test.go`; templ sources in `internal/spike/spike.templ`, generated code
 committed alongside). **Verdict: clean pass on all four probes — the expected outcome of
-[templ-feasibility.md](../../docs/spec/cross-stack-benchmarks/phase-6-go/templ-feasibility.md).
+[go-templ-feasibility.md](../docs/go-templ-feasibility.md).
 No non-whitespace divergence surfaced, so no `EXCLUSIONS.md` and no `internal/spike/attempts/`
-exist; the implementation plan proceeds unchanged (WI3+).**
+exist; the harness proceeded on this result.**
 
 ### P1 — smallest-workload byte gate: PASS (byte-identical, pre-N3b)
 
@@ -94,7 +93,7 @@ confirmed). The non-whitespace contingency (a spelling outside N5) did **not** o
 
 The exact mixed-page `<style>` line (CSS braces, single spaces) renders with its content
 **byte-identical to the authored bytes** (616 bytes total, `<style>` + 601-byte CSS +
-`</style>`) — F4 executed and confirmed; the `@templ.Raw` fallback of port-mapping rule 6 is
+`</style>`) — F4 executed and confirmed; the `@templ.Raw` fallback of [go-port-mapping.md](../docs/go-port-mapping.md) rule 6 is
 **not** needed; mixed-page will be authored with a literal `<style>` element.
 
 ### P4 — composed-page inter-statement boundary: ZERO separator bytes (evidence)
@@ -110,5 +109,5 @@ nodes** — the output is the exact zero-separator concatenation, containing
 
 byte-identical to the oracle's boundary. The formerly-hypothesized separator space does not
 exist at this boundary (and even if it did, it would be whitespace-only and pass via N3b —
-D13). `composed-page` can be authored with the separate-line `@templ.Raw` form (port-mapping
-rule 5's default).
+the stability rule). `composed-page` can be authored with the separate-line `@templ.Raw` form
+([go-port-mapping.md](../docs/go-port-mapping.md) rule 5's default).

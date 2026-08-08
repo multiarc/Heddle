@@ -1,17 +1,15 @@
 #!/usr/bin/env bash
-# run.sh -- Linux twin of run.ps1: protocol launcher for the JS benchmark harness
-# (Phase 4 WI1; normative behavior in
-# docs/spec/cross-stack-benchmarks/phase-4-js/harness-and-run.md).
+# run.sh -- Linux twin of run.ps1: protocol launcher for the JS benchmark harness.
 #
 # Starts `node --expose-gc --allow-natives-syntax <script>` with stdout captured to
 # artifacts/<name>.txt (in addition to the JSON the script writes itself), waits for exit and
 # propagates the exit code. `--repeat N` runs the same invocation N times sequentially into
-# artifacts/stability/run-<k>.txt/.json (the D13 stability verification procedure).
+# artifacts/stability/run-<k>.txt/.json for the cross-pass stability verdict.
 #
 # Priority posture: run.ps1 sets a High process priority class; this twin approximates it with
 # `taskset -c <isolated SMT pair>` + `nice -n -20` (see benchmarks/bench-common.sh). That is a
-# deliberate delta from benchmarks/linux-crosscheck/run-js.sh, which launches node plain under
-# the Phase 8 D2 no-priority rule -- record the delta in the run report, or pass --no-priority.
+# deliberate delta from benchmarks/linux-crosscheck/run-js.sh, which launches node plain with no
+# priority tweaks at all -- record the delta in the run report, or pass --no-priority.
 #
 # usage:
 #   ./run.sh bench/controlled.mjs
@@ -26,7 +24,7 @@ HARNESS_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd
 usage() {
   echo "usage: run.sh <bench/script.mjs> [--repeat N] [--no-priority]"
   echo "  --repeat N       run N times into artifacts/stability/<name>/, then aggregate (1-100)"
-  echo "  --no-priority    plain launch, no taskset/nice (Phase 8 D2 posture)"
+  echo "  --no-priority    plain launch, no taskset/nice (matches the Linux crosscheck launcher)"
 }
 
 SCRIPT=""
@@ -111,7 +109,7 @@ while [ "$k" -le "$REPEAT" ]; do
 done
 echo "run.sh: $REPEAT consecutive runs captured under artifacts/stability/$NAME/."
 
-# Collapse the passes into the published artifact + the D13 verdict (ledger E6). This OVERWRITES
+# Collapse the passes into the published artifact + the stability verdict. This OVERWRITES
 # artifacts/<name>.json, which currently holds only the final pass, with the cross-pass
 # aggregate; a 'failed' verdict exits non-zero and takes the whole step down with it.
 node "$HARNESS_ROOT/bench/aggregate.mjs" "$NAME"

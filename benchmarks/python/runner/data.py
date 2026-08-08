@@ -1,18 +1,18 @@
-"""Workload models -- the Python construction of the Phase 1 model data (Phase 5 D6).
+"""Workload models -- the Python construction of the cross-stack model data.
 
-All eight workloads' render contexts as plain dicts with the Phase 1 snake_case keys,
-materialized once at module import (module-level, per README D6). Workloads 3-8 are built
-from the exact generation formulas pinned in Phase 1 `workloads.md`; `trivial-substitution`
-is transcribed from the C# source (`SubstitutionContent.cs`).
+All eight workloads' render contexts as plain dicts with the shared snake_case keys,
+materialized once at module import. Workloads 3-8 are built from the exact generation
+formulas the cross-stack workload contract pins; `trivial-substitution` is transcribed
+from the C# source (`SubstitutionContent.cs`).
 
-`composed-page` (ledger E20/E22) carries ONLY structured navigation data under the `nav`
-key, loaded once at import from the corpus fixture
-`GoldenCorpus/fixtures/composed-page/nav.json` (the single source of truth the five
-non-.NET ecosystems load from) via the same corpus-dir resolution the gate uses
-(`gates.CORPUS_DIR`). Every fragment of literal page text -- chrome, blobs, asset/script
-snippets -- lives in the TEMPLATES (E22: the model-preparation tier carries DATA only).
+`composed-page` carries ONLY structured navigation data under the `nav` key, loaded
+once at import from the corpus fixture `GoldenCorpus/fixtures/composed-page/nav.json`
+(the single source of truth the five non-.NET ecosystems load from) via the same
+corpus-dir resolution the gate uses (`gates.CORPUS_DIR`). Every fragment of literal
+page text -- chrome, blobs, asset/script snippets -- lives in the TEMPLATES: the
+model-preparation tier carries DATA only.
 
-The model tier carries data, never display strings (E21): derived display text
+The model tier carries data, never display strings: derived display text
 (`row-{i}`, `MX-{sku_number}`, `note {seq}`, the blurb sentence, the media caption /
 image src / display price) is composed by the templates as literal-plus-substitution.
 Zero-padded identity names (`item-{i:02d}`, `unit-{i:03d}`, `Product {i:02d}`) and the
@@ -22,17 +22,13 @@ Numeric fields (`price`, `value`, `year`, `id`, `sku_number`, `batch`, `seq`, `d
 are ints and render via `str(int)` (invariant by construction). `rating` is the pinned
 STRING "4.8" -- a transcribed literal, not a formatted float. Parity is enforced by the
 gate, not by trusting transcription (the byte gate is the transcription check).
-
-Spec: docs/spec/cross-stack-benchmarks/phase-5-python/README.md (D6);
-models normative in docs/spec/cross-stack-benchmarks/phase-1-cross-stack-foundation/workloads.md;
-ledger E20/E21/E22 in docs/spec/records.md.
 """
 
 import json
 
 from .gates import CORPUS_DIR
 
-# ---- composed-page (workloads.md workload 1, E20/E22: structured nav only) --------------------
+# ---- composed-page (workload 1: structured nav only) ------------------------------------------
 
 _NAV_FIXTURE = CORPUS_DIR / "fixtures" / "composed-page" / "nav.json"
 
@@ -64,14 +60,14 @@ def _substitution() -> dict:
     }
 
 
-# ---- large-loop (LoopContent.cs: RowCount = 5000, Value = i; E21: templates compose row-@(Value)) ----
+# ---- large-loop (LoopContent.cs: RowCount = 5000, Value = i; templates compose row-@(Value)) ----
 
 
 def _large_loop() -> dict:
     return {"items": [{"value": i} for i in range(5000)]}
 
 
-# ---- mixed-page (workloads.md workload 4; 36 products, i in [1, 36]) --------------------------
+# ---- mixed-page (workload 4; 36 products, i in [1, 36]) ---------------------------------------
 
 
 def _mixed() -> dict:
@@ -89,7 +85,7 @@ def _mixed() -> dict:
         "products": [
             {
                 "name": f"Product {i:02d}",
-                # E21: templates compose the display SKU (MX-<sku_number>) and the
+                # Templates compose the display SKU (MX-<sku_number>) and the
                 # blurb sentence around <batch>.
                 "sku_number": 1000 + i,
                 "price": 950 + i * 7,
@@ -101,7 +97,7 @@ def _mixed() -> dict:
     }
 
 
-# ---- conditional-heavy (workloads.md workload 5; 200 rows, i in [0, 199]) ---------------------
+# ---- conditional-heavy (workload 5; 200 rows, i in [0, 199]) ----------------------------------
 
 
 def _conditional() -> dict:
@@ -109,7 +105,7 @@ def _conditional() -> dict:
         "rows": [
             {
                 "name": f"unit-{i:03d}",
-                "seq": i,  # E21: templates compose the note text (note <seq>)
+                "seq": i,  # templates compose the note text (note <seq>)
                 "is_bronze": i % 4 == 0,
                 "is_silver": i % 4 == 1,
                 "is_gold": i % 4 == 2,
@@ -121,7 +117,7 @@ def _conditional() -> dict:
     }
 
 
-# ---- fragment-heavy (workloads.md workload 6, E20; 48 rows, i in [0, 47]) ---------------------
+# ---- fragment-heavy (workload 6; 48 rows, i in [0, 47]) ---------------------------------------
 
 
 def _fragment() -> dict:
@@ -143,14 +139,14 @@ def _fragment() -> dict:
                 "badge": badge,
                 "delta": i % 7 - 3,
                 # On EVERY row (no engine needs a null guard); price is an int --
-                # E21: templates compose the caption, image src, and display price.
+                # templates compose the caption, image src, and display price.
                 "promo": {"label": badge, "price": 9 + i},
             }
         )
     return {"items": items}
 
 
-# ---- fortunes-encoded (workloads.md workload 7; the 12 pinned messages, byte-for-byte) --------
+# ---- fortunes-encoded (workload 7; the 12 pinned messages, byte-for-byte) ---------------------
 
 # Rows 4 and 8 carry U+2014 em dashes; row 11 is the TechEmpower XSS payload; row 12 the
 # Japanese string (non-ASCII pinned as escapes so the source is ASCII-stable).
@@ -179,7 +175,7 @@ def _fortunes() -> dict:
     }
 
 
-# ---- encoded-loop (workloads.md workload 8; 5000 rows, i in [0, 4999]) ------------------------
+# ---- encoded-loop (workload 8; 5000 rows, i in [0, 4999]) -------------------------------------
 
 
 def _encoded_loop() -> dict:

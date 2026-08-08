@@ -1,9 +1,9 @@
-//! Shared workload models — the Rust construction of the Phase 1 model data, normative in
-//! `docs/spec/cross-stack-benchmarks/phase-2-rust/workload-ports.md` §Model construction
-//! (which mirrors Phase 1 `workloads.md`). One module builds every model exactly once
-//! (`OnceLock`), mirroring the .NET `Shared`-instance discipline. All numeric formatting is
-//! integer `Display` (no locale, matching C# invariant `int` formatting). Per ledger E21/E22
-//! the model tier carries DATA only — no derived display strings and no literal page text.
+//! Shared workload models — the Rust construction of the pinned workload model data,
+//! mirroring the .NET benchmark's definitions value for value. One module builds every
+//! model exactly once (`OnceLock`), mirroring the .NET `Shared`-instance discipline. All
+//! numeric formatting is integer `Display` (no locale, matching C# invariant `int`
+//! formatting). The model tier carries DATA only — no derived display strings and no
+//! literal page text; the templates compose all display text.
 
 use std::sync::OnceLock;
 
@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 
 // ---- composed-page ---------------------------------------------------------------------------
 
-/// The structured navigation model (ledger E20; E22 removed the text half). The model is
+/// The structured navigation model. The model is
 /// `ComposedModel { nav }` and NOTHING else — every fragment of literal page text (chrome,
 /// alert/secondary-menu blobs, asset/script snippets) lives in the TEMPLATES. The nav data is
 /// loaded once at init from the corpus fixture
@@ -65,7 +65,7 @@ pub struct NavLink {
 }
 
 /// The composed-page workload model — dictionary/Hash views nest under a `nav` key
-/// (workloads.md workload 1, E20/E22).
+/// in every ecosystem.
 #[derive(Serialize)]
 pub struct ComposedModel {
     pub nav: NavModel,
@@ -112,7 +112,7 @@ pub fn substitution() -> &'static SubstitutionModel {
 
 // ---- large-loop ------------------------------------------------------------------------------
 
-/// Rows carry ONLY the value (E21): the display name `row-{i}` is composed by the templates
+/// Rows carry ONLY the value: the display name `row-{i}` is composed by the templates
 /// as the literal `row-` + the value substitution.
 #[derive(Serialize)]
 pub struct LoopRow {
@@ -141,7 +141,7 @@ pub struct MixedModel {
     pub products: Vec<MixedProduct>,
 }
 
-/// E21: `sku_number`/`batch` are ints — the templates compose the display SKU
+/// `sku_number`/`batch` are ints — the templates compose the display SKU
 /// (`MX-` + sku_number) and the blurb sentence (around the batch substitution).
 #[derive(Serialize)]
 pub struct MixedProduct {
@@ -179,7 +179,7 @@ pub fn mixed() -> &'static MixedModel {
 
 // ---- conditional-heavy -----------------------------------------------------------------------
 
-/// E21: the int `seq` replaces the note string — the templates compose the note text as the
+/// The int `seq` replaces the note string — the templates compose the note text as the
 /// literal `note ` + the seq substitution.
 #[derive(Serialize)]
 pub struct ConditionalRow {
@@ -211,8 +211,8 @@ pub fn conditional() -> &'static Vec<ConditionalRow> {
 
 // ---- fragment-heavy --------------------------------------------------------------------------
 
-/// E20: 48 rows of four dispatched fragment kinds (12 each) with one level of nesting (the
-/// card fragment renders badge + price against `promo`). The model carries DATA only (E21):
+/// 48 rows of four dispatched fragment kinds (12 each) with one level of nesting (the
+/// card fragment renders badge + price against `promo`). The model carries DATA only:
 /// derived display text — the media caption (`Caption for ` + name), the image source
 /// (`/img/` + name + `.jpg`) and the display price (price + `.99`) — is composed by the
 /// TEMPLATES as literal-plus-substitution.
@@ -272,7 +272,7 @@ pub fn fragment() -> &'static Vec<FragmentRow> {
 
 // ---- fortunes-encoded ------------------------------------------------------------------------
 
-/// The 12 pinned fortune messages (Phase 1 workloads.md — workload 7), byte-for-byte.
+/// The 12 pinned fortune messages, byte-for-byte.
 /// Rows 4 and 8 carry U+2014 em dashes; row 11 is the TechEmpower XSS payload; row 12 the
 /// Japanese string.
 const FORTUNE_MESSAGES: [&str; 12] = [
@@ -332,7 +332,7 @@ pub fn encoded_loop() -> &'static Vec<EncodedLoopRow> {
     })
 }
 
-// ---- tests (spec Testing plan — model pins; expected counts restated as literals) ------------
+// ---- tests (model pins; expected counts restated as literals) --------------------------------
 
 #[cfg(test)]
 mod tests {
@@ -342,7 +342,7 @@ mod tests {
     fn large_loop_has_5000_rows_with_pinned_edges() {
         let rows = large_loop();
         assert_eq!(rows.len(), 5000);
-        // E21: value only — the display name `row-{i}` is template-composed.
+        // Value only — the display name `row-{i}` is template-composed.
         assert_eq!(rows[0].value, 0);
         assert_eq!(rows[2500].value, 2500);
         assert_eq!(rows[4999].value, 4999);
@@ -365,7 +365,7 @@ mod tests {
         assert_eq!(rows.iter().filter(|r| r.is_active).count(), 160);
         assert_eq!(rows[0].name, "unit-000");
         assert_eq!(rows[199].name, "unit-199");
-        // E21: the int seq replaces the note string (`note {i}` is template-composed).
+        // The int seq replaces the note string (`note {i}` is template-composed).
         assert_eq!(rows[7].seq, 7);
         assert_eq!(rows[199].seq, 199);
     }
@@ -374,7 +374,7 @@ mod tests {
     fn fragment_has_48_rows_with_pinned_dispatch_and_nesting() {
         let rows = fragment();
         assert_eq!(rows.len(), 48);
-        // E20 identity/value pins.
+        // Identity/value pins.
         assert_eq!(rows[0].name, "item-00");
         assert_eq!(rows[47].name, "item-47");
         assert_eq!(rows[47].value, 47 * 11);
@@ -418,7 +418,7 @@ mod tests {
         assert!(!model.show_debug_panel);
         assert_eq!(model.year, 2026);
         assert_eq!(model.products[0].name, "Product 01");
-        // E21: ints replace the sku/blurb strings (`MX-{n}` / the blurb sentence are
+        // Ints replace the sku/blurb strings (`MX-{n}` / the blurb sentence are
         // template-composed).
         assert_eq!(model.products[0].sku_number, 1001);
         assert_eq!(model.products[0].batch, 1);
@@ -470,7 +470,7 @@ mod tests {
     #[test]
     fn composed_nav_loads_from_the_corpus_fixture_with_pinned_counts() {
         let nav = &composed().nav;
-        // Two mega menus of six tabs each; four footer columns (E20).
+        // Two mega menus of six tabs each; four footer columns.
         assert_eq!(nav.menus.len(), 2);
         for menu in &nav.menus {
             assert_eq!(menu.tabs.len(), 6);
@@ -527,13 +527,13 @@ mod tests {
     }
 
     #[test]
-    fn composed_nav_values_are_rule_4_clean() {
-        // workloads.md rule 4 / E20 sanitization: every nav text value is ASCII with none of
+    fn composed_nav_values_are_escaping_neutral() {
+        // Sanitization pin: every nav text value is ASCII with none of
         // `& < > " '` — raw and would-be-escaped renderings coincide on every engine.
         fn assert_clean(context: &str, s: &str) {
             assert!(
                 s.is_ascii() && !s.contains(['&', '<', '>', '"', '\'']),
-                "rule-4 violation in {context}: {s:?}"
+                "sanitization violation in {context}: {s:?}"
             );
         }
         fn check_column(col: &NavColumn) {

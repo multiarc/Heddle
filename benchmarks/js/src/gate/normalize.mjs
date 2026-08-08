@@ -1,6 +1,4 @@
-// Contract v2 normalization pipeline (Phase 4 WI3; normative shape in
-// docs/spec/cross-stack-benchmarks/phase-4-js/harness-and-run.md §Gate implementation, contract
-// in docs/spec/cross-stack-benchmarks/phase-1-cross-stack-foundation/parity-contract-v2.md).
+// Parity-contract normalization pipeline.
 //
 // Whitespace everywhere below is the contract's explicit six-character closed set
 // { TAB, LF, VT, FF, CR, SPACE } — never a language `\s` and never String.prototype.trim()

@@ -42,7 +42,7 @@ namespace Heddle.Generator.IntegrationTests
         [MemberData(nameof(Catalogs))]
         public void ListOverLinqExpression(Catalog model)
         {
-            // generated-code.md example 3 shape: an embedded LINQ expression drives @list.
+            // An embedded LINQ expression drives @list.
             var t = "@using(){{System.Linq}}@\\\n" +
                     "@model(){{" + CatalogType + "}}@\\\n" +
                     "@list(@model.Products.Where(p => p.Name.Length > 5)){{ <div>@(Name)</div> }}\n";

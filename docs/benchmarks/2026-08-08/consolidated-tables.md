@@ -1322,7 +1322,7 @@ distribution of an earlier run rather than from a model. That run — since with
 its render figures invalid — had two cells at 105.4 and 91.7 B/ns and then nothing until
 30.9 B/ns, which was a compiled Rust template whose output is mostly a memcpy of large
 literal chunks: fast, but physically possible. The ceiling sits in that gap. The two high
-cells were the V8 rope artifact, since fixed harness-side (ledger E4), and the threshold
+cells were the V8 rope artifact, since fixed harness-side (amendment E4), and the threshold
 is retained as a standing cross-check rather than as a finding about that run.
 
 In *this* run the highest implied throughput is **43.9 B/ns**, and the top five are 43.9, 43.2, 37.4, 35.6, 30.3 B/ns against the 50 B/ns ceiling.
@@ -1347,7 +1347,7 @@ sound inference and it false-positives on cells that are now provably correct.
 **The authoritative control is harness-side, not report-side.** Every bench body
 materialises through `%FlattenString` and each run asserts `MATERIALISATION-CHECK`
 before writing artifacts, failing the step outright rather than annotating a table
-([ledger E4](../../../docs/spec/records.md#cross-spec-amendments-ledger)). The
+(amendment E4). The
 throughput ceiling above is the report-side cross-check on that gate. A low heap
 ratio here is a prompt to look at those two, not a verdict of its own.
 

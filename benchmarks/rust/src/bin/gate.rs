@@ -1,10 +1,10 @@
-//! `gate` binary — the standalone parity gate (README D11.3, WI6).
+//! `gate` binary — the standalone parity gate.
 //!
 //! Runs the same 32-cell registry the bench binaries gate against, but iterates
 //! `gates::CELLS` / `gates::check_cell` itself so that one `[PASS]`/`[FAIL]` line is printed
 //! per cell instead of stopping at the first failure (`gates::assert_all` panics on cell one).
 //! Exits 0 iff all cells pass — the reproduce command's first step, the CI hook, and the
-//! source of the report's `gate-report.txt` artifact (D13).
+//! source of the report's `gate-report.txt` artifact.
 //!
 //! Usage: `cargo run --release --bin gate`
 
@@ -24,7 +24,7 @@ fn main() -> ExitCode {
             ),
             Err(message) => {
                 failed += 1;
-                // The Result already carries the D-diagnostics `[FAIL] ...` message shape.
+                // The Result already carries the `[FAIL] ...` diagnostic message shape.
                 println!("{message}");
             }
         }

@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
-# capture-environment.sh — the D3 CLOSED environment-record checklist
-# (Phase 8 spec D3; environment-and-toolchains.md "Environment-record checklist").
+# capture-environment.sh — the CLOSED environment-record checklist.
 #
 # Collects exactly M1-M5, K1-K8, F1-F7, the per-engine toolchain/libc/allocator
 # identity table, and the repo/corpus state. Runs on bare metal AND under WSL2:
-# under WSL (SR-2) every bare-metal-only item is RECORDED as
+# under WSL every bare-metal-only item is RECORDED as
 # "unavailable under WSL (deferred to bare metal)" instead of crashing — the
 # checklist stays closed; nothing is silently skipped.
 #
@@ -35,11 +34,11 @@ if lcx_is_wsl; then IS_WSL=1; fi
 UNAVAILABLE_WSL="unavailable under WSL (deferred to bare metal)"
 
 {
-  echo "# Environment record (D3 closed checklist)"
+  echo "# Environment record (closed checklist)"
   echo
   echo "- Captured: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
   if [ "$IS_WSL" = "1" ]; then
-    echo "- Host class: **WSL2** (SR-2 functional posture — bare-metal-only items below are"
+    echo "- Host class: **WSL2** (functional posture — bare-metal-only items below are"
     echo "  recorded as deferred, not faked; this record is NOT a measurement-session record)"
   else
     echo "- Host class: non-WSL Linux"
@@ -104,10 +103,10 @@ capture M3 "Memory modules + speed"     "m3-dmidecode-memory"   sudo_n dmidecode
   echo
   if [ "$IS_WSL" = "1" ]; then
     echo "> $UNAVAILABLE_WSL — M4 is a run-log human attestation made on the bare-metal box"
-    echo "> (\"no UEFI setting changed since the Windows protocol runs\" + D1 exceptions, dated)."
+    echo "> (\"no UEFI setting changed since the Windows protocol runs\" + any recorded install-time exceptions, dated)."
   else
     echo "> PENDING HUMAN ATTESTATION: record in the run log, dated:"
-    echo "> \"no UEFI setting changed since the Windows protocol runs\" (+ D1 exceptions if any)."
+    echo "> \"no UEFI setting changed since the Windows protocol runs\" (+ any recorded install-time exceptions)."
   fi
   echo
 } >> "$RECORD"
@@ -129,7 +128,7 @@ echo "### Frequency policy (F1–F7)" >> "$RECORD"; echo >> "$RECORD"
 capture F1a "Scaling driver" "f1-scaling-driver" cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_driver
 capture F1b "amd-pstate status" "f1-amd-pstate" cat /sys/devices/system/cpu/amd_pstate/status
 capture F2  "Governor (all policies, unique)" "f2-governors" bash -c 'cat /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor | sort -u'
-capture F3  "Boost state (expect 0 in-session — D2 step 3)" "f3-boost" cat /sys/devices/system/cpu/cpufreq/boost
+capture F3  "Boost state (expect 0 in-session; tune.sh turns it off)" "f3-boost" cat /sys/devices/system/cpu/cpufreq/boost
 capture F4  "Min/max scaling frequencies" "f4-scaling-freq" bash -c 'cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq'
 capture F5  "Energy-performance preference (if exposed)" "f5-epp" cat /sys/devices/system/cpu/cpu0/cpufreq/energy_performance_preference
 capture F6  "pyperf system show (full)" "f6-pyperf-show" python3 -m pyperf system show
@@ -168,17 +167,17 @@ fi
 GO_V="$(tool_version go version)"
 
 {
-  echo "# Per-engine toolchain / runtime / libc / allocator identity (D3)"
+  echo "# Per-engine toolchain / runtime / libc / allocator identity"
   echo
   echo "glibc (captured once, referenced by every row): \`$GLIBC\`"
   echo
   echo "| Ecosystem | Version string | Install channel | Target triple/arch | libc | Allocator note |"
   echo "|---|---|---|---|---|---|"
-  echo "| .NET | \`$DOTNET_V\` | dotnet-install.sh --version (D4.2; SR-1-parameterized) | linux-x64 (RID) | glibc | .NET GC (Server GC off — BenchmarkDotNet defaults, as on Windows) |"
+  echo "| .NET | \`$DOTNET_V\` | dotnet-install.sh --version (parameterized until a Windows protocol report publishes its SDK version) | linux-x64 (RID) | glibc | .NET GC (Server GC off — BenchmarkDotNet defaults, as on Windows) |"
   echo "| Rust | \`$RUSTC_V\` | rustup toolchain install 1.97.1 | x86_64-unknown-linux-gnu | glibc | System allocator (std), same as Windows build |"
   echo "| JVM | \`$JAVA_V\` | Temurin 25 linux-x64 tar.gz (JMH '# VM version' line is the runtime identity of record) | linux-x64 | glibc | JVM heap; GC as reported by the JMH VM line (defaults, no jvmArgs) |"
-  echo "| JS/Node | \`$NODE_V\` | nodejs.org official linux-x64 tarball, v24.x major pin (E18) | linux-x64 | glibc | V8 heap; npm ci against the committed lockfile |"
-  echo "| Python | \`$PY_V\` | deadsnakes PPA python3.14 (D5; fallback recorded if used) | x86_64-linux-gnu | glibc | pymalloc (default); CONFIG_ARGS: \`$PY_CFG\` |"
+  echo "| JS/Node | \`$NODE_V\` | nodejs.org official linux-x64 tarball, v24.x major pin | linux-x64 | glibc | V8 heap; npm ci against the committed lockfile |"
+  echo "| Python | \`$PY_V\` | deadsnakes PPA python3.14 (fallback recorded if used) | x86_64-linux-gnu | glibc | pymalloc (default); CONFIG_ARGS: \`$PY_CFG\` |"
   echo "| Go | \`$GO_V\` | go.dev/dl official linux-amd64 tarball 1.26.5 | linux/amd64 | glibc (cgo-linked stdlib parts) | Go runtime allocator + Green Tea GC (1.26 default), GOGC=100; GOMAXPROCS recorded as the runtime reports it |"
   echo
   echo "process.versions.v8: \`$(node -e 'console.log(process.versions.v8)' 2>/dev/null || echo 'n/a — node not installed')\`"
@@ -189,7 +188,7 @@ lcx_note "toolchain table -> $TOOLCHAINS"
 lcx_note "capturing repo state"
 REPO="$OUT/repo-state.md"
 {
-  echo "# Repo state (D3)"
+  echo "# Repo state"
   echo
   cd "$LCX_REPO_ROOT" || exit 1
   echo "- HEAD: \`$(git rev-parse HEAD 2>/dev/null || echo 'unavailable')\`"
@@ -214,8 +213,8 @@ REPO="$OUT/repo-state.md"
   echo "- Raw command outputs: \`*.txt\` alongside this record"
 } >> "$RECORD"
 
-lcx_note "D3 environment record complete -> $RECORD"
+lcx_note "environment record complete -> $RECORD"
 if [ "$IS_WSL" = "1" ]; then
-  lcx_note "WSL run: bare-metal-only items were recorded as deferred (SR-2), not captured."
+  lcx_note "WSL run: bare-metal-only items were recorded as deferred, not captured."
 fi
 exit 0

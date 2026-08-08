@@ -6,8 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Java implementation of the Phase 1 idiomatic-track verifier
- * (parity-contract-v2.md &sect;Idiomatic-track gate), consuming the exported
+ * Java implementation of the idiomatic-track verifier, consuming the exported
  * {@code <workload>.verify.json} definitions. Matching semantics mirror the intra-.NET
  * {@code IdiomaticChecks.Verify}: the candidate is normalized N1-N4 (+N5 encoded), then
  * the N3b whitespace strip is applied to the output AND to every needle before matching;

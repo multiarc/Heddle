@@ -1,12 +1,12 @@
 {%- comment -%}
-  Idiomatic Liquid -- fragment-heavy (Fluid) (phase 9; authoring standard D16).
+  Idiomatic Liquid -- fragment-heavy (Fluid).
 
   Patterns followed, from the engines' own documentation:
     Liquid language reference   https://shopify.github.io/liquid/
     Fluid                       https://github.com/sebastienros/fluid#readme
 
-  Four fragment kinds dispatch per row on the precomputed booleans (workloads.md, fragment-heavy
-  dispatch table: the boolean `{% if %}/{% elsif %}` chain with the per-kind include inside each
+  Four fragment kinds dispatch per row on the precomputed booleans (the pinned dispatch shape
+  for this engine: the boolean `{% if %}/{% elsif %}` chain with the per-kind include inside each
   arm); the card partial nests badge + price against the row's promo. Authored the way the docs
   teach -- readable whitespace and Liquid's own control-flow tags -- rather than to match the
   oracle byte-for-byte. Checked by the functional verifier, not the byte gate.

@@ -1,7 +1,6 @@
 <#
 .SYNOPSIS
-    Protocol launcher for the JS benchmark harness (Phase 4 WI1; normative behavior in
-    docs/spec/cross-stack-benchmarks/phase-4-js/harness-and-run.md, Dependency pinning).
+    Protocol launcher for the JS benchmark harness.
 
 .DESCRIPTION
     Starts `node --expose-gc --allow-natives-syntax <script>` with stdout captured to
@@ -9,7 +8,7 @@
     priority class to High immediately after start, waits for exit, and propagates the exit
     code. `-Repeat N` runs the same invocation N times sequentially into
     artifacts/stability/<name>/run-<k>.txt/.json, then aggregates them into the published
-    artifacts/<name>.json and emits the D13 stability verdict (ledger E6).
+    artifacts/<name>.json and emits the cross-pass stability verdict.
 
 .EXAMPLE
     ./run.ps1 bench/controlled.mjs
@@ -53,7 +52,7 @@ function Invoke-BenchRun([string]$stdoutPath) {
         # null after WaitForExit and a null code walked through 'exit' as success (one observed
         # run collapsed to a single pass exactly this way).
         $null = $p.Handle
-        # High priority class immediately after start (D13 launcher posture; never Realtime).
+        # High priority class immediately after start; never Realtime.
         try { $p.PriorityClass = [System.Diagnostics.ProcessPriorityClass]::High } catch {
             Write-Warning "run.ps1: could not set High priority class: $_"
         }
@@ -106,7 +105,7 @@ for ($k = 1; $k -le $Repeat; $k++) {
 }
 Write-Host "run.ps1: $Repeat consecutive runs captured under artifacts/stability/$name/."
 
-# Collapse the passes into the published artifact + the D13 verdict (ledger E6). This OVERWRITES
+# Collapse the passes into the published artifact + the stability verdict. This OVERWRITES
 # artifacts/<name>.json, which currently holds only the final pass, with the cross-pass
 # aggregate; a 'failed' verdict exits non-zero and takes the whole step down with it.
 & node (Join-Path $harnessRoot 'bench/aggregate.mjs') $name

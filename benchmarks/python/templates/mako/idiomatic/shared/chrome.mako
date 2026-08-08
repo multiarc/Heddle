@@ -1,7 +1,7 @@
-## Idiomatic Mako composed-page chrome fragments (ledger E22): the page's inert literal
+## Idiomatic Mako composed-page chrome fragments: the page's inert literal
 ## text -- alert banner, secondary menus, asset/script snippets -- as a definition-only
 ## library of <%def> blocks the layout imports via <%namespace> and calls at its
-## composition points; importing this file renders nothing (Phase 5 D5, Q1.7).
+## composition points; importing this file renders nothing.
 ## Docs: https://docs.makotemplates.org/en/latest/defs.html
 ##       https://docs.makotemplates.org/en/latest/namespaces.html
 <%def name="alert_top()">\

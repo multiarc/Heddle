@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-// ---- <id>.verify.json model (golden-corpus.md §Idiomatic verifier definitions) ---------------
+// ---- <id>.verify.json model ------------------------------------------------------------------
 
 // VerifyDef is one workload's exported idiomatic-verifier definition.
 type VerifyDef struct {
@@ -37,7 +37,7 @@ func LoadVerify(workload string) (*VerifyDef, error) {
 	path := filepath.Join(Dir(), workload+".verify.json")
 	raw, err := os.ReadFile(path)
 	if err != nil {
-		return nil, fmt.Errorf("gate: corpus %s: cannot read %s: %w (regenerate via the Phase 1 export-corpus tool: dotnet run -c Release --project benchmarks/dotnet -- export-corpus)", workload, path, err)
+		return nil, fmt.Errorf("gate: corpus %s: cannot read %s: %w (regenerate via the corpus exporter: dotnet run -c Release --project benchmarks/dotnet -- export-corpus)", workload, path, err)
 	}
 	var def VerifyDef
 	if err := json.Unmarshal(raw, &def); err != nil {
@@ -46,12 +46,12 @@ func LoadVerify(workload string) (*VerifyDef, error) {
 	return &def, nil
 }
 
-// ---- failure surface (README §Diagnostics) ---------------------------------------------------
+// ---- failure surface -------------------------------------------------------------------------
 
 // FailureKind is the contract's four check kinds.
 type FailureKind string
 
-// The four check kinds of parity-contract-v2 §Idiomatic-track gate.
+// The idiomatic gate's four check kinds.
 const (
 	KindValue     FailureKind = "value"
 	KindMarker    FailureKind = "marker"
@@ -69,8 +69,7 @@ func (f Failure) String() string { return fmt.Sprintf("verifier %s: %s", f.Kind,
 
 // ---- verifier --------------------------------------------------------------------------------
 
-// Verify runs the idiomatic verifier against a candidate's raw output, per
-// parity-contract-v2 §Idiomatic-track gate: normalize (N1–N4, +N5 for encoded), then apply
+// Verify runs the idiomatic verifier against a candidate's raw output: normalize (N1–N4, +N5 for encoded), then apply
 // the N3b whitespace strip to the output AND to every needle before matching; `values` are
 // exact non-overlapping counts, `markers` are strictly ordered, `forbidden` must be absent
 // from both raw and normalized output, `required` is a minimum count. Empty result =

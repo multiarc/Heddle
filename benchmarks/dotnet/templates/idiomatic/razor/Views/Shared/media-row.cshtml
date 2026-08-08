@@ -1,6 +1,5 @@
 @*
-    Idiomatic Razor -- fragment-heavy media-row partial (phase 9; authoring standard D16;
-    ledger E20).
+    Idiomatic Razor -- fragment-heavy media-row partial.
 
     Patterns followed, from Microsoft's own documentation:
       Razor syntax        https://learn.microsoft.com/aspnet/core/mvc/views/razor
@@ -8,7 +7,8 @@
 
     One of the four dispatched fragment kinds. The image source (`/img/@(Model.Name).jpg`)
     and the caption (`Caption for @Model.Name`) are composed by the TEMPLATE as
-    literal-plus-substitution (E21). Checked by the functional verifier, not the byte gate.
+    literal-plus-substitution -- the model carries data, never display strings. Checked by
+    the functional verifier, not the byte gate.
 *@
 @using Heddle.Benchmarks.Dotnet.Models
 @model FragmentContent.FragmentRow

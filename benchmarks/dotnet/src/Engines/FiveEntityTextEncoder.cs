@@ -1,5 +1,5 @@
 // The five-entity encoder the encoded workloads are gated on.
-// (ledger E8). This is engine CONFIGURATION, not a normalization carve-out: contract v2 D2
+// This is engine CONFIGURATION, not a normalization carve-out: the parity contract
 // prefers configuring an engine to its documented behaviour over widening the gate.
 using System.Collections.Generic;
 using System.IO;
@@ -9,14 +9,15 @@ using HandlebarsDotNet;
 namespace Heddle.Benchmarks.Dotnet.Engines
 {
     /// <summary>
-    /// Handlebars.Net text encoder for the encoded-suite twins (cross-stack phase 1 D3): escapes
+    /// Handlebars.Net text encoder for the encoded-suite twins: escapes
     /// exactly the five-character set — <c>&amp;</c>→<c>&amp;amp;</c>, <c>&lt;</c>→<c>&amp;lt;</c>,
     /// <c>&gt;</c>→<c>&amp;gt;</c>, <c>"</c>→<c>&amp;quot;</c>, <c>'</c>→<c>&amp;#39;</c> — and
     /// passes every other character (including all non-ASCII) through unchanged, so double-mustache
     /// output is byte-identical to Heddle's <c>WebUtility.HtmlEncode</c> family on the pinned
     /// untrusted-data alphabet. Handlebars.Net's default encoder leaves <c>'</c> unescaped and
     /// decimal-escapes non-ASCII, which is a genuine gate-breaking divergence; configuring the
-    /// engine (preferred by Q1.1/D2) removes it without any normalization carve-out.
+    /// engine (the parity contract's preferred remedy) removes it without any normalization
+    /// carve-out.
     /// </summary>
     public sealed class FiveEntityTextEncoder : ITextEncoder
     {

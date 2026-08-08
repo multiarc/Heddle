@@ -55,8 +55,8 @@ namespace Heddle.Benchmarks.Dotnet.Engines
         private static List<Cell> Build()
         {
             var cells = new List<Cell>();
-            // Both tracks, every engine. .NET shipped controlled-only until phase 9 (Phase 1 D15,
-            // discharged by ledger E9), which is why it was absent from every idiomatic table.
+            // Both tracks, every engine. .NET shipped controlled-only for a long stretch,
+            // which is why it was absent from every idiomatic table.
             foreach (var track in new[] { "controlled", "idiomatic" })
             {
                 cells.AddRange(HeddleEngine.Cells(track));

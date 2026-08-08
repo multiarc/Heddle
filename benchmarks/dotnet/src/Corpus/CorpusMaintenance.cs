@@ -13,8 +13,7 @@ namespace Heddle.Benchmarks.Dotnet.Corpus
 {
     /// <summary>
     /// The two corpus verbs — <c>export-corpus</c> and <c>verify-corpus</c> — that own the committed
-    /// oracle under <c>benchmarks/dotnet/GoldenCorpus/</c> (normative format in
-    /// docs/spec/cross-stack-benchmarks/phase-1-cross-stack-foundation/golden-corpus.md).
+    /// oracle under <c>benchmarks/dotnet/GoldenCorpus/</c>.
     ///
     /// <para><b>export-corpus</b> renders each workload's Heddle oracle live, applies the contract's
     /// stored-form pipeline (N1–N5; the N3b whitespace strip is a comparison-time projection and is
@@ -104,7 +103,7 @@ namespace Heddle.Benchmarks.Dotnet.Corpus
 
             manifest.Append("  ],\n");
 
-            // The fixtures section (ledger E20): model data exported for the non-.NET ports, hashed
+            // The fixtures section: model data exported for the non-.NET ports, hashed
             // and recorded exactly like the goldens so a stale copy fails loudly rather than gating
             // five ecosystems against drifted data. Today: composed-page's structured nav.
             var fixtureDir = Path.Combine(dir, "fixtures", "composed-page");

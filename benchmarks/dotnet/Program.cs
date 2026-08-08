@@ -8,7 +8,7 @@ using Heddle.Benchmarks.Dotnet.Gate;
 namespace Heddle.Benchmarks.Dotnet
 {
     /// <summary>
-    /// Verb-dispatching entry point for the .NET cross-stack harness (ledger E8), mirroring the
+    /// Verb-dispatching entry point for the .NET cross-stack harness, mirroring the
     /// shape the other five ecosystems expose: a gate that must pass before anything is timed, and
     /// bench targets that refuse to run behind a red gate.
     ///

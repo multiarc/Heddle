@@ -26,7 +26,7 @@ func Dir() string {
 		"..", "..", "..", "dotnet", "GoldenCorpus")
 }
 
-// Workloads holds the eight workload ids in workload-number order (Phase 1 workloads.md).
+// Workloads holds the eight workload ids in workload-number order.
 var Workloads = [8]string{
 	"composed-page",
 	"trivial-substitution",
@@ -44,7 +44,7 @@ func LoadGolden(workload string) (string, error) {
 	path := filepath.Join(Dir(), workload+".golden.html")
 	raw, err := os.ReadFile(path)
 	if err != nil {
-		return "", fmt.Errorf("gate: corpus %s: cannot read %s: %w (regenerate via the Phase 1 export-corpus tool: dotnet run -c Release --project benchmarks/dotnet -- export-corpus)", workload, path, err)
+		return "", fmt.Errorf("gate: corpus %s: cannot read %s: %w (regenerate via the corpus exporter: dotnet run -c Release --project benchmarks/dotnet -- export-corpus)", workload, path, err)
 	}
 	if !utf8.Valid(raw) {
 		return "", fmt.Errorf("gate: corpus %s: golden is not valid UTF-8", workload)
@@ -54,7 +54,7 @@ func LoadGolden(workload string) (string, error) {
 
 // ---- manifest --------------------------------------------------------------------------------
 
-// Manifest mirrors manifest.json (golden-corpus.md §Manifest).
+// Manifest mirrors the committed corpus's manifest.json.
 type Manifest struct {
 	Schema    string          `json:"$schema"`
 	Generator string          `json:"generator"`
@@ -116,7 +116,8 @@ func CheckManifest() error {
 
 // ---- controlled byte gate --------------------------------------------------------------------
 
-// The encoded-suite security-floor needles (parity-contract-v2 §Controlled-track gate 5).
+// The encoded-suite security-floor needles: the raw payload must never appear, and the
+// escaped form must appear the pinned number of times.
 const (
 	rawPayload     = "<script>alert("
 	escapedPayload = "&lt;script&gt;alert("
@@ -174,7 +175,7 @@ func checkSecurityFloor(workload, engine, output string) error {
 	return nil
 }
 
-// ---- untrusted-data alphabet assert (README D5) ----------------------------------------------
+// ---- untrusted-data alphabet assert ----------------------------------------------------------
 
 // CheckAlphabet scans one materialized encoded-suite model value against the contract's
 // untrusted-data alphabet and returns a named error on the first violation. name is the
@@ -206,7 +207,7 @@ func alphabetError(name string, r rune) error {
 	return fmt.Errorf("gate: model value %s violates untrusted-data alphabet: %q U+%04X", name, r, r)
 }
 
-// ---- diagnostics helpers (README §Diagnostics message shape) ---------------------------------
+// ---- diagnostics helpers ---------------------------------------------------------------------
 
 // firstDiff returns the index of the first differing byte (= common length when one side is
 // a prefix of the other).

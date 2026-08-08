@@ -13,17 +13,17 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * The two Thymeleaf engines plus reused per-workload contexts (spec D2): standalone
+ * The two Thymeleaf engines plus reused per-workload contexts: standalone
  * 3.1.5.RELEASE, {@code ClassLoaderTemplateResolver} (prefix {@code thymeleaf/}, suffix
  * {@code .html}, {@code TemplateMode.HTML}, cacheable), one render =
  * {@code engine.process("<track>/<workload>", context, writer)} into a fresh
  * {@link StringWriter}; the {@link Context} is built once per workload and reused.
  * No Spring, no servlet context.
  *
- * Also hosts the D5 escaper-probe helpers: a {@link StringTemplateResolver}-backed engine
- * (probe only - the benchmark engines never use it, per D2's rejected alternatives) that
- * exercises the real Thymeleaf text-inlining and attribute escaping paths without needing
- * the WI2 template resources.
+ * Also hosts the escaper-probe helpers: a {@link StringTemplateResolver}-backed engine
+ * (probe only - the benchmark engines resolve templates exclusively from classpath
+ * resources) that exercises the real Thymeleaf text-inlining and attribute escaping paths
+ * without needing the template resources.
  */
 public final class ThymeleafEngines {
 
@@ -35,7 +35,7 @@ public final class ThymeleafEngines {
     private ThymeleafEngines() {
     }
 
-    /** One engine per track (D2). */
+    /** One engine per track. */
     public static TemplateEngine forTrack(String track) {
         if ("controlled".equals(track)) {
             TemplateEngine e = controlled;
@@ -69,7 +69,7 @@ public final class ThymeleafEngines {
         resolver.setPrefix("thymeleaf/");
         resolver.setSuffix(".html");
         resolver.setTemplateMode(TemplateMode.HTML);
-        // E22: the chrome-fragment literals carry non-ASCII bytes (the secondary menus'
+        // The chrome-fragment literals carry non-ASCII bytes (the secondary menus'
         // U+2122 trademark sign), so the template read encoding is pinned rather than
         // left to the platform default.
         resolver.setCharacterEncoding("UTF-8");
@@ -79,7 +79,7 @@ public final class ThymeleafEngines {
         return engine;
     }
 
-    /** The per-workload variables (construct-mapping.md), built once and reused. */
+    /** The per-workload variables, built once and reused. */
     public static synchronized Context context(String workload) {
         Context ctx = CONTEXTS.get(workload);
         if (ctx != null) {
@@ -87,7 +87,7 @@ public final class ThymeleafEngines {
         }
         ctx = new Context();
         switch (workload) {
-            // E22: the engine module passes only the nav model view - all literal page
+            // The engine module passes only the nav model view - all literal page
             // text lives in the templates.
             case "composed-page" -> ctx.setVariable("nav", Models.composed().getNav());
             case "trivial-substitution" -> ctx.setVariable("m", Models.SUBSTITUTION);
@@ -103,7 +103,7 @@ public final class ThymeleafEngines {
         return ctx;
     }
 
-    /** One render (D2): fresh StringWriter, cached template, reused context. */
+    /** One render: fresh StringWriter, cached template, reused context. */
     public static String render(String track, String workload) {
         StringWriter writer = new StringWriter();
         try {
@@ -115,7 +115,7 @@ public final class ThymeleafEngines {
         return writer.toString();
     }
 
-    // ---- D5 escaper probe helpers ------------------------------------------------------
+    // ---- escaper probe helpers ---------------------------------------------------------
 
     private static TemplateEngine probeEngine() {
         TemplateEngine e = probe;

@@ -1,10 +1,10 @@
 @param heddle.benchmarks.jvm.model.Models.FragmentRow row
 <%--
-  Idiomatic jte authoring (Q1.7/D7) — official doc citations:
+  Idiomatic jte authoring — official doc citations:
   https://jte.gg/syntax/ (params, output expressions)
   https://jte.gg/pre-compiling/ (precompiled engine setup)
 
-  E21: image src (`/img/` + name + `.jpg`) and caption (`Caption for ` + name) are
+  Image src (`/img/` + name + `.jpg`) and caption (`Caption for ` + name) are
   composed by the template as literal-plus-substitution.
 --%>
 <div class="media-row">

@@ -11,7 +11,7 @@ using Heddle.Runtime;
 namespace Heddle.Benchmarks.Dotnet.Engines
 {
     /// <summary>
-    /// Heddle, all eight workloads across every render technique it exposes (ledger E8/E10).
+    /// Heddle, all eight workloads across every render technique it exposes.
     ///
     /// <para><b>The techniques.</b> <see cref="HeddleTemplate"/> offers three sinks —
     /// <c>Generate(model)</c> returning a <see cref="string"/>, <c>Generate(model, TextWriter)</c>,
@@ -28,10 +28,10 @@ namespace Heddle.Benchmarks.Dotnet.Engines
     /// reasoning holds only ABOVE the 85,000-byte threshold, and it was applied to all eight workloads
     /// including five whose output tops out at 31,098 bytes. It also exempted the anchor alone from a
     /// cost its five .NET rivals all pay, and left it the only cell in the sweep that never
-    /// materialised its output — the exact failure ledger E4 added MATERIALISATION-CHECK to prevent.</para>
+    /// materialised its output — the exact failure MATERIALISATION-CHECK exists to prevent.</para>
     ///
     /// <para>The LOH observation survives as a reason the <i>utf8 technique row</i> is interesting on
-    /// composed-page (94,910 bytes as UTF-16 against 47,459 as UTF-8, re-measured at the E20
+    /// composed-page (94,910 bytes as UTF-16 against 47,459 as UTF-8, re-measured at the
     /// full-page redesign), not as the anchor's rationale.
     /// All three sinks are gated; utf8 and textwriter ride along as non-ranked technique rows in the
     /// same sweep and are compared exhaustively by <c>bench-techniques</c>.</para>
@@ -114,7 +114,7 @@ namespace Heddle.Benchmarks.Dotnet.Engines
             {
                 // Registers this assembly so the templates' type spellings (`:: ComposedModel`
                 // and friends) resolve through its namespaces. No extensions ride along any more:
-                // since E22 the benchmark templates are pure composition — every fragment of
+                // the benchmark templates are pure composition — every fragment of
                 // display text lives in a template, none in C#. HeddleTemplate.Configure is the
                 // public entry point, and the public one is all this harness will use: a benchmark
                 // that needs private access to the thing it measures is measuring something no
@@ -197,7 +197,7 @@ namespace Heddle.Benchmarks.Dotnet.Engines
         /// compact strings. "Materialise your runtime's native string" is the invariant the program
         /// actually holds; "emit UTF-8" was never it. Rendering the anchor to a byte sink also made
         /// it the one cell in the sweep that never materialised its output at all, which is the
-        /// exact failure ledger E4 added MATERIALISATION-CHECK to prevent after V8 returned a lazy
+        /// exact failure MATERIALISATION-CHECK exists to prevent, added after V8 returned a lazy
         /// rope.</para>
         ///
         /// <para>Gating all three still matters more than benchmarking all three: the gate runs

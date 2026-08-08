@@ -8,8 +8,7 @@ using Scriban.Runtime;
 namespace Heddle.Benchmarks.Dotnet.Engines
 {
     /// <summary>
-    /// Scriban twin, all eight workloads (ledger E8; composed-page/fragment-heavy redesigned under
-    /// E20/E21/E22).
+    /// Scriban twin, all eight workloads.
     ///
     /// Scriban does not HTML-encode output, matching Heddle's <c>OutputProfile.Text</c>; the encoded
     /// workloads escape in-template with the <c>| html.escape</c> filter. Composed-page renders the
@@ -18,7 +17,7 @@ namespace Heddle.Benchmarks.Dotnet.Engines
     /// partials and the nested nav partials (mega-menu/nav-column/nav-section/nav-link) through an
     /// <see cref="ITemplateLoader"/>. Partials see the includer's loop variables because Scriban
     /// includes share the render context (the tile.scriban precedent). All literal chrome is
-    /// template text (E22 — no text fixture is served from C#; the model passes only <c>nav</c>).
+    /// template text (no text fixture is served from C#; the model passes only <c>nav</c>).
     /// </summary>
     public static class ScribanEngine
     {
@@ -29,7 +28,7 @@ namespace Heddle.Benchmarks.Dotnet.Engines
             string Src(string file) => Templates.Load(track, "scriban", file);
 
             // ---- composed-page: capture-then-include; the layout includes the chrome-fragment
-            // partials (the E22 fragment library, one partial per named definition in the Heddle
+            // partials (the chrome-fragment library, one partial per named definition in the Heddle
             // twin's shared/chrome-fragments.heddle) and the nested nav partials.
             var composedLoader = new NamedLoader(new Dictionary<string, string>
             {
@@ -55,8 +54,8 @@ namespace Heddle.Benchmarks.Dotnet.Engines
                 Engine = Name, Track = track, Workload = "composed-page", InCrossStack = true,
                 Render = () =>
                 {
-                    // E22: the model carries structured nav DATA only — all literal chrome and
-                    // fragment text now lives in the templates (Stage 3 rewrites this twin's).
+                    // The model carries structured nav DATA only — all literal chrome and
+                    // fragment text lives in the templates.
                     var globals = new ScriptObject();
                     globals["nav"] = ComposedContent.LiquidModel()["nav"];
                     var ctx = new TemplateContext { TemplateLoader = composedLoader };
@@ -65,7 +64,7 @@ namespace Heddle.Benchmarks.Dotnet.Engines
                 },
             };
 
-            // ---- fragment-heavy: six partials (E20); the card partial nests badge + price
+            // ---- fragment-heavy: six partials; the card partial nests badge + price
             // against the row's promo — the one nesting level.
             var fragmentLoader = new NamedLoader(new Dictionary<string, string>
             {

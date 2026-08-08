@@ -1,5 +1,4 @@
-// fortunes-encoded model — Phase 4 WI2 (spec: templates-and-models.md §Models rule 4; the 12
-// pinned rows byte-for-byte from Phase 1 workloads.md workload 7, ids 1–12). Row 11 is the
+// fortunes-encoded model: the 12 pinned rows, byte-for-byte, ids 1–12. Row 11 is the
 // TechEmpower XSS payload; row 12 the Japanese string; rows 4 and 8 carry a literal U+2014 em
 // dash. Every value satisfies the untrusted-data alphabet.
 import { deepFreeze } from "./_deep-freeze.mjs";

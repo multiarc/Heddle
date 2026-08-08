@@ -5,13 +5,13 @@
 
 // component invoked from the loop; the display name is composed in the template as the
 
-// literal "row-" plus the value substitution (E21 — the model carries only Value); ints
+// literal "row-" plus the value substitution (the model carries only Value); ints
 
 // render natively via { } expressions.
 
 //
 
-// Doc citations (Q1.7):
+// Official templ documentation for the constructs used here:
 
 //   - https://templ.guide/syntax-and-usage/expressions/
 

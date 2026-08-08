@@ -1,4 +1,4 @@
-{{## Idiomatic Scriban -- fragment-heavy card partial (phase 9; authoring standard D16).
+{{## Idiomatic Scriban -- fragment-heavy card partial.
 
      Patterns followed, from Scriban's own documentation:
        language          https://github.com/scriban/scriban/blob/master/doc/language.md

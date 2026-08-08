@@ -1,6 +1,6 @@
 @param heddle.benchmarks.jvm.model.Models.MixedModel m
 <%--
-  Idiomatic jte authoring (Q1.7/D7) — official doc citations:
+  Idiomatic jte authoring — official doc citations:
   https://jte.gg/syntax/ (conditions: @if/@endif, loops: @for, output expressions)
   https://jte.gg/pre-compiling/ (precompiled engine setup)
 --%>

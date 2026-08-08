@@ -1,4 +1,4 @@
-// The fixtures every engine renders this workload from (ledger E8).
+// The fixtures every engine renders this workload from.
 //
 // Load-bearing values: the golden corpus is Heddle's render OF THESE, so changing one changes the
 // oracle every ecosystem is gated against. Change them only with a corpus re-export in the same
@@ -14,7 +14,7 @@ using DotLiquid;
 namespace Heddle.Benchmarks.Dotnet.Models
 {
     /// <summary>
-    /// Shared, engine-neutral model for the mixed-page workload (cross-stack phase 1 WI1): a
+    /// Shared, engine-neutral model for the mixed-page workload: a
     /// realistic mid-size page — literal HTML skeleton + scalar substitutions + a modest 36-row
     /// product loop + page-level and row-level conditionals. All values are ASCII with no
     /// <c>&amp; &lt; &gt; " '</c> (raw-suite rule), and every per-engine view is materialized once

@@ -1,4 +1,4 @@
-{{## Idiomatic Scriban -- fragment-heavy (phase 9; authoring standard D16).
+{{## Idiomatic Scriban -- fragment-heavy.
 
      Patterns followed, from Scriban's own documentation:
        language          https://github.com/scriban/scriban/blob/master/doc/language.md
@@ -6,7 +6,7 @@
        runtime/includes  https://github.com/scriban/scriban/blob/master/doc/runtime.md
 
      Per-row dispatch through Scriban's native switch form, `case`/`when` (the idiomatic-track
-     allowance in workloads.md workload 6), selecting one of the four fragment partials; the
+     allowance for this workload), selecting one of the four fragment partials; the
      card partial nests badge + price against the row's promo -- the one nesting level.
      Checked by the functional verifier, not the byte gate. Note the multi-line comment
      delimiters: the single-line form ends at the first newline, which would leave the doc

@@ -1,9 +1,9 @@
 @*
-    Idiomatic Heddle -- composed-page (phase 9; authoring standard D16).
+    Idiomatic Heddle -- composed-page.
 
     Patterns followed, from Heddle's own documentation:
       Language reference   docs/language-reference.md ("Composition without coupling" --
-                           the layout-as-definition idiom, Q1.7)
+                           the layout-as-definition idiom)
       Architecture         docs/architecture.md
 
     The page imports the definition-only layout and calls @layout() with the slider body; the

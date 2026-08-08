@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
-"""validate.py — Phase 8 findings-validation tooling (spec D15/D16/D17.4; stdlib-only).
+"""validate.py — findings-validation tooling for the Linux cross-check (stdlib-only).
 
 Computes every part-2 validation table and verdict from exactly two inputs:
 
   (a) ``windows-source.json``  — hand-transcribed Windows ranks, ratios-to-Heddle
       (``r``, quoted from each report's own ratio column) and dimensionless
       dispersions (``d``) with per-value source citations. NEVER absolute times
-      (D17.4 — structurally enforced below).
+      (structurally enforced below).
   (b) ``linux-results.json``   — the same shape for this Linux run (part 1 data).
 
-Verdicts (D16):
+Material-divergence verdicts:
   1. material rank flip     — order differs across OSes AND the pair is resolved on
                               BOTH OSes: |r_A − r_B| > (d_A + d_B) · min(r_A, r_B),
                               evaluated on each OS's own ratios (ratio form — no
@@ -39,11 +39,11 @@ import sys
 
 SCHEMA_ID = "heddle-linux-crosscheck/windows-source@1"
 
-GAP_FLOOR = 0.05          # D16.2: the program's own established 5% stability line
-DISPERSION_RATIO = 2.0    # D16.3
-DISPERSION_FLOOR = 0.01   # D16.3: 1% relative-dispersion floor
+GAP_FLOOR = 0.05          # the program's own established 5% stability line
+DISPERSION_RATIO = 2.0
+DISPERSION_FLOOR = 0.01   # 1% relative-dispersion floor
 
-# D17.4 — no absolute-time / point-estimate field may appear ANYWHERE in either
+# No absolute-time / point-estimate field may appear ANYWHERE in either
 # input. Closed list of forbidden key tokens (case-insensitive, matched on whole
 # underscore/dash/camel-separated words so e.g. "meanTimeNs" and "wall_time" are
 # both caught, while "rank"/"track" are not).
@@ -81,14 +81,14 @@ def _split_key_tokens(key: str) -> list[str]:
 
 
 def reject_absolute_time_fields(obj, path="$"):
-    """D17.4 structural check: reject ANY absolute-time-shaped field, recursively."""
+    """Structural check: reject ANY absolute-time-shaped field, recursively."""
     if isinstance(obj, dict):
         for key, value in obj.items():
             if isinstance(key, str):
                 bad = [t for t in _split_key_tokens(key) if t in FORBIDDEN_KEY_TOKENS]
                 if bad:
                     raise ValidationError(
-                        f"D17.4 violation: absolute-time/point-estimate field "
+                        f"forbidden absolute-time/point-estimate field "
                         f"'{key}' at {path} (forbidden token(s): {', '.join(bad)}). "
                         f"windows-source.json stores only ranks, ratios (r) and "
                         f"dimensionless dispersions (d) — never absolute times."
@@ -106,7 +106,8 @@ def _check_value_obj(obj, path, *, require_source, require_rank):
     if extra:
         raise ValidationError(
             f"{path}: unexpected key(s) {sorted(extra)} — only "
-            f"{sorted(ALLOWED_VALUE_KEYS)} are allowed (D17.4 structural rule)"
+            f"{sorted(ALLOWED_VALUE_KEYS)} are allowed (structural rule: no "
+            f"absolute-time or other extra field may exist on a value object)"
         )
     for field in ("r", "d"):
         if field not in obj or not isinstance(obj[field], (int, float)) or isinstance(obj[field], bool):
@@ -161,15 +162,17 @@ def load_side(path_or_obj, *, windows: bool):
     return doc
 
 
-# --- D16 predicates (pure; unit-tested by test_validate.py) --------------------
+# --- Material-divergence predicates (pure; unit-tested by test_validate.py) ----
 
 def pair_resolved(r_a: float, d_a: float, r_b: float, d_b: float) -> bool:
-    """D16.1 resolution test in ratio form (strict >)."""
+    """Order-resolution test in ratio form (strict >): the ratio gap must exceed
+    the summed dispersions scaled by the smaller ratio."""
     return abs(r_a - r_b) > (d_a + d_b) * min(r_a, r_b)
 
 
 def rank_flip_verdict(r_a_w, d_a_w, r_b_w, d_b_w, r_a_l, d_a_l, r_b_l, d_b_l) -> str:
-    """Pairwise D16.1 verdict: 'held' | 'not resolved' | 'material flip'."""
+    """Pairwise rank verdict: 'held' | 'not resolved' | 'material flip'.
+    A flip is material only when the pair is resolved on BOTH OSes."""
     order_w = (r_a_w > r_b_w) - (r_a_w < r_b_w)
     order_l = (r_a_l > r_b_l) - (r_a_l < r_b_l)
     if order_w == order_l:
@@ -180,22 +183,23 @@ def rank_flip_verdict(r_a_w, d_a_w, r_b_w, d_b_w, r_a_l, d_a_l, r_b_l, d_b_l) ->
 
 
 def gap_movement(r_w: float, r_l: float) -> float:
-    """D16.2 movement |r_L / r_W − 1| (r_w > 0 guaranteed by input validation)."""
+    """Gap movement |r_L / r_W − 1| (r_w > 0 guaranteed by input validation)."""
     return abs(r_l / r_w - 1.0)
 
 
 def combined_dispersion(d_eng_w, d_heddle_w, d_eng_l, d_heddle_l) -> float:
-    """D16.2 D — LINEAR sums (interval arithmetic, not quadrature)."""
+    """Combined dispersion D — LINEAR sums (interval arithmetic, not quadrature)."""
     return (d_eng_w + d_heddle_w) + (d_eng_l + d_heddle_l)
 
 
 def gap_material(movement: float, dispersion_sum: float) -> bool:
-    """D16.2: material iff movement > max(D, 0.05) (strict >)."""
+    """Gap verdict: material iff movement > max(D, 0.05) (strict >)."""
     return movement > max(dispersion_sum, GAP_FLOOR)
 
 
 def dispersion_character_change(d_w: float, d_l: float) -> bool:
-    """D16.3 with the zero-dispersion guard (min(d)=0 never divides by zero)."""
+    """Dispersion-character change: ratio ≥ 2 AND max ≥ 0.01, with the
+    zero-dispersion guard (min(d)=0 never divides by zero)."""
     lo, hi = min(d_w, d_l), max(d_w, d_l)
     if lo == 0.0:
         # Appear-from-nothing dispersion above the 1% floor is material;
@@ -207,7 +211,7 @@ def dispersion_character_change(d_w: float, d_l: float) -> bool:
 # --- Table computation ---------------------------------------------------------
 
 def validate_cell(win_cell: dict, lin_cell: dict) -> dict:
-    """All three D16 verdicts for one workload cell. Returns a plain dict."""
+    """All three material-divergence verdicts for one workload cell. Returns a plain dict."""
     result = {"engines": {}, "pairs": []}
     win_h, lin_h = win_cell["heddle"], lin_cell["heddle"]
 
@@ -228,7 +232,7 @@ def validate_cell(win_cell: dict, lin_cell: dict) -> dict:
         "d_W": win_h["d"], "d_L": lin_h["d"],
         "dispersion_change": dispersion_character_change(win_h["d"], lin_h["d"]),
     }
-    # D16.1 pairwise over {engines + Heddle anchor} (r_Heddle from its own entry).
+    # Rank-flip verdicts pairwise over {engines + Heddle anchor} (r_Heddle from its own entry).
     participants = [(e, win_cell["engines"][e], lin_cell["engines"][e]) for e in common]
     participants.append(("Heddle", win_h, lin_h))
     for i in range(len(participants)):
@@ -270,7 +274,7 @@ def validate_all(windows_doc: dict, linux_doc: dict) -> dict:
 def render_markdown(results: dict) -> str:
     """Part-2 validation tables. Every cell publishes r_W, r_L, movement %, D, d_W,
     d_L and the verdicts — 'material' controls prominence, never visibility."""
-    lines = ["# Findings validation — computed tables (D15/D16)", ""]
+    lines = ["# Findings validation — computed tables", ""]
     for eco, eco_res in results.items():
         lines.append(f"## {eco}")
         if "status" in eco_res:
@@ -320,7 +324,8 @@ def render_markdown(results: dict) -> str:
 
 
 def main(argv=None) -> int:
-    parser = argparse.ArgumentParser(description="Phase 8 findings validation (D15/D16/D17.4)")
+    parser = argparse.ArgumentParser(
+        description="Findings validation: Windows-vs-Linux material-divergence tables and verdicts")
     parser.add_argument("--windows-source", required=True,
                         help="windows-source.json (transcribed ranks/ratios/d — never absolute times)")
     parser.add_argument("--linux-results", required=True,

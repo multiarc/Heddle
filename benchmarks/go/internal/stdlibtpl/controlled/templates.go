@@ -1,14 +1,11 @@
 // Package controlled hosts the stdlib-engine controlled ports: text/template for the six
-// raw workloads and html/template for the two encoded workloads (README D1 / Q6.1 — both
+// raw workloads and html/template for the two encoded workloads (both
 // surfaces of the one credibility-pick stdlib engine; benchmark ids stdlib-text /
 // stdlib-html). Template sources are Go raw string literals transcribed from the pinned
 // Heddle/twin shapes with {{…}} actions in place of @(…) substitutions; whitespace-only
 // layout differences are erased by the contract's N3b comparison strip. Every template is
 // parsed once in a package var block (the cached-template render path); renders execute
 // into a reused pre-grown buffer (render.go).
-//
-// Normative texts: docs/spec/cross-stack-benchmarks/phase-6-go/port-mapping.md
-// §Controlled track — stdlib surfaces (workload shapes from Phase 1 workloads.md).
 package controlled
 
 import (
@@ -18,16 +15,16 @@ import (
 
 // ---- workload 1 — composed-page (text/template) ----------------------------------------------
 //
-// The E20/E22 full-page layout workload, composed with the stdlib's native mechanism
-// (workloads.md §Native-layout mandate, Go stdlib row): the layout template holds the FULL
+// The full-page layout workload, composed with the stdlib's own layout mechanism
+// (the native-layout mandate): the layout template holds the FULL
 // literal chrome with a live {{block "body" .}} slot; the page's parse in the same
 // associated set adds a non-empty {{define "body"}} that overrides the block's empty
 // default. The inert chrome fragments are per-fragment {{define}}s mirroring
-// chrome-fragments.heddle (E22 — all literal page text lives in the template tier; the
+// chrome-fragments.heddle (all literal page text lives in the template tier; the
 // model carries ONLY the structured nav). text/template = no escaping, preserving the raw
 // discipline.
 
-// composedChromeSrc is the definition-only chrome-fragment library (E22): the alert
+// composedChromeSrc is the definition-only chrome-fragment library: the alert
 // banner, the two secondary menus, the pinned-empty alert-below slot, and the six fixed
 // asset/script snippets, transcribed from chrome-fragments.heddle. Parsing it renders
 // nothing.
@@ -295,7 +292,7 @@ const composedChromeSrc = `{{define "alert_top"}}<div class="top-banner" style="
 {{define "body_end_scripts"}}<script src="/bodyend.js"></script>{{end}}`
 
 // composedLayoutSrc is the definition-only layout parse: the four overridable section
-// defaults, the four nav fragment definitions (nested per workloads.md — menu → column →
+// defaults, the four nav fragment definitions (nested — menu → column →
 // section → link, dispatching on the precomputed .TitleLinked/.HasDropdown booleans), and
 // the "layout" definition holding the full literal chrome with {{block "body" .}} at the
 // body-slot position and {{range .Nav.Menus}}/{{range .Nav.FooterColumns}} at the nav
@@ -462,7 +459,7 @@ const trivialSubstitutionSrc = `<article><h1>{{.Title}}</h1><p class="sku">{{.Sk
 // ---- workload 3 — large-loop (text/template) -------------------------------------------------
 
 // The display name row-{i} is composed by the template as the literal `row-` + the value
-// substitution (E21 — the model carries only the int). text/template renders ints via fmt
+// substitution (the model carries only the int). text/template renders ints via fmt
 // (%v), identical bytes to strconv.Itoa.
 const largeLoopSrc = `{{range .Items}}<tr><td>row-{{.Value}}</td><td>{{.Value}}</td></tr>{{end}}`
 
@@ -471,7 +468,7 @@ const largeLoopSrc = `{{range .Items}}<tr><td>row-{{.Value}}</td><td>{{.Value}}<
 // The pinned skeleton transcribed line-for-line (line breaks between sibling elements are
 // N2/N3-erased; the <style> line and all text-bearing elements stay dense); the footer
 // keeps its single literal spaces. The display SKU is composed as MX-{{.SkuNumber}} and
-// the blurb sentence lives in the template around {{.Batch}} (E21).
+// the blurb sentence lives in the template around {{.Batch}}.
 const mixedPageSrc = `<!DOCTYPE html>
 <html>
 <head>
@@ -505,23 +502,23 @@ const mixedPageSrc = `<!DOCTYPE html>
 // ---- workload 5 — conditional-heavy (text/template) ------------------------------------------
 
 // The pinned single-line <ul class="matrix"> body: four-way chain per row plus the two
-// toggles. The note text is composed as the literal `note ` + {{.Seq}} (E21).
+// toggles. The note text is composed as the literal `note ` + {{.Seq}}.
 const conditionalHeavySrc = `<ul class="matrix">{{range .Rows}}<li>{{if .IsBronze}}<span class="t0">bronze</span>{{else if .IsSilver}}<span class="t1">silver</span>{{else if .IsGold}}<span class="t2">gold</span>{{else}}<span class="t3">platinum</span>{{end}}<em>{{.Name}}</em>{{if .HasNote}}<small>note {{.Seq}}</small>{{end}}{{if .IsActive}}<b>active</b>{{end}}</li>{{end}}</ul>`
 
 // ---- workload 6 — fragment-heavy (text/template) ---------------------------------------------
 
-// The E20 redesign: six {{define}}s (tile, badge, price, card — which nests badge + price
+// Six {{define}}s (tile, badge, price, card — which nests badge + price
 // against the row's .Promo, the one nesting level — media_row, stat), dispatched per row by
-// the boolean {{if .IsTile}}/{{else if}} chain (workloads.md §Dispatch per family, Go
-// stdlib row). Derived display text is composed by the template as
-// literal-plus-substitution (E21): /img/{{.Name}}.jpg, Caption for {{.Name}},
+// the boolean {{if .IsTile}}/{{else if}} chain — dispatch stays on precomputed booleans,
+// never on the Kind string. Derived display text is composed by the template as
+// literal-plus-substitution: /img/{{.Name}}.jpg, Caption for {{.Name}},
 // {{.Promo.Price}} rendered through the price partial as {{.Price}}.99.
 const fragmentHeavySrc = `{{define "tile"}}<section class="tile"><h3>{{.Name}}</h3><p class="v">{{.Value}}</p><span class="badge">{{.Badge}}</span></section>{{end}}{{define "badge"}}<span class="promo-badge">{{.Label}}</span>{{end}}{{define "price"}}<p class="price">{{.Price}}.99</p>{{end}}{{define "card"}}<article class="card"><h3>{{.Name}}</h3>{{template "badge" .Promo}}{{template "price" .Promo}}<p class="v">{{.Value}}</p></article>{{end}}{{define "media_row"}}<div class="media-row"><img src="/img/{{.Name}}.jpg" alt="{{.Name}}" /><div class="media-body"><h4>{{.Name}}</h4><p>Caption for {{.Name}}</p></div></div>{{end}}{{define "stat"}}<div class="stat"><span class="stat-name">{{.Name}}</span><span class="stat-value">{{.Value}}</span><span class="stat-delta">{{.Delta}}</span></div>{{end}}<div class="panel">{{range .Items}}{{if .IsTile}}{{template "tile" .}}{{else if .IsCard}}{{template "card" .}}{{else if .IsMedia}}{{template "media_row" .}}{{else}}{{template "stat" .}}{{end}}{{end}}</div>`
 
 // ---- workload 7 — fortunes-encoded (html/template) -------------------------------------------
 
 // The pinned one-line skeleton; html/template's contextual escaper fires on the
-// text-context substitutions ({{.Message}}), with spellings reconciled by N5 (D4).
+// text-context substitutions ({{.Message}}), with spellings reconciled by N5.
 const fortunesEncodedSrc = `<!DOCTYPE html><html><head><title>Fortunes</title></head><body><table><tr><th>id</th><th>message</th></tr>{{range .Rows}}<tr><td>{{.Id}}</td><td>{{.Message}}</td></tr>{{end}}</table></body></html>`
 
 // ---- workload 8 — encoded-loop (html/template) -----------------------------------------------

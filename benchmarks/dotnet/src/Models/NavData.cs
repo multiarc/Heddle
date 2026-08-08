@@ -1,5 +1,5 @@
-// The composed-page structured navigation fixtures (ledger E20; supersedes the mega-menu and
-// footer-link blobs of the since-deleted AreaData dictionary — under E22 this file is the ONLY
+// The composed-page structured navigation fixtures (supersedes the mega-menu and
+// footer-link blobs of the since-deleted AreaData dictionary — this file is the ONLY
 // composed-page model source, and every fragment of literal page text lives in the templates).
 //
 // Transcribed faithfully from the retired "Wholesale Top Mega Menu", "Retail Top Mega Menu" and
@@ -8,7 +8,7 @@
 // close buttons, the phone-number strip — is deliberately dropped: the workload renders the
 // NAVIGATION through loops and nested partials, not the ad chrome around it.
 //
-// Every text value is sanitized to workloads.md rule 4 (ASCII printable, none of & < > " '):
+// Every text value is sanitized to the markup-clean fixture rule (ASCII printable, none of & < > " '):
 // `&`/`&amp;` become `and`, apostrophes and the TM entity are dropped, `&eacute;` flattens to
 // `e`, stray double spaces collapse. The static constructor ASSERTS the rule over every label,
 // title and href, so a transcription slip fails at first touch instead of exporting a corpus

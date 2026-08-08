@@ -7,7 +7,7 @@ using Heddle.Benchmarks.Dotnet.Models;
 namespace Heddle.Benchmarks.Dotnet.Engines
 {
     /// <summary>
-    /// DotLiquid (Liquid) twin, all eight workloads (ledger E8; E20/E21/E22 redesign).
+    /// DotLiquid (Liquid) twin, all eight workloads.
     ///
     /// Shares <c>templates/{track}/liquid/</c> with <see cref="FluidEngine"/>; every template that
     /// leans on DotLiquid's scope-shared <c>{% include %}</c> (or otherwise diverges from the Fluid
@@ -15,11 +15,11 @@ namespace Heddle.Benchmarks.Dotnet.Engines
     /// matching Heddle's <c>OutputProfile.Text</c>; the encoded workloads escape in-template with
     /// the <c>| escape</c> filter.
     ///
-    /// composed-page (E20/E22) is the capture-then-include layout idiom: the page captures the
+    /// composed-page is the capture-then-include layout idiom: the page captures the
     /// slider body into <c>body_content</c> and includes <c>layout</c>, which emits the slot plus
     /// the literal chrome, calling the chrome-fragment partials and the nested nav partial chain
     /// (mega-menu -> nav-column -> nav-section -> nav-link) from <c>{% for %}</c> loops.
-    /// fragment-heavy (E20) dispatches one of four fragment partials per row; the card partial
+    /// fragment-heavy dispatches one of four fragment partials per row; the card partial
     /// nests badge + price against the row's promo. All partials rely on DotLiquid's include
     /// sharing the enclosing scope (loop variables visible inside the partial — the historical
     /// tile precedent).
@@ -45,8 +45,8 @@ namespace Heddle.Benchmarks.Dotnet.Engines
             // Installed per track: the partial sources differ between them, and DotLiquid resolves
             // includes through a process-wide static. Every include target of the redesigned
             // workloads is registered here: the layout, its chrome-fragment partials and the nested
-            // nav partial chain (composed-page, E20/E22), and the six fragment partials
-            // (fragment-heavy, E20). Non-entry templates live under liquid/shared/; the registry
+            // nav partial chain (composed-page), and the six fragment partials
+            // (fragment-heavy). Non-entry templates live under liquid/shared/; the registry
             // key stays the bare logical name, so {% include 'name' %} in the templates is
             // untouched by the on-disk layout.
             var partials = new Dictionary<string, string>();
@@ -76,19 +76,19 @@ namespace Heddle.Benchmarks.Dotnet.Engines
 
         /// <summary>
         /// Every include target, one <c>*.dotliquid.liquid</c> file each: the composed-page layout,
-        /// its ten chrome-fragment partials (ledger E22 — the inert literal chrome), the four nested
-        /// nav partials (ledger E20), and the six fragment-heavy partials (ledger E20).
+        /// its ten chrome-fragment partials (the inert literal chrome), the four nested
+        /// nav partials, and the six fragment-heavy partials.
         /// </summary>
         private static readonly string[] PartialNames =
         {
-            // composed-page layout + chrome fragments (E22)
+            // composed-page layout + chrome fragments
             "layout",
             "alert-top", "secondary-wholesale-menu", "secondary-retail-menu", "alert-below",
             "assets-styles", "assets-scripts", "custom-styles",
             "head-scripts", "body-scripts", "body-end-scripts",
-            // composed-page nested nav chain (E20)
+            // composed-page nested nav chain
             "mega-menu", "nav-column", "nav-section", "nav-link",
-            // fragment-heavy fragment kinds (E20; card nests badge + price)
+            // fragment-heavy fragment kinds (card nests badge + price)
             "tile", "card", "badge", "price", "media-row", "stat",
         };
 
@@ -117,8 +117,8 @@ namespace Heddle.Benchmarks.Dotnet.Engines
 
         private static Hash ComposedModel(string track)
         {
-            // E22: the model carries structured nav DATA only — all literal chrome and fragment
-            // text now lives in the templates (Stage 3 rewrites this twin's).
+            // The model carries structured nav DATA only — all literal chrome and fragment
+            // text lives in the templates.
             var root = new Hash();
             foreach (var kv in Models.ComposedContent.DotLiquidModel()) root[kv.Key] = kv.Value;
             root[TrackKey] = track;

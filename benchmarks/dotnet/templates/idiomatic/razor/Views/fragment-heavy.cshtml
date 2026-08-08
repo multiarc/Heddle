@@ -1,12 +1,12 @@
 @*
-    Idiomatic Razor -- fragment-heavy (phase 9; authoring standard D16; ledger E20).
+    Idiomatic Razor -- fragment-heavy.
 
     Patterns followed, from Microsoft's own documentation:
       Razor syntax        https://learn.microsoft.com/aspnet/core/mvc/views/razor
       Partial views       https://learn.microsoft.com/aspnet/core/mvc/views/partial
 
     Per-row fragment dispatch plus nested composition: a C# switch on Kind -- Razor's
-    documented native switch form, permitted on the idiomatic track by workloads.md --
+    documented native switch form, permitted on the idiomatic track --
     selects which of the four partial views to invoke; the card partial nests the badge and
     price partials against the row's Promo. Checked by the functional verifier, not the
     byte gate.

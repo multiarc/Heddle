@@ -1,5 +1,5 @@
-// S1 probe execution (WI2). Each test is one probe of templ-feasibility.md §S1; the
-// observed bytes are additionally recorded in benchmarks/go/README.md §S1 results.
+// Feasibility-spike probe execution: each test executes one probe and pins its observed
+// bytes; the results are additionally written up in the harness README.
 package spike
 
 import (
@@ -51,7 +51,7 @@ func TestP1TrivialSubstitutionPassesTheByteGate(t *testing.T) {
 
 func TestP1SingleSpacesBetweenExpressionsSurviveVerbatim(t *testing.T) {
 	// The mixed-page footer construct: `{ a } { b } { c }` separated by single literal
-	// spaces. F3: collapsing maps a lone space to itself (fixed point) — the spaces must
+	// spaces. Whitespace collapsing maps a lone space to itself (fixed point) — the spaces must
 	// survive verbatim in the rendered output.
 	output := render(t, spacedExpressions("Mercantile", "2026", "support at mercantile.example"))
 	const want = "<p>Mercantile 2026 support at mercantile.example</p>"
@@ -94,7 +94,7 @@ func assertSpellingsInsideN5(t *testing.T, label, escaped string) {
 			}
 		}
 		if !found {
-			t.Fatalf("%s: escaper spelling %q is OUTSIDE the N5 table — non-whitespace divergence (Q1.2 exclusion contingency)", label, entity)
+			t.Fatalf("%s: escaper spelling %q is OUTSIDE the N5 table — a non-whitespace divergence the normalization pipeline cannot reconcile", label, entity)
 		}
 		i += end
 	}
@@ -110,7 +110,7 @@ func TestP2TextPathEscaperBytes(t *testing.T) {
 	assertSpellingsInsideN5(t, "text path", output)
 
 	// Pin the exact observed spellings (templ.EscapeString → html.EscapeString: five
-	// characters, decimal quotes — F5).
+	// characters, decimal quotes).
 	const wantRow = `<tr><td>1</td><td>&amp; &lt; &gt; &#34; &#39; こんにちは</td></tr>`
 	if output != wantRow {
 		t.Fatalf("text-path bytes changed:\n  want %q\n  got  %q", wantRow, output)
@@ -154,7 +154,7 @@ func TestP2AttributePathEscaperBytes(t *testing.T) {
 
 func TestP2EscapeFreeDataRoundTripsUnescaped(t *testing.T) {
 	// '+'-free (and escapable-free) data round-trips byte-identical — the raw suites'
-	// no-op-escaper premise (authoring rule 4).
+	// no-op-escaper premise.
 	output := render(t, fortunesRow("7", "Computers make very fast, very accurate mistakes."))
 	const want = "<tr><td>7</td><td>Computers make very fast, very accurate mistakes.</td></tr>"
 	if output != want {
@@ -164,7 +164,7 @@ func TestP2EscapeFreeDataRoundTripsUnescaped(t *testing.T) {
 
 // ---- P3 — style passthrough ------------------------------------------------------------------
 
-// styleCSS is the exact mixed-page <style> content (workloads.md workload 4), the authored
+// styleCSS is the exact mixed-page <style> content, the authored
 // bytes the rendered output must reproduce.
 const styleCSS = `body{font:16px/1.5 system-ui;margin:0;color:#222}header{background:#1a2b3c;color:#fff;padding:12px 24px}nav a{color:#9cf;margin-right:12px;text-decoration:none}main{max-width:960px;margin:0 auto;padding:24px}.hero{background:#f4f6f8;padding:32px;border-radius:8px}.banner{background:#fff4d6;padding:8px 16px;border-radius:4px}.grid{display:flex;flex-wrap:wrap;gap:16px}.card{border:1px solid #ddd;border-radius:6px;padding:16px;width:280px}.card h3{margin:0 0 8px}.price{font-weight:700}.sale{color:#b00020;font-weight:700}footer{border-top:1px solid #ddd;margin-top:32px;padding:16px 24px;color:#666}`
 
@@ -178,10 +178,10 @@ func TestP3StyleContentPassesThroughByteIdentical(t *testing.T) {
 	}
 	content := output[len(prefix) : len(output)-len(suffix)]
 	if content == styleCSS {
-		return // F4 holds: rendered without any changes — no fallback needed
+		return // rendered without any changes — no fallback needed
 	}
-	// Only a confirmed NON-whitespace change routes to the @templ.Raw fallback
-	// (port-mapping rule 6); a whitespace-only difference passes via N3b.
+	// Only a confirmed NON-whitespace change routes to the @templ.Raw fallback;
+	// a whitespace-only difference passes via N3b.
 	if corpus.N3bStrip(content) == corpus.N3bStrip(styleCSS) {
 		t.Logf("P3: whitespace-only difference in style content (reconciled by N3b): %q", content)
 		return
@@ -194,7 +194,7 @@ func TestP3StyleContentPassesThroughByteIdentical(t *testing.T) {
 func TestP4ComposedPageBoundaryBytes(t *testing.T) {
 	// The composed-page CSS-comment neighborhood: assets_styles → custom_styles →
 	// head_scripts, issued as consecutive @templ.Raw calls on separate lines. The
-	// fragments are literals here: E22 moved all composed-page chrome text out of the
+	// fragments are literals here: all composed-page chrome text moved out of the
 	// model tier into the templates, so the probe pins the bytes it exercises directly
 	// (byte-identical to the retired embedded copies it originally read).
 	link := `<link rel="stylesheet" href="/main.css" />`

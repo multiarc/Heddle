@@ -6,7 +6,7 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// The engine half of ledger E16: an integral or <c>decimal</c> divide/modulo over CONSTANT operands with a
+    /// The engine half of the same-fact-same-id rule: an integral or <c>decimal</c> divide/modulo over CONSTANT operands with a
     /// zero divisor is a positioned <c>HED1018</c> compile error — rendering it could only ever throw, so the
     /// failure moves to where C# puts <c>CS0020</c>. The boundaries are as much the test as the rule: floating
     /// point folds to Infinity and keeps rendering, and a RUNTIME divisor that happens to be zero still throws

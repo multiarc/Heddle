@@ -131,8 +131,8 @@ namespace Heddle.Tests
         /// <summary>
         /// The published pages, and only those. Two exclusions, both reasoned rather than overlooked:
         /// <list type="bullet">
-        /// <item>the <c>docs/spec</c>, <c>docs/plan</c>, <c>docs/generator_plan</c> and <c>docs/research</c> trees name
-        /// <b>internal</b> members deliberately — measured, 378 mentions and 72 of them internal or file names — so
+        /// <item>the <c>docs/spec</c> tree and the benchmark contract docs name
+        /// <b>internal</b> members deliberately — so
         /// "absent from the public golden" is not a defect there;</item>
         /// <item>the CHANGELOG names removed members <b>because</b> they were removed. Including it reddens on
         /// <c>PrecompiledFallbackEvent.Key</c>, which it is correct to name.</item>

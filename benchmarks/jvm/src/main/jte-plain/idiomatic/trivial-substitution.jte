@@ -1,6 +1,6 @@
 @param heddle.benchmarks.jvm.model.Models.SubstitutionModel m
 <%--
-  Idiomatic jte authoring (Q1.7/D7) — official doc citations:
+  Idiomatic jte authoring — official doc citations:
   https://jte.gg/syntax/ (params, output expressions, comments)
   https://jte.gg/pre-compiling/ (precompiled engine setup)
 --%>

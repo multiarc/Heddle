@@ -1,11 +1,11 @@
-{{## Idiomatic Scriban -- composed-page (phase 9; authoring standard D16).
+{{## Idiomatic Scriban -- composed-page.
 
      Patterns followed, from Scriban's own documentation:
        language          https://github.com/scriban/scriban/blob/master/doc/language.md
        builtins/html     https://github.com/scriban/scriban/blob/master/doc/builtins.md#html-functions
        runtime/includes  https://github.com/scriban/scriban/blob/master/doc/runtime.md
 
-     The capture-then-include layout idiom (ledger E20): the page captures its body into
+     The capture-then-include layout idiom: the page captures its body into
      body_content, then includes the layout, which emits the captured slot at its body
      position -- Scriban's documented equivalent of a live body slot. The slider body is the
      SAME as the controlled track's: the verifier's calibration pin (RemovedSegment = the

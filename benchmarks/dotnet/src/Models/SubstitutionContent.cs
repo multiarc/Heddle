@@ -1,4 +1,4 @@
-// The fixtures every engine renders this workload from (ledger E8).
+// The fixtures every engine renders this workload from.
 //
 // Load-bearing values: the golden corpus is Heddle's render OF THESE, so changing one changes the
 // oracle every ecosystem is gated against. Change them only with a corpus re-export in the same
@@ -13,7 +13,7 @@ using System.Collections.Generic;
 namespace Heddle.Benchmarks.Dotnet.Models
 {
     /// <summary>
-    /// Shared, engine-neutral model for the trivial-substitution workload (phase 5 WI4): one flat
+    /// Shared, engine-neutral model for the trivial-substitution workload: one flat
     /// card dominated by ten scalar member substitutions with minimal literal glue and no
     /// composition (no layout, components, or loop) — the shape where Heddle's lead is expected to
     /// narrow or invert. The values are plain ASCII (no character any engine encodes differently)

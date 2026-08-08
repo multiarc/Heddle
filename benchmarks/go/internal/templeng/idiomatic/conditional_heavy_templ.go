@@ -7,11 +7,11 @@
 
 // the loop. The note text is composed in the template as the literal "note " plus the Seq
 
-// substitution (E21 — the model carries data only).
+// substitution (the model carries data only).
 
 //
 
-// Doc citations (Q1.7):
+// Official templ documentation for the constructs used here:
 
 //   - https://templ.guide/syntax-and-usage/statements/  (if/else if/else, for)
 

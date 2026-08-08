@@ -5,8 +5,8 @@ import (
 	"testing"
 )
 
-// Spec: README Testing plan — N2–N4 equivalence vectors (contract six-character whitespace
-// set edge cases), N5 table + no-rescan case, N1 BOM survival.
+// N2–N4 equivalence vectors (contract six-character whitespace set edge cases), the N5
+// table plus its no-rescan case, and N1 BOM survival.
 
 func TestN2LineEndingVectors(t *testing.T) {
 	vectors := map[string]string{

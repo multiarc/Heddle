@@ -1,4 +1,4 @@
-//! Idiomatic-track verifier — the Rust port of parity-contract-v2 §Idiomatic-track gate,
+//! Idiomatic-track verifier — the Rust port of the parity contract's idiomatic-track gate,
 //! consuming the exported `<id>.verify.json` definitions. Matching semantics: the candidate
 //! is normalized (N1–N4, +N5 for encoded suites), then the N3b whitespace strip is applied
 //! to the output AND to every needle before matching; `values` are exact non-overlapping
@@ -9,7 +9,7 @@ use serde::Deserialize;
 
 use crate::normalize::{n3b_strip, normalize_for_suite};
 
-// ---- serde model of `<id>.verify.json` (golden-corpus.md §Idiomatic verifier definitions) ----
+// ---- serde model of `<id>.verify.json` -------------------------------------------------------
 
 #[derive(Deserialize)]
 pub struct VerifyDef {
@@ -34,7 +34,7 @@ pub struct RequiredCheck {
     pub min_count: usize,
 }
 
-// ---- failure surface (README §Diagnostics) ---------------------------------------------------
+// ---- failure surface -------------------------------------------------------------------------
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FailureKind {
@@ -175,7 +175,7 @@ mod tests {
     use super::*;
     use crate::corpus::{WORKLOADS, load_golden, load_verify};
 
-    // ---- corruption synthesis (golden-corpus.md §Verification rules) ------------------------
+    // ---- corruption synthesis ----------------------------------------------------------------
 
     /// 'removed row': delete the first occurrence of the workload's pinned segment.
     fn remove_first(golden: &str, segment: &str) -> String {
@@ -217,8 +217,8 @@ mod tests {
         golden.replacen(escaped, raw, 1)
     }
 
-    /// Per-workload calibration pins — the same rules the Phase 1 `verify-corpus` command
-    /// uses (`IdiomaticChecks.cs` corruption pins; golden-corpus.md §Verification).
+    /// Per-workload calibration pins — the same corruption rules the .NET `verify-corpus`
+    /// command uses (`IdiomaticChecks.cs`).
     struct Pins {
         workload: &'static str,
         removed_segment: &'static str,
@@ -234,7 +234,7 @@ mod tests {
     fn pins() -> [Pins; 8] {
         [
             Pins {
-                // E20 pins (VerifierDefinitions.ComposedPage): the removed segment is the
+                // Pins mirror `VerifierDefinitions.ComposedPage`: the removed segment is the
                 // slider fragment composed-page.heddle splices into the layout's body slot — an
                 // idiomatic page with an EMPTY body must fail; the swap crosses the
                 // wholesale-only and retail-only mega-menu anchors.
@@ -278,7 +278,7 @@ mod tests {
                 unescape: None,
             },
             Pins {
-                // E20 pins (VerifierDefinitions.FragmentHeavy): row 0's whole tile fragment
+                // Pins mirror `VerifierDefinitions.FragmentHeavy`: row 0's whole tile fragment
                 // is the removed-row corruption; rows 0 and 24 are both tiles (i % 4 == 0),
                 // so the swap crosses the dispatch cycle.
                 workload: "fragment-heavy",
@@ -302,7 +302,7 @@ mod tests {
                 removed_kind: FailureKind::Value,
                 swap_a: "tag-0&amp;&#39;0&#39;",
                 swap_b: "item &lt;2500&gt;",
-                // Phase 1 pin: the workload carries no script payload; its escaped->raw
+                // The workload carries no script payload; its escaped->raw
                 // corruption is the comment's angle text (forbidden: `<angle>`).
                 unescape: Some(("&lt;angle&gt;", "<angle>")),
             },

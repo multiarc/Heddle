@@ -1,4 +1,4 @@
-{{## Idiomatic Scriban -- composed-page secondary retail menu chrome fragment (phase 9; authoring standard D16).
+{{## Idiomatic Scriban -- composed-page secondary retail menu chrome fragment.
 
      Patterns followed, from Scriban's own documentation:
        language          https://github.com/scriban/scriban/blob/master/doc/language.md

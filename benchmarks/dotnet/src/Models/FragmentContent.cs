@@ -1,4 +1,4 @@
-// The fixtures every engine renders this workload from (ledger E20; supersedes the E8 single-tile
+// The fixtures every engine renders this workload from (supersedes the original single-tile
 // shape).
 //
 // Load-bearing values: the golden corpus is Heddle's render OF THESE, so changing one changes the
@@ -15,8 +15,8 @@ using DotLiquid;
 namespace Heddle.Benchmarks.Dotnet.Models
 {
     /// <summary>
-    /// Shared, engine-neutral model for the fragment-heavy workload (cross-stack phase 1 WI1,
-    /// redesigned under ledger E20): 48 rows of FOUR distinct fragment kinds
+    /// Shared, engine-neutral model for the fragment-heavy workload: 48 rows of FOUR distinct
+    /// fragment kinds
     /// (<c>tile</c>/<c>card</c>/<c>media</c>/<c>stat</c>, 12 each), dispatched per row over the
     /// precomputed <c>IsTile</c>/<c>IsCard</c>/<c>IsMedia</c>/<c>IsStat</c> booleans (guaranteed
     /// common-denominator dispatch — no engine compares strings), with one level of nesting: the

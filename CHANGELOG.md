@@ -10,9 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Additive at the language and rendering level — **no rendered byte changes on either tier** — with one
 declared **binary** break in the precompiled-manifest contract, the removal of assembly auto-loading,
 and three build-time behaviours that begin to occur because they were never wired. **2.1 is a ratified
-breaking window**, scoped to binary changes and minor API changes or additions; the as-shipped record
-is in [records.md](docs/spec/records.md#the-21-breaking-window--as-shipped-record) and the per-item
-judgements that predate the window's ratification remain in
+breaking window**, scoped to binary changes and minor API changes or additions; the running window
+record is in
+[breaking-windows.md](docs/spec/common/breaking-windows.md#current-window--21-open-as-implemented-pending-release)
+and the per-item judgements that predate the window's ratification remain in
 [breaking-windows.md](docs/spec/common/breaking-windows.md#explicit-not-window-gated-rulings).
 
 ### Changed (breaking)

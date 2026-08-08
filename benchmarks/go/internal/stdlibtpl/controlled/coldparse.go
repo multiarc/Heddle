@@ -1,5 +1,5 @@
-// Cold-parse entry points for the per-ecosystem sidebar (harness-and-measurement.md
-// §Cold parse/compile sidebar, Q1.3): parse the full controlled workload template set from
+// Cold-parse entry points for the per-ecosystem, non-comparable cold-cost sidebar:
+// parse the full controlled workload template set from
 // source, per surface, the way a process would on first load. Scope caveat: html/template
 // runs its contextual escaping analysis lazily at the first Execute, not at Parse, so both
 // rows are labeled "cold parse only" (not parse + escape-compile). templ has no runtime

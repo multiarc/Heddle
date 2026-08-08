@@ -1,17 +1,15 @@
-// `npm run gate` entry (Phase 4 WI3; spec: harness-and-run.md §Harness layout / README WI3):
-// runs both gates over all 32 cells — 8 workloads × 2 engines (handlebars, eta) × 2 tracks
-// (controlled byte gate + security floor, idiomatic verifier) — printing one [PASS]/[FAIL]
-// line per cell and exiting non-zero unless every cell passes.
+// `npm run gate` entry: runs both gates over all 32 cells — 8 workloads × 2 engines
+// (handlebars, eta) × 2 tracks (controlled byte gate + security floor, idiomatic verifier) —
+// printing one [PASS]/[FAIL] line per cell and exiting non-zero unless every cell passes.
 //
-// Engine render tables arrive with WI4 (Handlebars) and WI5 (Eta) via src/engines/index.mjs,
-// which must export `tracks[track][engine][workloadId] -> () => string`. Until then, cells
-// without a registered renderer are reported cleanly as failures (the 32-PASS bar is WI4/WI5's
-// Done-when).
+// Engine render tables come from src/engines/index.mjs, which must export
+// `tracks[track][engine][workloadId] -> () => string`. Cells without a registered renderer
+// are reported cleanly as failures.
 import { WORKLOADS, loadVerifyDefinition } from "./corpus.mjs";
 import { assertControlledCell } from "./controlled.mjs";
 import { verify } from "./verifier.mjs";
 
-// Optional filters (dev iteration only; the WI4/WI5 bar is the unfiltered 32-PASS run):
+// Optional filters (dev iteration only; the acceptance bar is the unfiltered 32-PASS run):
 //   node src/gate/run-all.mjs [--engine <name>] [--workload <id>] [--track <name>]
 function argValue(flag) {
   const i = process.argv.indexOf(flag);
@@ -30,7 +28,7 @@ try {
   ({ tracks } = await import("../engines/index.mjs"));
 } catch (error) {
   if (error?.code !== "ERR_MODULE_NOT_FOUND") throw error;
-  console.log("gate: src/engines/index.mjs not present yet (WI4/WI5) — all cells unregistered.");
+  console.log("gate: src/engines/index.mjs not present — all cells unregistered.");
 }
 
 let pass = 0;
@@ -42,7 +40,7 @@ for (const track of TRACKS) {
       const cell = `${engine} ${id} [${track}]`;
       const render = tracks?.[track]?.[engine]?.[id];
       if (typeof render !== "function") {
-        console.log(`[FAIL] ${cell}: no renderer registered (WI4/WI5 pending)`);
+        console.log(`[FAIL] ${cell}: no renderer registered`);
         fail++;
         continue;
       }

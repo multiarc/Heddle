@@ -13,7 +13,7 @@ namespace Heddle.Benchmarks.Dotnet.Engines
     /// <summary>
     /// Heddle's BUILD-TIME compiled backend: the same three sinks reached through a tree the
     /// source generator emitted at compile time rather than one the runtime built from the template
-    /// text. Three of the six render techniques (ledger E10).
+    /// text. Three of the six render techniques.
     ///
     /// <para><b>Coverage is discovered, never assumed.</b> The generator "simply leaves
     /// un-precompiled" any template its emitter does not yet cover — no source, no manifest entry,
@@ -25,9 +25,9 @@ namespace Heddle.Benchmarks.Dotnet.Engines
     ///
     /// <para><b>All eight workloads are covered</b>, through TWO manifests: the six raw workloads
     /// from this assembly (compiled under the Text profile), and the two ENCODED workloads from
-    /// the Html-profile satellite <c>precompiled-html/</c> (ledger E25) — HeddleOutputProfile is
+    /// the Html-profile satellite <c>precompiled-html/</c> — HeddleOutputProfile is
     /// compilation-wide, so the profile split is an assembly split. The two historical
-    /// composed-page refusals are gone (no embedded C#; the E20 layout-as-definition shape
+    /// composed-page refusals are gone (no embedded C#; the layout-as-definition shape
     /// splices the body through the documented <c>@out()</c> slot), and the encoded pair's last
     /// refusal — <c>@attr</c>'s compile-time hook — fell when the emitter pinned the bodiless
     /// step-back encoders.</para>
