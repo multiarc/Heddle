@@ -583,6 +583,29 @@ namespace Heddle.Generator.IntegrationTests
                     $"Expected no generated entry class for '{key}' (degrade), but one exists.");
         }
 
+        /// <summary>The declared build-time degrade with the refusal pinned: everything
+        /// <see cref="ExpectDegrade(GenResult,string)"/> asserts, plus that the HED7031 warning reported for the key
+        /// carries <paramref name="reason"/> (ordinal substring of the diagnostic's message). Without the reason a
+        /// degrade test proves only that the template degraded — any later refusal firing earlier would keep it
+        /// green while the construct under test silently started degrading for something else.</summary>
+        public static void ExpectDegrade(GenResult gen, string key, string reason)
+        {
+            ExpectDegrade(gen, key);
+            var messages = gen.Diagnostics
+                .Where(d => d.Id == HeddleDiagnosticIds.BuildTemplateNotPrecompiled &&
+                            d.Location.GetLineSpan().Path == key)
+                .Select(d => d.GetMessage())
+                .ToList();
+            if (messages.Count == 0)
+                throw new InvalidOperationException(
+                    $"Expected a HED7031 warning for '{key}', but none was reported (a HED7014 marker degrade " +
+                    "carries no HED7031 — pin those with the two-argument overload).");
+            if (!messages.Any(m => m.IndexOf(reason, StringComparison.Ordinal) >= 0))
+                throw new InvalidOperationException(
+                    $"Expected the HED7031 reason for '{key}' to contain \"{reason}\", but it reported: " +
+                    string.Join(" | ", messages));
+        }
+
         internal enum ManifestState
         {
             /// <summary>No manifest entry at all — the whole template degraded to the dynamic tier.</summary>

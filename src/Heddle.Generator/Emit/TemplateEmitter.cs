@@ -1699,7 +1699,7 @@ namespace Heddle.Generator.Emit
             // Asked only under FullCSharp: in any other mode the expression is not emitted at all.
             if (cp.CSharpExpression != null)
                 return _config.ExpressionMode == Heddle.Data.ExpressionMode.FullCSharp
-                    ? _csharpTyper.TypeOf(cp.CSharpExpression, model, _usings)
+                    ? _csharpTyper.TypeOf(cp.CSharpExpression, model, _modelSymbol, _usings)
                     : null;
 
             // A chain call-parameter's value is the chain's render type, not the producer's own type: the engine
@@ -3269,7 +3269,7 @@ namespace Heddle.Generator.Emit
         }
 
         /// <summary>FullCSharp tier: C# expression pasted verbatim with local <c>model</c> bound (same name as runtime).
-        /// Only under FullCSharp mode; requires typed model. Chained/root references degrade (types not reproducible).</summary>
+        /// Only under FullCSharp mode; requires typed model. Chained/root references degrade (not passed at the call site).</summary>
         private bool BuildCSharpExpr(string csharp, BodyContext bctx, out string paramExpr, out bool usesCSharpModel,
             out string reason)
         {
@@ -3290,11 +3290,11 @@ namespace Heddle.Generator.Emit
                 return false;
             }
 
-            // References to the chained/root parameters need their runtime static types, which the emitter cannot
-            // reproduce here — fall back rather than paste an untyped/ill-typed reference. Which identifiers are
+            // References to the chained/root parameters need values the emitted call site does not pass — fall back
+            // rather than paste a reference that binds to nothing in the generated file. Which identifiers are
             // those two parameters is the binder's answer, not a word search's: a lambda parameter of the same name
             // shadows them, a member can be called either, and a string literal is not an identifier at all.
-            if (_csharpTyper.ReferencesChainedOrRoot(csharp, bctx.ModelSymbol, _usings))
+            if (_csharpTyper.ReferencesChainedOrRoot(csharp, bctx.ModelSymbol, _modelSymbol, _usings))
             {
                 reason = "embedded C# references chained/root";
                 return false;
@@ -3318,7 +3318,7 @@ namespace Heddle.Generator.Emit
             // count, a `Where` with no `@using System.Linq` and an `[Obsolete(error: true)]` reference were all
             // pasted straight into the generated file, where they became the consumer's build errors against a
             // `.heddle` file with no Heddle diagnostic on them.
-            if (!_csharpTyper.Compiles(csharp, bctx.ModelSymbol, _usings))
+            if (!_csharpTyper.Compiles(csharp, bctx.ModelSymbol, _modelSymbol, _usings))
             {
                 reason = "embedded C# the engine's compiler rejects";
                 return false;
