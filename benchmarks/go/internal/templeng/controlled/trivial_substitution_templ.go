@@ -9,7 +9,7 @@
 
 // probe, which passed the full byte gate.
 
-package templeng
+package controlled
 
 //lint:file-ignore SA4006 This context is only used if a nested component is present.
 
@@ -46,7 +46,7 @@ func trivialSubstitution(m model.SubstitutionModel) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(m.Title)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/trivial_substitution.templ`, Line: 10, Col: 23}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/controlled/trivial_substitution.templ`, Line: 10, Col: 23}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -59,7 +59,7 @@ func trivialSubstitution(m model.SubstitutionModel) templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(m.Sku)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/trivial_substitution.templ`, Line: 10, Col: 52}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/controlled/trivial_substitution.templ`, Line: 10, Col: 52}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -72,7 +72,7 @@ func trivialSubstitution(m model.SubstitutionModel) templ.Component {
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(m.Price)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/trivial_substitution.templ`, Line: 10, Col: 84}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/controlled/trivial_substitution.templ`, Line: 10, Col: 84}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
@@ -85,7 +85,7 @@ func trivialSubstitution(m model.SubstitutionModel) templ.Component {
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(m.Brand)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/trivial_substitution.templ`, Line: 10, Col: 116}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/controlled/trivial_substitution.templ`, Line: 10, Col: 116}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
@@ -98,7 +98,7 @@ func trivialSubstitution(m model.SubstitutionModel) templ.Component {
 		var templ_7745c5c3_Var6 string
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(m.Category)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/trivial_substitution.templ`, Line: 10, Col: 149}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/controlled/trivial_substitution.templ`, Line: 10, Col: 149}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 		if templ_7745c5c3_Err != nil {
@@ -111,7 +111,7 @@ func trivialSubstitution(m model.SubstitutionModel) templ.Component {
 		var templ_7745c5c3_Var7 string
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(m.Availability)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/trivial_substitution.templ`, Line: 10, Col: 188}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/controlled/trivial_substitution.templ`, Line: 10, Col: 188}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 		if templ_7745c5c3_Err != nil {
@@ -124,7 +124,7 @@ func trivialSubstitution(m model.SubstitutionModel) templ.Component {
 		var templ_7745c5c3_Var8 templ.SafeURL
 		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinURLErrs(m.Url)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/trivial_substitution.templ`, Line: 10, Col: 222}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/controlled/trivial_substitution.templ`, Line: 10, Col: 222}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 		if templ_7745c5c3_Err != nil {
@@ -137,7 +137,7 @@ func trivialSubstitution(m model.SubstitutionModel) templ.Component {
 		var templ_7745c5c3_Var9 string
 		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.ResolveAttributeValue(m.ImageUrl)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/trivial_substitution.templ`, Line: 10, Col: 246}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/controlled/trivial_substitution.templ`, Line: 10, Col: 246}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var9)
 		if templ_7745c5c3_Err != nil {
@@ -150,7 +150,7 @@ func trivialSubstitution(m model.SubstitutionModel) templ.Component {
 		var templ_7745c5c3_Var10 string
 		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(m.Summary)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/trivial_substitution.templ`, Line: 10, Col: 279}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/controlled/trivial_substitution.templ`, Line: 10, Col: 279}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 		if templ_7745c5c3_Err != nil {
@@ -163,7 +163,7 @@ func trivialSubstitution(m model.SubstitutionModel) templ.Component {
 		var templ_7745c5c3_Var11 string
 		templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(m.Rating)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/trivial_substitution.templ`, Line: 10, Col: 313}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/controlled/trivial_substitution.templ`, Line: 10, Col: 313}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 		if templ_7745c5c3_Err != nil {

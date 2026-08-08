@@ -15,8 +15,9 @@ benchmarks/go/                       ← D2: new top-level benchmarks/<ecosystem
   EXCLUSIONS.md                      ← created only on a confirmed non-whitespace exclusion (templ-feasibility.md)
   internal/model/                    ← pinned models (port-mapping.md), incl. composed.go fragments
   internal/corpus/                   ← corpus loader, N1–N5 pipeline, byte gate, verifier, alphabet assert
-  internal/stdlibtpl/                ← text/template + html/template sources & renderers, both tracks
-  internal/templeng/                 ← controlled .templ + generated *_templ.go (committed)
+  internal/stdlibtpl/controlled/     ← text/template + html/template controlled sources & renderers
+  internal/stdlibtpl/idiomatic/      ← stdlib idiomatic ports (same surface split)
+  internal/templeng/controlled/      ← controlled .templ + generated *_templ.go (committed)
   internal/templeng/idiomatic/       ← idiomatic .templ + generated (committed)
   internal/spike/                    ← S1 probes + attempts/ (evidence, excluded from timing)
   internal/qtpl/                     ← created only if the quicktemplate stretch triggers (D10)

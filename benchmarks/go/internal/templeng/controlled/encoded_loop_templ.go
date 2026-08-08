@@ -9,7 +9,7 @@
 
 // sit inside the N5 table (S1 probe P2 pinned the exact bytes).
 
-package templeng
+package controlled
 
 //lint:file-ignore SA4006 This context is only used if a nested component is present.
 
@@ -51,7 +51,7 @@ func encodedLoop(m model.EncodedLoopModel) templ.Component {
 			var templ_7745c5c3_Var2 string
 			templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.ResolveAttributeValue(r.Tag)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/encoded_loop.templ`, Line: 12, Col: 27}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/controlled/encoded_loop.templ`, Line: 12, Col: 27}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var2)
 			if templ_7745c5c3_Err != nil {
@@ -64,7 +64,7 @@ func encodedLoop(m model.EncodedLoopModel) templ.Component {
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(r.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/encoded_loop.templ`, Line: 12, Col: 38}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/controlled/encoded_loop.templ`, Line: 12, Col: 38}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
@@ -77,7 +77,7 @@ func encodedLoop(m model.EncodedLoopModel) templ.Component {
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(r.Comment)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/encoded_loop.templ`, Line: 12, Col: 60}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/controlled/encoded_loop.templ`, Line: 12, Col: 60}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {

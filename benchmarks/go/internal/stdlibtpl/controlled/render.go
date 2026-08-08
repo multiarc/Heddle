@@ -2,7 +2,7 @@
 // template into a reused per-cell bytes.Buffer, Reset() at the top of each call and
 // pre-grown once to the workload's output size so neither growth policy nor the reset is a
 // per-engine variable (harness-and-measurement.md §Benchmark shape), returning buf.String().
-package stdlibtpl
+package controlled
 
 import (
 	"bytes"
@@ -40,7 +40,7 @@ var (
 func render(t executer, buf *bytes.Buffer, data any) string {
 	buf.Reset()
 	if err := t.Execute(buf, data); err != nil {
-		panic("stdlibtpl: render failed: " + err.Error())
+		panic("stdlibtpl/controlled: render failed: " + err.Error())
 	}
 	return buf.String()
 }

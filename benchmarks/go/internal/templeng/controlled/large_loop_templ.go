@@ -11,7 +11,7 @@
 
 // strconv.Itoa on the raw alphabet.
 
-package templeng
+package controlled
 
 //lint:file-ignore SA4006 This context is only used if a nested component is present.
 
@@ -49,7 +49,7 @@ func largeLoop(m model.LoopModel) templ.Component {
 			var templ_7745c5c3_Var2 string
 			templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(r.Value)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/large_loop.templ`, Line: 12, Col: 23}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/controlled/large_loop.templ`, Line: 12, Col: 23}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 			if templ_7745c5c3_Err != nil {
@@ -62,7 +62,7 @@ func largeLoop(m model.LoopModel) templ.Component {
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(r.Value)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/large_loop.templ`, Line: 12, Col: 43}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/controlled/large_loop.templ`, Line: 12, Col: 43}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {

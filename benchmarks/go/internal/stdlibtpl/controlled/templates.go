@@ -1,44 +1,37 @@
-// Idiomatic-track ports for the stdlib surfaces: text/template on the six raw workloads,
-// html/template on the two encoded workloads (README D1 / Q6.1 — same surface split as the
-// controlled track). Authoring standard (Q1.7/D16): naturally formatted multi-line
-// templates with indentation, {{- -}} trim markers where the Go docs use them, and template
-// composition via the {{define}}/{{template}}/{{block}} idiom — the way the official docs
-// teach the engine, not the byte-exact controlled shape. These sources may diverge freely
-// in whitespace and structure; they are gated by the Phase 1 idiomatic verifier
-// (<id>.verify.json semantics), not the byte gate.
+// Package controlled hosts the stdlib-engine controlled ports: text/template for the six
+// raw workloads and html/template for the two encoded workloads (README D1 / Q6.1 — both
+// surfaces of the one credibility-pick stdlib engine; benchmark ids stdlib-text /
+// stdlib-html). Template sources are Go raw string literals transcribed from the pinned
+// Heddle/twin shapes with {{…}} actions in place of @(…) substitutions; whitespace-only
+// layout differences are erased by the contract's N3b comparison strip. Every template is
+// parsed once in a package var block (the cached-template render path); renders execute
+// into a reused pre-grown buffer (render.go).
 //
-// Doc citations (Q1.7 — official documentation patterns followed here):
-//   - https://pkg.go.dev/text/template   (Actions, Text and spaces / trim markers,
-//     Nested template definitions, the {{block}} shorthand for define-plus-invoke)
-//   - https://pkg.go.dev/html/template   (same template API; contextual auto-escaping)
-//
-// Spec: docs/spec/cross-stack-benchmarks/phase-6-go/port-mapping.md
-// §Idiomatic track — both engines, all eight workloads.
-package stdlibtpl
+// Normative texts: docs/spec/cross-stack-benchmarks/phase-6-go/port-mapping.md
+// §Controlled track — stdlib surfaces (workload shapes from Phase 1 workloads.md).
+package controlled
 
 import (
 	htmltemplate "html/template"
 	texttemplate "text/template"
-
-	"heddle.dev/benchmarks/go/internal/model"
 )
 
 // ---- workload 1 — composed-page (text/template) ----------------------------------------------
 //
-// Layout composition with the engine's own documented mechanism (text/template §Nested
-// template definitions + the {{block}} action): the layout template carries the full
-// literal page chrome (E22 — all display text lives in the template tier) with a live
-// {{block "body" .}} slot; the page's parse adds a non-empty {{define "body"}} that
-// overrides the block's empty default in the associated set. The chrome fragments are
-// per-fragment {{define}}s and the structured nav renders through nested definitions
-// (menu → column → section → link), branching on the precomputed .HasDropdown /
-// .TitleLinked booleans. The slider body is the SAME as the controlled track's — the
-// verifier's removed-segment calibration pin is the slider, so an empty body fails,
-// deliberately.
+// The E20/E22 full-page layout workload, composed with the stdlib's native mechanism
+// (workloads.md §Native-layout mandate, Go stdlib row): the layout template holds the FULL
+// literal chrome with a live {{block "body" .}} slot; the page's parse in the same
+// associated set adds a non-empty {{define "body"}} that overrides the block's empty
+// default. The inert chrome fragments are per-fragment {{define}}s mirroring
+// chrome-fragments.heddle (E22 — all literal page text lives in the template tier; the
+// model carries ONLY the structured nav). text/template = no escaping, preserving the raw
+// discipline.
 
-// idiomaticComposedChromeSrc is the definition-only chrome-fragment library (E22):
-// parsing it renders nothing; the layout calls each fragment at its composition point.
-const idiomaticComposedChromeSrc = `{{define "alert_top"}}<div class="top-banner" style=""><a href="/content/shipping-information#Holidays"><img src="/files/images/sitewide-alerts/xmas-shipping-alert-1.jpg" alt="holiday shipping"/></a></div>{{end}}
+// composedChromeSrc is the definition-only chrome-fragment library (E22): the alert
+// banner, the two secondary menus, the pinned-empty alert-below slot, and the six fixed
+// asset/script snippets, transcribed from chrome-fragments.heddle. Parsing it renders
+// nothing.
+const composedChromeSrc = `{{define "alert_top"}}<div class="top-banner" style=""><a href="/content/shipping-information#Holidays"><img src="/files/images/sitewide-alerts/xmas-shipping-alert-1.jpg" alt="holiday shipping"/></a></div>{{end}}
 {{define "secondary_wholesale_menu"}}				<ul class="hide">
                 <li>
                 <a href="#">New</a>
@@ -301,60 +294,22 @@ const idiomaticComposedChromeSrc = `{{define "alert_top"}}<div class="top-banner
 {{define "body_scripts"}}<script src="/body.js"></script>{{end}}
 {{define "body_end_scripts"}}<script src="/bodyend.js"></script>{{end}}`
 
-// idiomaticComposedLayoutSrc is the definition-only layout parse: overridable section
-// defaults, the nested nav definitions, and the "layout" definition holding the full
-// literal chrome with the {{block "body" .}} slot.
-const idiomaticComposedLayoutSrc = `{{define "meta"}}<title>Title</title>{{end}}
+// composedLayoutSrc is the definition-only layout parse: the four overridable section
+// defaults, the four nav fragment definitions (nested per workloads.md — menu → column →
+// section → link, dispatching on the precomputed .TitleLinked/.HasDropdown booleans), and
+// the "layout" definition holding the full literal chrome with {{block "body" .}} at the
+// body-slot position and {{range .Nav.Menus}}/{{range .Nav.FooterColumns}} at the nav
+// call sites. Parsing it renders nothing.
+const composedLayoutSrc = `{{define "meta"}}<title>Title</title>{{end}}
 {{define "socialmeta"}}<meta property="og:image" content="/files/catalog/img.jpg">
         <meta itemprop="image" content="/files/catalog/img.jpg"/>
         <link rel="image_src" href="/files/catalog/img.jpg"/>{{end}}
 {{define "page_scripts"}}{{end}}
 {{define "endpage_scripts"}}{{end}}
-
 {{define "nav_link"}}<li class="nav-link"><a href="{{.Href}}">{{.Label}}</a></li>{{end}}
-
-{{define "nav_section"}}
-<div class="nav-section">
-  {{- if .TitleLinked}}
-  <span class="nav-title"><a href="{{.Href}}">{{.Title}}</a></span>
-  {{- else}}
-  <span class="nav-title">{{.Title}}</span>
-  {{- end}}
-  <ul>
-    {{- range .Links}}
-    {{template "nav_link" .}}
-    {{- end}}
-  </ul>
-</div>
-{{- end}}
-
-{{define "nav_column"}}
-<div class="nav-column">
-  {{- range .Sections}}
-  {{template "nav_section" .}}
-  {{- end}}
-</div>
-{{- end}}
-
-{{define "mega_menu"}}
-<div class="top-menu-wrapper">
-  <ul class="top-menu">
-    {{- range .Tabs}}
-    <li class="{{.Css}}">
-      <a href="{{.Href}}" class="drop">{{.Label}}</a>
-      {{- if .HasDropdown}}
-      <div class="{{.DropdownCss}}">
-        {{- range .Columns}}
-        {{template "nav_column" .}}
-        {{- end}}
-      </div>
-      {{- end}}
-    </li>
-    {{- end}}
-  </ul>
-</div>
-{{- end}}
-
+{{define "nav_section"}}<div class="nav-section">{{if .TitleLinked}}<span class="nav-title"><a href="{{.Href}}">{{.Title}}</a></span>{{else}}<span class="nav-title">{{.Title}}</span>{{end}}<ul>{{range .Links}}{{template "nav_link" .}}{{end}}</ul></div>{{end}}
+{{define "nav_column"}}<div class="nav-column">{{range .Sections}}{{template "nav_section" .}}{{end}}</div>{{end}}
+{{define "mega_menu"}}<div class="top-menu-wrapper"><ul class="top-menu">{{range .Tabs}}<li class="{{.Css}}"><a href="{{.Href}}" class="drop">{{.Label}}</a>{{if .HasDropdown}}<div class="{{.DropdownCss}}">{{range .Columns}}{{template "nav_column" .}}{{end}}</div>{{end}}</li>{{end}}</ul></div>{{end}}
 {{define "layout"}}<!DOCTYPE html>
 <!--[if lt IE 9]>
     <html class="no-js lt-ie9" lang="en">
@@ -482,10 +437,11 @@ const idiomaticComposedLayoutSrc = `{{define "meta"}}<title>Title</title>{{end}}
 </body>
 </html>{{end}}`
 
-// idiomaticComposedHomeSrc is the page: the body definition (the slider) overriding the
-// layout's empty block default, then the root action rendering the layout.
-const idiomaticComposedHomeSrc = `{{define "body"}}
-<div class="slider-wrapper theme-default">
+// composedHomeSrc is the page parse: {{define "body"}} carries the slider markup (the
+// verifier's removed-segment calibration pin — an empty body fails) and, being a later
+// non-empty definition in the associated set, overrides the layout's empty block default;
+// the root action then renders the layout.
+const composedHomeSrc = `{{define "body"}}<div class="slider-wrapper theme-default">
             <div id="slider" class="nivoSlider">
             </div>
             <div class="home-content">
@@ -495,273 +451,98 @@ const idiomaticComposedHomeSrc = `{{define "body"}}
                     </a>
                 </div>
             </div>
-        </div>
-{{end}}
-{{- template "layout" .}}`
+        </div>{{end}}{{template "layout" .}}`
 
 // ---- workload 2 — trivial-substitution (text/template) ---------------------------------------
 
-const idiomaticTrivialSubstitutionSrc = `<article>
-  <h1>{{.Title}}</h1>
-  <p class="sku">{{.Sku}}</p>
-  <p class="price">{{.Price}}</p>
-  <p class="brand">{{.Brand}}</p>
-  <p class="cat">{{.Category}}</p>
-  <p class="avail">{{.Availability}}</p>
-  <a class="link" href="{{.Url}}"><img src="{{.ImageUrl}}"></a>
-  <p class="sum">{{.Summary}}</p>
-  <p class="rating">{{.Rating}}</p>
-</article>
-`
+// Dense one-line <article> card, ten {{.Member}} substitutions in pinned order, including
+// the two attribute positions.
+const trivialSubstitutionSrc = `<article><h1>{{.Title}}</h1><p class="sku">{{.Sku}}</p><p class="price">{{.Price}}</p><p class="brand">{{.Brand}}</p><p class="cat">{{.Category}}</p><p class="avail">{{.Availability}}</p><a class="link" href="{{.Url}}"><img src="{{.ImageUrl}}"></a><p class="sum">{{.Summary}}</p><p class="rating">{{.Rating}}</p></article>`
 
 // ---- workload 3 — large-loop (text/template) -------------------------------------------------
 
-// Trim markers around the range body, the shape the text/template docs' "Text and spaces"
-// section teaches for loop output; the display name is composed as the literal row- + the
-// value substitution (E21).
-const idiomaticLargeLoopSrc = `{{range .Items -}}
-<tr>
-  <td>row-{{.Value}}</td>
-  <td>{{.Value}}</td>
-</tr>
-{{end -}}
-`
+// The display name row-{i} is composed by the template as the literal `row-` + the value
+// substitution (E21 — the model carries only the int). text/template renders ints via fmt
+// (%v), identical bytes to strconv.Itoa.
+const largeLoopSrc = `{{range .Items}}<tr><td>row-{{.Value}}</td><td>{{.Value}}</td></tr>{{end}}`
 
 // ---- workload 4 — mixed-page (text/template) -------------------------------------------------
 
-// Single-file by rule (E20 — layout composition is composed-page's dimension). The display
-// SKU is composed as MX-{{.SkuNumber}} and the blurb sentence lives in the template around
-// {{.Batch}} (E21).
-const idiomaticMixedPageSrc = `<!DOCTYPE html>
+// The pinned skeleton transcribed line-for-line (line breaks between sibling elements are
+// N2/N3-erased; the <style> line and all text-bearing elements stay dense); the footer
+// keeps its single literal spaces. The display SKU is composed as MX-{{.SkuNumber}} and
+// the blurb sentence lives in the template around {{.Batch}} (E21).
+const mixedPageSrc = `<!DOCTYPE html>
 <html>
-  <head>
-    <meta charset="utf-8">
-    <title>{{.PageTitle}}</title>
-    <style>body{font:16px/1.5 system-ui;margin:0;color:#222}header{background:#1a2b3c;color:#fff;padding:12px 24px}nav a{color:#9cf;margin-right:12px;text-decoration:none}main{max-width:960px;margin:0 auto;padding:24px}.hero{background:#f4f6f8;padding:32px;border-radius:8px}.banner{background:#fff4d6;padding:8px 16px;border-radius:4px}.grid{display:flex;flex-wrap:wrap;gap:16px}.card{border:1px solid #ddd;border-radius:6px;padding:16px;width:280px}.card h3{margin:0 0 8px}.price{font-weight:700}.sale{color:#b00020;font-weight:700}footer{border-top:1px solid #ddd;margin-top:32px;padding:16px 24px;color:#666}</style>
-  </head>
-  <body>
-    <header>
-      <h1>{{.StoreName}}</h1>
-      <nav>
-        <a href="/">Home</a>
-        <a href="/catalog">Catalog</a>
-        <a href="/deals">Deals</a>
-        <a href="/about">About</a>
-        <a href="/support">Support</a>
-        <a href="/account">Account</a>
-      </nav>
-    </header>
-    <main>
-      {{if .ShowBanner}}<div class="banner">{{.BannerText}}</div>{{end}}
-      <section class="hero">
-        <h2>{{.HeroHeading}}</h2>
-        <p>{{.HeroTagline}}</p>
-      </section>
-      <section class="grid">
-        {{range .Products -}}
-        <article class="card">
-          <h3>{{.Name}}</h3>
-          <p class="sku">MX-{{.SkuNumber}}</p>
-          <p class="price">{{.Price}}</p>
-          {{if .OnSale}}<p class="sale">On sale</p>{{end}}
-          <p class="blurb">A dependable workshop staple from batch {{.Batch}}, checked for daily use and backed by our lifetime guarantee.</p>
-        </article>
-        {{end -}}
-      </section>
-      {{if .ShowDebugPanel}}<pre class="debug">debug</pre>{{end}}
-    </main>
-    <footer>
-      <p>{{.FooterNote}}</p>
-      <p>{{.StoreName}} {{.Year}} {{.SupportEmail}}</p>
-    </footer>
-  </body>
-</html>
-`
+<head>
+<meta charset="utf-8">
+<title>{{.PageTitle}}</title>
+<style>body{font:16px/1.5 system-ui;margin:0;color:#222}header{background:#1a2b3c;color:#fff;padding:12px 24px}nav a{color:#9cf;margin-right:12px;text-decoration:none}main{max-width:960px;margin:0 auto;padding:24px}.hero{background:#f4f6f8;padding:32px;border-radius:8px}.banner{background:#fff4d6;padding:8px 16px;border-radius:4px}.grid{display:flex;flex-wrap:wrap;gap:16px}.card{border:1px solid #ddd;border-radius:6px;padding:16px;width:280px}.card h3{margin:0 0 8px}.price{font-weight:700}.sale{color:#b00020;font-weight:700}footer{border-top:1px solid #ddd;margin-top:32px;padding:16px 24px;color:#666}</style>
+</head>
+<body>
+<header>
+<h1>{{.StoreName}}</h1>
+<nav><a href="/">Home</a><a href="/catalog">Catalog</a><a href="/deals">Deals</a><a href="/about">About</a><a href="/support">Support</a><a href="/account">Account</a></nav>
+</header>
+<main>
+{{if .ShowBanner}}<div class="banner">{{.BannerText}}</div>{{end}}
+<section class="hero">
+<h2>{{.HeroHeading}}</h2>
+<p>{{.HeroTagline}}</p>
+</section>
+<section class="grid">
+{{range .Products}}<article class="card"><h3>{{.Name}}</h3><p class="sku">MX-{{.SkuNumber}}</p><p class="price">{{.Price}}</p>{{if .OnSale}}<p class="sale">On sale</p>{{end}}<p class="blurb">A dependable workshop staple from batch {{.Batch}}, checked for daily use and backed by our lifetime guarantee.</p></article>{{end}}
+</section>
+{{if .ShowDebugPanel}}<pre class="debug">debug</pre>{{end}}
+</main>
+<footer>
+<p>{{.FooterNote}}</p>
+<p>{{.StoreName}} {{.Year}} {{.SupportEmail}}</p>
+</footer>
+</body>
+</html>`
 
 // ---- workload 5 — conditional-heavy (text/template) ------------------------------------------
 
-// The note text is composed as the literal note + {{.Seq}} (E21).
-const idiomaticConditionalHeavySrc = `<ul class="matrix">
-  {{range .Rows -}}
-  <li>
-    {{if .IsBronze -}}
-    <span class="t0">bronze</span>
-    {{- else if .IsSilver -}}
-    <span class="t1">silver</span>
-    {{- else if .IsGold -}}
-    <span class="t2">gold</span>
-    {{- else -}}
-    <span class="t3">platinum</span>
-    {{- end}}
-    <em>{{.Name}}</em>
-    {{if .HasNote}}<small>note {{.Seq}}</small>{{end}}
-    {{if .IsActive}}<b>active</b>{{end}}
-  </li>
-  {{end -}}
-</ul>
-`
+// The pinned single-line <ul class="matrix"> body: four-way chain per row plus the two
+// toggles. The note text is composed as the literal `note ` + {{.Seq}} (E21).
+const conditionalHeavySrc = `<ul class="matrix">{{range .Rows}}<li>{{if .IsBronze}}<span class="t0">bronze</span>{{else if .IsSilver}}<span class="t1">silver</span>{{else if .IsGold}}<span class="t2">gold</span>{{else}}<span class="t3">platinum</span>{{end}}<em>{{.Name}}</em>{{if .HasNote}}<small>note {{.Seq}}</small>{{end}}{{if .IsActive}}<b>active</b>{{end}}</li>{{end}}</ul>`
 
 // ---- workload 6 — fragment-heavy (text/template) ---------------------------------------------
 
-// The E20 four-kind dispatch exactly as the docs' nested-template-definition examples show
-// it: one named {{define}} per fragment kind plus the badge/price sub-definitions the card
-// invokes against its .Promo (the one nesting level), selected per row by the boolean
-// {{if}}/{{else if}} chain. Derived display text is composed by the template (E21):
-// /img/{{.Name}}.jpg, Caption for {{.Name}}, {{.Price}}.99.
-const idiomaticFragmentHeavySrc = `{{define "tile"}}
-<section class="tile">
-  <h3>{{.Name}}</h3>
-  <p class="v">{{.Value}}</p>
-  <span class="badge">{{.Badge}}</span>
-</section>
-{{end}}
-
-{{- define "badge"}}<span class="promo-badge">{{.Label}}</span>{{end}}
-
-{{- define "price"}}<p class="price">{{.Price}}.99</p>{{end}}
-
-{{- define "card"}}
-<article class="card">
-  <h3>{{.Name}}</h3>
-  {{template "badge" .Promo}}{{template "price" .Promo}}
-  <p class="v">{{.Value}}</p>
-</article>
-{{end}}
-
-{{- define "media_row"}}
-<div class="media-row">
-  <img src="/img/{{.Name}}.jpg" alt="{{.Name}}" />
-  <div class="media-body">
-    <h4>{{.Name}}</h4>
-    <p>Caption for {{.Name}}</p>
-  </div>
-</div>
-{{end}}
-
-{{- define "stat"}}
-<div class="stat">
-  <span class="stat-name">{{.Name}}</span>
-  <span class="stat-value">{{.Value}}</span>
-  <span class="stat-delta">{{.Delta}}</span>
-</div>
-{{end}}
-
-{{- define "panel"}}
-<div class="panel">
-  {{- range .Items}}
-  {{- if .IsTile}}{{template "tile" .}}{{else if .IsCard}}{{template "card" .}}{{else if .IsMedia}}{{template "media_row" .}}{{else}}{{template "stat" .}}{{end}}
-  {{- end}}
-</div>
-{{end}}
-
-{{- template "panel" .}}`
+// The E20 redesign: six {{define}}s (tile, badge, price, card — which nests badge + price
+// against the row's .Promo, the one nesting level — media_row, stat), dispatched per row by
+// the boolean {{if .IsTile}}/{{else if}} chain (workloads.md §Dispatch per family, Go
+// stdlib row). Derived display text is composed by the template as
+// literal-plus-substitution (E21): /img/{{.Name}}.jpg, Caption for {{.Name}},
+// {{.Promo.Price}} rendered through the price partial as {{.Price}}.99.
+const fragmentHeavySrc = `{{define "tile"}}<section class="tile"><h3>{{.Name}}</h3><p class="v">{{.Value}}</p><span class="badge">{{.Badge}}</span></section>{{end}}{{define "badge"}}<span class="promo-badge">{{.Label}}</span>{{end}}{{define "price"}}<p class="price">{{.Price}}.99</p>{{end}}{{define "card"}}<article class="card"><h3>{{.Name}}</h3>{{template "badge" .Promo}}{{template "price" .Promo}}<p class="v">{{.Value}}</p></article>{{end}}{{define "media_row"}}<div class="media-row"><img src="/img/{{.Name}}.jpg" alt="{{.Name}}" /><div class="media-body"><h4>{{.Name}}</h4><p>Caption for {{.Name}}</p></div></div>{{end}}{{define "stat"}}<div class="stat"><span class="stat-name">{{.Name}}</span><span class="stat-value">{{.Value}}</span><span class="stat-delta">{{.Delta}}</span></div>{{end}}<div class="panel">{{range .Items}}{{if .IsTile}}{{template "tile" .}}{{else if .IsCard}}{{template "card" .}}{{else if .IsMedia}}{{template "media_row" .}}{{else}}{{template "stat" .}}{{end}}{{end}}</div>`
 
 // ---- workload 7 — fortunes-encoded (html/template) -------------------------------------------
 
-// html/template's contextual auto-escaper fires on {{.Id}}/{{.Message}}; the authoring is
-// otherwise identical to how the html/template docs teach a data-driven page.
-const idiomaticFortunesEncodedSrc = `<!DOCTYPE html>
-<html>
-  <head>
-    <title>Fortunes</title>
-  </head>
-  <body>
-    <table>
-      <tr><th>id</th><th>message</th></tr>
-      {{range .Rows -}}
-      <tr>
-        <td>{{.Id}}</td>
-        <td>{{.Message}}</td>
-      </tr>
-      {{end -}}
-    </table>
-  </body>
-</html>
-`
+// The pinned one-line skeleton; html/template's contextual escaper fires on the
+// text-context substitutions ({{.Message}}), with spellings reconciled by N5 (D4).
+const fortunesEncodedSrc = `<!DOCTYPE html><html><head><title>Fortunes</title></head><body><table><tr><th>id</th><th>message</th></tr>{{range .Rows}}<tr><td>{{.Id}}</td><td>{{.Message}}</td></tr>{{end}}</table></body></html>`
 
 // ---- workload 8 — encoded-loop (html/template) -----------------------------------------------
 
-// {{.Tag}} in quoted-attribute context, the other two substitutions in text context — the
-// escaper picks the context per the html/template package docs.
-const idiomaticEncodedLoopSrc = `<table>
-  {{range .Items -}}
-  <tr>
-    <td data-tag="{{.Tag}}">{{.Name}}</td>
-    <td>{{.Comment}}</td>
-  </tr>
-  {{end -}}
-</table>
-`
+// {{.Tag}} sits in quoted-attribute context; the other two substitutions in text context.
+const encodedLoopSrc = `<table>{{range .Items}}<tr><td data-tag="{{.Tag}}">{{.Name}}</td><td>{{.Comment}}</td></tr>{{end}}</table>`
 
 // ---- parsed templates (once, at package init — the cached-template render path) --------------
 
 var (
-	idiomaticComposedTpl = func() *texttemplate.Template {
+	composedTpl = func() *texttemplate.Template {
 		t := texttemplate.New("composed-page")
-		texttemplate.Must(t.Parse(idiomaticComposedChromeSrc))
-		texttemplate.Must(t.Parse(idiomaticComposedLayoutSrc))
-		return texttemplate.Must(t.Parse(idiomaticComposedHomeSrc))
+		texttemplate.Must(t.Parse(composedChromeSrc))
+		texttemplate.Must(t.Parse(composedLayoutSrc))
+		return texttemplate.Must(t.Parse(composedHomeSrc))
 	}()
-	idiomaticTrivialSubstitutionTpl = texttemplate.Must(texttemplate.New("trivial-substitution").Parse(idiomaticTrivialSubstitutionSrc))
-	idiomaticLargeLoopTpl           = texttemplate.Must(texttemplate.New("large-loop").Parse(idiomaticLargeLoopSrc))
-	idiomaticMixedPageTpl           = texttemplate.Must(texttemplate.New("mixed-page").Parse(idiomaticMixedPageSrc))
-	idiomaticConditionalHeavyTpl    = texttemplate.Must(texttemplate.New("conditional-heavy").Parse(idiomaticConditionalHeavySrc))
-	idiomaticFragmentHeavyTpl       = texttemplate.Must(texttemplate.New("fragment-heavy").Parse(idiomaticFragmentHeavySrc))
-	idiomaticFortunesEncodedTpl     = htmltemplate.Must(htmltemplate.New("fortunes-encoded").Parse(idiomaticFortunesEncodedSrc))
-	idiomaticEncodedLoopTpl         = htmltemplate.Must(htmltemplate.New("encoded-loop").Parse(idiomaticEncodedLoopSrc))
+	trivialSubstitutionTpl = texttemplate.Must(texttemplate.New("trivial-substitution").Parse(trivialSubstitutionSrc))
+	largeLoopTpl           = texttemplate.Must(texttemplate.New("large-loop").Parse(largeLoopSrc))
+	mixedPageTpl           = texttemplate.Must(texttemplate.New("mixed-page").Parse(mixedPageSrc))
+	conditionalHeavyTpl    = texttemplate.Must(texttemplate.New("conditional-heavy").Parse(conditionalHeavySrc))
+	fragmentHeavyTpl       = texttemplate.Must(texttemplate.New("fragment-heavy").Parse(fragmentHeavySrc))
+	fortunesEncodedTpl     = htmltemplate.Must(htmltemplate.New("fortunes-encoded").Parse(fortunesEncodedSrc))
+	encodedLoopTpl         = htmltemplate.Must(htmltemplate.New("encoded-loop").Parse(encodedLoopSrc))
 )
-
-// ---- per-cell reused buffers (render.go's newBuf; same sizing cases as controlled) -----------
-
-var (
-	idComposedBuf    = newBuf(64 << 10)
-	idTrivialBuf     = newBuf(1 << 10)
-	idLargeLoopBuf   = newBuf(256 << 10)
-	idMixedBuf       = newBuf(32 << 10)
-	idConditionalBuf = newBuf(32 << 10)
-	idFragmentBuf    = newBuf(16 << 10)
-	idFortunesBuf    = newBuf(4 << 10)
-	idEncodedLoopBuf = newBuf(2 << 20)
-)
-
-// ---- the eight idiomatic cells (raw = stdlib-text, encoded = stdlib-html) --------------------
-
-// RenderIdiomaticComposedPage renders workload 1 idiomatically via text/template.
-func RenderIdiomaticComposedPage() string {
-	return render(idiomaticComposedTpl, idComposedBuf, model.Composed())
-}
-
-// RenderIdiomaticTrivialSubstitution renders workload 2 idiomatically via text/template.
-func RenderIdiomaticTrivialSubstitution() string {
-	return render(idiomaticTrivialSubstitutionTpl, idTrivialBuf, model.Substitution)
-}
-
-// RenderIdiomaticLargeLoop renders workload 3 idiomatically via text/template.
-func RenderIdiomaticLargeLoop() string {
-	return render(idiomaticLargeLoopTpl, idLargeLoopBuf, model.LargeLoop)
-}
-
-// RenderIdiomaticMixedPage renders workload 4 idiomatically via text/template.
-func RenderIdiomaticMixedPage() string {
-	return render(idiomaticMixedPageTpl, idMixedBuf, model.Mixed)
-}
-
-// RenderIdiomaticConditionalHeavy renders workload 5 idiomatically via text/template.
-func RenderIdiomaticConditionalHeavy() string {
-	return render(idiomaticConditionalHeavyTpl, idConditionalBuf, model.Conditional)
-}
-
-// RenderIdiomaticFragmentHeavy renders workload 6 idiomatically via text/template.
-func RenderIdiomaticFragmentHeavy() string {
-	return render(idiomaticFragmentHeavyTpl, idFragmentBuf, model.Fragment)
-}
-
-// RenderIdiomaticFortunesEncoded renders workload 7 idiomatically via html/template.
-func RenderIdiomaticFortunesEncoded() string {
-	return render(idiomaticFortunesEncodedTpl, idFortunesBuf, model.Fortunes)
-}
-
-// RenderIdiomaticEncodedLoop renders workload 8 idiomatically via html/template.
-func RenderIdiomaticEncodedLoop() string {
-	return render(idiomaticEncodedLoopTpl, idEncodedLoopBuf, model.EncodedLoop)
-}

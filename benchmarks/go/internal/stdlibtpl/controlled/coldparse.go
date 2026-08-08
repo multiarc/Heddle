@@ -5,7 +5,7 @@
 // rows are labeled "cold parse only" (not parse + escape-compile). templ has no runtime
 // parse step at all — its sidebar cells print
 // "AOT — no runtime parse (compiled by go generate)" in the report.
-package stdlibtpl
+package controlled
 
 import (
 	htmltemplate "html/template"
