@@ -147,6 +147,14 @@ Every plan lean, flagged assumption, and spec-territory delegation for this phas
   [open-questions Q1.1](../../../plan/open-questions.md).
 
 ### D5 — conditional-heavy ports with zero registered helpers; the program-wide helper surface is exactly one (`area`)
+
+> **Amended (E22 port landing, 2026-08-08):** the helper surface is now **zero** — the `area`
+> helper is deleted with the C# text tier it read from (composed-page is pure template
+> composition through the partial-block layout and registered partials). The
+> conditional-heavy zero-helper ruling below stands; the "exactly one" clause is superseded —
+> current disclosure text in
+> [templates-and-models.md §Registered helpers](templates-and-models.md#registered-helpers--the-full-disclosure-surface--amended-e22-port-landing-2026-08-08).
+
 - **Decision.** The Handlebars conditional-heavy controlled template registers **no helpers**:
   Phase 1 pinned the workload to precomputed booleans (`is_bronze`/`is_silver`/`is_gold` +
   toggles) specifically so the four-way chain is expressible with the built-in truthiness
@@ -156,7 +164,7 @@ Every plan lean, flagged assumption, and spec-territory delegation for this phas
   the whole JS suite exactly **one** helper is registered — `area` for composed-page, the same
   helper surface as the intra-.NET Handlebars.Net twin (a fragment lookup returning a
   `Handlebars.SafeString`; exact JS implementation and its .NET-twin equivalence argument in
-  [templates-and-models.md §Registered helpers](templates-and-models.md#registered-helpers--the-full-disclosure-surface)).
+  [templates-and-models.md §Registered helpers](templates-and-models.md#registered-helpers--the-full-disclosure-surface--amended-e22-port-landing-2026-08-08)).
   The report discloses this with the verbatim disclosure text specified there, satisfying the
   plan's every-helper-disclosed success criterion.
 - **Rationale.** The plan's risk ("will likely require registered comparison helpers") was
@@ -208,8 +216,10 @@ Every plan lean, flagged assumption, and spec-territory delegation for this phas
   constructor). *Idiomatic track:* templates are precompiled once at harness startup via
   `Handlebars.precompile(src, { knownHelpers, knownHelpersOnly: true })`, materialized with
   `Handlebars.template(eval('(' + spec + ')'))`, and rendered through that function —
-  `knownHelpers` lists only `area` (composed-page environment); all other templates use only
-  built-in helpers. The report's idiomatic section states the mode and the `knownOnly` setting.
+  *(amended, E22 port landing: with the `area` helper deleted there is no `knownHelpers`
+  extension anywhere; all 16 idiomatic precompiles use the identical
+  `{ knownHelpersOnly: true }` options)*. The report's idiomatic section states the mode and
+  the `knownOnly` setting.
 - **Rationale.** The plan delegates the choice per track with the constraint that idiomatic
   follows what the docs present as production-canonical — which is precompilation, ideally with
   known-helpers ("the smallest generated code that also provides the fastest execution",
@@ -549,11 +559,12 @@ root is `benchmarks/js/` (D1); full file tree in
   its Phase 1 canonical corruptions (two per raw, three per encoded workload).
 
 ### WI4 — Handlebars implementations, both tracks
-- **Files.** New: `benchmarks/js/src/templates/handlebars/controlled/<id>.hbs` (8, plus
-  `layout.partial.hbs`, `tile.partial.hbs`), `src/templates/handlebars/idiomatic/…`
-  (mirror set with Q1.7 citation headers), `src/engines/handlebars.mjs` (environment
-  factories: controlled runtime-compile / idiomatic precompile per D7, `area` helper, partial
-  registration, per-track render table).
+- **Files.** New: `benchmarks/js/src/templates/handlebars/controlled/<id>.hbs` (8, plus the
+  partial files — as landed under E20/E22: `layout.partial.hbs` + the 20 chrome/nav/fragment
+  `<name>.partial.hbs`), `src/templates/handlebars/idiomatic/…` (mirror set with Q1.7
+  citation headers), `src/engines/handlebars.mjs` (environment factories: controlled
+  runtime-compile / idiomatic precompile per D7 — zero helpers, E22 — partial registration,
+  per-track render table).
 - **Change.** Template texts verbatim from
   [templates-and-models.md](templates-and-models.md#handlebars--controlled-track); engine
   module shape from harness-and-run.md.
@@ -562,9 +573,10 @@ root is `benchmarks/js/` (D1); full file tree in
   contain zero raw `<script>alert(` and the intact Japanese strings (gate-enforced).
 
 ### WI5 — Eta implementations, both tracks
-- **Files.** New: `benchmarks/js/src/templates/eta/controlled/<id>.eta` (8, plus
-  `tile.partial.eta`, `layout.partial.eta`), `src/templates/eta/idiomatic/…` (incl.
-  `shell.layout.eta`, `page.layout.eta`), `src/engines/eta.mjs` (per-track instances,
+- **Files.** New: `benchmarks/js/src/templates/eta/controlled/<id>.eta` (8, plus — as landed
+  under E20/E22 — `shell.layout.eta` and the 20 chrome/nav/fragment `<name>.partial.eta`),
+  `src/templates/eta/idiomatic/…` (mirror set incl. `shell.layout.eta`; no `page.layout.eta`
+  — idiomatic mixed-page is single-file, E20), `src/engines/eta.mjs` (per-track instances,
   `loadTemplate` registration, render table).
 - **Change.** Template texts verbatim from
   [templates-and-models.md](templates-and-models.md#eta--controlled-track); D8 configuration.

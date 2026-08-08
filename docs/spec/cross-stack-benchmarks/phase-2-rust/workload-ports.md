@@ -80,121 +80,70 @@ composed-page data fixture, and the model row above is its single Rust consumer.
 `composed-page.golden.html` (N5 not applied — raw suite). Idiomatic Askama + idiomatic Tera:
 `composed-page.verify.json`.
 
-**Construct mapping.** Heddle composes via `@<<{{layout.heddle}}` (documented fragment-sequence
-output, Q1.4/D5 in Phase 1); the .NET twins mirror it as *home = one include of layout; layout =
-ordered concatenation of section/component substitutions + one real loop over the ordered area
-names with a per-name lookup* ([`LiquidTemplates.cs`](../../../../benchmarks/dotnet/templates/controlled/liquid/composed-page.liquid)).
-The Rust controlled ports keep exactly that construct set: `{% include %}` for the layout, scalar
-substitutions for sections/components, `{% for %}` over `area_names`, and a per-name lookup —
-Tera via documented bracket indexing (`areas[name]`), Askama via a documented `self` method call
-(`self.area(name)`, since bracket indexing with a variable key is not a documented Askama
-construct; [README D7](README.md#d7--controlled-track-construct-mapping-one-jinja-family-text-where-the-engines-agree)).
+> **Rewritten to the landed forms (E20/E22 port landing, 2026-08-08).** The pre-E20
+> fragment-sequence construct mapping (layout as ordered concatenation of `section_*`/`comp_*`
+> scalars + an `areas[name]` loop) is superseded; the sections below describe the templates as
+> committed.
 
-### Controlled — Askama
+**Construct mapping.** Heddle composes via a definition-only layout import with a live
+`@out()` slot; both Rust engines use their native inheritance mechanism per the workloads.md
+native-layout mandate: `{% extends %}` + a **live `{% block body %}`** the page fills with the
+slider markup.
 
-`templates/controlled/askama/composed-page.html`:
+### Controlled — both engines (one shape, two copies)
 
-```jinja
-{% include "controlled/askama/composed-page-layout.html" %}
-```
-
-`templates/controlled/askama/composed-page-layout.html` (one line):
+`templates/controlled/<engine>/composed-page.html`:
 
 ```jinja
-{{ section_meta }}{{ section_social }}{{ comp_assets_styles }}{{ comp_custom_styles }}{{ comp_head_scripts }}{{ comp_body_scripts }}{% for name in area_names %}{{ self.area(name) }}{% endfor %}{{ comp_assets_scripts }}{{ section_page_scripts }}{{ section_endpage_scripts }}{{ comp_body_end_scripts }}
+{% extends "controlled/<engine>/composed-page-layout.html" %}
+{% block body %}…the slider markup, transcribed from home.heddle…{% endblock %}
 ```
 
-Template struct (in `src/engines/askama_controlled.rs`):
+`templates/controlled/<engine>/composed-page-layout.html` (~128 lines): the **full literal
+chrome** transcribed from `layout.heddle`/the golden, carrying
 
-```rust
-#[derive(askama::Template)]
-#[template(path = "controlled/askama/composed-page.html", escape = "none")]
-pub struct ComposedControlled<'a> {
-    pub section_meta: &'a str,
-    pub section_social: &'a str,
-    pub section_page_scripts: &'a str,
-    pub section_endpage_scripts: &'a str,
-    pub comp_assets_styles: &'a str,
-    pub comp_custom_styles: &'a str,
-    pub comp_head_scripts: &'a str,
-    pub comp_body_scripts: &'a str,
-    pub comp_assets_scripts: &'a str,
-    pub comp_body_end_scripts: &'a str,
-    pub area_names: &'a [String],
-    pub areas: &'a std::collections::HashMap<String, String>,
-}
-impl ComposedControlled<'_> {
-    fn area(&self, name: &str) -> &str { &self.areas[name] }
-}
-```
+- the four **overridable section-default blocks** — `{% block meta %}<title>Title</title>{% endblock %}`,
+  `{% block socialmeta %}…{% endblock %}`, and the empty `{% block page_scripts %}{% endblock %}` /
+  `{% block endpage_scripts %}{% endblock %}` — the engines' overridable-default mechanism for
+  the layout.heddle section defaults;
+- ten `{% include "controlled/<engine>/chrome/<fragment>.html" %}` sites for the inert chrome
+  fragment files (`alert-top`, `alert-below`, `secondary-wholesale-menu`,
+  `secondary-retail-menu`, `assets-styles`, `assets-scripts`, `custom-styles`, `head-scripts`,
+  `body-scripts`, `body-end-scripts` — the E22 chrome-fragments library, one literal file per
+  fragment);
+- the nav include chain: `{% for menu in nav.menus %}{% include ".../nav/mega-menu.html" %}{% endfor %}`
+  at the mega-menu site and `{% for column in nav.footer_columns %}{% include ".../nav/<column file>" %}{% endfor %}`
+  in the footer — the **nav-column include is shared** between the dropdown chain and the
+  footer, exactly as the Heddle `nav_column` definition is;
+- `{% block body %}{% endblock %}` at the body-slot position.
 
-(Askama loop variables borrow, so `name` is `&String`; deref coercion turns it into the `&str`
-argument. Included templates get full access to the including context — verified against the
-0.16.0 book, "Included templates get full access to the context in which they're used".)
+The nav sub-partials nest mega-menu → column → section → link
+(Askama file names `nav/mega-menu.html`, `nav/nav-column.html`, `nav/nav-section.html`,
+`nav/nav-link.html`; Tera `nav/mega-menu.html`, `nav/column.html`, `nav/section.html`,
+`nav/link.html`). Each reads its node through the enclosing loop variable — **Tera includes
+take no arguments**; they render "using the current context", so `nav/section.html` reads
+`section.title` etc. from the loop variable of the including file (the Tera 2.0 component
+form — `{% component %}`/`{% endcomponent %}` with explicit arguments — remains the unused
+documented fallback). Askama includes likewise see the including context ("Included templates
+get full access to the context in which they're used", 0.16 book).
 
-### Controlled — Tera
-
-`templates/controlled/tera/composed-page.html` / `…/composed-page-layout.html` — same two texts
-with the include target `"controlled/tera/composed-page-layout.html"` and the lookup spelled with
-documented bracket notation:
-
-```jinja
-… {% for name in area_names %}{{ areas[name] }}{% endfor %} …
-```
-
-Registered in the **autoescape-off** controlled-raw instance. Context: `section_*`/`comp_*`
-scalars, `area_names` array, `areas` map, inserted from the shared model.
+**No `|safe` appears anywhere in either track** — rule-4 sanitization keeps every nav value
+escape-free, and all chrome is literal template text (literal text is never escaped), so the
+raw and would-be-escaped renderings coincide. Askama structs: `ComposedControlled<'a> { nav:
+&'a NavModel }` with `escape = "none"` (controlled raw); Tera controlled templates are
+registered in the autoescape-off instance with a `nav`-keyed context.
 
 ### Idiomatic — both engines
 
-The docs-taught form of "a page composed from a layout" is template inheritance: a base template
-(`extends`/`block`) whose blocks default to the section content, with the child overriding
-nothing — mirroring how `layout.heddle` supplies section defaults. Multi-line, indented; the
-area loop is identical to the controlled form. Because this workload's model values *are*
-trusted HTML fragments, the idiomatic templates use each engine's documented trusted-HTML
-mechanism — the `safe` filter — on every fragment-valued expression (Askama and Tera both:
-`{{ section_meta|safe }}`, `{{ areas[name]|safe }}` / `{{ self.area(name)|safe }}`), because the
-idiomatic instances run with default escaping on ([README D3](README.md#d3--escaping-mode-per-template-per-track)).
-
-`templates/idiomatic/askama/composed-page-base.html` (child `composed-page.html` is
-`{% extends "idiomatic/askama/composed-page-base.html" %}` with no overrides; Tera mirror under
-`idiomatic/tera/` with `areas[name]`):
-
-```jinja
-{% block meta %}{{ section_meta|safe }}{% endblock %}
-{% block social %}{{ section_social|safe }}{% endblock %}
-{{ comp_assets_styles|safe }}
-{{ comp_custom_styles|safe }}
-{{ comp_head_scripts|safe }}
-{{ comp_body_scripts|safe }}
-{% for name in area_names %}
-  {{ self.area(name)|safe }}
-{% endfor %}
-{{ comp_assets_scripts|safe }}
-{% block page_scripts %}{{ section_page_scripts|safe }}{% endblock %}
-{% block endpage_scripts %}{{ section_endpage_scripts|safe }}{% endblock %}
-{{ comp_body_end_scripts|safe }}
-```
-
-Doc citations (header comment in each file, per Q1.7/D16): Askama book *Template syntax —
-Template inheritance*, *Filters — safe*; Tera docs *Inheritance*, *Auto-escaping* (safe filter).
-
-**Idiomatic-gate note.** The verifier's ordered markers walk the fragment sequence
-(SectionMeta → SectionSocial → styles → areas → body-end scripts); the inheritance form
-preserves that order by construction. The `{% for %}`/`{% block %}` tag lines contribute only
-inter-tag whitespace, which the verifier's N1–N4 normalization erases. One subtlety: the
-`comp_custom_styles` fragment is `/* CSS Comment Test */` (`TwinContent.CompCustomStyles`), which
-**begins and ends with `/`, not `<`/`>`**. Its neighbours are `CompAssetsStyles` (ends `… />`) and
-`CompHeadScripts` (starts `<script …`), so the two adjacent newlines are `>\n/` and `/\n<` — neither
-is a `>`-whitespace-`<` run, so N3 does **not** collapse them. Since the 2026-07-20 N3b maintainer
-step, however, **N3b removes every whitespace run anywhere to nothing** from both sides at
-comparison, so these newlines vanish under normalization (identically on the oracle and the
-candidate) and any whitespace-only difference here — including a space-vs-nothing one — passes by
-construction. This is harmless either way:
-`comp_custom_styles` is neither a `values` nor an ordered-`markers` verifier needle for this
-workload (golden-corpus.md), and no marker substring spans that boundary, so the inter-fragment
-whitespace cannot fail the idiomatic verifier. (If strict byte-adjacency were ever required, the
-fragment would be authored tight against a neighbour on one line; the gate does not require it.)
+Same shape as the docs teach it: the child extends the layout/base
+(`idiomatic/askama/composed-page-layout.html` / `idiomatic/tera/composed-page-base.html`) and
+fills `{% block body %}`; the layout carries the same section-default blocks, chrome includes
+and nav include chain, authored multi-line. Doc citations (header comment in each file, per
+Q1.7/D16): Askama book *Template syntax — Template inheritance*, *Include*, *For*, *If*; Tera
+docs *Inheritance*, *Include*, *Control structures*. The verifier's ordered markers walk the
+page landmarks (doctype → header chrome → mega menus → slider → footer columns → `</html>`);
+the inheritance form preserves that order by construction, and all tag-line whitespace is
+erased by N1–N4/N3b before checking.
 
 ---
 
@@ -231,19 +180,20 @@ Doc citations: Askama book *Getting started* / *Creating templates*; Tera docs *
 **Cells and gates.** Controlled × 2: byte gate vs `large-loop.golden.html`. Idiomatic × 2:
 `large-loop.verify.json`.
 
-### Controlled — one text, both engines
+### Controlled — one text, both engines (E21 landed form)
 
 ```jinja
-{% for item in items %}<tr><td>{{ item.name }}</td><td>{{ item.value }}</td></tr>{% endfor %}
+{% for item in items %}<tr><td>row-{{ item.value }}</td><td>{{ item.value }}</td></tr>{% endfor %}
 ```
 
-(Mirrors [`large-loop.heddle`](../../../../benchmarks/dotnet/templates/controlled/heddle/large-loop.heddle).
-Askama: `items: &[LoopRow]`, `escape = "none"`. Tera: controlled-raw instance.)
+(Mirrors [`large-loop.heddle`](../../../../benchmarks/dotnet/templates/controlled/heddle/large-loop.heddle);
+the display name is composed in the template as the literal `row-` + the value substitution —
+E21. Askama: `items: &[LoopRow]`, `escape = "none"`. Tera: controlled-raw instance.)
 
 ### Idiomatic — both engines
 
-The same loop, multi-line, with the row markup kept tight (`<td>{{ item.name }}</td>` — text
-inside an element must stay adjacent to its tags; the verifier needle
+The same loop, multi-line, with the row markup kept tight (`<td>row-{{ item.value }}</td>` —
+text inside an element must stay adjacent to its tags; the verifier needle
 `<tr><td>row-0</td><td>0</td></tr>` runs against normalized output, so line breaks between rows
 are fine). Default escaping on. Doc citations: Askama book *Template syntax — For*; Tera docs
 *Control structures — For loops*.
@@ -282,7 +232,7 @@ surrounding markup. The `<style>` literal is transcribed byte-exactly from the H
 <p>{{ hero_tagline }}</p>
 </section>
 <section class="grid">
-{% for p in products %}<article class="card"><h3>{{ p.name }}</h3><p class="sku">{{ p.sku }}</p><p class="price">{{ p.price }}</p>{% if p.on_sale %}<p class="sale">On sale</p>{% endif %}<p class="blurb">{{ p.blurb }}</p></article>{% endfor %}
+{% for p in products %}<article class="card"><h3>{{ p.name }}</h3><p class="sku">MX-{{ p.sku_number }}</p><p class="price">{{ p.price }}</p>{% if p.on_sale %}<p class="sale">On sale</p>{% endif %}<p class="blurb">A dependable workshop staple from batch {{ p.batch }}, checked for daily use and backed by our lifetime guarantee.</p></article>{% endfor %}
 </section>
 {% if show_debug_panel %}<pre class="debug">debug</pre>{% endif %}
 </main>
@@ -302,13 +252,14 @@ them. The `<title>` line's content is tight against both tags. No trim markers a
 
 ### Idiomatic — both engines
 
-Docs-taught inheritance: `mixed-page-base.html` carries the skeleton (`<head>`, header, footer)
-with `{% block content %}`; the child `mixed-page.html` extends it and fills the hero, banner
-conditional, product grid (loop + `{% if p.on_sale %}`), and debug conditional, indented
-naturally. Default escaping on (model values contain no escapables — byte-neutral; verified by
+**Single-file** (workloads.md idiomatic mixed-page rule, added E20: layout composition is
+composed-page's dimension) — the full skeleton lives inline in `mixed-page.html`, authored
+multi-line with the hero, banner conditional, product grid (loop + `{% if p.on_sale %}`), and
+debug conditional indented naturally; the former `mixed-page-base.html` inheritance split is
+deleted. Default escaping on (model values contain no escapables — byte-neutral; verified by
 the verifier's exact-count needles, e.g. `<article class="card">` → 36, `<p class="sale">On
-sale</p>` → 12). Doc citations: Askama book *Template inheritance*; Tera docs *Inheritance*,
-*Control structures*.
+sale</p>` → 12). Doc citations: Askama book *Template syntax* (For, If); Tera docs *Control
+structures*.
 
 ---
 
@@ -324,7 +275,7 @@ equivalents; Tera documents `elif`), so one text serves both — a four-way chai
 booleans plus two toggles, one line:
 
 ```jinja
-<ul class="matrix">{% for r in rows %}<li>{% if r.is_bronze %}<span class="t0">bronze</span>{% elif r.is_silver %}<span class="t1">silver</span>{% elif r.is_gold %}<span class="t2">gold</span>{% else %}<span class="t3">platinum</span>{% endif %}<em>{{ r.name }}</em>{% if r.has_note %}<small>{{ r.note }}</small>{% endif %}{% if r.is_active %}<b>active</b>{% endif %}</li>{% endfor %}</ul>
+<ul class="matrix">{% for r in rows %}<li>{% if r.is_bronze %}<span class="t0">bronze</span>{% elif r.is_silver %}<span class="t1">silver</span>{% elif r.is_gold %}<span class="t2">gold</span>{% else %}<span class="t3">platinum</span>{% endif %}<em>{{ r.name }}</em>{% if r.has_note %}<small>note {{ r.seq }}</small>{% endif %}{% if r.is_active %}<b>active</b>{% endif %}</li>{% endfor %}</ul>
 ```
 
 ### Idiomatic — both engines
@@ -341,54 +292,43 @@ syntax — If*; Tera docs *Control structures — If*.
 **Cells and gates.** Controlled × 2: byte gate vs `fragment-heavy.golden.html`. Idiomatic × 2:
 `fragment-heavy.verify.json`.
 
-**Construct mapping.** The Phase 1 twin construct is *one registered partial invoked once per
-loop iteration, receiving the current row* — with scope-sharing includes on DotLiquid/Scriban
-and explicit-argument partials on Fluid/Handlebars. Both Rust engines take the scope-sharing
-path: `{% include %}` inside the loop, the tile referencing the loop variable — Askama's book
-states includes see loop variables; Tera renders includes "using the current context".
-*(Verify at implementation for Tera 2.0: the loop variable's visibility inside the include —
-the byte gate proves it either way; fallback below.)*
+**Construct mapping (E20 landed form).** Four dispatched fragment kinds over six per-kind
+files, one boolean four-way branch per row, one nesting level (card renders badge + price
+against the row's promo). Both Rust engines take the scope-sharing include path:
+`{% include %}` inside the loop and inside the card, the sub-partials referencing the loop
+variable — Askama's book states includes see the including context; Tera renders includes
+"using the current context", so `fragment-heavy-badge.html`'s `{{ item.promo.label }}`
+resolves through the shared include context (the Tera 2.0 `{% component %}` explicit-argument
+form remains the unused documented fallback).
 
-### Controlled — one text pair, both engines
+### Controlled — one text set, both engines
 
-Main (`fragment-heavy.html`):
-
-```jinja
-<div class="panel">{% for item in items %}{% include "controlled/<engine>/fragment-heavy-tile.html" %}{% endfor %}</div>
-```
-
-Tile (`fragment-heavy-tile.html`):
+Main (`fragment-heavy.html`) — the boolean `{% if %}/{% elif %}` dispatch chain:
 
 ```jinja
-<section class="tile"><h3>{{ item.name }}</h3><p class="v">{{ item.value }}</p><span class="badge">{{ item.badge }}</span></section>
+<div class="panel">{% for item in items %}{% if item.is_tile %}{% include "controlled/<engine>/fragment-heavy-tile.html" %}{% elif item.is_card %}{% include "controlled/<engine>/fragment-heavy-card.html" %}{% elif item.is_media %}{% include "controlled/<engine>/fragment-heavy-media-row.html" %}{% else %}{% include "controlled/<engine>/fragment-heavy-stat.html" %}{% endif %}{% endfor %}</div>
 ```
 
-(`<engine>` = `askama` / `tera` in each copy's include path.)
+The six per-kind files (`<engine>` = `askama` / `tera` in each copy's include path):
 
-**Primary path grounding.** Tera 2.0's `{% include %}` renders "using the current context"
-(README assumed state, keats.github.io/tera include section); during a `{% for %}` iteration the
-current context contains the loop variable `item`, so the tile's `{{ item.name }}` resolves. This
-is the verified primary path — the marker above is a byte-gate-decided confirmation fact (per D4's
-permitted-marker convention), not an open design choice: whichever mechanism is used, the composed
-tile bytes are identical and the byte gate decides.
+```jinja
+fragment-heavy-tile.html:      <section class="tile"><h3>{{ item.name }}</h3><p class="v">{{ item.value }}</p><span class="badge">{{ item.badge }}</span></section>
+fragment-heavy-badge.html:     <span class="promo-badge">{{ item.promo.label }}</span>
+fragment-heavy-price.html:     <p class="price">{{ item.promo.price }}.99</p>
+fragment-heavy-card.html:      <article class="card"><h3>{{ item.name }}</h3>{% include ".../fragment-heavy-badge.html" %}{% include ".../fragment-heavy-price.html" %}<p class="v">{{ item.value }}</p></article>
+fragment-heavy-media-row.html: <div class="media-row"><img src="/img/{{ item.name }}.jpg" alt="{{ item.name }}" /><div class="media-body"><h4>{{ item.name }}</h4><p>Caption for {{ item.name }}</p></div></div>
+fragment-heavy-stat.html:      <div class="stat"><span class="stat-name">{{ item.name }}</span><span class="stat-value">{{ item.value }}</span><span class="stat-delta">{{ item.delta }}</span></div>
+```
 
-**Fallback** (only if a Tera 2.0 point-release regressed include's loop-variable visibility): the
-documented partial-with-explicit-arguments mechanism is a Tera **component** — verified to exist in
-2.0 (README assumed state; Tera's own docs state `{% include %}` cannot be passed a custom context,
-so components are the sanctioned way to pass one). Define the tile once as
-`{% component tile(item) %}<section class="tile">…</section>{% endcomponent %}` and invoke it inside
-the loop (JSX-style `{{<tile item=item />}}` per the 2.0 component syntax), carrying `item`
-explicitly. Inlining the tile body into the loop is *not* an option — it would remove the per-call
-composition the workload owns. If the fallback is used it is recorded in the report's port notes;
-the cell's gate and measured composition-per-call shape are unchanged either way. There is no
-`render_component` symbol in Tera 2.0 — the construct is the `{% component %}`/`{% endcomponent %}`
-tag pair.
+(The card **nests** badge + price — the one nesting level; the media caption, image source and
+display price are composed in the templates as literal-plus-substitution, per E21. The
+sub-partials read `item.promo.*` through the shared include context in both engines.)
 
 ### Idiomatic — both engines
 
-Identical construct (include-per-iteration is the documented way both engines split "large or
-repetitive blocks" into files), authored multi-line. Default escaping on. Doc citations: Askama
-book *Template syntax — Include*; Tera docs *Include*.
+Identical construct set (include-per-iteration is the documented way both engines split "large
+or repetitive blocks" into files), authored multi-line. Default escaping on. Doc citations:
+Askama book *Template syntax — Include*, *If*; Tera docs *Include*, *Control structures*.
 
 ---
 

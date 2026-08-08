@@ -602,10 +602,11 @@ and command lines in [harness-and-jmh.md](harness-and-jmh.md).
 ### WI2 — Thymeleaf controlled track: feasibility ladder, then all eight cells
 
 - **Files.** New: `benchmarks/jvm/src/main/resources/thymeleaf/controlled/*.html` (eight
-  workload templates + `tile.html` + `layout.html`),
-  `benchmarks/jvm/src/main/resources/composed-page/*.txt` (the fragment model resources — see
-  construct-mapping.md §composed-page); possibly new (only on a beyond-whitespace failure):
-  `docs/spec/cross-stack-benchmarks/phase-3-jvm/thymeleaf-exclusion-evidence.md`.
+  workload templates + `layout.html` + `chrome-fragments.html` + the six fragment-kind files
+  — see construct-mapping.md §composed-page; the pre-E20 `resources/composed-page/*.txt`
+  fragment model resources are deleted per E22 — the nav model loads from
+  `GoldenCorpus/fixtures/composed-page/nav.json`); possibly new (only on a beyond-whitespace
+  failure): `docs/spec/cross-stack-benchmarks/phase-3-jvm/thymeleaf-exclusion-evidence.md`.
 - **Change.** Author the block-only templates in the probe-ladder order of
   [thymeleaf-controlled-feasibility.md](thymeleaf-controlled-feasibility.md#the-feasibility-probe-ladder),
   byte-gating each workload via `GateCli gate --engine thymeleaf --track controlled

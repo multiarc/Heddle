@@ -28,16 +28,25 @@ benchmarks/jvm/
     bench/<Workload>Bench.java             ← 8 JMH classes (WI5)
   src/main/jte-plain/
     controlled/ *.jte  (composed-page, layout, trivial-substitution, large-loop,
-                        mixed-page, conditional-heavy, fragment-heavy, tile)
-    idiomatic/  *.jte  (same eight names)
+                        mixed-page, conditional-heavy, fragment-heavy + the E20 fragment
+                        sub-templates tile, card, badge, price, mediarow, stat + the E22
+                        chrome/nav sub-templates alerttop, alertbelow,
+                        secondarywholesalemenu, secondaryretailmenu, assetsstyles,
+                        assetsscripts, customstyles, headscripts, bodyscripts,
+                        bodyendscripts, megamenu, navcolumn, navsection, navlink —
+                        names flattened: @template path segments must be Java identifiers)
+    idiomatic/  *.jte  (same names)
   src/main/jte-html/
     controlled/ fortunes-encoded.jte, encoded-loop.jte
     idiomatic/  fortunes-encoded.jte, encoded-loop.jte
   src/main/resources/
-    thymeleaf/controlled/*.html            ← eight + tile.html + layout.html
+    thymeleaf/controlled/*.html            ← eight + layout.html + chrome-fragments.html
+                                             + the six fragment-kind files (E20/E22)
     thymeleaf/idiomatic/*.html
-    composed-page/*.txt                    ← fragment model resources (construct-mapping.md)
 ```
+
+(The pre-E20 `composed-page/*.txt` fragment model resources are deleted — E22; the nav model
+loads from `GoldenCorpus/fixtures/composed-page/nav.json`.)
 
 Corpus path resolution: default `../../benchmarks/dotnet/GoldenCorpus/` relative to the
 harness working directory (`benchmarks/jvm/`), overridable with

@@ -97,7 +97,7 @@ order).
   ```
   benchmarks/rust/
     rust-toolchain.toml  Cargo.toml  Cargo.lock  askama.toml
-    data/composed-page/…                ← fragment data files (workload-ports.md)
+    (data/composed-page/ deleted — E22: chrome is literal template text; nav loads from the corpus fixture)
     templates/{controlled,idiomatic}/{askama,tera}/…
     src/
       lib.rs  models.rs  normalize.rs  corpus.rs  verifier.rs  gates.rs
@@ -466,12 +466,14 @@ the gate is the executable spec that starts 32-red and greens cell-by-cell (Test
   succeed on the pinned toolchain; `dotnet build -c Release` of the solution is unaffected.
 
 ### WI2 — Models and composed-page fragment data
-- **Files.** New: `src/models.rs`, `data/composed-page/*` (per
-  [workload-ports.md — model construction](workload-ports.md#model-construction-srcmodelsrs)).
-- **Change.** Eight model builders behind `OnceLock`, `serde::Serialize` derives, fragment
-  files copied byte-exactly from `TwinContent.cs` / `AreaComponent.cs`.
-- **Done when.** Model unit tests pass (row counts, pinned strings — Testing plan); fragment
-  files are non-empty except `area-6.html`.
+- **Files.** New: `src/models.rs` (per
+  [workload-ports.md — model construction](workload-ports.md#model-construction-srcmodelsrs);
+  the `data/composed-page/*` fragment files this WI originally created are deleted under
+  E22 — chrome is literal template text, and the nav model loads from
+  `GoldenCorpus/fixtures/composed-page/nav.json`).
+- **Change.** Eight model builders behind `OnceLock`, `serde::Serialize` derives (the
+  fragment-file copying step is discharged by E22).
+- **Done when.** Model unit tests pass (row counts, pinned strings — Testing plan).
 
 ### WI3 — Normalization, corpus access, verifier
 - **Files.** New: `src/normalize.rs` (N1–N5 per D5), `src/corpus.rs` (path resolution from
