@@ -359,7 +359,7 @@ Ordered; Phase 1's WI6/WI8 merged is the entry precondition. Every item names it
   `EXCLUSIONS.md` entries per the evidence procedure. Later work items proceed accordingly.
 
 ### WI3 — Stdlib controlled ports (raw then encoded)
-- **Files.** `internal/stdlibtpl/templates.go`, `render.go`; gate registrations in
+- **Files.** `internal/stdlibtpl/controlled/templates.go`, `render.go`; gate registrations in
   `suites/gate_test.go`.
 - **Change.** The six text/template raw templates then the two html/template encoded templates,
   per [port-mapping.md](port-mapping.md#controlled-track--stdlib-surfaces); `composed-page`
@@ -369,7 +369,7 @@ Ordered; Phase 1's WI6/WI8 merged is the entry precondition. Every item names it
   including the encoded security floor.
 
 ### WI4 — templ controlled ports
-- **Files.** `internal/templeng/*.templ` + committed `*_templ.go`.
+- **Files.** `internal/templeng/controlled/*.templ` + committed `*_templ.go`.
 - **Change.** All eight components per
   [port-mapping.md — templ rules 1–8](port-mapping.md#controlled-track--templ), authored in
   the forms S1 proved byte-clean; order: `composed-page` first (historically-flagged cell first,
@@ -378,7 +378,7 @@ Ordered; Phase 1's WI6/WI8 merged is the entry precondition. Every item names it
   non-whitespace divergence carries a completed exclusion record and every other cell passes.
 
 ### WI5 — Idiomatic ports, both engines
-- **Files.** `internal/stdlibtpl/idiomatic.go`, `internal/templeng/idiomatic/*.templ` (+
+- **Files.** `internal/stdlibtpl/idiomatic/idiomatic.go`, `internal/templeng/idiomatic/*.templ` (+
   generated), gate registrations.
 - **Change.** Per [port-mapping.md — idiomatic track](port-mapping.md#idiomatic-track--both-engines-all-eight-workloads),
   each file citing its official doc pages in a header comment.

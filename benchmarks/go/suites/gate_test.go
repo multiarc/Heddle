@@ -16,8 +16,9 @@ import (
 
 	"heddle.dev/benchmarks/go/internal/corpus"
 	"heddle.dev/benchmarks/go/internal/model"
-	"heddle.dev/benchmarks/go/internal/stdlibtpl"
-	"heddle.dev/benchmarks/go/internal/templeng"
+	stdlibcontrolled "heddle.dev/benchmarks/go/internal/stdlibtpl/controlled"
+	stdlibidiomatic "heddle.dev/benchmarks/go/internal/stdlibtpl/idiomatic"
+	templcontrolled "heddle.dev/benchmarks/go/internal/templeng/controlled"
 	templidiomatic "heddle.dev/benchmarks/go/internal/templeng/idiomatic"
 )
 
@@ -36,34 +37,34 @@ type cell struct {
 var cells = []cell{
 	// WI3 — stdlib controlled: text/template on the six raw workloads, html/template on
 	// the two encoded (README D1 / Q6.1).
-	{"controlled", "stdlib-text", "composed-page", "raw", stdlibtpl.RenderComposedPage},
-	{"controlled", "stdlib-text", "trivial-substitution", "raw", stdlibtpl.RenderTrivialSubstitution},
-	{"controlled", "stdlib-text", "large-loop", "raw", stdlibtpl.RenderLargeLoop},
-	{"controlled", "stdlib-text", "mixed-page", "raw", stdlibtpl.RenderMixedPage},
-	{"controlled", "stdlib-text", "conditional-heavy", "raw", stdlibtpl.RenderConditionalHeavy},
-	{"controlled", "stdlib-text", "fragment-heavy", "raw", stdlibtpl.RenderFragmentHeavy},
-	{"controlled", "stdlib-html", "fortunes-encoded", "encoded", stdlibtpl.RenderFortunesEncoded},
-	{"controlled", "stdlib-html", "encoded-loop", "encoded", stdlibtpl.RenderEncodedLoop},
+	{"controlled", "stdlib-text", "composed-page", "raw", stdlibcontrolled.RenderComposedPage},
+	{"controlled", "stdlib-text", "trivial-substitution", "raw", stdlibcontrolled.RenderTrivialSubstitution},
+	{"controlled", "stdlib-text", "large-loop", "raw", stdlibcontrolled.RenderLargeLoop},
+	{"controlled", "stdlib-text", "mixed-page", "raw", stdlibcontrolled.RenderMixedPage},
+	{"controlled", "stdlib-text", "conditional-heavy", "raw", stdlibcontrolled.RenderConditionalHeavy},
+	{"controlled", "stdlib-text", "fragment-heavy", "raw", stdlibcontrolled.RenderFragmentHeavy},
+	{"controlled", "stdlib-html", "fortunes-encoded", "encoded", stdlibcontrolled.RenderFortunesEncoded},
+	{"controlled", "stdlib-html", "encoded-loop", "encoded", stdlibcontrolled.RenderEncodedLoop},
 	// WI4 — templ controlled: all eight workloads (templ.Raw for the composed-page
 	// HTML-fragment data; the default escaping path on the encoded pair).
-	{"controlled", "templ", "composed-page", "raw", templeng.RenderComposedPage},
-	{"controlled", "templ", "trivial-substitution", "raw", templeng.RenderTrivialSubstitution},
-	{"controlled", "templ", "large-loop", "raw", templeng.RenderLargeLoop},
-	{"controlled", "templ", "mixed-page", "raw", templeng.RenderMixedPage},
-	{"controlled", "templ", "conditional-heavy", "raw", templeng.RenderConditionalHeavy},
-	{"controlled", "templ", "fragment-heavy", "raw", templeng.RenderFragmentHeavy},
-	{"controlled", "templ", "fortunes-encoded", "encoded", templeng.RenderFortunesEncoded},
-	{"controlled", "templ", "encoded-loop", "encoded", templeng.RenderEncodedLoop},
+	{"controlled", "templ", "composed-page", "raw", templcontrolled.RenderComposedPage},
+	{"controlled", "templ", "trivial-substitution", "raw", templcontrolled.RenderTrivialSubstitution},
+	{"controlled", "templ", "large-loop", "raw", templcontrolled.RenderLargeLoop},
+	{"controlled", "templ", "mixed-page", "raw", templcontrolled.RenderMixedPage},
+	{"controlled", "templ", "conditional-heavy", "raw", templcontrolled.RenderConditionalHeavy},
+	{"controlled", "templ", "fragment-heavy", "raw", templcontrolled.RenderFragmentHeavy},
+	{"controlled", "templ", "fortunes-encoded", "encoded", templcontrolled.RenderFortunesEncoded},
+	{"controlled", "templ", "encoded-loop", "encoded", templcontrolled.RenderEncodedLoop},
 	// WI5 — stdlib idiomatic: the same Q6.1 surface split as controlled, authored per the
 	// official docs (port-mapping.md §Idiomatic track), gated by the Phase 1 verifier.
-	{"idiomatic", "stdlib-text", "composed-page", "raw", stdlibtpl.RenderIdiomaticComposedPage},
-	{"idiomatic", "stdlib-text", "trivial-substitution", "raw", stdlibtpl.RenderIdiomaticTrivialSubstitution},
-	{"idiomatic", "stdlib-text", "large-loop", "raw", stdlibtpl.RenderIdiomaticLargeLoop},
-	{"idiomatic", "stdlib-text", "mixed-page", "raw", stdlibtpl.RenderIdiomaticMixedPage},
-	{"idiomatic", "stdlib-text", "conditional-heavy", "raw", stdlibtpl.RenderIdiomaticConditionalHeavy},
-	{"idiomatic", "stdlib-text", "fragment-heavy", "raw", stdlibtpl.RenderIdiomaticFragmentHeavy},
-	{"idiomatic", "stdlib-html", "fortunes-encoded", "encoded", stdlibtpl.RenderIdiomaticFortunesEncoded},
-	{"idiomatic", "stdlib-html", "encoded-loop", "encoded", stdlibtpl.RenderIdiomaticEncodedLoop},
+	{"idiomatic", "stdlib-text", "composed-page", "raw", stdlibidiomatic.RenderComposedPage},
+	{"idiomatic", "stdlib-text", "trivial-substitution", "raw", stdlibidiomatic.RenderTrivialSubstitution},
+	{"idiomatic", "stdlib-text", "large-loop", "raw", stdlibidiomatic.RenderLargeLoop},
+	{"idiomatic", "stdlib-text", "mixed-page", "raw", stdlibidiomatic.RenderMixedPage},
+	{"idiomatic", "stdlib-text", "conditional-heavy", "raw", stdlibidiomatic.RenderConditionalHeavy},
+	{"idiomatic", "stdlib-text", "fragment-heavy", "raw", stdlibidiomatic.RenderFragmentHeavy},
+	{"idiomatic", "stdlib-html", "fortunes-encoded", "encoded", stdlibidiomatic.RenderFortunesEncoded},
+	{"idiomatic", "stdlib-html", "encoded-loop", "encoded", stdlibidiomatic.RenderEncodedLoop},
 	// WI5 — templ idiomatic: all eight workloads, naturally formatted with idiomatic
 	// component decomposition (internal/templeng/idiomatic).
 	{"idiomatic", "templ", "composed-page", "raw", templidiomatic.RenderComposedPage},

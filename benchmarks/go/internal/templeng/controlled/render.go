@@ -1,10 +1,10 @@
-// Package templeng hosts the templ controlled ports (one .templ file per workload,
+// Package controlled hosts the templ controlled ports (one .templ file per workload,
 // generated *_templ.go committed — README D3). Render path per port-mapping.md rule 8:
 // component.Render(ctx, buf) into a reused pre-grown bytes.Buffer with a background
 // context.Context created once; construction of the component value (a cheap closure) is
 // inside the render — it is templ's per-render entry point, exactly how a caller invokes a
 // cached templ template (there is no separate parse to exclude).
-package templeng
+package controlled
 
 import (
 	"bytes"
@@ -42,7 +42,7 @@ var (
 func render(c templ.Component, buf *bytes.Buffer) string {
 	buf.Reset()
 	if err := c.Render(ctx, buf); err != nil {
-		panic("templeng: render failed: " + err.Error())
+		panic("templeng/controlled: render failed: " + err.Error())
 	}
 	return buf.String()
 }

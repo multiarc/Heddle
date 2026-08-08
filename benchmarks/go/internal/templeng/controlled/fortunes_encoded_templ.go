@@ -23,7 +23,7 @@
 
 // natively.
 
-package templeng
+package controlled
 
 //lint:file-ignore SA4006 This context is only used if a nested component is present.
 
@@ -69,7 +69,7 @@ func fortunesEncoded(m model.FortuneModel) templ.Component {
 			var templ_7745c5c3_Var2 string
 			templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(r.Id)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/fortunes_encoded.templ`, Line: 26, Col: 19}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/controlled/fortunes_encoded.templ`, Line: 26, Col: 19}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 			if templ_7745c5c3_Err != nil {
@@ -82,7 +82,7 @@ func fortunesEncoded(m model.FortuneModel) templ.Component {
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(r.Message)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/fortunes_encoded.templ`, Line: 26, Col: 41}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/controlled/fortunes_encoded.templ`, Line: 26, Col: 41}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {

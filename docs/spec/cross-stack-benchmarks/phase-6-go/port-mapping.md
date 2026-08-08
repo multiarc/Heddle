@@ -87,7 +87,7 @@ edit that violates the alphabet surfaces in this phase as a named gate error, no
 ## Controlled track — stdlib surfaces
 
 Template sources are Go raw string literals (backquoted) in
-`benchmarks/go/internal/stdlibtpl/templates.go`, authored **densely**: byte-for-byte the pinned
+`benchmarks/go/internal/stdlibtpl/controlled/templates.go`, authored **densely**: byte-for-byte the pinned
 Heddle/twin shape with `{{…}}` actions in place of `@(…)` substitutions, no whitespace beyond
 what the pinned shape carries. text/template and html/template share the same source text per
 workload wherever both consume it (they never do — raw and encoded workloads are disjoint — but
@@ -205,7 +205,7 @@ five-character effect on this alphabet), the other two in text context. Same N5 
 
 ## Controlled track — templ
 
-`.templ` sources live in `benchmarks/go/internal/templeng/`, one file per workload
+`.templ` sources live in `benchmarks/go/internal/templeng/controlled/`, one file per workload
 (`composed_page.templ`, …), generated `*_templ.go` committed
 ([D3](README.md#d3--toolchain-and-dependency-pins)). Authoring rules (all derived in
 [templ-feasibility.md](templ-feasibility.md)):
@@ -261,7 +261,7 @@ Gate: the Phase 1 verifier (`<id>.verify.json` semantics, N1–N4 + N5 for encod
 Authoring standard (Q1.7/D16, binding): in-repo, following official documentation patterns, with
 the doc URLs cited in a header comment per implementation file. Concretely:
 
-- **stdlib idiomatic** (`internal/stdlibtpl/idiomatic.go` + per-workload template consts):
+- **stdlib idiomatic** (`internal/stdlibtpl/idiomatic/idiomatic.go` + per-workload template consts):
   naturally formatted multi-line templates with indentation, `{{- -}}` trim markers where the Go
   docs use them, template composition via `{{define}}`/`{{template}}`/`ParseFS` idioms. Cited
   pages: <https://pkg.go.dev/text/template>, <https://pkg.go.dev/html/template>.

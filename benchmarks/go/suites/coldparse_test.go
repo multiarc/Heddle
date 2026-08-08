@@ -15,7 +15,7 @@ package suites
 import (
 	"testing"
 
-	"heddle.dev/benchmarks/go/internal/stdlibtpl"
+	stdlibcontrolled "heddle.dev/benchmarks/go/internal/stdlibtpl/controlled"
 )
 
 // coldSink keeps each iteration's parsed template set alive.
@@ -25,13 +25,13 @@ func BenchmarkColdParse(b *testing.B) {
 	b.Run("stdlib-text", func(b *testing.B) {
 		b.ReportAllocs()
 		for b.Loop() {
-			coldSink = stdlibtpl.ColdParseText()
+			coldSink = stdlibcontrolled.ColdParseText()
 		}
 	})
 	b.Run("stdlib-html", func(b *testing.B) {
 		b.ReportAllocs()
 		for b.Loop() {
-			coldSink = stdlibtpl.ColdParseHTML()
+			coldSink = stdlibcontrolled.ColdParseHTML()
 		}
 	})
 }
