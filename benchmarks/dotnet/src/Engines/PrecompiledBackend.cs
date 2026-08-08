@@ -23,16 +23,16 @@ namespace Heddle.Benchmarks.Dotnet.Engines
     /// which is the same class of defect as timing a rope you never flatten. So this module asks the
     /// manifest which keys are actually precompiled and registers cells for those only.</para>
     ///
-    /// <para><b>Known coverage limits</b>, both structural rather than incidental:</para>
+    /// <para><b>Known coverage limit</b>, structural rather than incidental:</para>
     /// <list type="bullet">
     ///   <item>The two ENCODED workloads are excluded at the project level: HeddleOutputProfile is
     ///   compilation-wide and they need Html where the raw workloads need Text.</item>
-    ///   <item><c>home.heddle</c> (the <c>composed-page</c> workload) is refused twice: the layout it
-    ///   extends passes embedded C# as component arguments, which the emitter refuses outside
-    ///   <c>FullCSharp</c>, and <c>home.heddle</c> full-overrides the layout's <c>body</c> region,
-    ///   which the emitter refuses outright. <c>fragment-heavy.heddle</c> (<c>@%</c> definition
-    ///   blocks) was in this list and is now covered, so coverage is 5/8 rather than 4/8.</item>
     /// </list>
+    ///
+    /// <para>All six raw workloads are covered (6/8). The two historical <c>home.heddle</c>
+    /// refusals are gone: the templates carry no embedded C# (extension arguments are native
+    /// string literals), and the E20 layout-as-definition shape splices the body through the
+    /// documented <c>@out()</c> slot instead of full-overriding a <c>body</c> region.</para>
     /// </summary>
     public static class Precompiled
     {

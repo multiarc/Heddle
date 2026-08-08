@@ -70,10 +70,11 @@ namespace Heddle.Benchmarks.Dotnet.Engines
         /// <summary>Per-workload compile settings: output profile, expression tier, model type.</summary>
         private static readonly (string Workload, OutputProfile Profile, ExpressionMode Mode, Type ModelType)[] Specs =
         {
-            // composed-page stays on the FullCSharp tier (its chrome calls assembly extensions)
-            // and, since the E20 redesign, binds the typed ComposedModel: the layout definition
-            // renders the structured nav through @list(Nav.Menus) / @list(Nav.FooterColumns).
-            ("composed-page", OutputProfile.Text, ExpressionMode.FullCSharp, typeof(ComposedModel)),
+            // composed-page runs the native expression tier like every other workload: the
+            // extension arguments are native string literals ("styles", area names), and the
+            // layout definition renders the structured nav through @list(Nav.Menus) /
+            // @list(Nav.FooterColumns) — no embedded C# anywhere in the templates.
+            ("composed-page", OutputProfile.Text, ExpressionMode.Native, typeof(ComposedModel)),
             ("trivial-substitution", OutputProfile.Text, ExpressionMode.Native, typeof(SubstitutionContent.SubstitutionModel)),
             ("large-loop", OutputProfile.Text, ExpressionMode.Native, typeof(LoopContent.LoopModel)),
             ("mixed-page", OutputProfile.Text, ExpressionMode.Native, typeof(MixedContent.MixedModel)),

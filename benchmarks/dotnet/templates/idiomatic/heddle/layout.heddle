@@ -88,7 +88,7 @@
     <link href="//fonts.googleapis.com/css?family=Francois+One" rel="stylesheet" type="text/css">
     <link rel="apple-touch-icon" href="/assets/miscellaneous/apple-touch-icon.png">
     <link rel="icon" type="img/ico" href="/assets/miscellaneous/favicon.ico">
-    @assets_component(@"styles")
+    @assets_component("styles")
     <style>
         @custom_styles()
     </style>
@@ -109,7 +109,7 @@
     </div>
     <div class="separator-top"></div>
 <div class="alert-banner">
-    @area_component(@"Alert Top Section Above Nav")
+    @area_component("Alert Top Section Above Nav")
 </div>
     <div class="main">
         <header>
@@ -149,14 +149,14 @@
                 </div>
             </div>
             <nav class="hide top-nav secondary-nav">
-                @area_component(@"Secondary Wholesale Menu")
-                @area_component(@"Secondary Retail Menu")
+                @area_component("Secondary Wholesale Menu")
+                @area_component("Secondary Retail Menu")
             </nav>
             @list(Nav.Menus){{@mega_menu()}}
         </header>
         <div class="content">
             <div class="alert-banner">
-                @area_component(@"Alert Top Section Below Nav")
+                @area_component("Alert Top Section Below Nav")
             </div>
             <div class="content-dynamic">
                 @out()
@@ -187,7 +187,7 @@
             </div>
         </footer>
     </div>
-    @assets_component(@"scripts")
+    @assets_component("scripts")
     <script src="/app/modules/profile/gccheckform.js"></script>
     @page_scripts()
     @endpage_scripts()

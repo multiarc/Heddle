@@ -80,7 +80,7 @@ namespace Heddle.Benchmarks.Dotnet.Bench
                 FileNamePostfix = ".heddle",
                 RootPath = _heddleRoot,
                 OutputProfile = OutputProfile.Text,
-                ExpressionMode = ExpressionMode.FullCSharp,
+                ExpressionMode = ExpressionMode.Native,
                 ProvideLanguageFeatures = false,
             };
             return new HeddleTemplate(new CompileContext(options)).CompileResult != null;

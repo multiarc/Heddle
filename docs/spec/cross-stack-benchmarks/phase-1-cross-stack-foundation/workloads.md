@@ -180,8 +180,9 @@ normative as committed in
 
 Call sites in the chrome: `@list(Nav.Menus){{@mega_menu()}}` where the two mega-menu blobs
 were, `@list(Nav.FooterColumns){{@nav_column()}}` where the footer-links blob was,
-`@area_component(@"…")` for the four remaining blobs, `@out()` where `@body()` was. The
-workload stays on `ExpressionMode.FullCSharp` and now binds the typed `ComposedModel`.
+`@area_component("…")` for the four remaining blobs (native string-literal arguments — the
+templates carry **no embedded C#**), `@out()` where `@body()` was. The workload runs
+`ExpressionMode.Native` like every other workload and binds the typed `ComposedModel`.
 
 **Chrome-authoring hazards (pinned by the Stage-1 tests, binding on every re-transcription):**
 an adjacent `}}` pair inside the definition body is the subtemplate CLOSE token (minified CSS
