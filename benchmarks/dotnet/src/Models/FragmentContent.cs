@@ -43,10 +43,6 @@ namespace Heddle.Benchmarks.Dotnet.Models
             public string Name { get; set; }
             public int Value { get; set; }
             public string Badge { get; set; }
-            /// <summary>Media rows render it; blank elsewhere.</summary>
-            public string Caption { get; set; }
-            /// <summary>Media rows render it; blank elsewhere.</summary>
-            public string ImageUrl { get; set; }
             /// <summary>Stat rows render it.</summary>
             public int Delta { get; set; }
             /// <summary>The nesting level: the card fragment renders badge + price from it.
@@ -57,7 +53,9 @@ namespace Heddle.Benchmarks.Dotnet.Models
         public sealed class FragmentPromo
         {
             public string Label { get; set; }
-            public string Price { get; set; }
+            /// <summary>Whole-currency units only; the templates compose the display price
+            /// (<c>@(Price).99</c>) — formatting is rendering work, not model work.</summary>
+            public int Price { get; set; }
         }
 
         public const int RowCount = 48;
@@ -85,13 +83,11 @@ namespace Heddle.Benchmarks.Dotnet.Models
                     Name = $"item-{i:D2}",
                     Value = i * 11,
                     Badge = Badges[i % 4],
-                    Caption = kind == "media" ? $"Caption for item-{i:D2}" : "",
-                    ImageUrl = kind == "media" ? $"/img/item-{i:D2}.jpg" : "",
                     Delta = i % 7 - 3,
                     Promo = new FragmentPromo
                     {
                         Label = Badges[i % 4],
-                        Price = $"{9 + i}.99",
+                        Price = 9 + i,
                     },
                 });
             }
@@ -112,8 +108,6 @@ namespace Heddle.Benchmarks.Dotnet.Models
                     ["name"] = row.Name,
                     ["value"] = row.Value,
                     ["badge"] = row.Badge,
-                    ["caption"] = row.Caption,
-                    ["image_url"] = row.ImageUrl,
                     ["delta"] = row.Delta,
                     ["promo"] = new Hash
                     {
@@ -138,8 +132,6 @@ namespace Heddle.Benchmarks.Dotnet.Models
                     ["name"] = row.Name,
                     ["value"] = row.Value,
                     ["badge"] = row.Badge,
-                    ["caption"] = row.Caption,
-                    ["image_url"] = row.ImageUrl,
                     ["delta"] = row.Delta,
                     ["promo"] = new Dictionary<string, object>
                     {

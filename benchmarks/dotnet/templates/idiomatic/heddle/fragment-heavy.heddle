@@ -28,7 +28,7 @@
 }}
 <price>
 {{
-    <p class="price">@(Price)</p>
+    <p class="price">@(Price).99</p>
 }}
 <card>
 {{
@@ -42,10 +42,10 @@
 <media_row>
 {{
     <div class="media-row">
-        <img src="@(ImageUrl)" alt="@(Name)" />
+        <img src="/img/@(Name).jpg" alt="@(Name)" />
         <div class="media-body">
             <h4>@(Name)</h4>
-            <p>@(Caption)</p>
+            <p>Caption for @(Name)</p>
         </div>
     </div>
 }}
