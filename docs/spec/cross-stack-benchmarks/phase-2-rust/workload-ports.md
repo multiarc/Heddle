@@ -96,7 +96,7 @@ slider markup.
 
 ```jinja
 {% extends "controlled/<engine>/shared/composed-page-layout.html" %}
-{% block body %}…the slider markup, transcribed from home.heddle…{% endblock %}
+{% block body %}…the slider markup, transcribed from composed-page.heddle…{% endblock %}
 ```
 
 `templates/controlled/<engine>/shared/composed-page-layout.html` (~128 lines): the **full literal

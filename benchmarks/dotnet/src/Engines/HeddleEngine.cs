@@ -127,7 +127,7 @@ namespace Heddle.Benchmarks.Dotnet.Engines
             var spec = Array.Find(Specs, s => s.Workload == workload);
             if (spec.Workload == null) throw new ArgumentException($"unknown workload '{workload}'", nameof(workload));
 
-            var options = new TemplateOptions(spec.Workload == "composed-page" ? "home" : spec.Workload)
+            var options = new TemplateOptions(spec.Workload)
             {
                 FileNamePostfix = ".heddle",
                 RootPath = Path.Combine(Templates.Root(), track, "heddle"),

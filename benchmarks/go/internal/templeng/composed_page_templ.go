@@ -953,7 +953,7 @@ func layout(m model.ComposedModel) templ.Component {
 	})
 }
 
-// ---- the page (home.heddle: @<<{{layout.heddle}} + @layout(){{ …slider… }}) ------------------
+// ---- the page (composed-page.heddle: @<<{{layout.heddle}} + @layout(){{ …slider… }}) ------------------
 func composedPage(m model.ComposedModel) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context

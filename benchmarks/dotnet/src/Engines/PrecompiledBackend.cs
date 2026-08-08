@@ -27,7 +27,7 @@ namespace Heddle.Benchmarks.Dotnet.Engines
     /// from this assembly (compiled under the Text profile), and the two ENCODED workloads from
     /// the Html-profile satellite <c>precompiled-html/</c> (ledger E25) — HeddleOutputProfile is
     /// compilation-wide, so the profile split is an assembly split. The two historical
-    /// <c>home.heddle</c> refusals are gone (no embedded C#; the E20 layout-as-definition shape
+    /// composed-page refusals are gone (no embedded C#; the E20 layout-as-definition shape
     /// splices the body through the documented <c>@out()</c> slot), and the encoded pair's last
     /// refusal — <c>@attr</c>'s compile-time hook — fell when the emitter pinned the bodiless
     /// step-back encoders.</para>
@@ -37,9 +37,10 @@ namespace Heddle.Benchmarks.Dotnet.Engines
         private static readonly UTF8Encoding Utf8NoBom = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
         private static Dictionary<string, PrecompiledTemplateInfo> _entries;
 
-        /// <summary>Template key for a workload, matching the generator's filename-derived keys.</summary>
+        /// <summary>Template key for a workload, matching the generator's filename-derived keys —
+        /// every entry template is named for its workload, composed-page included.</summary>
         private static string KeyFor(string workload)
-            => (workload == "composed-page" ? "home" : workload) + ".heddle";
+            => workload + ".heddle";
 
         /// <summary>The precompiled entries the two benchmark assemblies carry, keyed by template key.
         /// The keys are disjoint by construction: the harness glob excludes the two encoded templates

@@ -38,7 +38,7 @@ cannot be parity-gated (plan constraint, carried).
 > `large-loop`.
 
 The three existing workloads are **not modified in any way**: their templates
-([home.heddle](../../../../benchmarks/dotnet/templates/controlled/heddle/home.heddle),
+([composed-page.heddle](../../../../benchmarks/dotnet/templates/controlled/heddle/composed-page.heddle),
 [layout.heddle](../../../../benchmarks/dotnet/templates/controlled/heddle/shared/layout.heddle),
 [trivial-substitution.heddle](../../../../benchmarks/dotnet/templates/controlled/heddle/trivial-substitution.heddle),
 [large-loop.heddle](../../../../benchmarks/dotnet/templates/controlled/heddle/large-loop.heddle)), their
@@ -46,7 +46,7 @@ runner classes, their models, and their benchmark classes stay untouched, so his
 remain comparable run-to-run. This spec adds a corpus export and verifier definition for each —
 nothing else.
 
-- **`composed-page`** — `home.heddle` extends `layout.heddle` via `@<<{{shared/layout.heddle}}`; the
+- **`composed-page`** — `composed-page.heddle` extends `layout.heddle` via `@<<{{shared/layout.heddle}}`; the
   output is the documented ordered fragment sequence (not a full HTML page). The fidelity note
   and `@<<` root cause in the
   [Runners README](../../../../benchmarks/dotnet/GoldenCorpus/README.md) are carried **verbatim**
@@ -169,7 +169,7 @@ source of truth the five non-.NET ecosystems load from
   defaults (`meta`, `socialmeta`, `page_scripts`, `endpage_scripts`), the four nav fragment
   definitions below, and `<layout>{{ …the full ~150-line chrome… }} :: ComposedModel` with a
   bare `@out()` at the body-slot position. Importing the file renders nothing.
-- `home.heddle` is `@<<{{shared/layout.heddle}}` + `@layout(){{ …slider markup… }}` — the call body
+- `composed-page.heddle` is `@<<{{shared/layout.heddle}}` + `@layout(){{ …slider markup… }}` — the call body
   splices at `@out()`. Section overrides, when a page wants them, are the ordinary
   `<name:name>` mechanism after the import line. **Both tracks carry the same slider body**
   (the verifier's removed-segment calibration pin is the slider, so an empty body fails).

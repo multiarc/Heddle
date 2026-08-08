@@ -30,7 +30,7 @@ const encodedLoopRow0 = `<tr><td data-tag="tag-0&amp;&#39;0&#39;">item &lt;0&gt;
 var calibrationPins = [8]pins{
 	{
 		// E20 pins (VerifierDefinitions.ComposedPage): the removed segment is the slider
-		// fragment home.heddle splices into the layout's body slot — an idiomatic page
+		// fragment composed-page.heddle splices into the layout's body slot — an idiomatic page
 		// with an EMPTY body must fail; the swap crosses the wholesale-only and
 		// retail-only mega-menu anchors.
 		workload:       "composed-page",
