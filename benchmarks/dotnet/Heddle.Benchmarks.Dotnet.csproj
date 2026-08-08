@@ -23,6 +23,9 @@
     <TieredCompilation>true</TieredCompilation>
     <!-- The golden corpus lives beside this project and is read at runtime, never compiled. -->
     <EnableDefaultNoneItems>true</EnableDefaultNoneItems>
+    <!-- The Html-profile satellite is a nested PROJECT, not sources of this one: without this
+         exclude the default Compile glob sweeps its obj/ and duplicates every assembly attribute. -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);precompiled-html/**</DefaultItemExcludes>
     <!-- The generated precompiled templates are written to disk so they are reviewable and
          diffable; a backend nobody can read is a backend nobody can audit. -->
     <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
@@ -39,6 +42,9 @@
     -->
     <ProjectReference Include="..\..\src\Heddle.Generator\Heddle.Generator.csproj"
                       OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    <!-- The Html-profile precompiled satellite (ledger E25): the two ENCODED templates, compiled
+         under the profile they actually need. See the coverage comment on the template items below. -->
+    <ProjectReference Include="precompiled-html\Heddle.Benchmarks.Dotnet.PrecompiledHtml.csproj" />
   </ItemGroup>
 
   <!--
@@ -89,11 +95,13 @@
       one track answers the technique question. The idiomatic track therefore carries the three
       runtime techniques only, which the registry reflects rather than papering over.
 
-      The two ENCODED workloads are excluded. HeddleOutputProfile is compilation-wide, and they need
-      Html where the six raw workloads need Text; a single project cannot precompile both. Including
+      The two ENCODED workloads are excluded HERE and precompiled in the Html-profile satellite
+      project (precompiled-html/, ledger E25). HeddleOutputProfile is compilation-wide, and they
+      need Html where the six raw workloads need Text; ONE project cannot precompile both — including
       them under Text produced a manifest claiming OutputProfile.Text for fortunes-encoded, i.e. a
-      precompiled template that would not escape. That is a real constraint of the generator's
-      MSBuild contract, so it is disclosed rather than worked around.
+      precompiled template that would not escape. That constraint of the generator's MSBuild
+      contract is real; the second compilation is the answer to it. The harness registers both
+      assemblies' manifests and discovers 8/8 coverage from them.
 
       All six raw workloads are emitted, home.heddle included: the benchmark templates carry no
       embedded C# and, since E22, call no extensions at all — every fragment of literal page text

@@ -23,16 +23,14 @@ namespace Heddle.Benchmarks.Dotnet.Engines
     /// which is the same class of defect as timing a rope you never flatten. So this module asks the
     /// manifest which keys are actually precompiled and registers cells for those only.</para>
     ///
-    /// <para><b>Known coverage limit</b>, structural rather than incidental:</para>
-    /// <list type="bullet">
-    ///   <item>The two ENCODED workloads are excluded at the project level: HeddleOutputProfile is
-    ///   compilation-wide and they need Html where the raw workloads need Text.</item>
-    /// </list>
-    ///
-    /// <para>All six raw workloads are covered (6/8). The two historical <c>home.heddle</c>
-    /// refusals are gone: the templates carry no embedded C# (extension arguments are native
-    /// string literals), and the E20 layout-as-definition shape splices the body through the
-    /// documented <c>@out()</c> slot instead of full-overriding a <c>body</c> region.</para>
+    /// <para><b>All eight workloads are covered</b>, through TWO manifests: the six raw workloads
+    /// from this assembly (compiled under the Text profile), and the two ENCODED workloads from
+    /// the Html-profile satellite <c>precompiled-html/</c> (ledger E25) — HeddleOutputProfile is
+    /// compilation-wide, so the profile split is an assembly split. The two historical
+    /// <c>home.heddle</c> refusals are gone (no embedded C#; the E20 layout-as-definition shape
+    /// splices the body through the documented <c>@out()</c> slot), and the encoded pair's last
+    /// refusal — <c>@attr</c>'s compile-time hook — fell when the emitter pinned the bodiless
+    /// step-back encoders.</para>
     /// </summary>
     public static class Precompiled
     {
@@ -43,11 +41,14 @@ namespace Heddle.Benchmarks.Dotnet.Engines
         private static string KeyFor(string workload)
             => (workload == "composed-page" ? "home" : workload) + ".heddle";
 
-        /// <summary>The precompiled entries this assembly actually carries, keyed by template key.</summary>
+        /// <summary>The precompiled entries the two benchmark assemblies carry, keyed by template key.
+        /// The keys are disjoint by construction: the harness glob excludes the two encoded templates
+        /// and the satellite includes exactly those two.</summary>
         public static IReadOnlyDictionary<string, PrecompiledTemplateInfo> Entries()
         {
             if (_entries != null) return _entries;
             PrecompiledTemplates.Register(typeof(Precompiled).Assembly);
+            PrecompiledTemplates.Register(typeof(PrecompiledHtml.PrecompiledHtmlAssembly).Assembly);
             _entries = PrecompiledTemplates.Entries.ToDictionary(e => e.Key, StringComparer.Ordinal);
             return _entries;
         }
