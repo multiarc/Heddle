@@ -95,11 +95,11 @@ slider markup.
 `templates/controlled/<engine>/composed-page.html`:
 
 ```jinja
-{% extends "controlled/<engine>/composed-page-layout.html" %}
+{% extends "controlled/<engine>/shared/composed-page-layout.html" %}
 {% block body %}…the slider markup, transcribed from home.heddle…{% endblock %}
 ```
 
-`templates/controlled/<engine>/composed-page-layout.html` (~128 lines): the **full literal
+`templates/controlled/<engine>/shared/composed-page-layout.html` (~128 lines): the **full literal
 chrome** transcribed from `layout.heddle`/the golden, carrying
 
 - the four **overridable section-default blocks** — `{% block meta %}<title>Title</title>{% endblock %}`,
@@ -136,7 +136,7 @@ registered in the autoescape-off instance with a `nav`-keyed context.
 ### Idiomatic — both engines
 
 Same shape as the docs teach it: the child extends the layout/base
-(`idiomatic/askama/composed-page-layout.html` / `idiomatic/tera/composed-page-base.html`) and
+(`idiomatic/askama/shared/composed-page-layout.html` / `idiomatic/tera/shared/composed-page-base.html`) and
 fills `{% block body %}`; the layout carries the same section-default blocks, chrome includes
 and nav include chain, authored multi-line. Doc citations (header comment in each file, per
 Q1.7/D16): Askama book *Template syntax — Template inheritance*, *Include*, *For*, *If*; Tera
@@ -306,7 +306,7 @@ form remains the unused documented fallback).
 Main (`fragment-heavy.html`) — the boolean `{% if %}/{% elif %}` dispatch chain:
 
 ```jinja
-<div class="panel">{% for item in items %}{% if item.is_tile %}{% include "controlled/<engine>/fragment-heavy-tile.html" %}{% elif item.is_card %}{% include "controlled/<engine>/fragment-heavy-card.html" %}{% elif item.is_media %}{% include "controlled/<engine>/fragment-heavy-media-row.html" %}{% else %}{% include "controlled/<engine>/fragment-heavy-stat.html" %}{% endif %}{% endfor %}</div>
+<div class="panel">{% for item in items %}{% if item.is_tile %}{% include "controlled/<engine>/shared/fragment-heavy-tile.html" %}{% elif item.is_card %}{% include "controlled/<engine>/shared/fragment-heavy-card.html" %}{% elif item.is_media %}{% include "controlled/<engine>/shared/fragment-heavy-media-row.html" %}{% else %}{% include "controlled/<engine>/shared/fragment-heavy-stat.html" %}{% endif %}{% endfor %}</div>
 ```
 
 The six per-kind files (`<engine>` = `askama` / `tera` in each copy's include path):

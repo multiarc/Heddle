@@ -32,7 +32,7 @@ const RAW_TEMPLATES: [&str; 27] = [
     "controlled/tera/nav/section.html",
     "controlled/tera/nav/column.html",
     "controlled/tera/nav/mega-menu.html",
-    "controlled/tera/composed-page-layout.html",
+    "controlled/tera/shared/composed-page-layout.html",
     "controlled/tera/composed-page.html",
     "controlled/tera/trivial-substitution.html",
     "controlled/tera/large-loop.html",
@@ -40,12 +40,12 @@ const RAW_TEMPLATES: [&str; 27] = [
     "controlled/tera/conditional-heavy.html",
     // fragment-heavy (E20): four dispatched per-kind partials plus the card's two
     // sub-partials, then the dispatching main template.
-    "controlled/tera/fragment-heavy-tile.html",
-    "controlled/tera/fragment-heavy-badge.html",
-    "controlled/tera/fragment-heavy-price.html",
-    "controlled/tera/fragment-heavy-card.html",
-    "controlled/tera/fragment-heavy-media-row.html",
-    "controlled/tera/fragment-heavy-stat.html",
+    "controlled/tera/shared/fragment-heavy-tile.html",
+    "controlled/tera/shared/fragment-heavy-badge.html",
+    "controlled/tera/shared/fragment-heavy-price.html",
+    "controlled/tera/shared/fragment-heavy-card.html",
+    "controlled/tera/shared/fragment-heavy-media-row.html",
+    "controlled/tera/shared/fragment-heavy-stat.html",
     "controlled/tera/fragment-heavy.html",
 ];
 

@@ -44,11 +44,13 @@ namespace Heddle.Benchmarks.Dotnet.Engines
             string Src(string file) => Templates.Load(track, "liquid", file);
 
             // A partial set served to {% include %} under its logical name: 'layout' resolves to
-            // layout.liquid in the provider, whose bytes come from layout.fluid.liquid on disk.
+            // layout.liquid in the provider, whose bytes come from shared/layout.fluid.liquid on
+            // disk — non-entry templates live under liquid/shared/, only the eight directly-runnable
+            // workload entries sit at the folder's top level.
             TemplateOptions Options(params string[] partials)
             {
                 var files = new Dictionary<string, string>(StringComparer.Ordinal);
-                foreach (var p in partials) files[p + ".liquid"] = Src(p + ".fluid.liquid");
+                foreach (var p in partials) files[p + ".liquid"] = Src("shared/" + p + ".fluid.liquid");
                 return new TemplateOptions { FileProvider = new DictionaryFileProvider(files) };
             }
 

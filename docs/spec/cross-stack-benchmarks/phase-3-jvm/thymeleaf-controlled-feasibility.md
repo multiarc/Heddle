@@ -47,6 +47,12 @@ Everything **non-whitespace** is a byte divergence. Two consequences frame the w
 
 Controlled templates use exactly these documented mechanisms — nothing else:
 
+> **Path note (2026-08-08).** The non-entry templates (`layout`, `chrome-fragments`, and the
+> per-kind fragment files) now live under `{track}/shared/`, matching the reference tree shape;
+> fragment references written here as `~{controlled/tile :: …}` / `~{controlled/layout :: …}`
+> read `~{controlled/shared/tile :: …}` / `~{controlled/shared/layout :: …}` in the sources.
+> Entry templates are unchanged at `thymeleaf/{track}/<workload>.html`.
+
 | Mechanism | Used for | Doc (usingthymeleaf.html, 3.1) |
 |---|---|---|
 | Synthetic `<th:block>` element — processed and **removed whole** from output | carrier for every structural processor | §11.4 "Synthetic th:block tag" |

@@ -2,7 +2,7 @@
 <%--
   Idiomatic jte authoring (Q1.7/D7) — official doc citations:
   https://jte.gg/syntax/ (conditions: @if/@elseif/@else — jte's dispatch construct;
-      template calls: @template.idiomatic.tile etc.; loops: @for)
+      template calls: @template.idiomatic.shared.tile etc.; loops: @for)
   https://jte.gg/pre-compiling/ (precompiled engine setup)
 
   E20 redesign (workloads.md workload 6): four dispatched fragment kinds selected by a
@@ -11,13 +11,13 @@
 <div class="panel">
     @for(var item : items)
         @if(item.isTile())
-            @template.idiomatic.tile(item)
+            @template.idiomatic.shared.tile(item)
         @elseif(item.isCard())
-            @template.idiomatic.card(item)
+            @template.idiomatic.shared.card(item)
         @elseif(item.isMedia())
-            @template.idiomatic.mediarow(item)
+            @template.idiomatic.shared.mediarow(item)
         @else
-            @template.idiomatic.stat(item)
+            @template.idiomatic.shared.stat(item)
         @endif
     @endfor
 </div>

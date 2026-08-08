@@ -1,0 +1,10 @@
+@*
+    Razor parity twin -- fragment-heavy card partial (ledger E20).
+
+    One of the four dispatched fragment kinds, and the one that NESTS: it renders the badge
+    and price partials against the row's Promo, mirroring Heddle's `@badge(Promo)@price(Promo)`.
+    Html.Raw: raw-suite non-encoding path.
+*@
+@using Heddle.Benchmarks.Dotnet.Models
+@model FragmentContent.FragmentRow
+<article class="card"><h3>@Html.Raw(Model.Name)</h3>@await Html.PartialAsync("/Views/Shared/badge.cshtml", Model.Promo)@await Html.PartialAsync("/Views/Shared/price.cshtml", Model.Promo)<p class="v">@Model.Value</p></article>

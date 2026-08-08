@@ -20,16 +20,16 @@
         switch (item.Kind)
         {
             case "tile":
-                @await Html.PartialAsync("/Views/tile.cshtml", item)
+                @await Html.PartialAsync("/Views/Shared/tile.cshtml", item)
                 break;
             case "card":
-                @await Html.PartialAsync("/Views/card.cshtml", item)
+                @await Html.PartialAsync("/Views/Shared/card.cshtml", item)
                 break;
             case "media":
-                @await Html.PartialAsync("/Views/media-row.cshtml", item)
+                @await Html.PartialAsync("/Views/Shared/media-row.cshtml", item)
                 break;
             default:
-                @await Html.PartialAsync("/Views/stat.cshtml", item)
+                @await Html.PartialAsync("/Views/Shared/stat.cshtml", item)
                 break;
         }
     }

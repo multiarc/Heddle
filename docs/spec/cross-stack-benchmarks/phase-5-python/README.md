@@ -484,8 +484,9 @@ details are normative in [templates.md](templates.md) and [harness.md](harness.m
 
 ### WI3 — Controlled-track templates and engine wiring
 - **Files.** New: `benchmarks/python/templates/jinja2/controlled/*` and
-  `benchmarks/python/templates/mako/controlled/*` (per [templates.md](templates.md), incl. the
-  `layout`/`tile` partials), `benchmarks/python/runner/engines.py` (the four engine-object
+  `benchmarks/python/templates/mako/controlled/*` (per [templates.md](templates.md) — the eight
+  entries at the top level, the `layout`/`tile` and other partials under each track's
+  `shared/`), `benchmarks/python/runner/engines.py` (the four engine-object
   constructors: jinja2-raw, jinja2-encoded, mako-raw, mako-encoded, plus template loading per
   track).
 - **Change.** D3/D4 as specified.
@@ -495,7 +496,8 @@ details are normative in [templates.md](templates.md) and [harness.md](harness.m
 
 ### WI4 — Idiomatic-track templates
 - **Files.** New: `benchmarks/python/templates/jinja2/idiomatic/*`,
-  `benchmarks/python/templates/mako/idiomatic/*` (per [templates.md](templates.md), with the
+  `benchmarks/python/templates/mako/idiomatic/*` (per [templates.md](templates.md) — entries at
+  the top level, non-entries under `shared/` — with the
   doc-citation header comment in every file).
 - **Change.** D5 as specified.
 - **Done when.** `python -m runner.gate_all --track idiomatic` reports 16/16 verifier PASS;

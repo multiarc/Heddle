@@ -1,0 +1,20 @@
+@*
+    Idiomatic Razor -- composed-page nav-column partial (phase 9; authoring standard D16;
+    ledger E20/E22).
+
+    Patterns followed, from Microsoft's own documentation:
+      Razor syntax        https://learn.microsoft.com/aspnet/core/mvc/views/razor
+      Partial views       https://learn.microsoft.com/aspnet/core/mvc/views/partial
+
+    One navigation column, shared by the mega-menu dropdowns and the footer nav; each section
+    renders through the nested nav-section partial. Checked by the functional verifier, not
+    the byte gate.
+*@
+@using Heddle.Benchmarks.Dotnet.Models
+@model NavColumn
+<div class="nav-column">
+    @foreach (var section in Model.Sections)
+    {
+        @await Html.PartialAsync("/Views/Shared/nav-section.cshtml", section)
+    }
+</div>

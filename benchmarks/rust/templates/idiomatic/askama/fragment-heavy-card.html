@@ -1,9 +1,0 @@
-{# Idiomatic Askama card partial (WI5, README D8/Q1.7; ledger E20). The one nested kind:
-   the card renders the badge and price sub-partials against the row's promo (Askama
-   book: "Template syntax - Include" - nested includes share the enclosing scope). #}
-<article class="card">
-  <h3>{{ item.name }}</h3>
-  {% include "idiomatic/askama/fragment-heavy-badge.html" %}
-  {% include "idiomatic/askama/fragment-heavy-price.html" %}
-  <p class="v">{{ item.value }}</p>
-</article>

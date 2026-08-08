@@ -1,0 +1,13 @@
+<!--/*
+  Idiomatic Thymeleaf authoring (Q1.7/D7) — official doc citations:
+  https://www.thymeleaf.org/doc/tutorials/3.1/usingthymeleaf.html
+    §8.1 (defining/including fragments: th:fragment, th:replace),
+    §8.2 (fragment parameters: the row's promo passed down — the one nesting
+    level, ledger E20), §12 (unescaped text: th:utext)
+*/-->
+<article class="card" th:fragment="card(item)">
+    <h3 th:utext="${item.name}">card name</h3>
+    <span th:replace="~{idiomatic/shared/badge :: badge(${item.promo})}">promo badge</span>
+    <p th:replace="~{idiomatic/shared/price :: price(${item.promo})}">promo price</p>
+    <p class="v" th:utext="${item.value}">0</p>
+</article>

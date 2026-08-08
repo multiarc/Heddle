@@ -42,28 +42,28 @@ namespace Heddle.Benchmarks.Dotnet.Engines
             // (mirroring shared/chrome-fragments.heddle), and the layout partial holds the full chrome
             // with {{> @partial-block}} at the body slot.
             var composedEnv = Handlebars.Create();
-            composedEnv.RegisterTemplate("layout", Src("layout.hbs"));
+            composedEnv.RegisterTemplate("layout", Src("shared/layout.hbs"));
             // Section defaults (Heddle shared/layout.heddle's @% block).
-            composedEnv.RegisterTemplate("meta", Src("meta.hbs"));
-            composedEnv.RegisterTemplate("socialmeta", Src("socialmeta.hbs"));
-            composedEnv.RegisterTemplate("page_scripts", Src("page-scripts.hbs"));
-            composedEnv.RegisterTemplate("endpage_scripts", Src("endpage-scripts.hbs"));
+            composedEnv.RegisterTemplate("meta", Src("shared/meta.hbs"));
+            composedEnv.RegisterTemplate("socialmeta", Src("shared/socialmeta.hbs"));
+            composedEnv.RegisterTemplate("page_scripts", Src("shared/page-scripts.hbs"));
+            composedEnv.RegisterTemplate("endpage_scripts", Src("shared/endpage-scripts.hbs"));
             // Chrome fragments (shared/chrome-fragments.heddle, E22).
-            composedEnv.RegisterTemplate("alert_top", Src("alert-top.hbs"));
-            composedEnv.RegisterTemplate("alert_below", Src("alert-below.hbs"));
-            composedEnv.RegisterTemplate("secondary_wholesale_menu", Src("secondary-wholesale-menu.hbs"));
-            composedEnv.RegisterTemplate("secondary_retail_menu", Src("secondary-retail-menu.hbs"));
-            composedEnv.RegisterTemplate("assets_styles", Src("assets-styles.hbs"));
-            composedEnv.RegisterTemplate("assets_scripts", Src("assets-scripts.hbs"));
-            composedEnv.RegisterTemplate("custom_styles", Src("custom-styles.hbs"));
-            composedEnv.RegisterTemplate("head_scripts", Src("head-scripts.hbs"));
-            composedEnv.RegisterTemplate("body_scripts", Src("body-scripts.hbs"));
-            composedEnv.RegisterTemplate("body_end_scripts", Src("body-end-scripts.hbs"));
+            composedEnv.RegisterTemplate("alert_top", Src("shared/alert-top.hbs"));
+            composedEnv.RegisterTemplate("alert_below", Src("shared/alert-below.hbs"));
+            composedEnv.RegisterTemplate("secondary_wholesale_menu", Src("shared/secondary-wholesale-menu.hbs"));
+            composedEnv.RegisterTemplate("secondary_retail_menu", Src("shared/secondary-retail-menu.hbs"));
+            composedEnv.RegisterTemplate("assets_styles", Src("shared/assets-styles.hbs"));
+            composedEnv.RegisterTemplate("assets_scripts", Src("shared/assets-scripts.hbs"));
+            composedEnv.RegisterTemplate("custom_styles", Src("shared/custom-styles.hbs"));
+            composedEnv.RegisterTemplate("head_scripts", Src("shared/head-scripts.hbs"));
+            composedEnv.RegisterTemplate("body_scripts", Src("shared/body-scripts.hbs"));
+            composedEnv.RegisterTemplate("body_end_scripts", Src("shared/body-end-scripts.hbs"));
             // Structured nav, rendered through nested partials (workloads.md workload 1).
-            composedEnv.RegisterTemplate("nav_link", Src("nav-link.hbs"));
-            composedEnv.RegisterTemplate("nav_section", Src("nav-section.hbs"));
-            composedEnv.RegisterTemplate("nav_column", Src("nav-column.hbs"));
-            composedEnv.RegisterTemplate("mega_menu", Src("mega-menu.hbs"));
+            composedEnv.RegisterTemplate("nav_link", Src("shared/nav-link.hbs"));
+            composedEnv.RegisterTemplate("nav_section", Src("shared/nav-section.hbs"));
+            composedEnv.RegisterTemplate("nav_column", Src("shared/nav-column.hbs"));
+            composedEnv.RegisterTemplate("mega_menu", Src("shared/mega-menu.hbs"));
             var composed = composedEnv.Compile(Src("composed-page.hbs"));
             var composedModel = ComposedContent.HandlebarsModel();
             yield return new Cell
@@ -75,12 +75,12 @@ namespace Heddle.Benchmarks.Dotnet.Engines
             // ---- fragment-heavy: six partials, per-row {{#if}}/{{else if}} dispatch over the
             // precomputed kind booleans; card nests badge + price against the row's promo (E20).
             var fragmentEnv = Handlebars.Create();
-            fragmentEnv.RegisterTemplate("tile", Src("tile.hbs"));
-            fragmentEnv.RegisterTemplate("card", Src("card.hbs"));
-            fragmentEnv.RegisterTemplate("badge", Src("badge.hbs"));
-            fragmentEnv.RegisterTemplate("price", Src("price.hbs"));
-            fragmentEnv.RegisterTemplate("media_row", Src("media-row.hbs"));
-            fragmentEnv.RegisterTemplate("stat", Src("stat.hbs"));
+            fragmentEnv.RegisterTemplate("tile", Src("shared/tile.hbs"));
+            fragmentEnv.RegisterTemplate("card", Src("shared/card.hbs"));
+            fragmentEnv.RegisterTemplate("badge", Src("shared/badge.hbs"));
+            fragmentEnv.RegisterTemplate("price", Src("shared/price.hbs"));
+            fragmentEnv.RegisterTemplate("media_row", Src("shared/media-row.hbs"));
+            fragmentEnv.RegisterTemplate("stat", Src("shared/stat.hbs"));
             var fragment = fragmentEnv.Compile(Src("fragment-heavy.hbs"));
             var fragmentModel = FragmentContent.HandlebarsModel();
             yield return new Cell

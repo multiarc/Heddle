@@ -1,4 +1,4 @@
-<%inherit file="layout.mako"/>\
+<%inherit file="shared/layout.mako"/>\
         <div class="slider-wrapper theme-default">
             <div id="slider" class="nivoSlider">
             </div>

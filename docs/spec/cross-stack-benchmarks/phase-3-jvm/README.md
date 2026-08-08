@@ -132,7 +132,7 @@ Ordered by the plan's internal ordering: Thymeleaf controlled-track feasibility 
 - **Alternatives rejected.** `FileTemplateResolver` (adds filesystem paths to the benchmark jar
   invocation; classpath resources ship inside the shaded jar — one artifact, one reproduce
   command); `StringTemplateResolver` (loses template-name-based fragment resolution
-  `~{controlled/tile :: tile}` needs); constructing `Context` per render (times model-map
+  `~{controlled/shared/tile :: tile}` needs); constructing `Context` per render (times model-map
   population, which the protocol excludes).
 - **Grounding.** Spike D §6 (standalone API);
   [metrics-protocol — metric rules](../phase-1-cross-stack-foundation/metrics-protocol.md#metric-rules);
@@ -333,7 +333,7 @@ Ordered by the plan's internal ordering: Thymeleaf controlled-track feasibility 
   conditional element, `th:switch`/`th:case` for the four-way chain, `th:replace` fragments for
   the tile partial (cited: usingthymeleaf.html §§3, 5, 6, 7, 8, 12). **JTE** idiomatic templates
   are multi-line indented `.jte` files with `@param`, `@if`/`@elseif`/`@else`, `@for`,
-  `@template.idiomatic.tile(...)` calls, rendered through the stock engine
+  `@template.idiomatic.shared.tile(...)` calls, rendered through the stock engine
   (`ContentType.Plain` raw / `ContentType.Html` encoded, default `OwaspHtmlTemplateOutput`
   wrapping a `StringOutput`) (cited: jte.gg/syntax, jte.gg/html-rendering,
   jte.gg/pre-compiling). Gate: the Phase 1 verifier only (never the byte gate); normative
@@ -618,9 +618,10 @@ and command lines in [harness-and-jmh.md](harness-and-jmh.md).
 
 ### WI3 — JTE controlled track
 
-- **Files.** New: `benchmarks/jvm/src/main/jte-plain/controlled/*.jte` (six raw templates +
-  `tile.jte` + `layout.jte`), `benchmarks/jvm/src/main/jte-html/controlled/*.jte` (two encoded
-  templates).
+- **Files.** New: `benchmarks/jvm/src/main/jte-plain/controlled/*.jte` (six raw entry
+  templates at the top level; the 21 sub-templates — layout, chrome, nav, fragment kinds —
+  live under `jte-plain/controlled/shared/`), `benchmarks/jvm/src/main/jte-html/controlled/*.jte`
+  (two encoded templates).
 - **Change.** Whitespace-free templates per construct-mapping.md; encoded cells render through
   `FiveEntityHtmlOutput` (D4); raw cells through the `Plain` engine into `StringOutput`.
 - **Done when.** `GateCli gate --engine jte --track controlled` exits 0 for all eight
@@ -629,7 +630,8 @@ and command lines in [harness-and-jmh.md](harness-and-jmh.md).
 ### WI4 — Idiomatic tracks for both engines
 
 - **Files.** New only: `benchmarks/jvm/src/main/resources/thymeleaf/idiomatic/*.html`,
-  `benchmarks/jvm/src/main/jte-plain/idiomatic/*.jte`,
+  `benchmarks/jvm/src/main/jte-plain/idiomatic/*.jte` (entries at the top level, the 21
+  sub-templates under `jte-plain/idiomatic/shared/`),
   `benchmarks/jvm/src/main/jte-html/idiomatic/*.jte` (each file's header comment citing its
   official doc pages, D7). No `.NET`/spec file is edited: the D6 verifier-needle correction is
   already settled in Phase 1's golden-corpus.md, so Phase 1's implementation

@@ -58,7 +58,8 @@ Track: controlled. "Oracle shape" facts below are read from the pinned normative
 and models in [workloads.md](../phase-1-cross-stack-foundation/workloads.md) and — for
 `composed-page` — from the live twin sources
 (`TwinContent.cs`,
-[LiquidTemplates.cs](../../../../benchmarks/dotnet/templates/controlled/liquid/composed-page.liquid),
+[LiquidTemplates.cs](../../../../benchmarks/dotnet/templates/controlled/liquid/composed-page.fluid.liquid)
+(the dialect-suffixed Liquid entry; the `.dotliquid.liquid` copy is byte-identical),
 `AreaComponent.cs`,
 all read for this spec).
 

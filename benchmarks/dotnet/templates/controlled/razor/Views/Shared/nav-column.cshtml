@@ -1,0 +1,11 @@
+@*
+    Razor parity twin -- composed-page nav-column partial (ledger E20/E22).
+
+    One navigation column: the section loop rendered through the nested nav-section partial,
+    mirroring Heddle's nav_column definition. Shared by the mega-menu dropdowns and the
+    footer nav.
+*@
+@using Heddle.Benchmarks.Dotnet.Models
+@model NavColumn
+<div class="nav-column">@foreach (var section in Model.Sections)
+{@await Html.PartialAsync("/Views/Shared/nav-section.cshtml", section)}</div>
