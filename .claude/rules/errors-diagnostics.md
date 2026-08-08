@@ -7,7 +7,7 @@ paths:
 
 # Errors and diagnostics
 
-Details: [coding-standards.md § errors](../docs/spec/common/coding-standards.md#error-handling-and-diagnostics), [cross-cutting-decisions.md D1 + registry](../docs/spec/common/cross-cutting-decisions.md).
+Details: [coding-standards.md § errors](../../docs/spec/common/coding-standards.md#error-handling-and-diagnostics), [cross-cutting-decisions.md D1 + registry](../../docs/spec/common/cross-cutting-decisions.md).
 
 - Compile-path problems are collected, not thrown: positioned `HeddleCompileError`/`HeddleCompileWarning` on the compile result, so template authors see all problems at once. The public API never surfaces raw exceptions for template mistakes.
 - Host-programming errors throw at public API entry points (`ArgumentNullException` etc.).

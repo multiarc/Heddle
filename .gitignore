@@ -164,8 +164,9 @@ benchmarks/out/
 !benchmarks/rust/src/bin/
 !benchmarks/rust/src/bin/*.rs
 
-# Agent worktrees and local session state
-.claude/
+# Agent worktrees and local session state — but the path-scoped rules are shared and tracked
+.claude/*
+!.claude/rules/
 
 # BenchmarkDotNet default output directory (generated; raw captures are kept locally, never committed)
 BenchmarkDotNet.Artifacts/

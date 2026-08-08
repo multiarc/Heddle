@@ -6,7 +6,7 @@ paths:
 
 # API design and compatibility
 
-Details: [coding-standards.md § API](../docs/spec/common/coding-standards.md#api-design-and-compatibility), [breaking-windows.md](../docs/spec/common/breaking-windows.md). Anchored in the .NET Framework Design Guidelines.
+Details: [coding-standards.md § API](../../docs/spec/common/coding-standards.md#api-design-and-compatibility), [breaking-windows.md](../../docs/spec/common/breaking-windows.md). Anchored in the .NET Framework Design Guidelines.
 
 - Additive by default: new extensions, opt-in options, overloads. Existing templates and hosts compile and render byte-identically.
 - Breaking changes land only in a ratified breaking window (D2), each with a migration note. Candidates go to the register in breaking-windows.md, not into code.

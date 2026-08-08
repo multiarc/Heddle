@@ -5,7 +5,7 @@ paths:
 
 # Spec and decision workflow
 
-Details: [spec-conventions.md](../docs/spec/common/spec-conventions.md), [cross-cutting-decisions.md](../docs/spec/common/cross-cutting-decisions.md) (which also carries the condensed release and program records).
+Details: [spec-conventions.md](../../docs/spec/common/spec-conventions.md), [cross-cutting-decisions.md](../../docs/spec/common/cross-cutting-decisions.md) (which also carries the condensed release and program records).
 
 - Specs live under `docs/spec/`, indexed from `docs/spec/README.md` (update the index in the same change); they are contributor material, never published (D9).
 - Plan = what/why (ratified input); spec = exactly how. A finished spec has **no open questions** — every point is a closed decision with evidence, or a most-reversible default plus a named revisit trigger.
