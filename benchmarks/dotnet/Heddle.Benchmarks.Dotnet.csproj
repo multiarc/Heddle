@@ -88,15 +88,13 @@
       precompiled template that would not escape. That is a real constraint of the generator's
       MSBuild contract, so it is disclosed rather than worked around.
 
-      Of the six remaining, the emitter currently covers five: home.heddle is left un-precompiled
-      (with an HED7031 naming the reason) and falls back to the dynamic path, because the layout
-      it imports passes embedded C# as component arguments — verbatim-string literals like
-      @area_component(@"...") — which the generator rejects outside FullCSharp mode, and
-      HeddleExpressionMode is compilation-wide Native here. This held before and after the E20
-      full-page redesign (the old second reason, the <body:body> full-override, no longer exists —
-      the redesigned page splices its body through the documented @out() slot). The redesigned
-      fragment-heavy.heddle (four dispatched kinds, nested badge/price calls) IS emitted. The
-      harness DETECTS coverage from the manifest at runtime instead of assuming it. A fallback
+      All six raw workloads are emitted, home.heddle included: the benchmark templates carry no
+      embedded C# at all — the extension arguments are native string literals
+      (@area_component("...")), so the compilation-wide Native HeddleExpressionMode covers every
+      template, and the redesigned page splices its body through the documented @out() slot (the
+      old <body:body> full-override refusal no longer applies either). The redesigned
+      fragment-heavy.heddle (four dispatched kinds, nested badge/price calls) is likewise emitted.
+      The harness DETECTS coverage from the manifest at runtime instead of assuming it. A fallback
       measured and labelled "precompiled" would be reporting the runtime backend under the wrong
       name.
     -->
