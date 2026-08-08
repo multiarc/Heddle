@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    The .NET cross-stack benchmark harness (ledger E8). Structured like the other five ecosystem
+    The .NET cross-stack benchmark harness. Structured like the other five ecosystem
     harnesses under benchmarks/: models, templates, a gate, and bench targets, all under one
     project with a verb-dispatching entry point.
 
@@ -42,7 +42,7 @@
     -->
     <ProjectReference Include="..\..\src\Heddle.Generator\Heddle.Generator.csproj"
                       OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
-    <!-- The Html-profile precompiled satellite (ledger E25): the two ENCODED templates, compiled
+    <!-- The Html-profile precompiled satellite: the two ENCODED templates, compiled
          under the profile they actually need. See the coverage comment on the template items below. -->
     <ProjectReference Include="precompiled-html\Heddle.Benchmarks.Dotnet.PrecompiledHtml.csproj" />
   </ItemGroup>
@@ -96,7 +96,7 @@
       runtime techniques only, which the registry reflects rather than papering over.
 
       The two ENCODED workloads are excluded HERE and precompiled in the Html-profile satellite
-      project (precompiled-html/, ledger E25). HeddleOutputProfile is compilation-wide, and they
+      project (precompiled-html/). HeddleOutputProfile is compilation-wide, and they
       need Html where the six raw workloads need Text; ONE project cannot precompile both — including
       them under Text produced a manifest claiming OutputProfile.Text for fortunes-encoded, i.e. a
       precompiled template that would not escape. That constraint of the generator's MSBuild
@@ -104,7 +104,7 @@
       assemblies' manifests and discovers 8/8 coverage from them.
 
       All six raw workloads are emitted, composed-page.heddle included: the benchmark templates carry no
-      embedded C# and, since E22, call no extensions at all — every fragment of literal page text
+      embedded C# and call no extensions at all — every fragment of literal page text
       is template text (shared/chrome-fragments.heddle definitions), so the compilation-wide Native
       HeddleExpressionMode covers every template, and the redesigned page splices its body through
       the documented @out() slot (the old <body:body> full-override refusal no longer applies

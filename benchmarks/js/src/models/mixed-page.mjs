@@ -1,9 +1,8 @@
-// mixed-page model — Phase 4 WI2 (spec: templates-and-models.md §Models rules 3–4; pinned
-// scalars and product formulas from Phase 1 workloads.md workload 4 /
-// benchmarks/dotnet/src/Models/MixedContent.cs). 36 products, i in [1, 36]. sku_number and
-// batch are NUMBERS (E21): the display SKU ("MX-" + sku_number) and the blurb sentence around
+// mixed-page model. Pinned scalars and product formulas transcribed from
+// benchmarks/dotnet/src/Models/MixedContent.cs. 36 products, i in [1, 36]. sku_number and
+// batch are NUMBERS: the display SKU ("MX-" + sku_number) and the blurb sentence around
 // batch are composed by the templates as literal-plus-substitution. The zero-padded product
-// name stays model-side by design (E21: row identity, not display text).
+// name stays model-side by design (row identity, not display text).
 import { deepFreeze } from "./_deep-freeze.mjs";
 
 const products = [];

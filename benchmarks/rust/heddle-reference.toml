@@ -1,19 +1,19 @@
-# Heddle reference wall-time values for the `summarize` tool (Phase 2 spec, README D13).
+# Heddle reference wall-time values for the `summarize` tool.
 #
 # Schema (normative):
-#   pending    = bool     # true while no published run exists to transcribe from (SR-6)
+#   pending    = bool     # true while no published run exists to transcribe from
 #   source-run = string   # date of the published run these values come from
 #   [workloads]           # workload id -> Heddle wall time in ns/render, transcribed once
 #   <workload-id> = <ns>  # from the published run and reviewed in diff
 #
-# STANDING RULING SR-6 (2026-07-21) — DISCHARGED. The ruling held while no run was published:
-# this file carried the schema but no values, and `pending = true` made `summarize` fail loudly
-# ("reference pending the Phase 1 protocol run") rather than emit tables with fabricated Heddle
-# numbers.
+# A standing ruling (2026-07-21, since discharged) held while no run was published: this file
+# carried the schema but no values, and `pending = true` made `summarize` fail loudly
+# ("no published Heddle reference run exists yet") rather than emit tables with fabricated
+# Heddle numbers.
 #
 # SOURCE RUN CAVEAT (2026-07-25). These values come from
 # `docs/benchmarks/2026-07-25/`, which is a **Linux, off-protocol validation run** — not a run on
-# the Windows protocol machine that metrics-protocol Q1.6 pins. It is used because it is the
+# the pinned Windows protocol machine. It is used because it is the
 # published run: its .NET anchor measured all eight workloads in the same session, on the same
 # machine and in the same tuned state as the Rust figures `summarize` compares against, which is
 # the property the ratio column actually needs. When a protocol-machine run is published, repoint
@@ -24,7 +24,8 @@
 # `docs/benchmarks/2026-07-25/dotnet/results/<the .NET leg's per-workload report CSV>`,
 # converted to ns/render (the only arithmetic applied). The harness dispersion published
 # alongside these figures is BDN's `Error` and `StdDev`, quoted in the comments below.
-# Suite mapping is pinned in metrics-protocol.md; do not re-derive it here.
+# Suite mapping is pinned; do not re-derive it here — the mapping is the contract, not a
+# convenience.
 
 pending = false
 source-run = "2026-07-25"

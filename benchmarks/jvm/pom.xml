@@ -1,9 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  JVM benchmark harness (Phase 3 - jvm).
-  Spec: docs/spec/cross-stack-benchmarks/phase-3-jvm/harness-and-jmh.md (build pins),
-  README.md D3 (JTE precompilation), D8 (Maven, benchmarks/jvm/), D9 (JMH 1.37).
-  Never deployed to any registry.
+  JVM benchmark harness. Never deployed to any registry.
 -->
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -49,8 +46,9 @@
 
   <build>
     <plugins>
-      <!-- D3: two generate executions; ContentType is a code-generation-time property.
-           trimControlStructures stays at its default (false) in both. -->
+      <!-- Two generate executions: ContentType is a code-generation-time property, so the
+           plain and html suites are generated separately. trimControlStructures stays at
+           its default (false) in both. -->
       <plugin>
         <groupId>gg.jte</groupId>
         <artifactId>jte-maven-plugin</artifactId>
@@ -130,11 +128,10 @@
           </execution>
         </executions>
       </plugin>
-      <!-- Wire `GateCli calibrate` then `GateCli gate` into `mvn verify`
-           (harness-and-jmh.md run procedure step 2): calibrate exercises the full
-           gate-runner verifier against the corpus alone; gate then runs all 32
-           template cells. A failed calibration or a red gate fails the build, so a
-           measurement run never starts on a red gate. -->
+      <!-- Wire `GateCli calibrate` then `GateCli gate` into `mvn verify`: calibrate
+           exercises the full gate-runner verifier against the corpus alone; gate then
+           runs all 32 template cells. A failed calibration or a red gate fails the
+           build, so a measurement run never starts on a red gate. -->
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>exec-maven-plugin</artifactId>

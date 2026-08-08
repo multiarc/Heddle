@@ -183,7 +183,7 @@ review, never through the test.
 
 ## Precompiled-tier posture
 
-> Added by [ledger entry E8](../records.md#cross-spec-amendments-ledger) (generator ↔ engine
+> Added by amendment E8 (generator ↔ engine
 > code-sharing program, phase 0). Normative for every spec whose work touches the source
 > generator, the precompiled registry, or the resolver.
 
@@ -214,7 +214,7 @@ input mismatch and the nested/generic AQN mismatch) reached release precisely th
 
 ## Test-input single-sourcing
 
-> Added by [ledger entry E9](../records.md#cross-spec-amendments-ledger) (generator ↔ engine
+> Added by amendment E9 (generator ↔ engine
 > code-sharing program, phase 7). Normative for every spec that adds tests exercising the same
 > language construct on more than one tier (build tier, run tier, editor).
 

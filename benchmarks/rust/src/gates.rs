@@ -1,10 +1,10 @@
-//! Parity gates (WI6) — the cell registry and the `assert_controlled` / `assert_idiomatic` /
-//! `assert_all` surface per README D11. The controlled gate per cell: load the golden →
+//! Parity gates — the cell registry and the `assert_controlled` / `assert_idiomatic` /
+//! `assert_all` surface. The controlled gate per cell: load the golden →
 //! render → normalize (N1–N4, +N5 for encoded) → N3b-strip both sides → byte compare;
 //! encoded cells additionally assert the security floor (raw `<script>alert(` = 0 in
 //! un-normalized output; post-N5 `&lt;script&gt;alert(` count per the verifier's `required`
 //! entry). The idiomatic gate runs the `verifier.rs` port over `<id>.verify.json`. Failure
-//! messages follow README §Diagnostics.
+//! messages follow the shared `[FAIL]` diagnostic shape.
 
 use crate::corpus;
 use crate::engines::{askama_controlled, askama_idiomatic, tera_controlled, tera_idiomatic};
@@ -19,7 +19,7 @@ use crate::verifier;
 pub struct Cell {
     pub track: &'static str,    // "controlled" | "idiomatic"
     pub engine: &'static str,   // "askama" | "tera"
-    pub workload: &'static str, // Phase 1 workload id
+    pub workload: &'static str, // golden-corpus workload id
     pub suite: &'static str,    // "raw" | "encoded"
     pub render: fn() -> String,
 }
@@ -40,11 +40,11 @@ const fn cell(
     }
 }
 
-/// The registry — all 32 cells: the 16 controlled cells (WI4) and the 16 idiomatic cells
-/// (WI5). Rows are ordered workload-major (Phase 1 workload order), engine-minor
+/// The registry — all 32 cells: the 16 controlled cells and the 16 idiomatic cells.
+/// Rows are ordered workload-major (corpus workload order), engine-minor
 /// (askama, tera).
 pub const CELLS: &[Cell] = &[
-    // ---- controlled track (16 cells, WI4) ----------------------------------------------------
+    // ---- controlled track (16 cells) ---------------------------------------------------------
     cell(
         "controlled",
         "askama",
@@ -157,7 +157,7 @@ pub const CELLS: &[Cell] = &[
         "encoded",
         tera_controlled::render_encoded_loop,
     ),
-    // ---- idiomatic track (16 cells, WI5) -----------------------------------------------------
+    // ---- idiomatic track (16 cells) ----------------------------------------------------------
     cell(
         "idiomatic",
         "askama",
@@ -274,7 +274,7 @@ pub const CELLS: &[Cell] = &[
 
 // ---- gate checks (Result-returning; `assert_*` panic wrappers below) -------------------------
 
-/// The security-floor payload needles (README D11; parity-contract-v2 §Controlled gate).
+/// The security-floor payload needles.
 const RAW_PAYLOAD: &str = "<script>alert(";
 const ESCAPED_PAYLOAD: &str = "&lt;script&gt;alert(";
 
@@ -331,7 +331,7 @@ fn check_security_floor(cell: &Cell, output: &str) -> Result<(), String> {
     Ok(())
 }
 
-/// Idiomatic verifier gate (WI5's cells will use it; wired now).
+/// Idiomatic verifier gate.
 pub fn check_idiomatic(cell: &Cell) -> Result<(), String> {
     let def = corpus::load_verify(cell.workload)?;
     let output = (cell.render)();
@@ -366,23 +366,23 @@ pub fn check_cell(cell: &Cell) -> Result<(), String> {
     }
 }
 
-/// Panics with the Diagnostics message on failure — the bench-time gate surface (D11).
+/// Panics with the diagnostic message on failure — the bench-time gate surface.
 pub fn assert_controlled(cell: &Cell) {
     if let Err(message) = check_controlled(cell) {
         panic!("{message}");
     }
 }
 
-/// Panics with the Diagnostics message on failure — the bench-time gate surface (D11).
+/// Panics with the diagnostic message on failure — the bench-time gate surface.
 pub fn assert_idiomatic(cell: &Cell) {
     if let Err(message) = check_idiomatic(cell) {
         panic!("{message}");
     }
 }
 
-/// Gates every registered cell; panics on the first failure (D11 — no number without a green
-/// gate). The standalone `gate` binary iterates `CELLS`/`check_cell` itself to print one line
-/// per cell instead of stopping at the first.
+/// Gates every registered cell; panics on the first failure — no number is published
+/// without a green gate. The standalone `gate` binary iterates `CELLS`/`check_cell` itself
+/// to print one line per cell instead of stopping at the first.
 pub fn assert_all() {
     for cell in CELLS {
         if let Err(message) = check_cell(cell) {
@@ -391,7 +391,7 @@ pub fn assert_all() {
     }
 }
 
-// ---- diagnostics helpers (README §Diagnostics message shape) ---------------------------------
+// ---- diagnostics helpers ---------------------------------------------------------------------
 
 /// Index of the first differing byte (= common length when one side is a prefix).
 fn first_diff(expected: &[u8], actual: &[u8]) -> usize {

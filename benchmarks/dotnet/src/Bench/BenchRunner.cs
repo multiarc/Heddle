@@ -79,10 +79,10 @@ namespace Heddle.Benchmarks.Dotnet.Bench
         /// nearly linear in <c>LaunchCount</c> — 139 s at 1, 316 s at 2, 704 s at 5, about 10.8 s
         /// per cell per additional launch — where raising the iteration counts instead runs through
         /// the pilot stage and is not. Three launches is what puts each engine's 16 cells at the
-        /// program's ~10-minute per-engine budget (ledger E14).</para>
+        /// program's ~10-minute per-engine budget.</para>
         ///
         /// <para><b>Five measurement iterations per launch, not ShortRun's three.</b> The suite-wide
-        /// floor (ledger E28) is at least five samples per run: three is too few for the outlier
+        /// floor is at least five samples per run: three is too few for the outlier
         /// trimming and the variance estimate the report derives per launch. Iterations are cheap
         /// next to the launch overhead that dominates this leg, so the floor costs little; the
         /// <c>baseline</c> budget inherits it through the same job (10 launches × 5 iterations).</para>

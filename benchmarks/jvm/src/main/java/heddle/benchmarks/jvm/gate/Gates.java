@@ -3,11 +3,10 @@ package heddle.benchmarks.jvm.gate;
 import java.util.function.Supplier;
 
 /**
- * Benchmark-time gate assertions (spec D9/D11; harness-and-jmh.md &sect;JMH benchmark shape).
- * Called from every {@code *Bench} class's {@code @Setup(Level.Trial)} so each JMH fork
- * re-asserts its cells' gates in the same process that produces its numbers (contract gate
- * rule 2). A failed gate throws {@link IllegalStateException} with the D11 message shape;
- * JMH aborts the fork and it produces no numbers.
+ * Benchmark-time gate assertions. Called from every {@code *Bench} class's
+ * {@code @Setup(Level.Trial)} so each JMH fork re-asserts its cells' gates in the same
+ * process that produces its numbers. A failed gate throws {@link IllegalStateException}
+ * carrying the gate's failure description; JMH aborts the fork and it produces no numbers.
  *
  * The gate logic itself lives once, in {@link GateCli} (DRY: the same code serves the CLI
  * and every fork); this class only adds corpus caching and the throw-on-failure adapter.

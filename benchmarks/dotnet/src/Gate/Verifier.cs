@@ -7,7 +7,7 @@ using Heddle.Benchmarks.Dotnet.Corpus;
 namespace Heddle.Benchmarks.Dotnet.Gate
 {
     /// <summary>
-    /// Idiomatic-track functional-equivalence verifier (contract v2 §idiomatic-track gate).
+    /// Idiomatic-track functional-equivalence verifier.
     ///
     /// The idiomatic track cannot use the byte gate: templates are authored the way each engine's
     /// own documentation teaches, so their whitespace, attribute ordering and tag shorthands

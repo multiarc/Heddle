@@ -12,7 +12,7 @@ namespace Heddle.Benchmarks.Dotnet.Bench
     /// <summary>
     /// Heddle's render techniques against each other: three sinks — <c>string</c>,
     /// <see cref="System.IO.TextWriter"/>, UTF-8 <see cref="System.Buffers.IBufferWriter{T}"/> —
-    /// across the two compilation backends, runtime and precompiled (ledger E10).
+    /// across the two compilation backends, runtime and precompiled.
     ///
     /// <para><b>Not in the cross-stack sweep, by design.</b> One engine contributes one row to the
     /// comparison — the rule every other ecosystem follows — and that row is the runtime UTF-8 sink.

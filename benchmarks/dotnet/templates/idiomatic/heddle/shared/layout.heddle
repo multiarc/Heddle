@@ -1,9 +1,9 @@
 @*
-    Idiomatic Heddle -- composed-page layout (phase 9; authoring standard D16).
+    Idiomatic Heddle -- composed-page layout.
 
     Patterns followed, from Heddle's own documentation:
       Language reference   docs/language-reference.md ("Composition without coupling" --
-                           the layout-as-definition idiom, Q1.7)
+                           the layout-as-definition idiom)
       Architecture         docs/architecture.md
 
     This file is DEFINITION-ONLY: importing it renders nothing. The full page chrome lives
@@ -13,7 +13,7 @@
     override with the ordinary <name:name> mechanism. The two mega menus and the footer render
     from the structured nav model through nested definitions; the inert chrome fragments
     (alert banner, secondary menus, asset/script snippets) are definitions imported from
-    shared/chrome-fragments.heddle -- all display text lives in templates (ledger E22). Checked by
+    shared/chrome-fragments.heddle -- all display text lives in templates. Checked by
     the functional verifier, not the byte gate.
 *@
 

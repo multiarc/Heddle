@@ -1,23 +1,23 @@
 #!/usr/bin/env bash
-# run-benchmarks.sh -- Linux twin of run-benchmarks.ps1: Phase 6 (Go) reproduce-it-yourself
-# entry point.
+# run-benchmarks.sh -- Linux twin of run-benchmarks.ps1: the Go harness's
+# reproduce-it-yourself entry point.
 #
-# Performs, in order (harness-and-measurement.md, D9):
-#   1. Toolchain version assertions (go1.26.5; templ v0.3.1020 via `go tool`, per D3).
+# Performs, in order:
+#   1. Toolchain version assertions (go1.26.5; templ v0.3.1020 via `go tool` — the pinned CLI).
 #   2. `go tool templ generate` + `git diff --exit-code -- *_templ.go` (regeneration
 #      freshness -- committed generated code must match the pinned generator).
 #   3. `go vet ./...`
 #   4. `go test ./...` (gates + unit tests; TestMain gates before anything can time).
 #   5. Prebuild: `go test -c -o bench ./suites`.
 #   6. Two timed invocations: BenchmarkRender, then the BenchmarkColdParse sidebar.
-#      Defaults: -test.count=28, -test.benchtime=1s (ledger E14 per-engine budget; E6 had 14).
+#      Defaults: -test.count=28, -test.benchtime=1s (the pinned per-engine sample budget).
 #   7. benchstat over each output.
 #
 # Priority posture: run-benchmarks.ps1 launches through `cmd /c start /high`; this twin
 # approximates that with `taskset -c <isolated SMT pair>` + `nice -n -20` (see
 # benchmarks/bench-common.sh). That is a deliberate delta from
 # benchmarks/linux-crosscheck/run-go.sh, which launches the prebuilt binary plain under the
-# Phase 8 D2 no-priority rule -- record the delta in the run report, or pass --no-priority.
+# crosscheck's no-priority rule -- record the delta in the run report, or pass --no-priority.
 
 set -uo pipefail
 
@@ -29,7 +29,7 @@ usage() {
   echo "  --count N              -test.count for both timed runs (default 28)"
   echo "  --benchtime D          -test.benchtime for both timed runs (default 1s)"
   echo "  --version-check-only   run the toolchain asserts and exit"
-  echo "  --no-priority          plain launch, no taskset/nice (Phase 8 D2 posture)"
+  echo "  --no-priority          plain launch, no taskset/nice (the crosscheck posture)"
 }
 
 COUNT=28
@@ -59,7 +59,7 @@ assert_last_exit() { # exit_code step
   fi
 }
 
-# --- 1. Toolchain version assertions (D3) -------------------------------------------------
+# --- 1. Toolchain version assertions ------------------------------------------------------
 GO_VERSION="$(go version)"; assert_last_exit $? "go version"
 case "$GO_VERSION" in
   *go1.26.5*) : ;;

@@ -1,6 +1,6 @@
-## Idiomatic Mako composed-page navigation (ledger E20): the structured nav model
+## Idiomatic Mako composed-page navigation: the structured nav model
 ## rendered through nested <%def> blocks -- link -> section -> column -> mega menu --
-## imported by the layout via <%namespace> and called from % for loops (Phase 5 D5, Q1.7).
+## imported by the layout via <%namespace> and called from % for loops.
 ## Definition-only: importing this file renders nothing.
 ## Docs: https://docs.makotemplates.org/en/latest/defs.html
 ##       https://docs.makotemplates.org/en/latest/namespaces.html

@@ -20,16 +20,16 @@ import org.openjdk.jmh.annotations.Warmup;
 import java.util.concurrent.TimeUnit;
 
 /**
- * composed-page (raw suite) - WI5 benchmark class. Annotations are the spec D9 pin: JMH
- * 1.37 with an explicit run-length regime (JMHSample_13 state-your-settings discipline), sized
- * by ledger E6's uniform ~10 min per-ecosystem measurement budget rather than by JMH's stock
- * defaults - 3 forks keep the dominant (fork-to-fork) variance term sampled, while warmup and
- * measurement time carry the cut; no jvmArgs, no CompilerControl, no per-class deviations. Engines and models are built once
- * per fork; {@code @Setup(Level.Trial)} re-asserts this workload's four cell gates in the
- * same process that produces the numbers (contract gate rule 2, spec D11) - a gate throw
- * aborts the fork with no numbers. Every {@code @Benchmark} method is exactly one render
- * into a fresh output buffer and returns the rendered String (JMH's implicit Blackhole,
- * JMHSample_08/09).
+ * composed-page (raw suite) benchmark class. Annotations state the run-length regime
+ * explicitly (JMHSample_13 state-your-settings discipline), sized by the uniform per-engine
+ * measurement budget (roughly ten minutes for a short run, roughly thirty for a baseline)
+ * rather than by JMH's stock defaults - the forks keep the dominant (fork-to-fork) variance
+ * term sampled, while warmup and measurement time carry the cut; no jvmArgs, no
+ * CompilerControl, no per-class deviations. Engines and models are built once per fork;
+ * {@code @Setup(Level.Trial)} re-asserts this workload's four cell gates in the same process
+ * that produces the numbers - a gate throw aborts the fork with no numbers. Every
+ * {@code @Benchmark} method is exactly one render into a fresh output buffer and returns
+ * the rendered String (JMH's implicit Blackhole, JMHSample_08/09).
  */
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.NANOSECONDS)

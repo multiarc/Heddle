@@ -7,20 +7,19 @@ import gg.jte.output.StringOutput;
 import heddle.benchmarks.jvm.jte.FiveEntityHtmlOutput;
 
 /**
- * The two precompiled JTE engines plus render helpers (spec D3/D4,
- * harness-and-jmh.md &sect;Engine construction). AOT posture: the jte-maven-plugin
+ * The two precompiled JTE engines plus render helpers. AOT posture: the jte-maven-plugin
  * {@code generate} goal compiles templates into the jar; at runtime the engine is
  * {@code TemplateEngine.createPrecompiled(null, contentType, null, packageName)} - class
- * loader loading, no runtime javac. D3's documented fallback (if the null class directory
+ * loader loading, no runtime javac. The fallback (if the null class directory
  * were rejected): {@code createPrecompiled(ContentType)} semantics; taking it is recorded
  * via {@link #fallbackUsed()}.
  *
- * Cells whose templates are not yet authored (WI3/WI4) surface as
+ * Cells whose templates are not yet authored surface as
  * {@link MissingTemplate} so the gate CLI can report them cleanly.
  */
 public final class JteEngines {
 
-    /** Render failed because the template class is absent (template WI not landed yet). */
+    /** Render failed because the template class is absent (template not authored yet). */
     public static final class MissingTemplate extends RuntimeException {
         public MissingTemplate(String message, Throwable cause) {
             super(message, cause);
@@ -62,17 +61,17 @@ public final class JteEngines {
         return e;
     }
 
-    /** True when D3's documented fallback path had to be taken (report-worthy). */
+    /** True when the fallback engine-construction path had to be taken (report-worthy). */
     public static boolean fallbackUsed() {
         return fallbackUsed;
     }
 
     private static TemplateEngine create(ContentType contentType, String packageName) {
         try {
-            // D3 primary: null class directory => application-class-loader loading.
+            // Primary: null class directory => application-class-loader loading.
             return TemplateEngine.createPrecompiled(null, contentType, null, packageName);
         } catch (RuntimeException primaryFailure) {
-            // D3 documented fallback: createPrecompiled(ContentType) semantics
+            // Fallback: createPrecompiled(ContentType) semantics
             // (default package name). Recorded so the run report can disclose it.
             fallbackUsed = true;
             return TemplateEngine.createPrecompiled(contentType);
@@ -86,7 +85,7 @@ public final class JteEngines {
         return out.toString();
     }
 
-    /** One controlled encoded render: Html engine into the D4 custom output. */
+    /** One controlled encoded render: Html engine into the custom five-entity output. */
     public static String renderHtmlControlled(String template, Object model) {
         FiveEntityHtmlOutput out = new FiveEntityHtmlOutput();
         render(html(), template, model, out);

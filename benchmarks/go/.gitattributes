@@ -1,4 +1,4 @@
-# Go benchmark harness (docs/spec/cross-stack-benchmarks/phase-6-go/README.md D2/D3):
-# sources and generated *_templ.go are ordinary text. (The former internal/model/data
-# -text pin died with the embedded composed-page blobs — E22 moved all literal chrome
-# into the template tier; the nav model loads from the corpus fixture at runtime.)
+# Everything in the Go harness is ordinary text — no attribute pins needed. (The former
+# internal/model/data -text pin died with the embedded composed-page blobs: all literal
+# chrome moved into the template tier, and the nav model loads from the corpus fixture at
+# runtime.)

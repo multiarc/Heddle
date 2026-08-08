@@ -1,10 +1,10 @@
-{# Idiomatic Tera base template (WI5, README D8/Q1.7): the full-page layout chrome.
+{# Idiomatic Tera base template the full-page layout chrome.
    Patterns follow the Tera docs (keats.github.io/tera): "Inheritance" (base template with a
    live body block and overridable section-default blocks - meta, socialmeta, page_scripts,
    endpage_scripts), "Include" (the inert chrome fragments under chrome/ and the nested
-   nav partial chain under nav/, ledger E22/E20) and "Control structures - For loops"
+   nav partial chain under nav/) and "Control structures - For loops"
    (the two mega menus from nav.menus, the four footer columns from nav.footer_columns).
-   Default auto-escaping left on - nav values are workloads.md rule-4 clean, so escaping
+   Default auto-escaping left on - nav values contain no characters HTML escaping rewrites, so escaping
    is byte-neutral, and the chrome is literal template text autoescape never touches. #}
 <!DOCTYPE html>
 <!--[if lt IE 9]>

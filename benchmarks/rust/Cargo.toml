@@ -3,7 +3,7 @@ name = "heddle-bench-rust"
 version = "0.1.0"
 edition = "2024"
 publish = false
-description = "Cross-stack benchmark harness (Phase 2 - Rust): Askama and Tera vs the Heddle golden corpus"
+description = "Cross-stack benchmark harness (Rust): Askama and Tera vs the Heddle golden corpus"
 
 [lib]
 bench = false

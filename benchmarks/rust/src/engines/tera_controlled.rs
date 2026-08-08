@@ -1,6 +1,6 @@
-//! Controlled-track Tera runners (WI4). Template texts are normative in
-//! `docs/spec/cross-stack-benchmarks/phase-2-rust/workload-ports.md`; escaping modes per
-//! README D3 — TWO `OnceLock` instances: `tera_controlled_raw` with
+//! Controlled-track Tera runners. Template texts are normative ports — the golden gate
+//! defines their bytes, so do not re-derive or reformat them here. Escaping modes are
+//! split across TWO `OnceLock` instances: `tera_controlled_raw` with
 //! `autoescape_on(std::iter::empty::<&str>())` (the documented disable form) and
 //! `tera_controlled_encoded` with default autoescape (template names end `.html`).
 //! Templates are registered with `add_template_file` and contexts are built once, so
@@ -13,10 +13,10 @@ use tera::{Context, Tera};
 
 use crate::models;
 
-// ---- instances (README D3) -------------------------------------------------------------------
+// ---- instances -------------------------------------------------------------------------------
 
 const RAW_TEMPLATES: [&str; 27] = [
-    // composed-page (E20/E22): chrome-fragment includes, the nested nav partial chain,
+    // composed-page: chrome-fragment includes, the nested nav partial chain,
     // the base layout with the live body block, and the extending child page.
     "controlled/tera/chrome/alert-top.html",
     "controlled/tera/chrome/secondary-wholesale-menu.html",
@@ -38,7 +38,7 @@ const RAW_TEMPLATES: [&str; 27] = [
     "controlled/tera/large-loop.html",
     "controlled/tera/mixed-page.html",
     "controlled/tera/conditional-heavy.html",
-    // fragment-heavy (E20): four dispatched per-kind partials plus the card's two
+    // fragment-heavy: four dispatched per-kind partials plus the card's two
     // sub-partials, then the dispatching main template.
     "controlled/tera/shared/fragment-heavy-tile.html",
     "controlled/tera/shared/fragment-heavy-badge.html",
@@ -67,25 +67,25 @@ fn build_instance(names: &[&str], autoescape_off: bool) -> Tera {
     tera
 }
 
-/// Cold-parse support (README D12): a fresh raw instance parsing the same 27 template files
+/// Cold-parse support: a fresh raw instance parsing the same 27 template files
 /// the runtime `tera_controlled_raw` instance holds.
 pub fn build_fresh_raw() -> Tera {
     build_instance(&RAW_TEMPLATES, true)
 }
 
-/// Cold-parse support (README D12): a fresh encoded instance parsing the same 2 template
+/// Cold-parse support: a fresh encoded instance parsing the same 2 template
 /// files the runtime `tera_controlled_encoded` instance holds.
 pub fn build_fresh_encoded() -> Tera {
     build_instance(&ENCODED_TEMPLATES, false)
 }
 
-/// The controlled-raw instance — autoescape fully off (README D3 quadrant 1).
+/// The controlled-raw instance — autoescape fully off.
 pub fn tera_controlled_raw() -> &'static Tera {
     static TERA: OnceLock<Tera> = OnceLock::new();
     TERA.get_or_init(|| build_instance(&RAW_TEMPLATES, true))
 }
 
-/// The controlled-encoded instance — default autoescape on `.html` names (D3 quadrant 2).
+/// The controlled-encoded instance — default autoescape on `.html` names.
 pub fn tera_controlled_encoded() -> &'static Tera {
     static TERA: OnceLock<Tera> = OnceLock::new();
     TERA.get_or_init(|| build_instance(&ENCODED_TEMPLATES, false))

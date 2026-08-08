@@ -1,4 +1,4 @@
-// The composed-page model every engine renders from (ledger E20).
+// The composed-page model every engine renders from.
 //
 // Load-bearing values: the golden corpus is Heddle's render OF THESE, so changing one changes the
 // oracle every ecosystem is gated against. Change them only with a corpus re-export in the same
@@ -24,8 +24,7 @@ namespace Heddle.Benchmarks.Dotnet.Models
     }
 
     /// <summary>
-    /// Shared, engine-neutral model for the composed-page workload (cross-stack phase 1 WI1,
-    /// redesigned under ledger E20; text tier removed under E22): a genuine full page whose model
+    /// Shared, engine-neutral model for the composed-page workload: a genuine full page whose model
     /// is PURE DATA — the structured navigation, nothing else. Every fragment of literal page
     /// text (chrome, alert banner, secondary menus, asset/script snippets) lives in the templates;
     /// the nav renders through loops and nested partials. Every per-engine view is materialized

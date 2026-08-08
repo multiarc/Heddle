@@ -1,7 +1,6 @@
-//! Read-only access to the Phase 1 golden corpus at
-//! `benchmarks/dotnet/GoldenCorpus/`, resolved repo-relative from
-//! `CARGO_MANIFEST_DIR` (README D2 — Phase 1 D6's revisit trigger is not fired; a relative
-//! read is convenient). Formats: `golden-corpus.md` (Phase 1).
+//! Read-only access to the golden corpus at `benchmarks/dotnet/GoldenCorpus/`, resolved
+//! repo-relative from `CARGO_MANIFEST_DIR` — the corpus is committed alongside the
+//! harness, so no environment configuration is needed to find it.
 
 use std::path::{Path, PathBuf};
 
@@ -20,7 +19,7 @@ pub fn load_golden(workload: &str) -> Result<String, String> {
     let path = corpus_dir().join(format!("{workload}.golden.html"));
     let bytes = std::fs::read(&path).map_err(|e| {
         format!(
-            "[FAIL] corpus {workload}: cannot read {}: {e} (regenerate via the Phase 1 \
+            "[FAIL] corpus {workload}: cannot read {}: {e} (regenerate via the \
              export-corpus tool: dotnet run -c Release --project benchmarks/dotnet \
              -f net10.0 -- export-corpus)",
             path.display()
@@ -31,13 +30,13 @@ pub fn load_golden(workload: &str) -> Result<String, String> {
 }
 
 /// Loads and parses `fixtures/composed-page/nav.json` — the structured nav model fixture
-/// (ledger E20/E22; the single composed-page data fixture, hash-recorded in the manifest's
-/// `fixtures` section and exported by the same Phase 1 export-corpus tool).
+/// (the single composed-page data fixture, hash-recorded in the manifest's `fixtures`
+/// section and exported by the same export-corpus tool).
 pub fn load_nav() -> Result<crate::models::NavModel, String> {
     let path = corpus_dir().join("fixtures/composed-page/nav.json");
     let bytes = std::fs::read(&path).map_err(|e| {
         format!(
-            "[FAIL] corpus composed-page: cannot read {}: {e} (regenerate via the Phase 1 \
+            "[FAIL] corpus composed-page: cannot read {}: {e} (regenerate via the \
              export-corpus tool: dotnet run -c Release --project benchmarks/dotnet \
              -f net10.0 -- export-corpus)",
             path.display()
@@ -52,7 +51,7 @@ pub fn load_verify(workload: &str) -> Result<VerifyDef, String> {
     let path = corpus_dir().join(format!("{workload}.verify.json"));
     let bytes = std::fs::read(&path).map_err(|e| {
         format!(
-            "[FAIL] corpus {workload}: cannot read {}: {e} (regenerate via the Phase 1 \
+            "[FAIL] corpus {workload}: cannot read {}: {e} (regenerate via the \
              export-corpus tool: dotnet run -c Release --project benchmarks/dotnet \
              -f net10.0 -- export-corpus)",
             path.display()
@@ -70,7 +69,7 @@ pub struct Manifest {
     pub schema: String,
     pub generator: String,
     pub entries: Vec<ManifestEntry>,
-    /// The `fixtures` section (E20): golden-grade hash + length rows for data fixtures —
+    /// The `fixtures` section: golden-grade hash + length rows for data fixtures —
     /// currently the single composed-page `nav.json` entry.
     #[serde(default)]
     pub fixtures: Vec<FixtureEntry>,
@@ -112,7 +111,7 @@ pub fn load_manifest() -> Result<Manifest, String> {
         .map_err(|e| format!("[FAIL] corpus manifest: cannot parse manifest.json: {e}"))
 }
 
-/// The eight workload ids in workload-number order (Phase 1 workloads.md).
+/// The eight workload ids in workload-number order.
 pub const WORKLOADS: [&str; 8] = [
     "composed-page",
     "trivial-substitution",

@@ -1,5 +1,5 @@
 @*
-    Idiomatic Razor -- composed-page layout (phase 9; authoring standard D16; ledger E20/E22).
+    Idiomatic Razor -- composed-page layout.
 
     Patterns followed, from Microsoft's own documentation:
       Razor syntax        https://learn.microsoft.com/aspnet/core/mvc/views/razor
@@ -8,12 +8,12 @@
 
     A genuine full-page layout with a LIVE body slot: Razor's native Layout/@RenderBody
     mechanism. The inert chrome fragments (alert banner, secondary menus, asset/script
-    snippets) are literal markup in this view -- Razor-native, no workaround needed (E22: all
+    snippets) are literal markup in this view -- Razor-native, no workaround needed (all
     display text lives in templates; the C# tier carries only model DATA). The structured
     navigation renders from ComposedModel.Nav through nested loops and partial views
     (menu -> column -> section -> link). Strongly-typed @model, C# control flow, and the
     DEFAULT @expression output -- which HTML-encodes; the nav values are markup-clean ASCII
-    (workloads.md rule 4), so encoding is the idiomatic no-op it should be. Checked by the
+    by fixture rule, so encoding is the idiomatic no-op it should be. Checked by the
     functional verifier, not the byte gate.
 *@
 @using Heddle.Benchmarks.Dotnet.Models

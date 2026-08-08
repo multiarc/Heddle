@@ -11,7 +11,7 @@
 
 //
 
-// Doc citations (Q1.7):
+// Official templ documentation for the constructs used here:
 
 //   - https://templ.guide/syntax-and-usage/expressions/
 

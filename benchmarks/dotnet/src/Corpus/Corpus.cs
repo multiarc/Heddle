@@ -9,8 +9,8 @@ using System.Text.Json;
 namespace Heddle.Benchmarks.Dotnet.Corpus
 {
     /// <summary>
-    /// Read-only access to the golden corpus at <c>benchmarks/dotnet/GoldenCorpus/</c> (ledger E8;
-    /// the corpus moved there with the harness). Every entry's SHA-256 and byte length are verified
+    /// Read-only access to the golden corpus at <c>benchmarks/dotnet/GoldenCorpus/</c> (the corpus
+    /// lives beside the harness that exports it). Every entry's SHA-256 and byte length are verified
     /// against <c>manifest.json</c> before its bytes are used, so a corrupted checkout fails with a
     /// distinct message rather than as a mystifying gate diff.
     ///
@@ -23,7 +23,7 @@ namespace Heddle.Benchmarks.Dotnet.Corpus
     /// </summary>
     public static class GoldenCorpus
     {
-        /// <summary>The eight workloads in protocol order (Phase 1 workloads.md §The set at a glance).</summary>
+        /// <summary>The eight workloads in protocol order.</summary>
         public static readonly IReadOnlyList<(string Id, string Suite)> Workloads = new[]
         {
             ("composed-page", "raw"),
@@ -67,7 +67,7 @@ namespace Heddle.Benchmarks.Dotnet.Corpus
             public string Generator { get; set; }
             public List<ManifestEntry> Entries { get; set; } = new List<ManifestEntry>();
 
-            /// <summary>The exported model fixtures (ledger E20) — hash-recorded like the goldens.
+            /// <summary>The exported model fixtures — hash-recorded like the goldens.
             /// Defaults to empty so a manifest predating the section still loads.</summary>
             public List<ManifestEntry> Fixtures { get; set; } = new List<ManifestEntry>();
         }

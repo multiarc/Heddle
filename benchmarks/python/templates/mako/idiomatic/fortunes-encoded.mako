@@ -1,7 +1,7 @@
 <%doc>
 Idiomatic Mako fortunes-encoded: escaping is declared in the template via
 <%page expression_filter="h"/> -- the filtering docs' template-declared
-escaping pattern; no per-expression filter appears (Phase 5 D4/D5).
+escaping pattern; no per-expression filter appears.
 Doc: https://docs.makotemplates.org/en/latest/filtering.html
 </%doc>
 <%page expression_filter="h"/>

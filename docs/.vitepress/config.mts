@@ -150,7 +150,7 @@ export default withMermaid(
           text: 'Benchmarks',
           collapsed: true,
           items: [
-            // docs/benchmarks keeps the latest run only (ledger E15), so this group always
+            // docs/benchmarks keeps the latest run only, so this group always
             // lists exactly one report: the index plus its two generated table pages.
             { text: '2026-08-08 (Windows protocol run)', link: '/benchmarks/2026-08-08/' },
             { text: '· consolidated tables', link: '/benchmarks/2026-08-08/consolidated-tables' },

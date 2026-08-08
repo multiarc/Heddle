@@ -1,11 +1,8 @@
-// Package model transcribes the pinned Phase 1 workload models — exact strings and
+// Package model transcribes the pinned cross-stack workload models — exact strings and
 // generation formulas — into Go structs materialized once in package var blocks (the Go
 // analogue of the .NET Shared discipline). Field names keep the C# spelling (exported —
 // reflection needs them); all numeric formatting is strconv.Itoa/%d only (every pinned
 // number is an int), so output is locale-independent by construction.
-//
-// Normative source: docs/spec/cross-stack-benchmarks/phase-1-cross-stack-foundation/workloads.md
-// Mapping rules: docs/spec/cross-stack-benchmarks/phase-6-go/port-mapping.md §Model transcription
 package model
 
 import "fmt"
@@ -42,7 +39,7 @@ var Substitution = SubstitutionModel{
 
 // ---- large-loop ------------------------------------------------------------------------------
 
-// LoopRow is one large-loop table row: ONLY the value (E21 — the display name `row-{i}` is
+// LoopRow is one large-loop table row: ONLY the value (the display name `row-{i}` is
 // composed by the template as `row-` + the value substitution, never pre-formatted here).
 type LoopRow struct {
 	Value int
@@ -62,7 +59,7 @@ var LargeLoop = func() LoopModel {
 
 // ---- mixed-page ------------------------------------------------------------------------------
 
-// MixedProduct is one mixed-page catalog card. SkuNumber and Batch are ints (E21): the
+// MixedProduct is one mixed-page catalog card. SkuNumber and Batch are ints: the
 // templates compose the display SKU `MX-@(SkuNumber)` and the blurb sentence around
 // @(Batch) — the model never pre-formats display text.
 type MixedProduct struct {
@@ -118,7 +115,7 @@ var Mixed = func() MixedModel {
 
 // ---- conditional-heavy -----------------------------------------------------------------------
 
-// ConditionalRow is one conditional-heavy matrix row. Seq is an int (E21): the template
+// ConditionalRow is one conditional-heavy matrix row. Seq is an int: the template
 // composes the note text `note @(Seq)`.
 type ConditionalRow struct {
 	Name     string
@@ -152,13 +149,13 @@ var Conditional = func() ConditionalModel {
 
 // ---- fragment-heavy --------------------------------------------------------------------------
 
-// FragmentRow is one fragment-heavy row (E20 redesign: four dispatched fragment kinds).
+// FragmentRow is one fragment-heavy row (four dispatched fragment kinds).
 // The IsTile/IsCard/IsMedia/IsStat booleans are precomputed — engines dispatch on these,
 // never on the Kind string (guaranteed common-denominator dispatch). The model carries
-// DATA only (E21): derived display text (the media caption `Caption for ` + name, the
+// DATA only: derived display text (the media caption `Caption for ` + name, the
 // image source `/img/` + name + `.jpg`, the display price + `.99`) is composed by the
 // templates as literal-plus-substitution. Name is zero-padded identity data — sanctioned
-// model-side per E21 (not composable within the common-denominator ceiling).
+// model-side (not composable within the common-denominator ceiling).
 type FragmentRow struct {
 	Kind    string
 	IsTile  bool
@@ -217,7 +214,7 @@ type FortuneRow struct {
 // FortuneModel is the fortunes-encoded model root.
 type FortuneModel struct{ Rows []FortuneRow }
 
-// fortuneMessages are the 12 pinned messages, byte-for-byte (workloads.md workload 7).
+// fortuneMessages are the 12 pinned messages, byte-for-byte.
 // Rows 4 and 8 carry U+2014 em dashes; row 11 is the TechEmpower XSS payload; row 12 the
 // Japanese string; row 1 is 4.33e67 (no '+' — the untrusted-data alphabet excludes it).
 var fortuneMessages = [12]string{
@@ -269,7 +266,7 @@ var EncodedLoop = func() EncodedLoopModel {
 	return EncodedLoopModel{Items: items}
 }()
 
-// ---- untrusted-data alphabet surface (README D5) ---------------------------------------------
+// ---- untrusted-data alphabet surface ---------------------------------------------------------
 
 // LabeledValue is one materialized encoded-suite model string with its
 // "<workload>.<field>[<row>]" label for the gate's alphabet assert.

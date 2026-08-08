@@ -1,4 +1,4 @@
-// The fixtures every engine renders this workload from (ledger E8).
+// The fixtures every engine renders this workload from.
 //
 // Load-bearing values: the golden corpus is Heddle's render OF THESE, so changing one changes the
 // oracle every ecosystem is gated against. Change them only with a corpus re-export in the same
@@ -14,7 +14,7 @@ using DotLiquid;
 namespace Heddle.Benchmarks.Dotnet.Models
 {
     /// <summary>
-    /// Shared, engine-neutral model for the large-loop workload (phase 5 WI4): a single iteration
+    /// Shared, engine-neutral model for the large-loop workload: a single iteration
     /// over <see cref="RowCount"/> rows, each emitting two scalar members — output dominated by one
     /// large loop. The row payload is built once (static); each per-engine container is likewise
     /// materialized once, because the competitor engines resolve <c>item.name</c>/<c>item.value</c>

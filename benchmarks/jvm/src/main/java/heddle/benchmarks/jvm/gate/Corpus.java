@@ -14,11 +14,11 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * Loads the Phase 1 golden corpus (manifest + goldens + {@code .verify.json} files) and
+ * Loads the golden corpus (manifest + goldens + {@code .verify.json} files) and
  * verifies every entry's bytes against the manifest's SHA-256 at load, failing fast on
  * mismatch or absence (surfaced by {@link GateCli} as exit 2).
  *
- * Path resolution (spec D8 / harness-and-jmh.md): default
+ * Path resolution: default
  * {@code ../dotnet/GoldenCorpus/} relative to the harness working
  * directory ({@code benchmarks/jvm/}), overridable with {@code -Dheddle.corpus=<path>}.
  */
@@ -87,7 +87,8 @@ public final class Corpus {
         return e;
     }
 
-    /** Resolves the corpus directory ({@code -Dheddle.corpus} override, D8 default). */
+    /** Resolves the corpus directory: {@code -Dheddle.corpus} override, else the
+     * {@code ../dotnet/GoldenCorpus} convention. */
     public static Path resolveRoot() {
         String override = System.getProperty("heddle.corpus");
         if (override != null && !override.isBlank()) {

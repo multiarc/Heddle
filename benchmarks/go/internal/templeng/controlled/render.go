@@ -1,5 +1,5 @@
 // Package controlled hosts the templ controlled ports (one .templ file per workload,
-// generated *_templ.go committed — README D3). Render path per port-mapping.md rule 8:
+// generated *_templ.go committed, regenerated only with the pinned CLI). Render path:
 // component.Render(ctx, buf) into a reused pre-grown bytes.Buffer with a background
 // context.Context created once; construction of the component value (a cheap closure) is
 // inside the render — it is templ's per-render entry point, exactly how a caller invokes a
@@ -15,7 +15,7 @@ import (
 	"heddle.dev/benchmarks/go/internal/model"
 )
 
-// ctx is the background context, built once (rule 8).
+// ctx is the background context, built once and shared by every render.
 var ctx = context.Background()
 
 // newBuf returns a buffer pre-grown to the workload's output size, so growth never lands

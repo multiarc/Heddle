@@ -1,7 +1,7 @@
-## Idiomatic Mako mixed-page: SINGLE-FILE by rule (workloads.md, ledger E20 -- layout
+## Idiomatic Mako mixed-page: SINGLE-FILE by rule (layout
 ## composition is composed-page's dimension); the full page skeleton with scalar ${x}
 ## substitutions and % control lines. The display SKU (MX-`sku_number`) and the blurb
-## sentence around `batch` are composed by the template per ledger E21 (Phase 5 D5, Q1.7).
+## sentence around `batch` are composed by the template.
 ## Docs: https://docs.makotemplates.org/en/latest/syntax.html#expression-substitution
 ##       https://docs.makotemplates.org/en/latest/syntax.html#control-structures
 <!DOCTYPE html>

@@ -5,8 +5,8 @@ using Heddle.Benchmarks.Dotnet.Corpus;
 namespace Heddle.Benchmarks.Dotnet.Gate
 {
     /// <summary>
-    /// Controlled-track byte gate and the encoded-suite security floor (contract v2
-    /// §Controlled-track gate). Per cell: render once, normalize (N1–N5), N3b-strip BOTH the
+    /// Controlled-track byte gate and the encoded-suite security floor.
+    /// Per cell: render once, normalize (N1–N5), N3b-strip BOTH the
     /// candidate and the oracle, UTF-8-encode, and compare byte sequences.
     ///
     /// Failure carries the contract's full surface — workload, engine, both byte lengths,

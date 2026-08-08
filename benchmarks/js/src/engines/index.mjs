@@ -1,10 +1,9 @@
-// Engine aggregator — Phase 4 WI4/WI5 (spec: harness-and-run.md §Harness layout). Exposes the
-// per-track render tables as `tracks[track][engine][workloadId] -> () => string`, the shape
-// src/gate/run-all.mjs consumes.
+// Engine aggregator. Exposes the per-track render tables as
+// `tracks[track][engine][workloadId] -> () => string`, the shape src/gate/run-all.mjs consumes.
 //
-// Merge seam: each engine lives in its own module (./handlebars.mjs — WI4; ./eta.mjs — WI5)
-// exporting `{ controlled, idiomatic }` render tables under its engine name. The Eta import is
-// tolerant until WI5 lands: a missing ./eta.mjs leaves the eta cells unregistered (run-all
+// Merge seam: each engine lives in its own module (./handlebars.mjs, ./eta.mjs) exporting
+// `{ controlled, idiomatic }` render tables under its engine name. The Eta import is
+// tolerant: a missing ./eta.mjs leaves the eta cells unregistered (run-all
 // reports them as clean failures); any other load error propagates.
 import { handlebars } from "./handlebars.mjs";
 

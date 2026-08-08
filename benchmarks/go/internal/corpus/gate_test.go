@@ -49,7 +49,7 @@ func TestAllEightVerifyDefinitionsLoad(t *testing.T) {
 // ---- controlled gate mechanics ---------------------------------------------------------------
 
 // The gate machinery is exercised end-to-end against a real corpus entry by rendering the
-// oracle's own bytes back at it (engine ports land in WI3+; this proves the plumbing).
+// oracle's own bytes back at it — proving the plumbing independent of any engine port.
 func TestControlledGateAcceptsTheOracleItself(t *testing.T) {
 	golden, err := corpus.LoadGolden("trivial-substitution")
 	if err != nil {
@@ -99,7 +99,7 @@ func TestEncodedGateSecurityFloor(t *testing.T) {
 	}
 }
 
-// ---- untrusted-data alphabet (README D5) -----------------------------------------------------
+// ---- untrusted-data alphabet -----------------------------------------------------------------
 
 func TestAlphabetAcceptsThePinnedEncodedModels(t *testing.T) {
 	for _, v := range model.EncodedValues() {

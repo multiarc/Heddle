@@ -1,4 +1,4 @@
-//! `summarize` binary — generates the report's two wall-time tables (README D13, WI9).
+//! `summarize` binary — generates the report's two wall-time tables.
 //!
 //! Reads every `target/criterion/<group>/<engine>/new/estimates.json` written by the three
 //! bench targets, takes `mean.point_estimate` plus the 95% CI bounds, joins the Heddle
@@ -7,8 +7,8 @@
 //! transcription) is what makes the tables mechanically faithful to the committed JSON.
 //!
 //! Two deliberate loud failures, both exit nonzero and print nothing pasteable:
-//!   * `pending = true` in `heddle-reference.toml` (SR-6) — the Phase 1 protocol run that
-//!     supplies the Heddle reference rows is unpublished, so no table may be emitted.
+//!   * `pending = true` in `heddle-reference.toml` — no published run supplies the Heddle
+//!     reference rows yet, so no table may be emitted.
 //!   * any expected cell missing its `estimates.json` — a partial table pasted into a report
 //!     reads as a complete one.
 //!
@@ -24,7 +24,7 @@ use heddle_bench_rust::corpus::WORKLOADS;
 const TRACKS: [&str; 2] = ["controlled", "idiomatic"];
 const ENGINES: [&str; 2] = ["askama", "tera"];
 
-/// The Tera cold-parse sidebar (D12) — one aggregate number, per-ecosystem only.
+/// The Tera cold-parse sidebar — one aggregate number, per-ecosystem only.
 const COLD_GROUP: &str = "cold";
 const COLD_FUNCTION: &str = "tera-parse-all-templates";
 
@@ -153,7 +153,7 @@ fn render_table(track: &str, reference: &Reference, missing: &mut Vec<String>) -
     ));
     out.push_str(&format!(
         "Heddle rows are the labeled excerpt from the published run of {} named by \
-         `heddle-reference.toml`; they are not re-measured here (presentation rule 1). Whether \
+         `heddle-reference.toml`; they are not re-measured here. Whether \
          that run is on the protocol machine is stated in that file's header - as of 2026-07-25 \
          it is not, and the Windows protocol run is pending a re-test. Ratios are engine / \
          Heddle.\n\n",
@@ -224,7 +224,7 @@ fn main() -> ExitCode {
     };
 
     if reference.pending {
-        eprintln!("summarize: reference pending the Phase 1 protocol run (SR-6).");
+        eprintln!("summarize: no published Heddle reference run exists yet.");
         eprintln!(
             "summarize: {} carries pending = true, so the Heddle reference rows do not exist yet",
             reference_path.display()
@@ -242,7 +242,7 @@ fn main() -> ExitCode {
         document.push_str(&render_table(track, &reference, &mut missing));
     }
 
-    // D12 sidebar: one aggregate Tera cold-parse number, per-ecosystem only, non-comparable.
+    // Cold-parse sidebar: one aggregate Tera number, per-ecosystem only, non-comparable.
     match read_estimate(COLD_GROUP, COLD_FUNCTION) {
         Some(estimate) => {
             document.push_str("### Tera cold parse (all templates)\n\n");
@@ -255,7 +255,7 @@ fn main() -> ExitCode {
         }
         None => eprintln!(
             "summarize: note - no cold-parse estimate at target/criterion/{COLD_GROUP}/{COLD_FUNCTION}/new/estimates.json \
-             (run `cargo bench --bench cold`); the D12 sidebar is omitted."
+             (run `cargo bench --bench cold`); the cold-parse sidebar is omitted."
         ),
     }
 

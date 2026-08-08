@@ -12,7 +12,7 @@ using Microsoft.Extensions.Hosting;
 namespace Heddle.Benchmarks.Dotnet.Engines
 {
     /// <summary>
-    /// ASP.NET Core Razor twin, ALL EIGHT workloads (ledger E9).
+    /// ASP.NET Core Razor twin, ALL EIGHT workloads.
     ///
     /// <b>All eight, and that matters.</b> Razor was once measured on <c>composed-page</c> alone, so
     /// the repository's "faster than Razor" claim rested on the single least favourable workload in
@@ -64,7 +64,7 @@ namespace Heddle.Benchmarks.Dotnet.Engines
 
         public static IEnumerable<Cell> Cells(string track)
         {
-            // The typed nav model (ledger E20/E22): the layout renders ComposedModel.Nav through
+            // The typed nav model: the layout renders ComposedModel.Nav through
             // nested loops and partials; all literal chrome is template text in the views.
             yield return Make(track, "composed-page", ComposedContent.Model());
             yield return Make(track, "trivial-substitution", SubstitutionContent.Model());

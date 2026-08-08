@@ -1,9 +1,10 @@
 @*
-    Razor parity twin -- fragment-heavy media-row partial (ledger E20).
+    Razor parity twin -- fragment-heavy media-row partial.
 
     One of the four dispatched fragment kinds. The image source (`/img/@(Model.Name).jpg`) and
     the caption (`Caption for @Model.Name`) are composed by the TEMPLATE as
-    literal-plus-substitution (E21). Html.Raw: raw-suite non-encoding path.
+    literal-plus-substitution -- the model carries data, never display strings.
+    Html.Raw: raw-suite non-encoding path.
 *@
 @using Heddle.Benchmarks.Dotnet.Models
 @model FragmentContent.FragmentRow

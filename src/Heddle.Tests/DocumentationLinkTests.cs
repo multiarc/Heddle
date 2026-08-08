@@ -12,8 +12,9 @@ namespace Heddle.Tests
     /// Documentation links resolve, and a <c>name.cs:NN</c> citation names a line the file has. A citation is a
     /// promise a reader follows, and following one into a deleted file or past the end of a shortened one costs the
     /// reader the trust they extended.
-    /// <para>Every documentation tree is covered, published and internal alike — the internal trees hold nearly all
-    /// the citations, so exempting them would leave the gate checking the easy half.</para>
+    /// <para>Every documentation tree is covered, published and internal alike — <c>docs/**</c>, the benchmark
+    /// docs under <c>benchmarks/**</c>, the repository README and the CHANGELOG — so no tree's links can rot
+    /// unnoticed.</para>
     /// </summary>
     public class DocumentationLinkTests
     {
@@ -66,8 +67,9 @@ namespace Heddle.Tests
             }
 
             // Floors sit just under the current counts, so a convention change that silently drops most of the
-            // surface reddens instead of passing on a remnant.
-            Assert.True(checkedCount > 700,
+            // surface reddens instead of passing on a remnant. Re-pinned when the plan/spec trees were retired
+            // and the benchmark contract docs moved under benchmarks/docs/.
+            Assert.True(checkedCount > 360,
                 "Only " + checkedCount + " file links were checked — the link convention changed and this gate is " +
                 "no longer covering the documentation.");
             Assert.True(broken.Count == 0,
@@ -105,8 +107,9 @@ namespace Heddle.Tests
                 }
             }
 
-            Assert.True(checkedCount >= 15,
-                "Only " + checkedCount + " line citations were checked — the citation convention changed.");
+            // No count floor: the line-citation population went to zero when the generator-plan tree (which held
+            // every citation) was retired. The staleness check stays armed for any citation that returns;
+            // reinstate a floor once a tree adopts the convention again.
             Assert.True(stale.Count == 0, "Stale line citations: " + string.Join("; ", stale));
         }
 
@@ -119,9 +122,9 @@ namespace Heddle.Tests
                 return false;
             if (link.IndexOf('<') >= 0 || link.IndexOf('\u2026') >= 0)
                 return false;   // a documented example path, not a link: "../<run-date>/index.md"
-            // A same-directory link is still a path. Requiring a slash skipped 435 of 803 links — and
-            // "](records.md)" is the dominant form in the spec and plan trees, so the gate was checking the
-            // easier half of the documentation it claimed to cover.
+            // A same-directory link is still a path. Requiring a slash once skipped more than half the links —
+            // same-directory forms dominate the internal trees, so the gate would be checking the easier half
+            // of the documentation it claims to cover.
             return true;
         }
 
@@ -132,6 +135,20 @@ namespace Heddle.Tests
                 .Where(p => !p.Contains(Path.DirectorySeparatorChar + "node_modules" + Path.DirectorySeparatorChar))
                 .Where(p => !p.Contains(Path.DirectorySeparatorChar + ".vitepress" + Path.DirectorySeparatorChar))
                 .ToList();
+
+            // The benchmark trees carry the harness contract docs and per-ecosystem reproduce books; build
+            // output and vendored material are not documentation.
+            var benchmarks = Path.Combine(root, "benchmarks");
+            if (Directory.Exists(benchmarks))
+                docs.AddRange(Directory.GetFiles(benchmarks, "*.md", SearchOption.AllDirectories)
+                    .Where(p => !p.Contains(Path.DirectorySeparatorChar + "node_modules" + Path.DirectorySeparatorChar))
+                    .Where(p => !p.Contains(Path.DirectorySeparatorChar + "third-party" + Path.DirectorySeparatorChar))
+                    .Where(p => !p.Contains(Path.DirectorySeparatorChar + "out" + Path.DirectorySeparatorChar))
+                    .Where(p => !p.Contains(Path.DirectorySeparatorChar + "obj" + Path.DirectorySeparatorChar))
+                    .Where(p => !p.Contains(Path.DirectorySeparatorChar + "bin" + Path.DirectorySeparatorChar))
+                    .Where(p => !p.Contains(Path.DirectorySeparatorChar + "target" + Path.DirectorySeparatorChar))
+                    .Where(p => !p.Contains("target.rootowned-preserved"))
+                    .Where(p => !p.Contains("BenchmarkDotNet.Artifacts")));
 
             docs.Add(Path.Combine(root, "README.md"));
             docs.Add(Path.Combine(root, "CHANGELOG.md"));

@@ -1,19 +1,16 @@
 // Package idiomatic holds the idiomatic-track ports for the stdlib surfaces: text/template on the six raw workloads,
-// html/template on the two encoded workloads (README D1 / Q6.1 — same surface split as the
-// controlled track). Authoring standard (Q1.7/D16): naturally formatted multi-line
+// html/template on the two encoded workloads (same surface split as the controlled
+// track). Authoring standard: naturally formatted multi-line
 // templates with indentation, {{- -}} trim markers where the Go docs use them, and template
 // composition via the {{define}}/{{template}}/{{block}} idiom — the way the official docs
 // teach the engine, not the byte-exact controlled shape. These sources may diverge freely
-// in whitespace and structure; they are gated by the Phase 1 idiomatic verifier
+// in whitespace and structure; they are gated by the shared idiomatic verifier
 // (<id>.verify.json semantics), not the byte gate.
 //
-// Doc citations (Q1.7 — official documentation patterns followed here):
+// Official documentation patterns followed here:
 //   - https://pkg.go.dev/text/template   (Actions, Text and spaces / trim markers,
 //     Nested template definitions, the {{block}} shorthand for define-plus-invoke)
 //   - https://pkg.go.dev/html/template   (same template API; contextual auto-escaping)
-//
-// Spec: docs/spec/cross-stack-benchmarks/phase-6-go/port-mapping.md
-// §Idiomatic track — both engines, all eight workloads.
 package idiomatic
 
 import (
@@ -27,7 +24,7 @@ import (
 //
 // Layout composition with the engine's own documented mechanism (text/template §Nested
 // template definitions + the {{block}} action): the layout template carries the full
-// literal page chrome (E22 — all display text lives in the template tier) with a live
+// literal page chrome (all display text lives in the template tier) with a live
 // {{block "body" .}} slot; the page's parse adds a non-empty {{define "body"}} that
 // overrides the block's empty default in the associated set. The chrome fragments are
 // per-fragment {{define}}s and the structured nav renders through nested definitions
@@ -36,7 +33,7 @@ import (
 // verifier's removed-segment calibration pin is the slider, so an empty body fails,
 // deliberately.
 
-// idiomaticComposedChromeSrc is the definition-only chrome-fragment library (E22):
+// idiomaticComposedChromeSrc is the definition-only chrome-fragment library:
 // parsing it renders nothing; the layout calls each fragment at its composition point.
 const idiomaticComposedChromeSrc = `{{define "alert_top"}}<div class="top-banner" style=""><a href="/content/shipping-information#Holidays"><img src="/files/images/sitewide-alerts/xmas-shipping-alert-1.jpg" alt="holiday shipping"/></a></div>{{end}}
 {{define "secondary_wholesale_menu"}}				<ul class="hide">
@@ -518,7 +515,7 @@ const idiomaticTrivialSubstitutionSrc = `<article>
 
 // Trim markers around the range body, the shape the text/template docs' "Text and spaces"
 // section teaches for loop output; the display name is composed as the literal row- + the
-// value substitution (E21).
+// value substitution.
 const idiomaticLargeLoopSrc = `{{range .Items -}}
 <tr>
   <td>row-{{.Value}}</td>
@@ -529,9 +526,9 @@ const idiomaticLargeLoopSrc = `{{range .Items -}}
 
 // ---- workload 4 — mixed-page (text/template) -------------------------------------------------
 
-// Single-file by rule (E20 — layout composition is composed-page's dimension). The display
+// Single-file by rule (layout composition is composed-page's dimension). The display
 // SKU is composed as MX-{{.SkuNumber}} and the blurb sentence lives in the template around
-// {{.Batch}} (E21).
+// {{.Batch}}.
 const idiomaticMixedPageSrc = `<!DOCTYPE html>
 <html>
   <head>
@@ -580,7 +577,7 @@ const idiomaticMixedPageSrc = `<!DOCTYPE html>
 
 // ---- workload 5 — conditional-heavy (text/template) ------------------------------------------
 
-// The note text is composed as the literal note + {{.Seq}} (E21).
+// The note text is composed as the literal note + {{.Seq}}.
 const idiomaticConditionalHeavySrc = `<ul class="matrix">
   {{range .Rows -}}
   <li>
@@ -603,10 +600,10 @@ const idiomaticConditionalHeavySrc = `<ul class="matrix">
 
 // ---- workload 6 — fragment-heavy (text/template) ---------------------------------------------
 
-// The E20 four-kind dispatch exactly as the docs' nested-template-definition examples show
+// The four-kind dispatch exactly as the docs' nested-template-definition examples show
 // it: one named {{define}} per fragment kind plus the badge/price sub-definitions the card
 // invokes against its .Promo (the one nesting level), selected per row by the boolean
-// {{if}}/{{else if}} chain. Derived display text is composed by the template (E21):
+// {{if}}/{{else if}} chain. Derived display text is composed by the template:
 // /img/{{.Name}}.jpg, Caption for {{.Name}}, {{.Price}}.99.
 const idiomaticFragmentHeavySrc = `{{define "tile"}}
 <section class="tile">

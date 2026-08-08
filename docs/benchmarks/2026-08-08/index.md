@@ -7,7 +7,7 @@ the .NET leg contributes six engines, and Go's standard library appears as `text
 workloads and `html/template` on encoded ones. Every ecosystem ran its own standard harness
 (BenchmarkDotNet, Criterion, JMH, mitata, pyperf, `go test` + benchstat) and contributed that
 harness's default central-tendency statistic, per the
-[metrics protocol](../../../docs/spec/cross-stack-benchmarks/phase-1-cross-stack-foundation/metrics-protocol.md).
+[metrics protocol](../../../benchmarks/docs/metrics-protocol.md).
 
 Reproduce the whole run:
 
@@ -21,7 +21,7 @@ Per-ecosystem invocations are in [benchmarks/README.md](../../../benchmarks/READ
 
 > **This is the protocol machine.** The program pins its cross-compared runs to the AMD Ryzen 9
 > 9950X / Windows 11 box
-> ([metrics-protocol Q1.6](../../../docs/spec/cross-stack-benchmarks/phase-1-cross-stack-foundation/metrics-protocol.md#machine-and-environment-q16)),
+> ([metrics-protocol Q1.6](../../../benchmarks/docs/metrics-protocol.md#machine-and-environment-q16)),
 > and that is where this run executed. What Windows does **not** have is the Linux runner's
 > captured tuned state: there is no governor/boost control and no CPU-isolation boot entry on this
 > side, so the machine posture is procedural — quiet machine, AC power, High Performance power
@@ -45,7 +45,7 @@ and the two JS render steps each ran their full 38-pass shape
 ([The JS leg ran its full 38-pass shape](#the-js-leg-ran-its-full-38-pass-shape-this-time)).
 
 **Earlier reports.** `docs/benchmarks` keeps the latest run only
-([ledger E15](../../../docs/spec/records.md#cross-spec-amendments-ledger)). The reports of
+(amendment E15). The reports of
 2026-07-11, 2026-07-18, 2026-07-25, 2026-08-02 and 2026-08-03 are removed, not corrected; their
 numbers were honest measurements of their own harnesses and toolchains, and nothing here may be
 compared against them.
@@ -69,7 +69,7 @@ repo commit not captured by the runner; 7674be01 was the newest commit when the 
 | Go | `go test -bench -count=28 -benchtime=1s` + benchstat | go1.26.5, templ v0.3.1020 |
 
 Run lengths come from the **`short` measurement budget**, whose unit is **one engine, not one
-ecosystem** ([ledger E6/E13/E14](../../../docs/spec/records.md#cross-spec-amendments-ledger)):
+ecosystem** (amendment E6/E13/E14):
 each engine's sixteen cells get ~10 minutes, so the .NET leg — six engines plus the Heddle-only
 techniques, cold and internal sidebars — is about three times the other legs by construction. The
 session ran 01:34:09 → 04:45:52, **3 h 12 min**. These are the second measured leg durations on
@@ -92,12 +92,12 @@ published run of this program in which no toolchain drifted from its pin**, and 
 maintainer rulings issued on 2026-08-08, before the run:
 
 - **Node.js is pinned to the major line `v24.x`**
-  ([ledger E18](../../../docs/spec/records.md#cross-spec-amendments-ledger)). The property the
+  (amendment E18). The property the
   pin holds constant — the V8 generation the JS rows describe — is major-versioned, and the old
   exact-string pin was only ever satisfiable by disabling engine enforcement. This run's
   **v24.19.0** satisfies the pin with `engine-strict` ON.
 - **CPython is pinned to the minor line `3.14.x`**
-  ([ledger E19](../../../docs/spec/records.md#cross-spec-amendments-ledger)) — same reasoning,
+  (amendment E19) — same reasoning,
   minor-versioned: micro releases are bugfix. This run's **3.14.7** satisfies the pin.
 
 Exactness is relocated, not lost: the precise versions a run actually used are recorded in
@@ -172,7 +172,7 @@ computation at all**. See [The `composed-page` caveat](#the-composed-page-caveat
 Every workload carries a controlled byte gate and an idiomatic verifier; the two encoded workloads
 additionally carry the security floor. The [consolidated tables](consolidated-tables.md) are the
 machine-generated, `--check`-reproducible appendix; since
-[ledger E7](../../../docs/spec/records.md#cross-spec-amendments-ledger) their ordering is also
+amendment E7 their ordering is also
 tier-derived — computed from rendered size by `consolidate.py`, never declared per workload —
 while the normative protocol numbering 1–8 stays recorded in `manifest.json` and the phase specs.
 
@@ -239,7 +239,7 @@ template engine — the same architectural bet Heddle makes, compile the documen
 interpret it, executed in a language without a managed runtime.
 
 **The .NET idiomatic anchor holds.** The rebuilt .NET leg measures both fairness tracks
-([ledger E12](../../../docs/spec/records.md#cross-spec-amendments-ledger) discharged Phase 1
+(amendment E12 discharged Phase 1
 D15's controlled-only scope), and the idiomatic tables anchor to a real Heddle idiomatic row: on
 every Tier 1 workload it prices Heddle's documented authoring style within 10% of the controlled
 row (ratio 0.99–1.10 in the generated tables).
@@ -247,7 +247,7 @@ row (ratio 0.99–1.10 in the generated tables).
 ### What this run replaces, and why
 
 This run replaces the 2026-08-03 report under
-[ledger E15](../../../docs/spec/records.md#cross-spec-amendments-ledger)'s latest-run-only rule,
+amendment E15's latest-run-only rule,
 and the replacement is a **measurement-quality re-issue, not a new engine state**. Between the
 two runs nothing under `src/` changed — every intervening commit touched the harness, the pins or
 the report: the JS launcher fix (a null exit code no longer propagates as success), the E18/E19
@@ -283,7 +283,7 @@ and the gate's `PRECOMPILED-COVERAGE` line records the split every run.
 ### Razor is measured on every workload
 
 Since the .NET leg rebuild
-([ledger E12](../../../docs/spec/records.md#cross-spec-amendments-ledger)), ASP.NET Core Razor is
+(amendment E12), ASP.NET Core Razor is
 a full member of all eight workloads and both tracks, under the same parity gate as every other
 engine — the earlier single-workload Razor figure is superseded. On the controlled track Heddle
 leads it by **2.51× to 37.07×** at Tier 1 sizes and **1.90×** on `composed-page`; on
@@ -296,7 +296,7 @@ which compresses margins there relative to Tier 1.
 The replaced report disclosed that its JS leg had collapsed to one mitata pass per track: the
 `run.ps1` launcher read a null exit code back from its first pass, aborted the 38-pass sequence,
 and propagated the null as success. That defect was fixed before this run, and this run executed
-the intended shape (ledger E6/E14): **38 consecutive passes per render track, each a separate
+the intended shape (amendment E6/E14): **38 consecutive passes per render track, each a separate
 node process** — ~588 s per track — with the Phase 4 D13 stability verdict computed from them.
 
 The verdicts, from the published stability artifacts:
@@ -316,7 +316,7 @@ median of the per-pass averages and `stats.min`/`stats.max` span the passes — 
 dispersion column in this report's tables is **cross-process variation**, not a single pass's
 min…max. Every one of the 76 passes asserted `MATERIALISATION-CHECK: clean` before writing its
 artifact, so every JS figure is materialised output, not the V8 `ConsString` rope artifact
-([ledger E4](../../../docs/spec/records.md#cross-spec-amendments-ledger)). The JS rows keep
+(amendment E4). The JS rows keep
 their `reach/context` evidence standing. The verdict is independently recomputable from the
 published aggregates alone — each cell in [controlled.json](js/controlled.json) /
 [idiomatic.json](js/idiomatic.json) carries its `perPassAvg` array, the 38 per-pass averages
@@ -336,7 +336,7 @@ the largest), which is why the Tier 1 rows compare cleanly.
 The magnitude of the cliff was measured when the boundary was first identified, on the 2026-07-25
 run's box: string-copy throughput fell from 40.3 B/ns just below the threshold to 8.9 B/ns just
 above it — a 4.5× step. That measurement is recorded in
-[ledger E7](../../../docs/spec/records.md#cross-spec-amendments-ledger) and was **not re-derived
+amendment E7 and was **not re-derived
 on this machine**; what this run's own artifacts show is the consequence: in the
 [allocation sidebar](consolidated-tables.md#per-ecosystem-sidebars--not-cross-comparable),
 Heddle's `composed-page` render reports Gen0, Gen1 and Gen2 collection counts that are **equal**
@@ -352,7 +352,7 @@ Beyond its size, `composed-page` has a second problem: **it contains no per-item
 The output is 17 pre-existing string fragments concatenated in order — no loop body, no branch,
 no escaping, no formatting. Every compiled engine reduces it to about 17 `memcpy` calls, so the
 row measures memory bandwidth and allocator behaviour, not template execution.
-[Ledger E7](../../../docs/spec/records.md#cross-spec-amendments-ledger) records the floor
+Amendment E7 records the floor
 measurements behind that analysis (a hand-written .NET `string.Concat` of the same fragments sits
 within ~2× of Heddle's figure); they were taken on the 2026-07-25 run's box and are cited here as
 prior evidence, not re-measured. The `#11 of 16` rank is real as a measurement and misleading as a
@@ -378,7 +378,7 @@ Two further notes on this row:
 1. **The protocol machine, but unreplicated.** This run satisfies Q1.6's machine pin, but no
    finding here has been reproduced on a second platform: the Linux cross-check (Phase 8) has no
    current published run, and every earlier report is removed under
-   [ledger E15](../../../docs/spec/records.md#cross-spec-amendments-ledger). Treat the ordering
+   amendment E15. Treat the ordering
    as this run's result.
 2. **The `short` budget, not `baseline`.** Every leg ran the ~10 min-per-engine `short` shape
    (E6/E13/E14): .NET at `ShortRun` with `LaunchCount 3`, JMH at 5 forks × 5×1 s, Criterion at
@@ -425,5 +425,5 @@ Two further notes on this row:
 14. **No figure here may be compared with any removed report.** The replaced 2026-08-03 run
     measured the same engine code, but through a JS leg that collapsed to one pass per track and
     with two toolchains off pin; it is removed under
-    [ledger E15](../../../docs/spec/records.md#cross-spec-amendments-ledger), not corrected. Do
+    amendment E15, not corrected. Do
     not mix figures across runs — this run's tables are the only ones this repository publishes.

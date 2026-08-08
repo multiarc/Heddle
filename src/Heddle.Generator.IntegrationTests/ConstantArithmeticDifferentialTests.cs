@@ -217,7 +217,7 @@ namespace Heddle.Generator.IntegrationTests
         }
 
         /// <summary>
-        /// Division by a constant zero is refused at compile time by BOTH tiers (ledger E16). It used to degrade
+        /// Division by a constant zero is refused at compile time by BOTH tiers. It used to degrade
         /// instead — C# refuses <c>CS0020</c>, the engine's expression tree threw at render, and the degrade let
         /// "the tier whose behaviour is the contract" keep rendering — but that expression has no behaviour to
         /// keep: rendering it can only ever throw. The engine now raises <c>HED1018</c> from its expression

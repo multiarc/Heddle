@@ -1,5 +1,5 @@
 // The WebAssembly SDK requires a main JS entry. The Heddle demo does NOT boot on the main thread — the demo page
-// (docs/public/demo.html) creates a module worker from heddle-demo-worker.js instead (phase 9 D6), so this file is
+// (docs/public/demo.html) creates a module worker from heddle-demo-worker.js instead, so this file is
 // only a fallback for opening the bundle standalone. It boots the runtime and logs that the exports are reachable.
 import { dotnet } from './_framework/dotnet.js';
 

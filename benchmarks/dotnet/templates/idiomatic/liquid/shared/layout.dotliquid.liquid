@@ -1,15 +1,15 @@
 {%- comment -%}
-  Idiomatic Liquid -- composed-page layout (DotLiquid dialect; phase 9; authoring standard D16).
+  Idiomatic Liquid -- composed-page layout (DotLiquid dialect).
 
   Patterns followed, from the engines' own documentation:
     Liquid language reference   https://shopify.github.io/liquid/
     DotLiquid                   http://dotliquidmarkup.org/
 
-  Capture-then-include layout composition (ledger E20): the page captures its body into
+  Capture-then-include layout composition: the page captures its body into
   body_content and includes this layout, which emits {{ body_content }} at the live slot.
   DotLiquid's {% include %} shares the enclosing scope, so the captured body and the nav
-  model are visible here without arguments. All inert chrome is literal template text
-  (ledger E22), served by the chrome-fragment partials.
+  model are visible here without arguments. All inert chrome is literal template text,
+  served by the chrome-fragment partials.
 
   Authored the way the docs teach rather than to match the oracle byte-for-byte: readable
   whitespace and Liquid's own control-flow tags. Checked by the functional verifier, not

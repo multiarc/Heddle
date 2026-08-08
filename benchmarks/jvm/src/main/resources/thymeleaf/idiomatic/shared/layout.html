@@ -1,5 +1,5 @@
 <!--/*
-  Idiomatic Thymeleaf authoring (Q1.7/D7) — official doc citations:
+  Idiomatic Thymeleaf authoring — official doc citations:
   https://www.thymeleaf.org/doc/tutorials/3.1/usingthymeleaf.html
     §5.2 (setting specific attributes: th:href, th:class), §6 (iteration: th:each),
     §7.1 (simple conditionals: th:if/th:unless), §8.1 (defining/including fragments),
@@ -10,7 +10,7 @@
 
   Definition-only layout: rendering this template whole is never done — pages select
   the layout(bodySlot) fragment. The full literal page chrome lives inside it
-  (ledger E22: all text in templates), the section defaults and the nav fragments
+  (all literal text lives in templates), the section defaults and the nav fragments
   are siblings a page could override by passing/selecting alternatives, and the
   structured navigation renders through nested parameterized fragments
   (mega_menu → nav_column → nav_section → nav_link). Checked by the functional

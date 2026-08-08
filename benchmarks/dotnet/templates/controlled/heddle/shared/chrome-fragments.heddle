@@ -1,4 +1,4 @@
-@* Definition-only chrome-fragment library (ledger E22): the page's inert literal text --
+@* Definition-only chrome-fragment library: the page's inert literal text --
    the alert banner, the two secondary menu blocks, and the fixed asset/script fragments --
    as named definitions the layout chrome calls at its composition points. Importing this
    file renders nothing; a page may override any piece with the ordinary <name:name>

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# common.sh — shared helpers for the Phase 8 linux-crosscheck tooling (spec D18).
+# common.sh — shared helpers for the linux-crosscheck tooling.
 # Sourced by every script in this directory; not executable on its own.
 
 set -u
@@ -12,13 +12,13 @@ LCX_STATE_FILE="$LCX_OUT_DIR/session-state.txt"
 
 lcx_mkout() {
   mkdir -p "$LCX_OUT_DIR"
-  # Keep script outputs out of git (D17.2: no stray files outside the dated report dir).
+  # Keep script outputs out of git (no stray files outside the dated report dir).
   if [ ! -f "$LCX_OUT_DIR/.gitignore" ]; then
     printf '*\n' > "$LCX_OUT_DIR/.gitignore"
   fi
 }
 
-# --- WSL detection (SR-2) ----------------------------------------------------
+# --- WSL detection -------------------------------------------------------------
 # WSL2 kernels self-identify in /proc/version and /proc/sys/kernel/osrelease
 # ("microsoft-standard-WSL2"). Bare-metal Ubuntu does not.
 lcx_is_wsl() {
@@ -35,10 +35,10 @@ lcx_note() {
   echo "== $*"
 }
 
-# --- SMT sibling pair (never assumed; D1.6 / spec 'verify at implementation') --
+# --- SMT sibling pair (read from the topology, never assumed) ------------------
 # Reads the thread-sibling list of the configured physical core (default: CPU 4's
-# core, per environment-and-toolchains.md D1.6). Fails if the topology file is
-# absent — which it is under WSL2 (no real per-CPU topology is exposed).
+# core). Fails if the topology file is absent — which it is under WSL2 (no real
+# per-CPU topology is exposed).
 LCX_ISOLATION_CPU="${LCX_ISOLATION_CPU:-4}"
 
 lcx_smt_pair() {
@@ -49,15 +49,15 @@ lcx_smt_pair() {
   cat "$f"
 }
 
-# --- Tuned-state pre-flight (WI5: launchers assert the D2 state before timing) --
+# --- Tuned-state pre-flight (launchers assert the tuned state before timing) ----
 # Compares `pyperf system show` against the state recorded by tune.sh.
-# Callers pass "$1" = 1 to bypass (--no-tune-check, SR-2); the bypass is RECORDED
+# Callers pass "$1" = 1 to bypass (--no-tune-check); the bypass is RECORDED
 # on stdout so it lands in every captured launcher log.
 lcx_preflight_tuned_state() {
   local bypass="${1:-0}"
   if [ "$bypass" = "1" ]; then
     echo "TUNE-CHECK: BYPASSED via --no-tune-check (recorded)."
-    echo "TUNE-CHECK: this is acceptable only for functional/--smoke runs (SR-2 WSL posture);"
+    echo "TUNE-CHECK: this is acceptable only for functional/--smoke runs (WSL posture);"
     echo "TUNE-CHECK: a bare-metal measurement run MUST NOT bypass the pre-flight."
     return 0
   fi
@@ -89,7 +89,7 @@ lcx_parse_launcher_args() {
       -h|--help)
         echo "usage: $(basename -- "$0") [--smoke] [--no-tune-check]"
         echo "  --smoke          short functional pass (no measurement validity)"
-        echo "  --no-tune-check  bypass the D2 tuned-state pre-flight (bypass is recorded; WSL/SR-2 only)"
+        echo "  --no-tune-check  bypass the tuned-state pre-flight (bypass is recorded; WSL functional runs only)"
         exit 0 ;;
       *) lcx_die "unknown argument: $1" ;;
     esac
@@ -101,11 +101,11 @@ lcx_launcher_header() {
   local name="$1"
   echo "== linux-crosscheck launcher: $name =="
   echo "date: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-  if lcx_is_wsl; then echo "environment: WSL2 (SR-2 functional posture)"; else echo "environment: non-WSL Linux"; fi
+  if lcx_is_wsl; then echo "environment: WSL2 (functional posture — no measurement validity)"; else echo "environment: non-WSL Linux"; fi
   if [ "$LCX_SMOKE" = "1" ]; then
     echo "mode: SMOKE (short functional flags — results carry NO measurement validity)"
   else
-    echo "mode: MEASUREMENT (spec D6-D11 shapes)"
+    echo "mode: MEASUREMENT (full per-harness settings, as on Windows)"
   fi
   lcx_preflight_tuned_state "$LCX_NO_TUNE_CHECK"
 }

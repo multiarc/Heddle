@@ -1,1 +1,1 @@
-<%-- pinned-empty chrome fragment (alert_below, ledger E22) --%>
+<%-- pinned-empty chrome fragment (alert_below) --%>

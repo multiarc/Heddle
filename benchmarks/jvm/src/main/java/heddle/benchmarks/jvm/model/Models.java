@@ -13,15 +13,14 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * All pinned workload models (Phase 3 spec, construct-mapping.md &sect;Java models).
+ * All pinned workload models.
  * Static final instances materialized once (the {@code LoopContent.Shared} discipline);
  * JavaBean-style POJOs because Thymeleaf's OGNL resolves {@code ${p.name}} through getters
  * and JTE templates call the same getters explicitly. All string assembly is
  * {@code String.format(Locale.ROOT, ...)} or plain ASCII/int concatenation - no locale,
- * time, or randomness anywhere. Pinned data must match Phase 1 byte-for-byte
- * (docs/spec/cross-stack-benchmarks/phase-1-cross-stack-foundation/workloads.md).
+ * time, or randomness anywhere. Pinned data must match the golden corpus byte-for-byte.
  *
- * The E21 rule governs every shape here: the model tier carries DATA only - derived
+ * One rule governs every shape here: the model tier carries DATA only - derived
  * display strings ({@code row-<i>}, {@code MX-<sku>}, {@code note <i>}, blurb sentences,
  * media captions, display prices) are composed by the TEMPLATES as
  * literal-plus-substitution, never pre-formatted model-side. Zero-padded identity names
@@ -85,7 +84,7 @@ public final class Models {
     // ---- workload 3: large-loop --------------------------------------------------------
 
     /**
-     * E21: the row carries ONLY the ordinal - the display name {@code row-<i>} is composed
+     * The row carries ONLY the ordinal - the display name {@code row-<i>} is composed
      * by the templates as {@code row-} + the value substitution.
      */
     public static final class LoopRow {
@@ -126,11 +125,11 @@ public final class Models {
         }
 
         public String getName() { return name; }
-        /** E21: numeric SKU - the templates compose the display SKU {@code MX-<skuNumber>}. */
+        /** Numeric SKU - the templates compose the display SKU {@code MX-<skuNumber>}. */
         public int getSkuNumber() { return skuNumber; }
         public int getPrice() { return price; }
         public boolean isOnSale() { return onSale; }
-        /** E21: batch ordinal - the templates compose the blurb sentence around it. */
+        /** Batch ordinal - the templates compose the blurb sentence around it. */
         public int getBatch() { return batch; }
     }
 
@@ -221,7 +220,7 @@ public final class Models {
         }
 
         public String getName() { return name; }
-        /** E21: row ordinal - the templates compose the note text {@code note <seq>}. */
+        /** Row ordinal - the templates compose the note text {@code note <seq>}. */
         public int getSeq() { return seq; }
         public boolean isBronze() { return bronze; }
         public boolean isSilver() { return silver; }
@@ -247,11 +246,11 @@ public final class Models {
     // ---- workload 6: fragment-heavy ----------------------------------------------------
 
     /**
-     * E20 redesign: 48 rows of four dispatched fragment kinds (12 each) with one level of
+     * 48 rows of four dispatched fragment kinds (12 each) with one level of
      * nesting (the card fragment renders badge + price from {@link FragmentPromo}). The
      * model carries DATA only - the media caption ({@code Caption for } + name), image src
      * ({@code /img/} + name + {@code .jpg}) and display price (price + {@code .99}) are
-     * composed by the templates (E21).
+     * composed by the templates.
      */
     public static final class FragmentRow {
         private final String kind;
@@ -307,7 +306,7 @@ public final class Models {
 
         public String getLabel() { return label; }
         /** Whole-currency units only; the templates compose the display price
-         * ({@code <price>.99}) - formatting is rendering work, not model work (E21). */
+         * ({@code <price>.99}) - formatting is rendering work, not model work. */
         public int getPrice() { return price; }
     }
 
@@ -349,7 +348,7 @@ public final class Models {
     }
 
     /**
-     * The 12 pinned rows of Phase 1 workloads.md workload 7, byte-for-byte: row 1 writes
+     * The 12 pinned fortune rows, byte-for-byte across every ecosystem: row 1 writes
      * {@code 4.33e67} (no {@code +}); rows 4/8 carry em dash U+2014; row 11 is the exact
      * TechEmpower XSS payload; row 12 the Japanese string.
      */
@@ -401,10 +400,9 @@ public final class Models {
     // ---- workload 1: composed-page -----------------------------------------------------
 
     /**
-     * Composed-page model (ledger E20; E22 removed the text half): pure structured
-     * navigation and NOTHING else - every fragment of literal page text lives in the
-     * templates. {@code ComposedModel} stays exactly {@code { nav }} (E22), mirroring the
-     * Phase 1 shape.
+     * Composed-page model: pure structured navigation and NOTHING else - every fragment
+     * of literal page text lives in the templates. {@code ComposedModel} stays exactly
+     * {@code { nav }}, mirroring the model shape every other ecosystem pins.
      */
     public static final class ComposedModel {
         private final NavModel nav;
@@ -416,7 +414,7 @@ public final class Models {
         public NavModel getNav() { return nav; }
     }
 
-    /** Two mega menus (wholesale, retail) and four footer columns (E20). */
+    /** Two mega menus (wholesale, retail) and four footer columns. */
     public static final class NavModel {
         private final List<MegaMenu> menus;
         private final List<NavColumn> footerColumns;
@@ -461,7 +459,7 @@ public final class Models {
         public String getLabel() { return label; }
         public String getHref() { return href; }
         public String getCss() { return css; }
-        /** Precomputed boolean - no engine evaluates a collection test (E20). */
+        /** Precomputed boolean - no engine evaluates a collection test. */
         public boolean isHasDropdown() { return hasDropdown; }
         public String getDropdownCss() { return dropdownCss; }
         public List<NavColumn> getColumns() { return columns; }
@@ -513,7 +511,7 @@ public final class Models {
     /**
      * Loaded once at class initialization (lazy holder = static init on first touch) from
      * {@code GoldenCorpus/fixtures/composed-page/nav.json} - the single source of truth
-     * every non-.NET ecosystem loads from (E20) - resolved through the SAME corpus-dir
+     * every non-.NET ecosystem loads from - resolved through the SAME corpus-dir
      * resolution the gate uses ({@link Corpus#resolveRoot()}, honoring
      * {@code -Dheddle.corpus}). Parsed with the already-pinned Jackson dependency (the
      * manifest reader's mapper); a load or schema failure fails fast.
@@ -611,9 +609,9 @@ public final class Models {
     }
 
     /**
-     * Workloads.md rule 4, asserted the way {@code NavData}'s static constructor asserts it
-     * (E20): every nav text value is printable ASCII with none of {@code & < > " '}, so raw
-     * and would-be-escaped renderings coincide and no default-escaping engine can
+     * The nav-data character rule, asserted the way {@code NavData}'s static constructor
+     * asserts it: every nav text value is printable ASCII with none of {@code & < > " '},
+     * so raw and would-be-escaped renderings coincide and no default-escaping engine can
      * double-escape.
      */
     private static void assertRule4(NavModel nav) {
@@ -646,8 +644,8 @@ public final class Models {
         for (int i = 0; i < value.length(); i++) {
             char c = value.charAt(i);
             if (c < 0x20 || c > 0x7E || c == '&' || c == '<' || c == '>' || c == '"' || c == '\'') {
-                throw new IllegalStateException("nav.json: value violates workloads.md rule 4"
-                        + " (printable ASCII, none of &<>\"'): \"" + value + "\"");
+                throw new IllegalStateException("nav.json: value violates the nav-data"
+                        + " character rule (printable ASCII, none of &<>\"'): \"" + value + "\"");
             }
         }
     }

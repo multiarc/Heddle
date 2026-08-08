@@ -1,13 +1,12 @@
-// Gate library self-test (Phase 4 WI3; spec: harness-and-run.md §Gate implementation —
-// `test/gate-selftest.mjs`): fixtures for each pipeline step (CRLF, BOM survival,
+// Gate library self-test: fixtures for each pipeline step (CRLF, BOM survival,
 // lone-surrogate rejection, inter-tag collapse incl. multi-run, N3b removal to nothing incl. a
 // space-vs-nothing pair that must compare equal, edge trim, every N5 spelling variant incl.
 // leading zeros and hex case, no-rescan, non-five-char NCRs untouched) plus the verifier
 // calibration re-run: for each workload the verifier accepts the committed golden and rejects
-// the Phase 1 canonical corruptions — two per raw workload, three per encoded — each with the
+// the canonical corruptions — two per raw workload, three per encoded — each with the
 // correct failing check kind (pins mirror benchmarks/dotnet/src/Corpus/VerifierDefinitions.cs
-// and the synthesis rules of GoldenCorpus.cs / golden-corpus.md §Verification).
-// Also runs the WI2 model smoke (pinned cardinalities and spot values).
+// and the synthesis rules of GoldenCorpus.cs).
+// Also runs the model smoke (pinned cardinalities and spot values).
 import {
   normalize,
   stripWhitespace,
@@ -117,7 +116,7 @@ const n5Cases = [
   ["&#x3e;", "&gt;"],
   ["&#X03E;", "&gt;"],
   ["&#x22;", "&quot;"],
-  ["&#x27;", "&#39;"], // the Handlebars-JS hex-family case D4 exists for
+  ["&#x27;", "&#39;"], // the hex apostrophe spelling Handlebars-JS emits
   ["&#X0027;", "&#39;"],
   // non-five-character references: untouched
   ["&#8482;", "&#8482;"],
@@ -232,7 +231,7 @@ check("security floor: escaped-form count mismatch is rejected", () => {
   );
 });
 
-// ---- 4. WI2 model smoke: pinned cardinalities and spot values ---------------------------------
+// ---- 4. model smoke: pinned cardinalities and spot values -------------------------------------
 
 const models = {};
 for (const { id } of WORKLOADS) {
@@ -250,23 +249,23 @@ check("models: pinned cardinalities 36/200/48/12/5000/5000", () => {
 
 check("models: spot values byte-exact", () => {
   assertEqual(models["mixed-page"].products[0].name, "Product 01");
-  assertEqual(models["mixed-page"].products[35].sku_number, 1036, "product 36 sku_number (E21: a number)");
-  assertEqual(models["mixed-page"].products[35].batch, 36, "product 36 batch (E21: a number)");
+  assertEqual(models["mixed-page"].products[35].sku_number, 1036, "product 36 sku_number (a number)");
+  assertEqual(models["mixed-page"].products[35].batch, 36, "product 36 batch (a number)");
   assertEqual(models["mixed-page"].products[2].on_sale, true, "product 03 on_sale");
   assertEqual(models["conditional-heavy"].rows[199].name, "unit-199");
-  assertEqual(models["conditional-heavy"].rows[198].seq, 198, "row 198 seq (E21: a number)");
+  assertEqual(models["conditional-heavy"].rows[198].seq, 198, "row 198 seq (a number)");
   assertEqual(models["conditional-heavy"].rows[0].is_bronze, true);
   assertEqual(models["conditional-heavy"].rows[0].is_active, false, "row 0 is_active (0 % 5 === 0)");
   assertEqual(models["fragment-heavy"].items[47].name, "item-47");
   assertEqual(models["fragment-heavy"].items[1].value, 11);
   assertEqual(models["fragment-heavy"].items[1].kind, "card");
-  assertEqual(models["fragment-heavy"].items[1].is_card, true, "item 01 is_card (E20 dispatch boolean)");
+  assertEqual(models["fragment-heavy"].items[1].is_card, true, "item 01 is_card (dispatch boolean)");
   assertEqual(models["fragment-heavy"].items[1].is_tile, false, "item 01 is_tile");
   assertEqual(models["fragment-heavy"].items[2].badge, "sale");
   assertEqual(models["fragment-heavy"].items[47].delta, 2, "item 47 delta (47 % 7 - 3)");
   assertEqual(models["fragment-heavy"].items[1].promo.label, "hot", "item 01 promo.label === badge");
-  assertEqual(models["fragment-heavy"].items[47].promo.price, 56, "item 47 promo.price (E21: a number)");
-  assertEqual(models["large-loop"].items[4999].value, 4999, "large-loop rows carry only value (E21)");
+  assertEqual(models["fragment-heavy"].items[47].promo.price, 56, "item 47 promo.price (a number)");
+  assertEqual(models["large-loop"].items[4999].value, 4999, "large-loop rows carry only value");
   assertEqual(
     models["fortunes-encoded"].rows[10].message,
     '<script>alert("This should not be displayed in a browser alert box.");</script>',
@@ -288,23 +287,23 @@ check("models: spot values byte-exact", () => {
   assertEqual(models["composed-page"].nav.footer_columns[0].sections[0].title_linked, false);
 });
 
-check("models: E20/E21/E22 removed display fields are gone (models carry data only)", () => {
+check("models: removed display fields are gone (models carry data only)", () => {
   const has = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
-  if (has(models["large-loop"].items[0], "name")) throw new Error("large-loop rows still carry name (E21)");
-  if (has(models["conditional-heavy"].rows[0], "note")) throw new Error("conditional-heavy rows still carry note (E21)");
-  if (has(models["mixed-page"].products[0], "sku")) throw new Error("mixed-page products still carry sku (E21)");
-  if (has(models["mixed-page"].products[0], "blurb")) throw new Error("mixed-page products still carry blurb (E21)");
+  if (has(models["large-loop"].items[0], "name")) throw new Error("large-loop rows still carry name (templates compose display text)");
+  if (has(models["conditional-heavy"].rows[0], "note")) throw new Error("conditional-heavy rows still carry note (templates compose display text)");
+  if (has(models["mixed-page"].products[0], "sku")) throw new Error("mixed-page products still carry sku (templates compose display text)");
+  if (has(models["mixed-page"].products[0], "blurb")) throw new Error("mixed-page products still carry blurb (templates compose display text)");
   for (const key of ["caption", "image_url"]) {
     if (has(models["fragment-heavy"].items[2], key)) {
-      throw new Error(`fragment-heavy rows still carry ${key} (E21: templates compose display text)`);
+      throw new Error(`fragment-heavy rows still carry ${key} (templates compose display text)`);
     }
   }
   if (typeof models["fragment-heavy"].items[0].promo.price !== "number") {
-    throw new Error("fragment-heavy promo.price is not a number (E21)");
+    throw new Error("fragment-heavy promo.price is not a number");
   }
   for (const key of ["section", "comp", "area_names", "areas"]) {
     if (has(models["composed-page"], key)) {
-      throw new Error(`composed-page still carries ${key} (E22: no text blobs in the model tier)`);
+      throw new Error(`composed-page still carries ${key} (no text blobs in the model tier)`);
     }
   }
 });
@@ -321,9 +320,9 @@ check("models: deep-frozen at module load", () => {
 });
 
 check("models: composed-page nav expansion matches the verifier pins and the golden bytes", () => {
-  // E20/E22 replaced the blob transcription (and its concatenation check — the chrome text now
-  // lives in the templates, whose presence/order the verifier's ordered markers prove) with the
-  // structured nav fixture. The model side is re-expressed as an independent expansion: count
+  // The structured nav fixture replaced the blob transcription (and its concatenation check —
+  // the chrome text now lives in the templates, whose presence/order the verifier's ordered
+  // markers prove). The model side is re-expressed as an independent expansion: count
   // columns and links from the loaded nav.json against the verifier definition's pinned counts,
   // then require every link's rendered form in the golden byte-for-byte (per-link check).
   const { nav } = models["composed-page"];
@@ -347,7 +346,7 @@ check("models: composed-page nav expansion matches the verifier pins and the gol
 
 // ---- 5. Verifier calibration re-run -----------------------------------------------------------
 // Corruption synthesis mirrors GoldenCorpus.cs (RemoveFirst / SwapFirst / ReplaceFirst) and the
-// per-workload pins of IdiomaticChecks.cs (golden-corpus.md §Verification). Two corruptions per
+// per-workload pins of IdiomaticChecks.cs. Two corruptions per
 // raw workload, three per encoded workload; each must be rejected with the expected check kind.
 
 function removeFirst(text, segment) {

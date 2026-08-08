@@ -1,10 +1,10 @@
-// Workload 1 — composed-page, templ controlled port (workloads.md workload 1, ledger
-// E20/E22). templ's native layout mechanism with a live body slot: the chrome lives in
+// Workload 1 — composed-page, templ controlled port: byte-parity with the shared golden
+// after normalization. templ's native layout mechanism with a live body slot: the chrome lives in
 // templ layout(m) with { children... } at the body-slot position (the @out() analogue),
 // and composedPage invokes @layout(m) { …slider markup… } — the caller body splices at the
 // slot (templ.guide template-composition, children). The inert chrome fragments are
 // LITERAL template text in per-fragment components mirroring chrome-fragments.heddle
-// (E22 — no fragment text is model data any more); the structured nav renders through
+// (no fragment text is model data any more); the structured nav renders through
 // nested components (megaMenu → navColumn → navSection → navLink) over model.ComposedModel.
 //
 // Raw discipline (byte-gate accommodations only, each over pinned template literal text —
@@ -13,7 +13,7 @@
 // or "/>" — templ's generator normalizes void elements to the slashless form (probed at
 // v0.3.1020), a NON-whitespace divergence, so those exact pinned bytes are emitted via
 // @templ.Raw. Every other node — conditional comments included, which templ passes through
-// byte-exact — is authored natively. Nav values are rule-4 clean, so templ's always-on
+// byte-exact — is authored natively. Nav values carry no escapable characters, so templ's always-on
 // escaper is a byte-level no-op on them (escaped == raw); no templ.Raw touches nav data.
 //
 // Component-boundary note: custom_styles renders the whole <style>/* CSS Comment Test */
@@ -42,7 +42,7 @@ templ pageScriptsSection() {
 templ endpageScriptsSection() {
 }
 
-// ---- chrome fragments (chrome-fragments.heddle, E22) -----------------------------------------
+// ---- chrome fragments (chrome-fragments.heddle) -----------------------------------------
 
 templ alertTop() {
 	<div class="top-banner" style=""><a href="/content/shipping-information#Holidays">@templ.Raw(`<img src="/files/images/sitewide-alerts/xmas-shipping-alert-1.jpg" alt="holiday shipping"/>`)</a></div>
@@ -223,7 +223,7 @@ templ bodyEndScripts() {
 	<script src="/bodyend.js"></script>
 }
 
-// ---- structured nav (nested components over nav.json's model — E20) --------------------------
+// ---- structured nav (nested components over nav.json's model) --------------------------
 
 templ navLink(l model.NavLink) {
 	<li class="nav-link"><a href={ l.Href }>{ l.Label }</a></li>

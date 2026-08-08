@@ -1,13 +1,13 @@
 {%- comment -%}
-  Idiomatic Liquid -- mixed-page (Fluid) (phase 9; authoring standard D16).
+  Idiomatic Liquid -- mixed-page (Fluid).
 
   Patterns followed, from the engines' own documentation:
     Liquid language reference   https://shopify.github.io/liquid/
     Fluid                       https://github.com/sebastienros/fluid#readme
 
-  Single-file by rule (workloads.md, E20 note: layout composition is composed-page's dimension).
+  Single-file by rule (layout composition is composed-page's dimension, not this one's).
   The display SKU is composed by the template as `MX-` + the sku_number substitution, and the
-  blurb sentence lives in the template around the batch substitution (ledger E21: the model
+  blurb sentence lives in the template around the batch substitution (the model
   carries data only). Authored the way the docs teach rather than to match the oracle
   byte-for-byte. Checked by the functional verifier, not the byte gate.
 {%- endcomment -%}

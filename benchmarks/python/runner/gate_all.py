@@ -2,12 +2,12 @@
 
 Runs the appropriate gate for every selected cell (engine x workload): the controlled
 byte gate (``gates.check_parity``) or the idiomatic verifier (``verify.check_verified``).
-This is the CLI the WI3/WI4/WI5 done-when checks invoke; a full sweep must report
-16/16 cells PASS per track (2 engines x 8 workloads).
+A full sweep must report 16/16 cells PASS per track (2 engines x 8 workloads) before
+any measurement.
 
-Engine wiring lives in ``runner/engines.py`` (WI3). Until it lands (or for cells it does
-not register), affected cells are reported UNREGISTERED -- cleanly, without a traceback --
-and the sweep exits non-zero.
+Engine wiring lives in ``runner/engines.py``. Cells it cannot load (a missing module
+or template file) are reported UNREGISTERED -- cleanly, without a traceback -- and the
+sweep exits non-zero.
 
 Filters: ``--track``, ``--engine``, ``--workload`` (each repeatable-free single values;
 defaults sweep everything).
@@ -26,7 +26,7 @@ TRACKS = ["controlled", "idiomatic"]
 
 
 def _load_engines():
-    """Imports ``runner.engines`` if present (it arrives in WI3)."""
+    """Imports ``runner.engines`` if present."""
     try:
         from . import engines  # type: ignore[attr-defined]
     except ImportError:
@@ -38,7 +38,7 @@ def run_cell(engines_mod, engine: str, track: str, workload: str) -> tuple[str, 
     """Gates one cell; returns ``(status, detail)`` where status is
     ``PASS`` / ``FAIL`` / ``UNREGISTERED``."""
     if engines_mod is None:
-        return "UNREGISTERED", "runner/engines.py not present (arrives in WI3)"
+        return "UNREGISTERED", "runner/engines.py not present"
     try:
         template = engines_mod.load(engine, track, workload)
     except (KeyError, NotImplementedError, FileNotFoundError) as e:
@@ -66,7 +66,7 @@ def run_cell(engines_mod, engine: str, track: str, workload: str) -> tuple[str, 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="python -m runner.gate_all",
-        description="16-cell gate sweep per track (Phase 5 WI2; consumed by WI3-WI5).",
+        description="16-cell gate sweep per track (2 engines x 8 workloads).",
     )
     parser.add_argument("--track", choices=TRACKS, help="sweep one track only")
     parser.add_argument("--engine", choices=ENGINES, help="sweep one engine only")

@@ -9,13 +9,13 @@ import (
 	"heddle.dev/benchmarks/go/internal/corpus"
 )
 
-// composed-page model — pure structured data (ledger E20; E22 removed the text half).
+// composed-page model — pure structured data.
 // The model is ComposedModel{Nav} and NOTHING else: every fragment of literal page text
 // (the former embedded blob areas and asset/script snippets) lives in the templates, owned
 // by the per-engine template tier ("the model-preparation tier carries DATA only"). The
 // structured navigation — two mega menus plus the footer link columns — is loaded once,
 // on first use, from the corpus fixture `fixtures/composed-page/nav.json` (snake_case
-// keys, exported by the Phase 1 export-corpus tool and hash-recorded in the manifest's
+// keys, exported by the .NET harness's export-corpus command and hash-recorded in the manifest's
 // `fixtures` section), resolved through the same corpus-dir resolution the gate uses
 // (corpus.Dir(); go:embed cannot reach ../../dotnet, so this is a runtime file read).
 // Transcription errors cannot ship: the controlled byte gate compares the rendered page
@@ -28,7 +28,7 @@ type NavLink struct {
 }
 
 // NavSection is one titled link group; TitleLinked is a precomputed boolean (no engine
-// evaluates a string test — workloads.md workload 1).
+// evaluates a string test).
 type NavSection struct {
 	Title       string    `json:"title"`
 	Href        string    `json:"href"`
@@ -62,7 +62,7 @@ type NavModel struct {
 	FooterColumns []NavColumn `json:"footer_columns"`
 }
 
-// ComposedModel is the composed-page workload model: the nav, and nothing else (E22).
+// ComposedModel is the composed-page workload model: the nav, and nothing else.
 type ComposedModel struct {
 	Nav NavModel
 }
@@ -83,7 +83,7 @@ func Composed() ComposedModel {
 		if err != nil {
 			panic("model: cannot read composed-page nav fixture " + path +
 				": " + err.Error() +
-				" (regenerate via the Phase 1 export-corpus tool: dotnet run -c Release --project benchmarks/dotnet -- export-corpus)")
+				" (regenerate via the corpus exporter: dotnet run -c Release --project benchmarks/dotnet -- export-corpus)")
 		}
 		var nav NavModel
 		if err := json.Unmarshal(raw, &nav); err != nil {

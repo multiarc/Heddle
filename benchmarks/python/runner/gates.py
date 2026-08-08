@@ -1,8 +1,7 @@
 """Controlled-track gate runner -- parity contract v2 (N1-N5), manifest SHA-256
 verification, byte gate with first-diff excerpt, and the encoded-suite security floor.
 
-Implements the contract's closed list exactly, nothing else (Phase 5 README D7;
-harness.md "Gate runner mechanics"; Phase 1 parity-contract-v2.md). *Whitespace* is
+Implements the parity contract's closed list exactly, nothing else. *Whitespace* is
 everywhere the closed six-character set ``{TAB, LF, VT, FF, CR, SPACE}`` spelled as the
 explicit class ``[\\t\\n\\x0b\\x0c\\r ]`` -- never ``\\s`` (Unicode-wide in Python) and
 never ``str.strip()``'s default (also Unicode-wide).
@@ -16,12 +15,12 @@ import re
 import sys
 from pathlib import Path
 
-# ---- corpus access (harness.md: repo root = parents[3] of this file) --------------------------
+# ---- corpus access ----------------------------------------------------------------------------
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 CORPUS_DIR = REPO_ROOT / "benchmarks" / "dotnet" / "GoldenCorpus"
 
-#: The eight workload ids in workload-number order (Phase 1 workloads.md).
+#: The eight workload ids in workload-number order.
 WORKLOADS = [
     "composed-page",
     "trivial-substitution",
@@ -60,7 +59,7 @@ def suite_of(workload: str) -> str:
 def load_golden(workload: str) -> str:
     """Loads ``<id>.golden.html``, verifying its SHA-256 (and byteLength) against
     ``manifest.json`` before use -- a mismatch means the checkout is stale or corrupt
-    and aborts (D7)."""
+    and aborts."""
     if workload in _golden_cache:
         return _golden_cache[workload]
     entry = manifest_entries().get(workload)
@@ -97,7 +96,7 @@ WHITESPACE = "\t\n\x0b\x0c\r "
 _N3_RE = re.compile(r">[\t\n\x0b\x0c\r ]+<")
 _N3B_RE = re.compile(r"[\t\n\x0b\x0c\r ]+")
 
-# N5 -- the full closed recognized-spelling alternation (harness.md, verbatim): named
+# N5 -- the full closed recognized-spelling alternation: named
 # entities case-sensitive; numeric references with any number of leading zeros,
 # case-insensitive hex digits and `x`.
 _N5 = re.compile(
@@ -143,8 +142,8 @@ def n3_inter_tag(s: str) -> str:
 
 
 def n3b_strip(s: str) -> str:
-    """N3b -- remove every whitespace run, anywhere, to nothing (the 2026-07-20
-    maintainer comparison step; applied to BOTH sides at comparison, never stored)."""
+    """N3b -- remove every whitespace run, anywhere, to nothing (applied to BOTH
+    sides at comparison time, never stored)."""
     return _N3B_RE.sub("", s)
 
 
@@ -195,7 +194,7 @@ def describe_diff(expected: bytes, actual: bytes) -> str:
     )
 
 
-# ---- security floor (encoded suites; contract v2 controlled gate item 5) ----------------------
+# ---- security floor (encoded suites) ----------------------------------------------------------
 
 RAW_PAYLOAD = "<script>alert("
 ESCAPED_PAYLOAD = "&lt;script&gt;alert("
@@ -244,9 +243,9 @@ def check_parity(workload: str, raw_output: str) -> str | None:
 
 
 def assert_parity(workload: str, raw_output: str, engine: str = "?", track: str = "controlled") -> None:
-    """Hard gate: prints the README error-surface message and exits 1 on any failure.
+    """Hard gate: prints the error-surface message and exits 1 on any failure.
     Bench scripts call this at module top level, before any ``bench_func`` registration,
-    so pyperf emits nothing for a failed suite (D7)."""
+    so pyperf emits nothing for a failed suite."""
     failure = check_parity(workload, raw_output)
     if failure is None:
         return

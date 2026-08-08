@@ -1,4 +1,4 @@
-{{## Idiomatic Scriban -- composed-page nav-column partial (phase 9; authoring standard D16).
+{{## Idiomatic Scriban -- composed-page nav-column partial.
 
      Patterns followed, from Scriban's own documentation:
        language          https://github.com/scriban/scriban/blob/master/doc/language.md

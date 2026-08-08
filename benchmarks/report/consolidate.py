@@ -13,18 +13,16 @@ sizing) before tier 2 (edge-case sizing), ascending by rendered size within each
     python benchmarks/report/consolidate.py docs/benchmarks/2026-07-25
     python benchmarks/report/consolidate.py --check docs/benchmarks/2026-07-25
 
-Contract (docs/spec/cross-stack-benchmarks/phase-7-consolidated-report/report-assembly.md
-§`consolidate.py` contract):
+Contract:
 
   * No new measurements and no new metrics. The only arithmetic is unit conversion to
     ns/render, the `vs Heddle` ratio, and the implied-throughput plausibility figure
-    (rendered output size / ns) mandated by the D6 amendment.
+    (rendered output size / ns) required on every cross-stack table.
   * Each ecosystem contributes its harness's default central-tendency point estimate with the
-    harness-native dispersion alongside, per metrics-protocol.md §Wall-time statistic mapping.
-    That mapping is a contract this script may not vary.
+    harness-native dispersion alongside. That statistic mapping is a contract this script may
+    not vary.
   * No geomean, points total, medal count, cross-workload average or aggregate score is
-    emitted anywhere (Phase 7 D6(c), unchanged by the amendment). benchstat's `geomean` rows
-    are read past deliberately.
+    emitted anywhere. benchstat's `geomean` rows are read past deliberately.
 """
 
 from __future__ import annotations
@@ -45,11 +43,10 @@ OUTPUT_NAME = "consolidated-tables.md"
 # never hand-transcribes a measured number.
 SUMMARY_NAME = "summary-tables.md"
 
-# Ecosystem order everywhere (report-assembly.md §index.md normative structure).
+# The fixed ecosystem order every table and sidebar below uses.
 ECOSYSTEMS = [".NET", "Rust", "JVM", "JS", "Python", "Go"]
 
-# Evidence class per ecosystem (report-assembly.md §How to read these tables; the D6 amendment
-# requires this as a per-row column on the cross-stack tables).
+# Evidence class per ecosystem, published as a per-row column on the cross-stack tables.
 EVIDENCE = {
     ".NET": "fair fight",
     "Rust": "fair fight",
@@ -87,7 +84,7 @@ ENGINE_NAMES = {
     ("Go", "templ"): "templ v0.3.1020",
 }
 
-# Razor became a real byte-parity twin on 2026-07-25 (records.md ledger entry E5): it now renders
+# Razor became a real byte-parity twin on 2026-07-25: it now renders
 # `Views/twin-*.cshtml` off the shared TwinContent fixtures and is asserted by ParityCheck like
 # Fluid/Scriban/DotLiquid/Handlebars. Before that it rendered the full `Views/layout.cshtml` page —
 # a larger, different payload — and sat outside every gate.
@@ -109,14 +106,14 @@ NOT_PARITY_CHECKED: dict[tuple[str, str], str] = {}
 _RAZOR_LEGACY_REASON = (
     "renders the full Views/layout.cshtml page — a larger, different payload, not the golden "
     "output; therefore outside the parity assertion in this run and its implied-throughput "
-    "figure is withheld. Brought under the parity gate on " + RAZOR_PARITY_FROM +
-    " (records.md E5); later runs carry a plain twin row"
+    "figure is withheld. Razor became a byte-parity twin on " + RAZOR_PARITY_FROM +
+    "; runs from that date onward carry a plain twin row, and this run predates it"
 )
 
 
 def configure_run_era(run: Path) -> bool:
     """Set up the Razor-era-dependent tables from the run directory's date. Returns True if the
-    run postdates the E5 parity change."""
+    run postdates the Razor parity change."""
     razor_is_twin = run.name >= RAZOR_PARITY_FROM  # both are ISO dates; lexical == chronological
     NOT_PARITY_CHECKED.clear()
     if razor_is_twin:
@@ -153,7 +150,7 @@ def evidence_of(cell: Cell) -> str:
     return EVIDENCE[cell.ecosystem]
 
 
-# .NET cross-stack suite class -> workload (pinned in metrics-protocol.md; not re-derived here).
+# .NET cross-stack suite class -> workload; a fixed mapping, never re-derived from artifacts.
 # The class names are the workload ids in Pascal case, matching the JVM harness's convention;
 # renaming a suite in benchmarks/dotnet means renaming its row here.
 DOTNET_SUITES = {
@@ -221,7 +218,7 @@ PLAUSIBILITY_CEILING_B_PER_NS = 50.0
 # Workloads on either side of that boundary are therefore not measuring the same thing, so the
 # generated tables lead with the ones below it and present the ones above it as edge cases with
 # the caveat attached, instead of using the normative protocol order. The protocol order is not
-# lost — it is what `manifest.json` records and what the workload numbering in the specs means.
+# lost — it is what `manifest.json` records.
 LOH_THRESHOLD_BYTES = 85_000
 UTF16_BYTES_PER_CHAR = 2
 
@@ -229,10 +226,10 @@ UTF16_BYTES_PER_CHAR = 2
 # golden `byteLength`: the golden is the NORMALIZED form (the stored-form whitespace collapse in
 # Gate/Normalize.cs runs before the oracle is stored). The two agree within a few percent on
 # seven of the eight workloads and differ by ~1.15x on composed-page (41,111 B stored, 47,455
-# chars rendered at the E20 full-page redesign), so using the golden here would understate that
+# chars rendered since the full-page redesign), so using the golden here would understate that
 # workload's implied throughput.
 #
-# Measured 2026-07-25, re-measured 2026-08-08 at the E20/E21/E22 redesign for the two workloads
+# Measured 2026-07-25, re-measured 2026-08-08 after the redesign for the two workloads
 # whose output changed (composed-page, fragment-heavy): .NET via `HeddleTest.Render()`, JS via
 # `tracks.controlled.<engine>[<id>]()`, Rust via `engines::askama_controlled::render_*()`. The
 # three ecosystems agree within 2% (they differ only in whitespace, which N3b erases before the
@@ -389,14 +386,14 @@ def name(ecosystem: str, engine: str) -> str:
 
 
 def _dotnet_dispersion(row: dict) -> str:
-    """`Error` plus `StdDev` (metrics-protocol Q2.1). A one-iteration job reports no StdDev
+    """`Error` plus `StdDev`. A one-iteration job reports no StdDev
     column at all, so it degrades rather than raising a KeyError on an otherwise readable row."""
     sd = (row.get("StdDev") or "").strip()
     return f"±{row['Error'].strip()}" + (f" (SD {sd})" if sd else "")
 
 
 def load_dotnet(run: Path) -> tuple[list[Cell], list[list[str]]]:
-    """BenchmarkDotNet CSV: `Mean`, dispersion `Error` + `StdDev` (metrics-protocol Q2.1).
+    """BenchmarkDotNet CSV: `Mean`, dispersion `Error` + `StdDev`.
 
     Values are formatted strings with units that vary per row and per suite. Each suite carries
     BOTH fairness tracks — the `Track` column is a BenchmarkDotNet parameter — so one artifact
@@ -440,7 +437,7 @@ def load_dotnet(run: Path) -> tuple[list[Cell], list[list[str]]]:
 
 
 def load_dotnet_cold(run: Path) -> list[Cell]:
-    """The .NET cold parse/compile sidebar. Per-ecosystem only, never cross-compared (Q1.3).
+    """The .NET cold parse/compile sidebar. Per-ecosystem only, never cross-compared.
 
     The method name carries the disclosure the table needs: `Parse*` rows produce an
     interpretable tree, `Compile*` rows produce executable code, and those are different steps.
@@ -490,7 +487,7 @@ def load_rust(run: Path) -> tuple[list[Cell], list[Cell]]:
         ci = mean["confidence_interval"]
         disp = f"[{fmt_time(ci['lower_bound'])}, {fmt_time(ci['upper_bound'])}] 95% CI"
         if group == "cold":
-            # criterion's function id here is the D12 sidebar's own name, not an engine id.
+            # criterion's function id here is the cold sidebar's own name, not an engine id.
             label = {"tera-parse-all-templates": "Tera 2.0.0 (parse all templates)"}.get(
                 engine, engine)
             cold.append(Cell("Rust", label, "cold-compile", "all templates", ns,
@@ -661,7 +658,7 @@ def load_go(run: Path) -> tuple[list[Cell], list[Cell], list[list[str]]]:
 
     The point estimate and dispersion both come from benchstat, per the statistic mapping. The
     `B/op` and `allocs/op` blocks feed the Go sidebar. benchstat's `geomean` rows are skipped:
-    D6(c) forbids any aggregate score.
+    no aggregate score is ever published.
     """
     ROW = re.compile(
         r"^(?P<name>\S+?)-\d+\s+(?P<value>[\d.]+)(?P<unit>[a-zA-Zµ]*)\s*±\s*(?P<pct>[\d.]+|\?)%?"
@@ -680,7 +677,7 @@ def load_go(run: Path) -> tuple[list[Cell], list[Cell], list[list[str]]]:
                         out.setdefault(column, [])
                 continue
             if line.startswith("geomean"):
-                continue  # D6(c): no aggregate score
+                continue  # no aggregate score is ever published
             m = ROW.match(line.strip())
             if not m or column is None:
                 continue
@@ -881,13 +878,13 @@ def render(run: Path) -> str:
             "",
         ]
 
-    # ---- 1. cross-stack ranked, one table per workload (Phase 7 D6 amendment) ----
+    # ---- 1. cross-stack ranked, one table per workload ----
     out += [
         "## Cross-stack ranked — wall time per render",
         "",
         "One ranking per workload. There is no aggregate score, overall winner or",
-        "cross-workload average anywhere — Phase 7 D6(c) still forbids them, so no",
-        "single-number verdict can be quoted from these tables.",
+        "cross-workload average anywhere — the consolidated report never carries one,",
+        "so no single-number verdict can be quoted from these tables.",
         "",
     ]
     for track in ("controlled", "idiomatic"):
@@ -951,8 +948,8 @@ def render(run: Path) -> str:
                 out += [
                     f"### {eco}",
                     "",
-                    f"No {track}-track cells — .NET shipped controlled-track-only "
-                    "(Phase 1 D15)." if eco == ".NET" else
+                    f"No {track}-track cells — the .NET leg originally shipped "
+                    "controlled-track-only." if eco == ".NET" else
                     f"No {track}-track cells in this run.",
                     "",
                 ]
@@ -1007,7 +1004,7 @@ def render(run: Path) -> str:
     out += [
         "## Cold compile / parse — per ecosystem",
         "",
-        "Per-ecosystem only, never cross-compared (Q1.3). Within the .NET table the rows are not",
+        "Per-ecosystem only, never cross-compared. Within the .NET table the rows are not",
         "comparable with each other either: a `Parse*` row produces an interpretable tree and a",
         "`Compile*` row produces executable code, which are different steps of a first use.",
         "",
@@ -1030,7 +1027,7 @@ def render(run: Path) -> str:
         "",
         "Allocation, GC and memory figures are per-ecosystem measurements taken by different",
         "tools with different definitions. No table or sentence juxtaposes them across",
-        "runtimes (Phase 7 D6(e), unchanged).",
+        "runtimes.",
         "",
     ]
     out += ["### .NET — allocation (BenchmarkDotNet `[MemoryDiagnoser]`)", ""]
@@ -1068,7 +1065,7 @@ def render(run: Path) -> str:
         "",
         "### JS — no memory sidebar",
         "",
-        "The JS phase shipped **time-only** (Phase 4 D3): no memory sidebar exists, so none is",
+        "The JS leg is **time-only** by design: no memory sidebar exists, so none is",
         "published here even though mitata emits a heap estimate.",
         "",
     ]
@@ -1095,8 +1092,8 @@ def render(run: Path) -> str:
     out += [
         "## Plausibility register",
         "",
-        "`implied B/ns` is the **rendered** output size divided by the wall time — the diagnostic",
-        "the D6 amendment requires on every cross-stack table. It is **not** a performance metric.",
+        "`implied B/ns` is the **rendered** output size divided by the wall time — a diagnostic",
+        "required on every cross-stack table. It is **not** a performance metric.",
         "Its purpose is to expose cells where the harness cannot be producing the full output,",
         "so a reader does not mistake a measurement artifact for engine speed.",
         "",
@@ -1115,7 +1112,8 @@ def render(run: Path) -> str:
         "its render figures invalid — had two cells at 105.4 and 91.7 B/ns and then nothing until",
         "30.9 B/ns, which was a compiled Rust template whose output is mostly a memcpy of large",
         "literal chunks: fast, but physically possible. The ceiling sits in that gap. The two high",
-        "cells were the V8 rope artifact, since fixed harness-side (ledger E4), and the threshold",
+        "cells were the V8 rope artifact, since fixed harness-side (benchmarks amendment E4),",
+        "and the threshold",
         "is retained as a standing cross-check rather than as a finding about that run.",
         "",
     ]
@@ -1166,7 +1164,7 @@ def render(run: Path) -> str:
             "**The authoritative control is harness-side, not report-side.** Every bench body",
             "materialises through `%FlattenString` and each run asserts `MATERIALISATION-CHECK`",
             "before writing artifacts, failing the step outright rather than annotating a table",
-            "([ledger E4](../../../docs/spec/records.md#cross-spec-amendments-ledger)). The",
+            "(benchmarks amendment E4). The",
             "throughput ceiling above is the report-side cross-check on that gate. A low heap",
             "ratio here is a prompt to look at those two, not a verdict of its own.",
             "",

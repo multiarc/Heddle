@@ -1,11 +1,11 @@
-{# Idiomatic Askama layout (WI5, README D8/Q1.7; ledger E20/E22). Patterns follow the
+{# Idiomatic Askama layout. Patterns follow the
    Askama 0.16 book: "Template syntax - Template inheritance" (a base template carrying
    the full literal page chrome, overridable section-default blocks - meta, socialmeta,
    page_scripts, endpage_scripts - and the live {% block body %} slot the page fills) and
    "Template syntax - Include" / "For" / "If" (the inert chrome fragments as included
-   literal-text partials per E22; the structured nav rendered by nested loops and the
-   nav-family partials). Default HTML escaping is left on; nav model values are rule-4
-   clean, so no filter is needed anywhere. #}
+   literal-text partials; the structured nav rendered by nested loops and the
+   nav-family partials). Default HTML escaping is left on; nav model values contain no characters
+   HTML escaping rewrites, so no filter is needed anywhere. #}
 <!DOCTYPE html>
 <!--[if lt IE 9]>
     <html class="no-js lt-ie9" lang="en">

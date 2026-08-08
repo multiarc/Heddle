@@ -1,4 +1,4 @@
-"""Verifier/gate conformance calibration -- ``python -m runner.selftest`` (WI2, D12).
+"""Verifier/gate conformance calibration -- ``python -m runner.selftest``.
 
 Proves this Python implementation is conformant before it gates anything:
 
@@ -6,10 +6,10 @@ Proves this Python implementation is conformant before it gates anything:
    whitespace class, N3b space-vs-nothing, the full N5 recognized-spelling table incl.
    leading-zero/hex-case variants, the no-rescan rule, non-five-character references
    untouched).
-2. Model pins -- the D6 spot counts/values against ``runner.data``.
+2. Model pins -- spot counts/values against ``runner.data``.
 3. Every committed golden loads (SHA-256-verified against the manifest) and is accepted
    by its verifier; the controlled byte gate accepts each golden as its own candidate.
-4. The Phase 1 calibration corruptions are rejected with the correct check kind:
+4. The pinned calibration corruptions are rejected with the correct check kind:
    two per raw workload, three per encoded workload (2x6 + 3x2 = 18).
 
 Exit 0 iff everything passes.
@@ -121,7 +121,7 @@ def run_normalization_fixtures() -> None:
     )
 
 
-# ---- 2. Model pins (D6 spot counts and values) ------------------------------------------------
+# ---- 2. Model pins (spot counts and values) ---------------------------------------------------
 
 
 def run_model_pins() -> None:
@@ -156,9 +156,9 @@ def run_model_pins() -> None:
     )
     _check(MODELS["trivial-substitution"]["rating"] == "4.8", "data: rating is the string 4.8")
 
-    # composed-page (E20/E22): the model is {nav} and NOTHING else -- no blob text.
+    # composed-page: the model is {nav} and NOTHING else -- no blob text.
     composed = MODELS["composed-page"]
-    _check(list(composed) == ["nav"], "data: composed-page carries only nav (E22)")
+    _check(list(composed) == ["nav"], "data: composed-page carries only nav")
     nav = composed["nav"]
     _check(sorted(nav) == ["footer_columns", "menus"], "data: nav top-level keys")
     _check(len(nav["menus"]) == 2, "data: two mega menus")
@@ -181,8 +181,8 @@ def run_model_pins() -> None:
     _check(columns == 36, "data: 36 nav columns (menus + footer)")
     _check(links == 245, "data: 245 nav links")
 
-    # Rule-4 sanitization (workloads.md rule 4): every nav string is ASCII with
-    # none of & < > " ' -- raw and escaped renderings coincide.
+    # Nav-string sanitization: every nav string is ASCII with none of & < > " '
+    # -- raw and escaped renderings coincide.
     def _rule4_clean(obj) -> bool:
         if isinstance(obj, str):
             return obj.isascii() and not any(c in obj for c in "&<>\"'")
@@ -192,27 +192,27 @@ def run_model_pins() -> None:
             return all(_rule4_clean(v) for v in obj.values())
         return True
 
-    _check(_rule4_clean(nav), "data: nav values are rule-4 sanitized")
+    _check(_rule4_clean(nav), "data: nav strings need no escaping (raw == escaped)")
 
-    # large-loop (E21): rows carry ONLY value -- the display name is template-composed.
-    _check(MODELS["large-loop"]["items"][0] == {"value": 0}, "data: loop row is value-only (E21)")
+    # large-loop: rows carry ONLY value -- the display name is template-composed.
+    _check(MODELS["large-loop"]["items"][0] == {"value": 0}, "data: loop row is value-only")
     _check(MODELS["large-loop"]["items"][4999] == {"value": 4999}, "data: last loop row")
 
-    # conditional-heavy (E21): seq int replaces the note display string.
+    # conditional-heavy: seq int replaces the note display string.
     row0 = MODELS["conditional-heavy"]["rows"][0]
-    _check(row0["seq"] == 0 and "note" not in row0, "data: conditional seq replaces note (E21)")
+    _check(row0["seq"] == 0 and "note" not in row0, "data: conditional seq replaces note")
     _check(MODELS["conditional-heavy"]["rows"][199]["seq"] == 199, "data: last conditional seq")
 
-    # mixed-page (E21): sku_number/batch ints replace the sku/blurb display strings.
+    # mixed-page: sku_number/batch ints replace the sku/blurb display strings.
     p1 = MODELS["mixed-page"]["products"][0]
     _check(
         p1["sku_number"] == 1001 and p1["batch"] == 1
         and "sku" not in p1 and "blurb" not in p1,
-        "data: mixed product carries sku_number/batch ints (E21)",
+        "data: mixed product carries sku_number/batch ints",
     )
     _check(MODELS["mixed-page"]["products"][35]["sku_number"] == 1036, "data: last sku_number")
 
-    # fragment-heavy (E20): four dispatched kinds, 12 each, promo on every row.
+    # fragment-heavy: four dispatched kinds, 12 each, promo on every row.
     items = MODELS["fragment-heavy"]["items"]
     for kind in ("tile", "card", "media", "stat"):
         _check(
@@ -241,7 +241,7 @@ def run_model_pins() -> None:
     _check(
         all(isinstance(it["promo"]["price"], int) and isinstance(it["delta"], int)
             for it in items),
-        "data: promo price and delta are ints (E21)",
+        "data: promo price and delta are ints",
     )
 
 
@@ -250,15 +250,15 @@ def run_model_pins() -> None:
 # 'removed row': delete the first occurrence of the workload's pinned segment.
 # 'reordered section': swap the first occurrences of A and B (A strictly before B).
 # 'unescaped payload' (encoded only): replace the first escaped form with its raw form.
-# Pins mirror the Phase 1 verify-corpus rules (golden-corpus.md "Verification";
-# IdiomaticChecks corruption pins).
+# Pins mirror the cross-stack calibration corruptions (the IdiomaticChecks
+# corruption pins).
 
 _ENCODED_LOOP_ROW_0 = (
     '<tr><td data-tag="tag-0&amp;&#39;0&#39;">item &lt;0&gt; &amp; &quot;co&quot;</td>'
     "<td>&#39;q&#39; &amp; &lt;angle&gt; &quot;d&quot; こんにちは 0</td></tr>"
 )
 
-# composed-page (E20): the removed segment is the slider fragment composed-page.heddle splices into
+# composed-page: the removed segment is the slider fragment composed-page.heddle splices into
 # the layout's live body slot -- an idiomatic page with an EMPTY body must fail; the swap
 # exchanges the wholesale-only and retail-only mega-menu anchors (the menus are
 # near-identical; these hrefs are the unique rows). Both mirror VerifierDefinitions.cs.
@@ -266,7 +266,7 @@ _COMPOSED_SLIDER = (
     '<img src="/files/homepage/homebtmbanners/gluten-hp.jpg" width="984" border="0" />'
 )
 
-# fragment-heavy (E20): row 0's whole tile fragment, computed from the model so the pin
+# fragment-heavy: row 0's whole tile fragment, computed from the model so the pin
 # cannot drift; rows 0 and 24 are both tiles (i % 4 == 0), covering the dispatch cycle.
 _FRAGMENT_ROW_0 = MODELS["fragment-heavy"]["items"][0]
 _FIRST_TILE = (
@@ -311,7 +311,7 @@ CALIBRATION_PINS = [
         "value",
         "tag-0&amp;&#39;0&#39;",
         "item &lt;2500&gt;",
-        # Phase 1 pin: this workload carries no script payload; its escaped->raw
+        # This workload carries no script payload; its escaped->raw
         # corruption is the comment's angle text (forbidden: `<angle>`).
         ("&lt;angle&gt;", "<angle>"),
     ),

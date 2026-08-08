@@ -1,7 +1,7 @@
-# run-benchmarks.ps1 -- Phase 6 (Go) reproduce-it-yourself entry point.
+# run-benchmarks.ps1 -- the Go harness's reproduce-it-yourself entry point.
 #
-# Performs, in order (harness-and-measurement.md, D9):
-#   1. Toolchain version assertions (go1.26.5; templ v0.3.1020 via `go tool`, per D3).
+# Performs, in order:
+#   1. Toolchain version assertions (go1.26.5; templ v0.3.1020 via `go tool` — the pinned CLI).
 #   2. `go tool templ generate` + `git diff --exit-code -- *_templ.go` (regeneration
 #      freshness -- committed generated code must match the pinned generator).
 #   3. `go vet ./...`
@@ -9,8 +9,8 @@
 #   5. Prebuild: `go test -c -o bench.exe ./suites`.
 #   6. Two timed invocations at High process priority via `cmd /c start /high /wait /b`
 #      (priority set at process creation, no race): BenchmarkRender, then the
-#      BenchmarkColdParse sidebar. Defaults: -test.count=14, -test.benchtime=1s (ledger E6
-#      uniform budget; was 20).
+#      BenchmarkColdParse sidebar. Defaults: -test.count=28, -test.benchtime=1s (the pinned
+#      per-engine sample budget).
 #   7. benchstat over each output.
 #
 # Windows PowerShell 5.1 compatible (no pipeline chain operators, ASCII only).
@@ -30,7 +30,7 @@ function Assert-LastExit([string]$step) {
     }
 }
 
-# --- 1. Toolchain version assertions (D3) ----------------------------------------------------
+# --- 1. Toolchain version assertions ---------------------------------------------------------
 $goVersion = (& go version) -join " "
 Assert-LastExit "go version"
 if ($goVersion -notmatch "go1\.26\.5") {

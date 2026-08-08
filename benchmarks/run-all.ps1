@@ -1,13 +1,8 @@
 # run-all.ps1 -- Windows master runner for the cross-stack benchmark program.
 #
 # One command runs every ecosystem's gates and then its measurement (or smoke) pass
-# with the parameters the phase specs make normative:
-#   .NET    docs/spec/cross-stack-benchmarks/phase-1-cross-stack-foundation/metrics-protocol.md
-#   Rust    docs/spec/cross-stack-benchmarks/phase-2-rust/README.md (D9/WI10)
-#   JVM     docs/spec/cross-stack-benchmarks/phase-3-jvm/harness-and-jmh.md
-#   JS      docs/spec/cross-stack-benchmarks/phase-4-js/harness-and-run.md (+ run.ps1)
-#   Python  docs/spec/cross-stack-benchmarks/phase-5-python/harness.md
-#   Go      docs/spec/cross-stack-benchmarks/phase-6-go/harness-and-measurement.md (+ run-benchmarks.ps1)
+# with each harness's normative parameters -- every committed source/script default already
+# IS the protocol shape, so this runner only sequences and logs.
 # The Linux counterpart is benchmarks/linux-crosscheck/run-all.sh; this script keeps the
 # same phase order (gates first, stop on first red; then dotnet -> rust -> jvm -> js ->
 # python -> go) so both sides of the cross-check read the same way.
@@ -31,7 +26,7 @@ param(
 
     [string]$OutDir = '',
 
-    # Ledger E6 measurement budget. Every harness's committed source/script default IS 'short',
+    # Measurement budget. Every harness's committed source/script default IS 'short',
     # so a bare single-harness invocation is the ~10 min shape; 'baseline' layers CLI overrides
     # on top -- roughly 3x the capture samples and one extra warmup run -- for ~30 min each.
     # Named -Budget, not -Profile: PowerShell already has an automatic variable of that
@@ -40,21 +35,21 @@ param(
     [string]$Budget = 'short',
 
     # JS repeat passes per render track, aggregated by bench/aggregate.mjs into the published
-    # artifact plus the D13 verdict. 0 means "take the profile default" (18 short / 54 baseline);
-    # 5 is D13's floor and aggregate.mjs refuses fewer.
+    # artifact plus the stability verdict. 0 means "take the profile default" (18 short / 54
+    # baseline); 5 is the verdict floor and aggregate.mjs refuses fewer.
     [ValidateRange(0, 200)]
     [int]$JsPasses = 0
 )
 
 $ErrorActionPreference = 'Continue'
 
-# --- Measurement budget profiles (ledger E6, per-engine basis per E13) -----------------------
+# --- Measurement budget profiles --------------------------------------------------------------
 #
 # Nothing here changes WHAT is measured, only how many times. The committed source/script
 # defaults are the 'short' shape; 'baseline' layers CLI overrides for roughly 3x the capture
 # samples plus one extra warmup run.
 #
-# The budget unit is ONE ENGINE, not one ecosystem (E13, resized program-wide by E14). An engine
+# The budget unit is ONE ENGINE, not one ecosystem. An engine
 # is 16 cells -- 8 workloads x 2 fairness tracks -- so a leg's budget is 16 x (engines) cells'
 # worth of measurement: ~10 min per engine at `short`, ~30 min at `baseline`. Five legs carry two
 # engines, .NET carries six, so the .NET leg is about three times the others by construction
@@ -66,7 +61,7 @@ $ErrorActionPreference = 'Continue'
 # runs through BenchmarkDotNet's pilot stage and does not. More to the point, a single launch
 # never samples the cross-process term AT ALL: one process, one JIT, one heap layout. That is the
 # same gap JMH closes with plural forks and JS with repeat passes, and the .NET leg was the one
-# that had never bought it. The launches multiply the harness job's E28 five-iteration floor:
+# that had never bought it. The launches multiply the harness job's five-iteration floor:
 # 10 x 5 = 50 samples per cell here, against short's 3 x 5 = 15.
 if ($Budget -eq 'baseline') {
     $dotnetProfileArgs = ' --launchCount 10'
@@ -78,7 +73,7 @@ if ($Budget -eq 'baseline') {
     $profileJsPasses   = 114
 }
 else {
-    $dotnetProfileArgs = ''            # harness default job: LaunchCount 3 / W3 / I5 (E28 five-sample floor)
+    $dotnetProfileArgs = ''            # harness default job: LaunchCount 3 / W3 / I5 (five-sample floor)
     $rustProfileArgs   = ''            # source: warm-up 5 s, measurement 26 s
     $jmhProfileArgs    = ''            # annotations: Fork 5, W 1x2s, M 5x1s
     $pyValuesArgs      = ' --values 6 --warmups 1'
@@ -88,7 +83,7 @@ else {
 }
 if ($JsPasses -eq 0) { $JsPasses = $profileJsPasses }
 if ($JsPasses -lt 5) {
-    Write-Host 'ERROR: -JsPasses must be at least 5 (Phase 4 D13 verdict floor).'
+    Write-Host 'ERROR: -JsPasses must be at least 5 (the stability-verdict floor).'
     exit 1
 }
 
@@ -116,8 +111,7 @@ foreach ($e in $AllOrder) {
     if ($Ecosystem -contains $e) { $Selected += $e }
 }
 
-# The eight protocol suites (phase 1 metrics-protocol: 'The protocol's first exercise'), named
-# after the workloads they measure. Each is one `bench-crossstack --filter` step, so a suite gets
+# The eight protocol suites, named after the workloads they measure. Each is one `bench-crossstack --filter` step, so a suite gets
 # its own log, its own exit code and its own place to resume from.
 $DotnetSuites = @(
     'ComposedPageBenchmarks',
@@ -246,7 +240,7 @@ function Get-ToolVersion {
     return (($out | Select-Object -First 1) -join ' ').Trim()
 }
 
-# --- Preamble: toolchain versions, pin deltas (SR-3 style: warn, never fail) ----------------
+# --- Preamble: toolchain versions, pin deltas (warn, never fail) ----------------------------
 $PreambleLog = Join-Path $LogDir 'preamble.log'
 $Preamble = New-Object System.Collections.ArrayList
 function Note {
@@ -262,12 +256,12 @@ Note '==========================================================================
 Note ' Heddle cross-stack benchmarks -- Windows master runner'
 Note ('   date:       ' + (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'))
 Note ('   mode:       ' + $mode)
-Note ('   budget:     ' + $Budget + '   (E6 measurement budget)')
+Note ('   budget:     ' + $Budget + '   (measurement budget)')
 Note ('   ecosystems: ' + ($Selected -join ', '))
 Note ('   out dir:    ' + $OutDir)
 Note '=============================================================================='
 Note ''
-Note '-- Toolchain versions (spec pins in parentheses; deltas WARN, never fail: SR-3) --'
+Note '-- Toolchain versions (pins in parentheses; deltas WARN, never fail) --'
 
 $vDotnet = Get-ToolVersion 'dotnet --version'
 Note ('   dotnet SDK : ' + $vDotnet + '   (protocol records the exact SDK; 10.0.302 was the observed line)')
@@ -288,7 +282,7 @@ Note ('   maven      : ' + $vMvn + '   (harness builds use its own mvnw.cmd wrap
 
 $vNode = Get-ToolVersion 'node --version'
 $vNpm = Get-ToolVersion 'npm --version'
-Note ('   node       : ' + $vNode + '   (pin: v24.x, E18)')
+Note ('   node       : ' + $vNode + '   (pin: v24.x)')
 Note ('   npm        : ' + $vNpm)
 $NodeIsPinned = ($vNode.Trim() -like 'v24.*')
 if (-not $NodeIsPinned) { Note '   WARN: node differs from the pinned major v24.x (npm ci will run with --engine-strict=false; record as a version delta).' 'Yellow' }
@@ -296,7 +290,7 @@ if (-not $NodeIsPinned) { Note '   WARN: node differs from the pinned major v24.
 $vPy = 'NOT FOUND'
 if (Test-Path $VenvPy) { $vPy = Get-ToolVersion ($VenvPy + ' --version') }
 else { $vPy = Get-ToolVersion 'python --version' }
-Note ('   python     : ' + $vPy + '   (pin: CPython 3.14.x, E19; harness venv at benchmarks\python\.venv)')
+Note ('   python     : ' + $vPy + '   (pin: CPython 3.14.x; harness venv at benchmarks\python\.venv)')
 if ($vPy -notmatch '3\.14\.') { Note '   WARN: python differs from the pinned minor CPython 3.14.x (record as a version delta).' 'Yellow' }
 
 $vGo = Get-ToolVersion 'go version'
@@ -311,7 +305,7 @@ Note ('   templ      : ' + $vTempl + '   (pin: v0.3.1020, via go tool)')
 # The notes above are for a human reading the step log. A published report also needs the deltas
 # in its environment block, and reconstructing them by hand from artifact metadata after the fact
 # is error-prone -- an earlier report had to do exactly that. benchmarks/report/consolidate.py
-# reads this file and generates the pin-drift table from it. SR-3 posture is unchanged: drift is
+# reads this file and generates the pin-drift table from it. The posture is unchanged: drift is
 # recorded, never fatal.
 $toolchain = [ordered]@{
     '.NET SDK' = @{ pin = '(protocol records the observed line)'; actual = $vDotnet; drift = $false }
@@ -435,7 +429,7 @@ function Write-Summary {
     $summaryPath = Join-Path $OutDir 'summary.txt'
     $header = @(
         ('mode:       ' + $mode),
-        ('budget:     ' + $Budget + '   (E6 measurement budget)'),
+        ('budget:     ' + $Budget + '   (measurement budget)'),
         ('ecosystems: ' + ($Selected -join ', ')),
         ('finished:   ' + (Get-Date -Format 'yyyy-MM-dd HH:mm:ss')),
         ''
@@ -458,10 +452,10 @@ Write-Host 'All selected gates are green.' -ForegroundColor Green
 # --- Phase 2: MEASUREMENT (or smoke) --------------------------------------------------------
 Write-Host ''
 Write-Host '################################################################################' -ForegroundColor Yellow
-Write-Host '## MACHINE-STATE RULES (phase specs; read before trusting any number)' -ForegroundColor Yellow
+Write-Host '## MACHINE-STATE RULES (read before trusting any number)' -ForegroundColor Yellow
 Write-Host '##  * Protocol machine only: the AMD Ryzen 9 9950X / Windows 11 box of the' -ForegroundColor Yellow
-Write-Host '##    published runs (metrics-protocol.md, Q1.6). Numbers from any other' -ForegroundColor Yellow
-Write-Host '##    machine are not comparable and must not be merged into reports.' -ForegroundColor Yellow
+Write-Host '##    published runs. Numbers from any other machine are not comparable' -ForegroundColor Yellow
+Write-Host '##    and must not be merged into reports.' -ForegroundColor Yellow
 Write-Host '##  * Quiet machine: close foreground applications, browsers, editors with' -ForegroundColor Yellow
 Write-Host '##    background indexing, and any other builds/watchers for the duration.' -ForegroundColor Yellow
 Write-Host '##  * Power: AC power, High Performance power plan; no sleep/hibernate timers' -ForegroundColor Yellow
@@ -485,7 +479,7 @@ if ($Smoke) { $measurePhase = 'smoke' }
 foreach ($eco in $Selected) {
     switch ($eco) {
         'dotnet' {
-            # Phase 1 protocol shape: Release, net10.0, the harness's own ShortRun default,
+            # Protocol shape: Release, net10.0, the harness's own ShortRun default,
             # MemoryDiagnoser via suite attributes; one --filter run per protocol suite. Each suite
             # measures BOTH fairness tracks (the Track parameter), which is why the .NET measure
             # phase is about twice the length it was when the leg was controlled-track only.
@@ -510,7 +504,7 @@ foreach ($eco in $Selected) {
                 -Source (Join-Path $DotnetDir 'BenchmarkDotNet.Artifacts') -Dest (Join-Path $OutDir 'dotnet')
         }
         'rust' {
-            # Phase 2 D9 via the WI5 finding (mirrored from linux-crosscheck/run-rust.sh):
+            # Mirrored from linux-crosscheck/run-rust.sh:
             # the lib target does not set bench = false, so the three Criterion bench
             # targets are selected explicitly; sources are untouched.
             $benchTargets = '--bench controlled --bench idiomatic --bench cold'
@@ -521,12 +515,12 @@ foreach ($eco in $Selected) {
             else {
                 [void](Invoke-Step -Eco 'rust' -Phase $measurePhase -Name 'criterion-bench' -WorkDir $RustDir `
                     -Command ('cargo bench ' + $benchTargets + ' -- --noplot' + $rustProfileArgs))
-                # --out lands the D13 artifact straight in the run dir: Copy-Artifacts only handles
+                # --out lands the allocation report straight in the run dir: Copy-Artifacts only handles
                 # directories, and before this the report existed nowhere but the step log.
                 [void](New-Item -ItemType Directory -Force -Path (Join-Path $OutDir 'rust'))
                 [void](Invoke-Step -Eco 'rust' -Phase $measurePhase -Name 'alloc-report' -WorkDir $RustDir `
                     -Command ('cargo run --release --features alloc-count --bin alloc_report -- --out "' + (Join-Path $OutDir 'rust\alloc-report.txt') + '"'))
-                # summarize reads heddle-reference.toml; while the Phase 1 Windows reference
+                # summarize reads heddle-reference.toml; while the Windows reference
                 # rows are pending it fails loudly by design -- captured, non-fatal.
                 [void](Invoke-Step -Eco 'rust' -Phase $measurePhase -Name 'summarize' -WorkDir $RustDir -NonFatal `
                     -Command 'cargo run --release --bin summarize')
@@ -545,26 +539,26 @@ foreach ($eco in $Selected) {
             else {
                 Write-Host 'NOTE: JMH regime = annotations (Fork 3, 1x2s warmup, 3x1s measure)' -ForegroundColor Yellow
                 Write-Host ("      + budget '" + $Budget + "' overrides:" + $jmhProfileArgs) -ForegroundColor Yellow
-                Write-Host '      Expect ~9 min (short) / ~23 min (baseline); it was 4.5 h before ledger E6.' -ForegroundColor Yellow
+                Write-Host '      Expect ~9 min (short) / ~23 min (baseline); it was 4.5 h before the uniform budget.' -ForegroundColor Yellow
                 [void](Invoke-Step -Eco 'jvm' -Phase $measurePhase -Name 'jmh-full' -WorkDir $JvmDir `
                     -Command ('java -jar target\benchmarks.jar' + $jmhProfileArgs + ' -prof gc -rf json -rff ' + $rff))
             }
         }
         'js' {
-            # Phase 4 shapes via the committed launcher run.ps1 (High priority class,
+            # The committed launcher run.ps1 carries the normative shapes (High priority class,
             # node --expose-gc --allow-natives-syntax, stdout captured to artifacts/).
             #
-            # The two render tracks run $JsPasses times each and are aggregated (ledger E6).
+            # The two render tracks run $JsPasses times each and are aggregated.
             # mitata exposes no per-cell time budget -- B.run() builds its own options object, so
             # min_cpu_time (642 ms) is unreachable from the public API -- which left this
             # ecosystem measuring 32 cells in 31 s against 15-31 s/cell everywhere else. Its
             # share of the uniform budget is spent on independent processes instead: run.ps1
             # -Repeat N, then bench/aggregate.mjs medians the per-pass avg into
-            # artifacts/<track>.json and emits the D13 verdict. The stability procedure IS the
+            # artifacts/<track>.json and emits the stability verdict. The stability procedure IS the
             # measurement now, rather than a separate gate someone has to remember -- which is
             # how the withdrawn 2026-07-22 run shipped JS numbers with no RSD verdict at all.
             #
-            # cold-compile stays a single pass: compile-dominated D10 sidebar, not a protocol
+            # cold-compile stays a single pass: a compile-dominated sidebar, not a protocol
             # cell, so repeating it buys a verdict for numbers no ranking consumes.
             $runPs1 = 'powershell -NoProfile -ExecutionPolicy Bypass -File run.ps1'
             foreach ($jsTrack in @('controlled', 'idiomatic')) {
@@ -583,22 +577,22 @@ foreach ($eco in $Selected) {
                 -Source (Join-Path $JsDir 'artifacts') -Dest (Join-Path $OutDir 'js')
         }
         'python' {
-            # Phase 5 D8: five pyperf Runner scripts, library defaults, --affinity=4, JSON
+            # Five pyperf Runner scripts, library defaults, --affinity=4, JSON
             # outputs, from an ELEVATED shell (psutil REALTIME_PRIORITY_CLASS path).
             $isElevated = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
             if (-not $isElevated) {
                 Write-Host 'WARN: shell is NOT elevated -- pyperf''s REALTIME_PRIORITY_CLASS elevation' -ForegroundColor Yellow
                 Write-Host '      will be silently skipped (AccessDenied swallowed). A measurement run' -ForegroundColor Yellow
-                Write-Host '      must use an elevated PowerShell (Phase 5 D8).' -ForegroundColor Yellow
+                Write-Host '      must use an elevated PowerShell.' -ForegroundColor Yellow
             }
             $pyOut = Join-Path $OutDir 'python'
             New-Item -ItemType Directory -Force -Path $pyOut | Out-Null
             $pySmokeArgs = ''
             if ($Smoke) { $pySmokeArgs = ' --debug-single-value' }
-            # The four render scripts keep pyperf's default 20x3x1 (Phase 5 D8) -- at ~9 min for
-            # the 32 protocol cells they already sit inside ledger E6's uniform budget. The
+            # The four render scripts keep pyperf's default 20x3x1 -- at ~9 min for
+            # the 32 protocol cells they already sit inside the uniform per-engine budget. The
             # cold-compile sidebar does not: at defaults it cost 288 s, a third of the
-            # ecosystem's time for a non-comparable sidebar (D10), so it runs with 7 processes.
+            # ecosystem's time for a non-comparable sidebar, so it runs with 7 processes.
             $pyScripts = @('bench_jinja2_controlled', 'bench_jinja2_idiomatic', 'bench_mako_controlled', 'bench_mako_idiomatic', 'bench_cold_compile')
             foreach ($s in $pyScripts) {
                 $pyShapeArgs = ''
@@ -607,14 +601,14 @@ foreach ($eco in $Selected) {
                 [void](Invoke-Step -Eco 'python' -Phase $measurePhase -Name $s -WorkDir $PyDir `
                     -Command ($VenvPy + ' ' + $s + '.py --affinity=4' + $pyShapeArgs + $pySmokeArgs + ' -o ' + (Join-Path $pyOut ($s + '.json'))))
             }
-            # Memory pass -- tracemalloc, separate from timing (Phase 5 D11).
+            # Memory pass -- tracemalloc, separate from timing.
             $memArgs = ''
             if ($Smoke) { $memArgs = ' --reps 5' }
             [void](Invoke-Step -Eco 'python' -Phase $measurePhase -Name 'mem-tracemalloc' -WorkDir $PyDir `
                 -Command ($VenvPy + ' mem_tracemalloc.py' + $memArgs + ' -o ' + (Join-Path $pyOut 'memory.json')))
         }
         'go' {
-            # Phase 6 reproduce path: the committed run-benchmarks.ps1 (version asserts,
+            # Go reproduce path: the committed run-benchmarks.ps1 (version asserts,
             # templ freshness, vet, gates, prebuild, High-priority timed runs, benchstat).
             $goCmd = 'powershell -NoProfile -ExecutionPolicy Bypass -File run-benchmarks.ps1'
             if ($Smoke) { $goCmd = $goCmd + ' -Count 1 -BenchTime 100ms' }

@@ -1,15 +1,14 @@
-//! Idiomatic-track Askama runners (WI5). Authoring standard per README D8/Q1.7 — every
-//! template file carries a doc-citation header comment; this declaration file's patterns
-//! follow the Askama 0.16 book pages cited per workload below: *Getting started* /
+//! Idiomatic-track Askama runners. Every template file carries a header comment citing
+//! the official Askama 0.16 book pages its patterns follow: *Getting started* /
 //! *Creating templates* (derive structs with `#[template(path = …)]`), *Template syntax —
 //! Template inheritance* (composed-page's layout + live body block), *Template syntax —
 //! For / If / Include*, and *Filters — escape* (default `Html` escaper everywhere — no
-//! `escape` override on any struct; README D3 quadrants 3–4). No `|safe` filter appears
-//! anywhere (E22): the inert chrome is literal template text, which Askama trusts
-//! natively, and every raw-suite model value is rule-4 clean, so default escaping is a
-//! byte-level no-op. Askama compiles templates at build time, so parse/compile sits
-//! outside every `render()`; the structs are `OnceLock` singletons borrowing the shared
-//! models.
+//! `escape` override on any struct). No `|safe` filter appears
+//! anywhere: the inert chrome is literal template text, which Askama trusts
+//! natively, and every raw-suite model value contains no characters HTML escaping
+//! rewrites, so default escaping is a byte-level no-op. Askama compiles templates at
+//! build time, so parse/compile sits outside every `render()`; the structs are
+//! `OnceLock` singletons borrowing the shared models.
 
 use std::sync::OnceLock;
 
@@ -23,10 +22,10 @@ use crate::models::{
 // ---- composed-page (raw; native inheritance layout with a live body block) -------------------
 // Doc citations: Askama book *Template syntax — Template inheritance* (the page extends
 // `composed-page-layout.html` and fills `{% block body %}` with the slider), *Include*
-// (the ten E22 chrome-fragment partials + the nested nav-family partials), *For* / *If*
+// (the ten chrome-fragment partials + the nested nav-family partials), *For* / *If*
 // (nav loops over menus/tabs/columns/sections/links; `has_dropdown` / `title_linked`).
 
-/// E20/E22 model shape: the structured nav only — the chrome and the spliced body are
+/// Model shape: the structured nav only — the chrome and the spliced body are
 /// literal template text.
 #[derive(Template)]
 #[template(path = "idiomatic/askama/composed-page.html")]
@@ -112,7 +111,7 @@ pub fn render_large_loop() -> String {
         .expect("askama idiomatic large-loop render")
 }
 
-// ---- mixed-page (raw; SINGLE-FILE per the workloads.md E20 rule — layout composition is
+// ---- mixed-page (raw; SINGLE-FILE by rule — layout composition is
 // composed-page's dimension) -------------------------------------------------------------------
 // Doc citations: Askama book *Creating templates*, *Template syntax — For*, *If*.
 
@@ -181,7 +180,7 @@ pub fn render_conditional_heavy() -> String {
 }
 
 // ---- fragment-heavy (raw; per-row four-way dispatch to per-kind partials, one nesting
-// level: card -> badge + price against the row's promo — E20) ----------------------------------
+// level: card -> badge + price against the row's promo) ----------------------------------------
 // Doc citations: Askama book *Template syntax — If* (if/elif/else dispatch chain),
 // *Include*, *For*.
 

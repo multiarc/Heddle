@@ -8,7 +8,7 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// The normative operator-semantics table (operator-semantics.md) as <c>[Theory]</c> rows. Every expected
+    /// The normative operator-semantics table as <c>[Theory]</c> rows. Every expected
     /// value is produced by the equivalent C# expression over the same model, so a disagreement is a spec
     /// event, not a test fix. Covers promotion pairs, lifted nulls, enum bitwise, string concat, <c>??</c>/
     /// <c>?:</c> typing, equality fallback, char, and constant folding.

@@ -1,7 +1,6 @@
-// fragment-heavy model — Phase 4 WI2 (spec: templates-and-models.md §Models rule 3; formulas
-// from Phase 1 workloads.md workload 6, ledger E20). 48 rows, i in [0, 47], four dispatched
+// fragment-heavy model. 48 rows, i in [0, 47], four dispatched
 // kinds (12 each); dispatch runs on the precomputed is_* booleans, never on the kind string
-// (common-denominator dispatch). The model carries DATA only (E21): promo.price is a NUMBER,
+// (common-denominator dispatch). The model carries DATA only: promo.price is a NUMBER,
 // and derived display text (media caption, image src, ".99" display price) is composed by the
 // templates as literal-plus-substitution.
 import { deepFreeze } from "./_deep-freeze.mjs";

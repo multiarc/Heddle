@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-# run-js.sh — mitata launcher (Phase 8 spec D9; Windows source: Phase 4 D10-D13, run.ps1).
+# run-js.sh — mitata launcher.
 # Replicates run.ps1's capture and -Repeat behavior WITHOUT the High priority class
-# (D2 no-priority rule): starts `node --expose-gc --allow-natives-syntax <script>`,
+# (no-priority rule: the tuned system is the isolation): starts
+# `node --expose-gc --allow-natives-syntax <script>`,
 # tees stdout to an artifacts file, propagates the exit code, supports --repeat N
-# for the Phase 4 D13 five-run stability procedure (re-executed on Linux, publication-
+# for the five-run stability procedure (re-executed on Linux, publication-
 # gating: all RSD <= 5% -> verified; (5%,10%] after one re-run cycle -> verified-with-
 # disclosure; > 10% persisting -> failed, no JS Linux numbers). run.ps1 is NOT modified.
 #
@@ -26,8 +27,8 @@ while [ $# -gt 0 ]; do
     -h|--help)
       echo "usage: run-js.sh [--smoke] [--no-tune-check] [--repeat N] [--suite controlled|idiomatic|cold|all]"
       echo "  --smoke          single mitata pass, controlled suite (functional only)"
-      echo "  --no-tune-check  bypass the D2 tuned-state pre-flight (bypass is recorded; WSL/SR-2 only)"
-      echo "  --repeat N       run the suite N times (Phase 4 D13 stability: --repeat 5 --suite controlled)"
+      echo "  --no-tune-check  bypass the tuned-state pre-flight (bypass is recorded; WSL functional runs only)"
+      echo "  --repeat N       run the suite N times (stability procedure: --repeat 5 --suite controlled)"
       echo "  --suite NAME     controlled | idiomatic | cold | all (default all)"
       exit 0 ;;
     *) ARGS+=("$1") ;;
@@ -38,17 +39,17 @@ lcx_parse_launcher_args ${ARGS[@]+"${ARGS[@]}"}
 lcx_mkout
 ART="$LCX_OUT_DIR/js-artifacts"
 mkdir -p "$ART"
-lcx_launcher_header "js (mitata, D9)" 2>&1 | tee "$LCX_OUT_DIR/run-js.log"
+lcx_launcher_header "js (mitata)" 2>&1 | tee "$LCX_OUT_DIR/run-js.log"
 
 cd "$LCX_REPO_ROOT/benchmarks/js"
 
-# Gates first (D12): the ecosystem's own commands, unmodified.
+# Gates first: the ecosystem's own commands, unmodified.
 lcx_note "gate: npm run selftest" 2>&1 | tee -a "$LCX_OUT_DIR/run-js.log"
 npm run selftest 2>&1 | tee -a "$LCX_OUT_DIR/run-js.log"
 lcx_note "gate: npm run gate" 2>&1 | tee -a "$LCX_OUT_DIR/run-js.log"
 npm run gate 2>&1 | tee -a "$LCX_OUT_DIR/run-js.log"
 
-# suite name -> script path (Phase 4 bench scripts; same Node flags, mitata defaults).
+# suite name -> script path (same bench scripts and Node flags as Windows, mitata defaults).
 suite_script() {
   case "$1" in
     controlled) echo "bench/controlled.mjs" ;;
@@ -83,7 +84,7 @@ if [ "$LCX_SMOKE" = "1" ]; then
   REPEAT=1
   run_suite controlled
 elif [ "$SUITE" = "all" ]; then
-  # Measurement order (D13.4): stability procedure is run FIRST by the operator
+  # Measurement order: stability procedure is run FIRST by the operator
   # (./run-js.sh --repeat 5 --suite controlled), then the three timed suites.
   run_suite controlled
   run_suite idiomatic

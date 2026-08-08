@@ -1,7 +1,7 @@
-//! Controlled-track Askama runners (WI4). Template texts are normative in
-//! `docs/spec/cross-stack-benchmarks/phase-2-rust/workload-ports.md`; escaping modes per
-//! README D3 — raw cells carry `escape = "none"`, encoded cells use the default `Html`
-//! escaper inferred from the `.html` extension (spellings reconciled by N5 in the gate, D4).
+//! Controlled-track Askama runners. Template texts are normative ports — the golden gate
+//! defines their bytes, so do not re-derive or reformat them here. Escaping modes:
+//! raw cells carry `escape = "none"`, encoded cells use the default `Html`
+//! escaper inferred from the `.html` extension (entity spellings reconciled by N5 in the gate).
 //! Askama compiles every template into the binary at build time, so "parse/compile outside
 //! `render()`" holds by construction; the template structs themselves are `OnceLock`
 //! singletons borrowing the shared models.
@@ -17,7 +17,7 @@ use crate::models::{
 
 // ---- composed-page (raw) ---------------------------------------------------------------------
 
-/// E20/E22 model shape: the structured nav only — all chrome/blob text lives in the
+/// Model shape: the structured nav only — all chrome/blob text lives in the
 /// templates (`composed-page-layout.html` + the `chrome/` fragment includes), and the
 /// page fills the layout's live `{% block body %}` with the slider.
 #[derive(Template)]

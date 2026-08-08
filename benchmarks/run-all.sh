@@ -2,20 +2,14 @@
 # run-all.sh -- Linux master runner for the cross-stack benchmark program (bare metal).
 #
 # The twin of run-all.ps1: one command runs every ecosystem's gates and then its measurement
-# (or smoke) pass with the parameters the phase specs make normative:
-#   .NET    docs/spec/cross-stack-benchmarks/phase-1-cross-stack-foundation/metrics-protocol.md
-#   Rust    docs/spec/cross-stack-benchmarks/phase-2-rust/README.md (D9/WI10)
-#   JVM     docs/spec/cross-stack-benchmarks/phase-3-jvm/harness-and-jmh.md
-#   JS      docs/spec/cross-stack-benchmarks/phase-4-js/harness-and-run.md (+ js/run.sh)
-#   Python  docs/spec/cross-stack-benchmarks/phase-5-python/harness.md
-#   Go      docs/spec/cross-stack-benchmarks/phase-6-go/harness-and-measurement.md
-#           (+ go/run-benchmarks.sh)
+# (or smoke) pass with each harness's normative parameters -- every committed source/script
+# default already IS the protocol shape, so this runner only sequences and logs.
 # Same phase order as run-all.ps1: gates first, stop on the first red; then
 # dotnet -> rust -> jvm -> js -> python -> go.
 #
-# This is NOT benchmarks/linux-crosscheck/run-all.sh. That one implements the Phase 8
-# cross-check protocol (D2 no-priority posture, tuned-state pre-flight against a recorded
-# session state, validate.py part-2 tables) and is left untouched; use it for anything
+# This is NOT benchmarks/linux-crosscheck/run-all.sh. That one implements the Linux
+# cross-check protocol (plain launches with no priority elevation, tuned-state pre-flight
+# against a recorded session state, validate.py part-2 tables) and is left untouched; use it for anything
 # published as a Linux cross-check. This script is the Windows-parity runner: per-step logs,
 # a summary table, ecosystem subsets, and the nice/taskset approximation of the Windows High
 # priority classes. The posture delta must be recorded in the run report's environment block.
@@ -29,7 +23,7 @@
 #   ./benchmarks/run-all.sh --budget baseline   # ~30 min/ecosystem instead of the ~10 min default
 #   ./benchmarks/run-all.sh --js-passes 24     # more JS passes than the profile's default
 #   ./benchmarks/run-all.sh --no-tune-check     # record the bypass and measure anyway
-#   ./benchmarks/run-all.sh --no-priority       # plain launches (Phase 8 D2 posture)
+#   ./benchmarks/run-all.sh --no-priority       # plain launches (the cross-check posture)
 
 set -uo pipefail
 
@@ -42,7 +36,7 @@ usage: run-all.sh [options]
   --smoke                  short functional flags everywhere (no measurement validity)
   --ecosystem LIST         comma-separated subset of dotnet,rust,jvm,js,python,go
   --out-dir PATH           artifact/log destination (default benchmarks/out/linux-run-<stamp>)
-  --budget NAME            measurement budget per ecosystem (ledger E6):
+  --budget NAME            measurement budget per engine:
                              short     ~10 min each  (default)
                              baseline  ~30 min each  (3x capture samples, +1 warmup run)
   --js-passes N            JS repeat passes per render track; overrides the budget default
@@ -52,7 +46,7 @@ usage: run-all.sh [options]
                            sample rate here, restore them on exit; the missing CPU isolation
                            is recorded as a measurement-quality delta
   --no-tune-check          record a bypass of the bare-metal pre-flight and continue
-  --no-priority            no taskset/nice on the JS and Go timed runs (Phase 8 D2 posture)
+  --no-priority            no taskset/nice on the JS and Go timed runs (the cross-check posture)
   -h, --help               this help
 EOF
 }
@@ -85,21 +79,21 @@ done
 if [ "$DO_TUNE" = "1" ] && [ "$DO_TUNE_NO_ISOLATION" = "1" ]; then
   bench_die "--tune and --tune-no-isolation are mutually exclusive"
 fi
-# --- Measurement budget (ledger E6, per-engine basis per E13) --------------------------------
+# --- Measurement budget -----------------------------------------------------------------------
 #
 # Every harness's committed source/script default IS the short profile, so a bare invocation of
 # any single harness is the ~10 min shape. `--budget baseline` layers CLI overrides on top --
 # roughly 3x the capture samples and one extra warmup run -- for the ~30 min shape. Nothing
 # below changes what is measured, only how many times.
 #
-# The budget unit is ONE ENGINE, not one ecosystem (E13, resized program-wide by E14). An engine
+# The budget unit is ONE ENGINE, not one ecosystem. An engine
 # is 16 cells -- 8 workloads x 2 fairness tracks -- so a leg's budget is 16 x (engines) cells'
 # worth of measurement: ~10 min per engine at `short`, ~30 min at `baseline`. Five legs carry two
 # engines, .NET carries six, so the .NET leg is about three times the others by construction
 # rather than by accident. Every leg's committed source/script default IS its `short` shape.
 case "$BUDGET" in
   short)
-    DOTNET_PROFILE_ARGS=()                                   # harness default job: L3/W3/I5 (E28 five-sample floor)
+    DOTNET_PROFILE_ARGS=()                                   # harness default job: L3/W3/I5 (five-sample floor)
     RUST_PROFILE_ARGS=()                                     # source: warm-up 5 s, measure 26 s
     JMH_PROFILE_ARGS=()                                      # annotations: F5, W 1x2s, M 5x1s
     PY_VALUES_ARGS=(--values 6 --warmups 1)
@@ -115,7 +109,7 @@ case "$BUDGET" in
     # a single launch never samples the cross-process term AT ALL: one process, one JIT, one heap
     # layout. That is the same gap JMH closes with plural forks and JS with repeat passes, and
     # the .NET leg was the one that had never bought it. The launches multiply the harness job's
-    # E28 five-iteration floor: 10 x 5 = 50 samples per cell here, against short's 3 x 5 = 15.
+    # five-iteration floor: 10 x 5 = 50 samples per cell here, against short's 3 x 5 = 15.
     DOTNET_PROFILE_ARGS=(--launchCount 10)
     RUST_PROFILE_ARGS=(--warm-up-time 10 --measurement-time 84)
     JMH_PROFILE_ARGS=(-f 5 -wi 2 -i 17)
@@ -130,9 +124,9 @@ esac
 case "$JS_PASSES" in
   ''|*[!0-9]*) bench_die "--js-passes must be an integer" ;;
 esac
-# 5 is Phase 4 D13's floor for a stability verdict; bench/aggregate.mjs refuses fewer, so catch
+# 5 is the floor for a stability verdict; bench/aggregate.mjs refuses fewer, so catch
 # it here rather than after the passes have already been spent.
-[ "$JS_PASSES" -ge 5 ] || bench_die "--js-passes must be at least 5 (Phase 4 D13 verdict floor)"
+[ "$JS_PASSES" -ge 5 ] || bench_die "--js-passes must be at least 5 (the stability-verdict floor)"
 
 # Fixed program order (anchor-first, then the program's priority order -- same as Windows).
 ALL_ORDER=(dotnet rust jvm js python go)
@@ -176,8 +170,7 @@ GO_DIR="$BENCH_ROOT_SELF/go"
 LCX_DIR="$BENCH_ROOT_SELF/linux-crosscheck"
 VENV_PY="$PY_DIR/.venv/bin/python"
 
-# The eight protocol suites (phase 1 metrics-protocol: 'The protocol's first exercise'), named
-# after the workloads they measure. Each is one `bench-crossstack --filter` step, so a suite gets
+# The eight protocol suites, named after the workloads they measure. Each is one `bench-crossstack --filter` step, so a suite gets
 # its own log, its own exit code and its own place to resume from.
 DOTNET_SUITES=(
   ComposedPageBenchmarks
@@ -299,7 +292,7 @@ write_summary() {
   printf '%s\n' "$table"
   {
     echo "mode:       $MODE"
-echo "budget:     $BUDGET (E6 measurement budget)"
+echo "budget:     $BUDGET (measurement budget)"
     echo "ecosystems: ${SELECTED[*]}"
     echo "finished:   $(date '+%Y-%m-%d %H:%M:%S')"
     echo ""
@@ -310,7 +303,7 @@ echo "budget:     $BUDGET (E6 measurement budget)"
   echo "logs:    $LOG_DIR"
 }
 
-# --- Preamble: toolchain versions, pin deltas (SR-3 style: warn, never fail) -------------------
+# --- Preamble: toolchain versions, pin deltas (warn, never fail) -------------------------------
 note '=============================================================================='
 note ' Heddle cross-stack benchmarks -- Linux master runner (bare metal)'
 note "   date:       $(date '+%Y-%m-%d %H:%M:%S')"
@@ -319,7 +312,7 @@ note "   ecosystems: ${SELECTED[*]}"
 note "   out dir:    $OUT_DIR"
 note '=============================================================================='
 note ''
-note '-- Toolchain versions (spec pins in parentheses; deltas WARN, never fail: SR-3) --'
+note '-- Toolchain versions (pins in parentheses; deltas WARN, never fail) --'
 
 V_DOTNET="$(tool_version dotnet --version)"
 note "   dotnet SDK : $V_DOTNET   (protocol records the exact SDK; 10.0.302 was the observed line)"
@@ -345,7 +338,7 @@ note "   maven      : $V_MVN   (harness builds use its own mvnw wrapper)"
 
 V_NODE="$(tool_version node --version)"
 V_NPM="$(tool_version npm --version)"
-note "   node       : $V_NODE   (pin: v24.x, E18)"
+note "   node       : $V_NODE   (pin: v24.x)"
 note "   npm        : $V_NPM"
 NODE_IS_PINNED=0
 case "$V_NODE" in v24.*) NODE_IS_PINNED=1 ;; esac
@@ -358,7 +351,7 @@ if [ -x "$VENV_PY" ]; then
 else
   V_PY="$(tool_version python3 --version)"
 fi
-note "   python     : $V_PY   (pin: CPython 3.14.x, E19; harness venv at benchmarks/python/.venv)"
+note "   python     : $V_PY   (pin: CPython 3.14.x; harness venv at benchmarks/python/.venv)"
 case "$V_PY" in
   *3.14.*) : ;;
   *) note "   WARN: python differs from the pinned minor CPython 3.14.x (record as a version delta)." ;;
@@ -379,7 +372,7 @@ note "   templ      : $V_TEMPL   (pin: v0.3.1020, via go tool)"
 # The notes above are for a human reading the step log. A published report also needs the deltas
 # in its environment block, and reconstructing them by hand from artifact metadata after the fact
 # is error-prone -- an earlier report had to do exactly that. benchmarks/report/consolidate.py
-# reads this file and generates the pin-drift table from it. SR-3 posture is unchanged: drift is
+# reads this file and generates the pin-drift table from it. The posture is unchanged: drift is
 # recorded, never fatal.
 write_toolchain_json() {
   local path="$OUT_DIR/toolchain.json"
@@ -466,7 +459,7 @@ if [ "$SMOKE" != "1" ] && bench_is_wsl; then
     note 'RECORDED: are NOT publishable (no cpufreq control, no isolcpus boot under WSL).'
   else
     bench_die "WSL2 detected: a measurement run needs the bare-metal boot of the protocol box.
-  For a WSL functional pass use the Phase 8 tooling instead:
+  For a WSL functional pass use the cross-check tooling instead:
       benchmarks/linux-crosscheck/run-all.sh --smoke --no-tune-check
   or run this script with --smoke (or --no-tune-check to record a bypass)."
   fi
@@ -474,7 +467,7 @@ fi
 
 if [ "$DO_TUNE" = "1" ]; then
   [ -x "$LCX_DIR/tune.sh" ] || bench_die "not found or not executable: $LCX_DIR/tune.sh"
-  note "== tuning the machine: sudo $LCX_DIR/tune.sh (committed Phase 8 tooling, unmodified)"
+  note "== tuning the machine: sudo $LCX_DIR/tune.sh (committed cross-check tooling, unmodified)"
   sudo "$LCX_DIR/tune.sh" 2>&1 | tee "$LOG_DIR/tune.log"
   if [ "${PIPESTATUS[0]}" -eq 0 ]; then
     UNTUNE_ON_EXIT=1
@@ -584,10 +577,10 @@ echo "${C_GREEN}All selected gates are green.${C_RESET}"
 cat <<EOF
 
 ${C_YELLOW}################################################################################
-## MACHINE-STATE RULES (phase specs; read before trusting any number)
-##  * Protocol machine only: the bare-metal boot of the published protocol box
-##    (metrics-protocol.md, Q1.6). Numbers from any other machine are not
-##    comparable and must not be merged into reports.
+## MACHINE-STATE RULES (read before trusting any number)
+##  * Protocol machine only: the bare-metal boot of the published protocol box.
+##    Numbers from any other machine are not comparable and must not be merged
+##    into reports.
 ##  * Tuned session state: performance governors, boost off, the isolated SMT
 ##    pair booted (linux-crosscheck/tune.sh; --tune does it for you).
 ##  * Quiet machine: no editors with background indexing, no other builds or
@@ -595,7 +588,7 @@ ${C_YELLOW}#####################################################################
 ##  * Per-harness stability settings: this runner launches the JS and Go timed
 ##    runs through taskset + nice -n -20 (the Windows High-priority-class
 ##    counterpart) and passes pyperf --affinity=<isolated pair>. That differs
-##    from linux-crosscheck/run-*.sh, which launch plain under the D2 rule --
+##    from linux-crosscheck/run-*.sh, which launch plain by design --
 ##    record the posture delta in the run report's environment block.
 EOF
 if [ "$UNTUNE_NO_ISOLATION_ON_EXIT" = "1" ]; then
@@ -626,7 +619,7 @@ PRIORITY_ARGS=()
 for eco in "${SELECTED[@]}"; do
   case "$eco" in
     dotnet)
-      # Phase 1 protocol shape: Release, net10.0, the harness's own ShortRun default,
+      # Protocol shape: Release, net10.0, the harness's own ShortRun default,
       # MemoryDiagnoser via suite attributes; one --filter run per protocol suite. Each suite
       # measures BOTH fairness tracks (the Track parameter), which is why the .NET measure phase is
       # about twice the length it was when the leg was controlled-track only.
@@ -652,7 +645,7 @@ for eco in "${SELECTED[@]}"; do
       copy_artifacts dotnet copy-bdn-artifacts "$DOTNET_DIR/BenchmarkDotNet.Artifacts" "$OUT_DIR/dotnet"
       ;;
     rust)
-      # Phase 2 D9 via the WI5 finding (as in linux-crosscheck/run-rust.sh): the lib target
+      # As in linux-crosscheck/run-rust.sh: the lib target
       # does not set bench = false, so the three Criterion bench targets are selected
       # explicitly; sources are untouched.
       if [ "$SMOKE" = "1" ]; then
@@ -662,13 +655,13 @@ for eco in "${SELECTED[@]}"; do
         run_step rust "$MEASURE_PHASE" criterion-bench "$RUST_DIR" -- \
           cargo bench --bench controlled --bench idiomatic --bench cold -- --noplot \
           ${RUST_PROFILE_ARGS[@]+"${RUST_PROFILE_ARGS[@]}"}
-        # --out lands the D13 artifact straight in the run dir: copy_artifacts only handles
+        # --out lands the allocation report straight in the run dir: copy_artifacts only handles
         # directories, and before this the report existed nowhere but the step log.
         mkdir -p "$OUT_DIR/rust"
         run_step rust "$MEASURE_PHASE" alloc-report "$RUST_DIR" -- \
           cargo run --release --features alloc-count --bin alloc_report -- \
           --out "$OUT_DIR/rust/alloc-report.txt"
-        # summarize reads heddle-reference.toml; while the Phase 1 Windows reference rows
+        # summarize reads heddle-reference.toml; while the Windows reference rows
         # are pending it fails loudly by design -- captured, non-fatal.
         run_step rust "$MEASURE_PHASE" summarize "$RUST_DIR" --non-fatal -- \
           cargo run --release --bin summarize
@@ -700,28 +693,28 @@ for eco in "${SELECTED[@]}"; do
       else
         echo "${C_YELLOW}NOTE: JMH regime = annotations (Fork 3, 1x2s warmup, 3x1s measure)${C_RESET}"
         echo "${C_YELLOW}      + budget '$BUDGET' overrides ${JMH_PROFILE_ARGS[*]:-(none)}.${C_RESET}"
-        echo "${C_YELLOW}      Expect ~9 min (short) / ~23 min (baseline); it was 4.5 h before ledger E6.${C_RESET}"
+        echo "${C_YELLOW}      Expect ~9 min (short) / ~23 min (baseline); it was 4.5 h before the uniform budget.${C_RESET}"
         run_step jvm "$MEASURE_PHASE" jmh-full "$JVM_DIR" -- \
           java -jar target/benchmarks.jar ${JMH_PROFILE_ARGS[@]+"${JMH_PROFILE_ARGS[@]}"} \
           -prof gc -rf json -rff "$RFF"
       fi
       ;;
     js)
-      # Phase 4 shapes via the committed launcher js/run.sh (taskset + nice, node
+      # The committed launcher js/run.sh carries the normative shapes (taskset + nice, node
       # --expose-gc --allow-natives-syntax, stdout captured to artifacts/).
       #
-      # The two render tracks run JS_PASSES times each and are aggregated (ledger E6). mitata
+      # The two render tracks run JS_PASSES times each and are aggregated. mitata
       # exposes no per-cell time budget -- `B.run()` builds its own options object, so
       # min_cpu_time (642 ms) is unreachable from the public API -- which left this ecosystem
       # measuring 32 cells in 31 s against 15-31 s/cell everywhere else. Its share of the uniform
       # budget is therefore spent on independent processes: run.sh --repeat N, then
       # bench/aggregate.mjs medians the per-pass avg into artifacts/<track>.json and emits the
-      # D13 verdict. That makes the stability procedure the measurement rather than a separate
+      # stability verdict. That makes the stability procedure the measurement rather than a separate
       # publication-gating step someone has to remember, which is how the withdrawn 2026-07-22 run
       # JS numbers with no RSD verdict at all.
       #
-      # cold-compile stays a single pass: it is compile-dominated (D10 sidebar, not a protocol
-      # cell), so repeating it buys a stability verdict for numbers no ranking consumes.
+      # cold-compile stays a single pass: it is a compile-dominated sidebar, not a protocol
+      # cell, so repeating it buys a stability verdict for numbers no ranking consumes.
       for js_script in controlled idiomatic; do
         if [ "$SMOKE" = "1" ]; then
           run_step js "$MEASURE_PHASE" "bench-$js_script" "$JS_DIR" -- \
@@ -736,12 +729,12 @@ for eco in "${SELECTED[@]}"; do
       copy_artifacts js copy-artifacts "$JS_DIR/artifacts" "$OUT_DIR/js"
       ;;
     python)
-      # Phase 5 D8: five pyperf Runner scripts, library defaults, explicit --affinity, JSON
+      # Five pyperf Runner scripts, library defaults, explicit --affinity, JSON
       # outputs. The Windows counterpart of the elevated shell is root/passwordless sudo
       # (pyperf raises the process priority where it can).
       if [ "$(id -u)" != "0" ] && ! sudo -n true 2>/dev/null; then
         echo "${C_YELLOW}WARN: not root and no passwordless sudo -- pyperf's priority elevation${C_RESET}"
-        echo "${C_YELLOW}      is skipped silently. A measurement run should provide it (Phase 5 D8).${C_RESET}"
+        echo "${C_YELLOW}      is skipped silently. A measurement run should provide it.${C_RESET}"
       fi
       PY_AFFINITY=""
       if PY_PAIR="$(bench_smt_pair)" && [ -n "$(bench_isolated_set)" ]; then
@@ -754,10 +747,10 @@ for eco in "${SELECTED[@]}"; do
       mkdir -p "$OUT_DIR/python"
       PY_SMOKE_ARGS=()
       [ "$SMOKE" = "1" ] && PY_SMOKE_ARGS=(--debug-single-value)
-      # The four render scripts keep pyperf's default 20x3x1 (Phase 5 D8) -- at ~9 min for the
-      # 32 protocol cells they already sit inside ledger E6's uniform budget. The cold-compile
+      # The four render scripts keep pyperf's default 20x3x1 -- at ~9 min for the
+      # 32 protocol cells they already sit inside the uniform per-engine budget. The cold-compile
       # sidebar does not: at defaults it cost 288 s, a third of the ecosystem's time for a
-      # non-comparable sidebar (D10), so it runs with 7 processes.
+      # non-comparable sidebar, so it runs with 7 processes.
       for s in bench_jinja2_controlled bench_jinja2_idiomatic bench_mako_controlled bench_mako_idiomatic bench_cold_compile; do
         if [ "$s" = "bench_cold_compile" ]; then
           PY_SHAPE_ARGS=(${PY_COLD_ARGS[@]+"${PY_COLD_ARGS[@]}"})
@@ -769,14 +762,14 @@ for eco in "${SELECTED[@]}"; do
           ${PY_SHAPE_ARGS[@]+"${PY_SHAPE_ARGS[@]}"} ${PY_SMOKE_ARGS[@]+"${PY_SMOKE_ARGS[@]}"} \
           -o "$OUT_DIR/python/$s.json"
       done
-      # Memory pass -- tracemalloc, separate from timing (Phase 5 D11).
+      # Memory pass -- tracemalloc, separate from timing.
       MEM_ARGS=()
       [ "$SMOKE" = "1" ] && MEM_ARGS=(--reps 5)
       run_step python "$MEASURE_PHASE" mem-tracemalloc "$PY_DIR" -- \
         "$VENV_PY" mem_tracemalloc.py ${MEM_ARGS[@]+"${MEM_ARGS[@]}"} -o "$OUT_DIR/python/memory.json"
       ;;
     go)
-      # Phase 6 reproduce path: the committed run-benchmarks.sh (version asserts, templ
+      # Go reproduce path: the committed run-benchmarks.sh (version asserts, templ
       # freshness, vet, gates, prebuild, timed runs, benchstat).
       GO_ARGS=(./run-benchmarks.sh)
       if [ "$SMOKE" = "1" ]; then

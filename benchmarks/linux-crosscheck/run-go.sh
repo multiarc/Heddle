@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# run-go.sh — Go testing/benchstat launcher (Phase 8 spec D11; Windows source: Phase 6).
-# Replicates the Phase 6 run-benchmarks steps: version asserts, templ regeneration
+# run-go.sh — Go testing/benchstat launcher.
+# Replicates the Windows run-benchmarks steps: version asserts, templ regeneration
 # freshness, vet, gates, prebuild, timed invocation(s), benchstat. Prebuilt binary
-# launched PLAIN — no nice, no taskset, no start /high counterpart (D2 rule; the
+# launched PLAIN — no nice, no taskset, no start /high counterpart (the
 # tuned system is the isolation). GOMAXPROCS/GOGC runtime defaults, values recorded
-# as found (isolcpus-reduced mask disclosed, not overridden). The D11 trigger
+# as found (isolcpus-reduced mask disclosed, not overridden). The instability trigger
 # (benchstat > ±5% -> taskset re-run on CCD0 non-isolated CPUs) is an operator step,
 # recorded as one environment change.
 #
@@ -15,11 +15,11 @@ set -euo pipefail
 . "$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)/common.sh"
 lcx_parse_launcher_args "$@"
 lcx_mkout
-lcx_launcher_header "go (testing/benchstat, D11)" 2>&1 | tee "$LCX_OUT_DIR/run-go.log"
+lcx_launcher_header "go (testing/benchstat)" 2>&1 | tee "$LCX_OUT_DIR/run-go.log"
 
 cd "$LCX_REPO_ROOT/benchmarks/go"
 
-# Version assert (Phase 6 reproduce path; expected pin go1.26.5 linux/amd64).
+# Version assert (expected pin go1.26.5 linux/amd64).
 GO_V="$(go version)"
 lcx_note "go version: $GO_V" 2>&1 | tee -a "$LCX_OUT_DIR/run-go.log"
 case "$GO_V" in
@@ -32,17 +32,17 @@ case "$GO_V" in
     fi ;;
 esac
 
-# templ regeneration freshness (Phase 6; testing-plan check).
+# templ regeneration freshness: generated files must match their sources.
 lcx_note "templ freshness: git diff --exit-code -- '*_templ.go'" 2>&1 | tee -a "$LCX_OUT_DIR/run-go.log"
 git diff --exit-code -- '*_templ.go' 2>&1 | tee -a "$LCX_OUT_DIR/run-go.log"
 
-# Vet + gates (D12: TestMain runs all gates in `go test ./suites`).
+# Vet + gates (TestMain runs all gates in `go test ./suites`).
 lcx_note "go vet ./..." 2>&1 | tee -a "$LCX_OUT_DIR/run-go.log"
 go vet ./... 2>&1 | tee -a "$LCX_OUT_DIR/run-go.log"
 lcx_note "gate: go test ./suites" 2>&1 | tee -a "$LCX_OUT_DIR/run-go.log"
 go test ./suites 2>&1 | tee -a "$LCX_OUT_DIR/run-go.log"
 
-# Prebuild, then launch the binary plain (D11).
+# Prebuild, then launch the binary plain.
 BENCH_BIN="$LCX_OUT_DIR/go-bench"
 lcx_note "prebuild: go test -c -o $BENCH_BIN ./suites" 2>&1 | tee -a "$LCX_OUT_DIR/run-go.log"
 go test -c -o "$BENCH_BIN" ./suites 2>&1 | tee -a "$LCX_OUT_DIR/run-go.log"
@@ -59,7 +59,7 @@ mkdir -p "$RESULTS"
 lcx_note "bench: -run '^$' -bench '^BenchmarkRender$' -count=$COUNT -benchtime=$BENCHTIME (GOMAXPROCS recorded as found)" 2>&1 | tee -a "$LCX_OUT_DIR/run-go.log"
 "$BENCH_BIN" -test.run '^$' -test.bench '^BenchmarkRender$' -test.count="$COUNT" -test.benchtime="$BENCHTIME" 2>&1 | tee "$RESULTS/bench.txt"
 
-# Cold-parse sidebar runs separately per the Phase 6 procedure (operator step; same flags).
+# Cold-parse sidebar runs separately (operator step; same flags).
 
 if command -v benchstat >/dev/null 2>&1; then
   benchstat "$RESULTS/bench.txt" 2>&1 | tee "$RESULTS/benchstat.txt"

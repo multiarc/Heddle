@@ -1,11 +1,11 @@
 @param java.util.List<heddle.benchmarks.jvm.model.Models.FragmentRow> items
 <%--
-  Idiomatic jte authoring (Q1.7/D7) — official doc citations:
+  Idiomatic jte authoring — official doc citations:
   https://jte.gg/syntax/ (conditions: @if/@elseif/@else — jte's dispatch construct;
       template calls: @template.idiomatic.shared.tile etc.; loops: @for)
   https://jte.gg/pre-compiling/ (precompiled engine setup)
 
-  E20 redesign (workloads.md workload 6): four dispatched fragment kinds selected by a
+  Four dispatched fragment kinds selected by a
   boolean @if/@elseif chain per row; the card fragment nests badge + price (one level).
 --%>
 <div class="panel">

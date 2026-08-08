@@ -1,23 +1,22 @@
-// Eta engine module (Phase 4 WI5; spec: README D8, harness-and-run.md §Harness layout,
-// templates-and-models.md §Eta; Phase 1 workloads.md workloads 1 & 6 as amended by records.md
-// E20/E21/E22). One `new Eta()` instance per track, ALL defaults (autoEscape: true,
+// Eta engine module. One `new Eta()` instance per track, ALL defaults (autoEscape: true,
 // autoTrim: [false, "nl"], varName: "it", default tags and escapeFunction). Templates are
 // registered by name at startup via `eta.loadTemplate("@<id>", src)` (`@` = cached,
 // non-filesystem); the measured render call is `eta.render("@<id>", model)` — Eta's documented
 // cached-template render path. Raw suites use the raw tag `<%~ %>` in the controlled track
-// (idiomatic scalar substitutions use the docs-default `<%= %>`, a byte no-op under Phase 1
-// rule 4); encoded suites use `<%= %>` (default XMLEscape — byte-canonical, N5 identity).
+// (idiomatic scalar substitutions use the docs-default `<%= %>` — a byte no-op, since raw-suite
+// values contain nothing escapable); encoded suites use `<%= %>` (default XMLEscape —
+// byte-canonical, an identity under the gate's N5 entity canonicalization).
 //
-// composed-page (E20/E22) uses Eta's NATIVE layout system in BOTH tracks: the child declares
+// composed-page uses Eta's NATIVE layout system in BOTH tracks: the child declares
 // `<% layout("@shell", it) %>` with the slider markup as its body, and the shell — the full
 // literal page chrome transcribed from the Heddle layout — splices it at `<%~ it.body %>`.
 // The structured nav renders through nested partials (mega_menu → nav_column → nav_section →
 // nav_link) and the inert chrome fragments are per-fragment literal partials mirroring the
-// Heddle chrome-fragments.heddle definition library. fragment-heavy (E20) dispatches four
+// Heddle chrome-fragments.heddle definition library. fragment-heavy dispatches four
 // fragment kinds per row over six partials (card nests badge + price against the row's promo).
 //
 // Exported registry fragment: `tracks[track].eta[workloadId] -> () => string`, merged by
-// src/engines/index.mjs (WI6) into the harness-wide `tracks` / per-track `renderers` tables.
+// src/engines/index.mjs into the harness-wide `tracks` / per-track `renderers` tables.
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
@@ -65,7 +64,7 @@ function readSupportTemplate(track, file) {
 // naming is the convention bench/cold-compile.mjs discovers support templates by:
 // `shared/<name>.partial.eta` / `shared/<name>.layout.eta` registers as `@<name>`.
 const SUPPORT_TEMPLATES = Object.freeze([
-  // composed-page (E20/E22): native-layout shell + nested nav partials + chrome fragments.
+  // composed-page: native-layout shell + nested nav partials + chrome fragments.
   ["@shell", "shell.layout.eta"],
   ["@nav_link", "nav_link.partial.eta"],
   ["@nav_section", "nav_section.partial.eta"],
@@ -81,7 +80,7 @@ const SUPPORT_TEMPLATES = Object.freeze([
   ["@head_scripts", "head_scripts.partial.eta"],
   ["@body_scripts", "body_scripts.partial.eta"],
   ["@body_end_scripts", "body_end_scripts.partial.eta"],
-  // fragment-heavy (E20): six dispatched fragment partials (card nests badge + price).
+  // fragment-heavy: six dispatched fragment partials (card nests badge + price).
   ["@tile", "tile.partial.eta"],
   ["@card", "card.partial.eta"],
   ["@badge", "badge.partial.eta"],

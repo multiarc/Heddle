@@ -5,8 +5,7 @@ using Heddle.Benchmarks.Dotnet.Models;
 namespace Heddle.Benchmarks.Dotnet.Engines
 {
     /// <summary>
-    /// Handlebars.Net twin, all eight workloads (ledger E8; composed-page/fragment-heavy redesigned
-    /// under E20/E22, floors composed per E21).
+    /// Handlebars.Net twin, all eight workloads.
     ///
     /// Raw workloads use triple mustaches (<c>{{{member}}}</c>) so fragments stay unencoded,
     /// matching Heddle's <c>OutputProfile.Text</c>; the encoded workloads use double mustaches and
@@ -18,7 +17,7 @@ namespace Heddle.Benchmarks.Dotnet.Engines
     /// the layout partial emits the live body slot with <c>{{&gt; @partial-block}}</c> — the exact
     /// analogue of Heddle's definition-only layout with <c>@out()</c>. The layout carries the full
     /// literal chrome; the inert chrome fragments and the section defaults are per-fragment
-    /// partials mirroring <c>shared/chrome-fragments.heddle</c> (E22 — no C# tier text), and the nav
+    /// partials mirroring <c>shared/chrome-fragments.heddle</c> (no C# tier text), and the nav
     /// renders through nested partials (<c>mega_menu → nav_column → nav_section → nav_link</c>).
     ///
     /// fragment-heavy dispatches per row over the precomputed booleans with the probe-verified
@@ -37,7 +36,7 @@ namespace Heddle.Benchmarks.Dotnet.Engines
         {
             string Src(string file) => Templates.Load(track, "handlebars", file);
 
-            // ---- composed-page: partial-block layout. E22: the model carries structured nav
+            // ---- composed-page: partial-block layout. The model carries structured nav
             // DATA only — every fragment of literal chrome text is a registered partial
             // (mirroring shared/chrome-fragments.heddle), and the layout partial holds the full chrome
             // with {{> @partial-block}} at the body slot.
@@ -48,7 +47,7 @@ namespace Heddle.Benchmarks.Dotnet.Engines
             composedEnv.RegisterTemplate("socialmeta", Src("shared/socialmeta.hbs"));
             composedEnv.RegisterTemplate("page_scripts", Src("shared/page-scripts.hbs"));
             composedEnv.RegisterTemplate("endpage_scripts", Src("shared/endpage-scripts.hbs"));
-            // Chrome fragments (shared/chrome-fragments.heddle, E22).
+            // Chrome fragments (mirroring shared/chrome-fragments.heddle).
             composedEnv.RegisterTemplate("alert_top", Src("shared/alert-top.hbs"));
             composedEnv.RegisterTemplate("alert_below", Src("shared/alert-below.hbs"));
             composedEnv.RegisterTemplate("secondary_wholesale_menu", Src("shared/secondary-wholesale-menu.hbs"));
@@ -59,7 +58,7 @@ namespace Heddle.Benchmarks.Dotnet.Engines
             composedEnv.RegisterTemplate("head_scripts", Src("shared/head-scripts.hbs"));
             composedEnv.RegisterTemplate("body_scripts", Src("shared/body-scripts.hbs"));
             composedEnv.RegisterTemplate("body_end_scripts", Src("shared/body-end-scripts.hbs"));
-            // Structured nav, rendered through nested partials (workloads.md workload 1).
+            // Structured nav, rendered through nested partials.
             composedEnv.RegisterTemplate("nav_link", Src("shared/nav-link.hbs"));
             composedEnv.RegisterTemplate("nav_section", Src("shared/nav-section.hbs"));
             composedEnv.RegisterTemplate("nav_column", Src("shared/nav-column.hbs"));
@@ -73,7 +72,7 @@ namespace Heddle.Benchmarks.Dotnet.Engines
             };
 
             // ---- fragment-heavy: six partials, per-row {{#if}}/{{else if}} dispatch over the
-            // precomputed kind booleans; card nests badge + price against the row's promo (E20).
+            // precomputed kind booleans; card nests badge + price against the row's promo.
             var fragmentEnv = Handlebars.Create();
             fragmentEnv.RegisterTemplate("tile", Src("shared/tile.hbs"));
             fragmentEnv.RegisterTemplate("card", Src("shared/card.hbs"));
@@ -95,7 +94,7 @@ namespace Heddle.Benchmarks.Dotnet.Engines
             yield return Flat(track, "conditional-heavy", Src("conditional-heavy.hbs"), ConditionalContent.HandlebarsModel());
             // The two encoded workloads configure the five-entity encoder. Handlebars.Net's default
             // leaves ' unescaped and decimal-escapes non-ASCII, both genuine divergences from the
-            // oracle. Configuring the engine is contract v2 D2's preferred remedy -- it removes the
+            // oracle. Configuring the engine is the parity contract's preferred remedy -- it removes the
             // divergence without widening the gate for everyone else.
             yield return Flat(track, "fortunes-encoded", Src("fortunes-encoded.hbs"), FortunesContent.HandlebarsModel(), fiveEntity: true);
             yield return Flat(track, "encoded-loop", Src("encoded-loop.hbs"), EncodedLoopContent.HandlebarsModel(), fiveEntity: true);

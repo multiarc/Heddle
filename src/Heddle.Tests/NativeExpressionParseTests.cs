@@ -9,7 +9,7 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// The executable grammar spec (grammar.md parse corpus P01–P24 / N01–N14): alternative coexistence,
+    /// The executable grammar corpus (parse rows P01–P24 / negative rows N01–N14): alternative coexistence,
     /// AST shape via the public <see cref="ExprNode"/> API, literal typing, and editor-token classification.
     /// </summary>
     public class NativeExpressionParseTests

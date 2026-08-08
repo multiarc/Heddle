@@ -1,7 +1,7 @@
 // aggregate.mjs -- collapse N repeat passes of a bench script into the ecosystem's published
-// artifact, and emit the Phase 4 D13 stability verdict from the same data.
+// artifact, and emit the cross-pass stability verdict from the same data.
 //
-// Why this exists (ledger E6). mitata exposes no per-cell time budget: `B.run()` builds its own
+// Why this exists. mitata exposes no per-cell time budget: `B.run()` builds its own
 // options object internally and `run()` forwards only `throw`, so `min_cpu_time` (642 ms) cannot
 // be raised through the public API. At that budget the JS leg measured 32 cells in 31 s -- about
 // 1 s/cell, against 15-31 s/cell everywhere else. JS therefore spends its share of the uniform
@@ -16,7 +16,7 @@
 // engine-paired groups in protocol order -- because benchmarks/report/consolidate.py asserts
 // that shape (`load_js`).
 //
-// D13 verdict, per cell, on the cross-pass RSD of `avg`: <= 5% verified; 5-10%
+// Stability verdict, per cell, on the cross-pass RSD of `avg`: <= 5% verified; 5-10%
 // verified-with-disclosure (the report must carry the per-cell RSD table); > 10% failed, which
 // exits 1 so no publication can be assembled from the run.
 
@@ -28,11 +28,11 @@ const artifactsDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 
 // Per-script, so two tracks cannot be medianed together; run.sh clears it before a sequence.
 const stabilityDir = (name) => path.join(artifactsDir, "stability", name);
 
-/** D13 thresholds, per cell, on cross-pass RSD of the mitata `avg`. */
+/** Verdict thresholds, per cell, on cross-pass RSD of the mitata `avg`. */
 const RSD_VERIFIED = 5.0;
 const RSD_DISCLOSE = 10.0;
 
-/** D13 names five runs as the floor; E6's budget funds more. Fewer than five is not a verdict. */
+/** Five runs is the protocol floor; the time budget usually funds more. Fewer is not a verdict. */
 const MIN_PASSES = 5;
 
 const die = (message) => {
@@ -75,7 +75,7 @@ const files = dirEntries
 if (files.length < MIN_PASSES) {
   die(
     `found ${files.length} pass artifact(s) under artifacts/stability/${name}/, need at least ${MIN_PASSES} ` +
-      `(Phase 4 D13). Run ./run.sh bench/${name}.mjs --repeat <N> first.`,
+      `for a stability verdict. Run ./run.sh bench/${name}.mjs --repeat <N> first.`,
   );
 }
 
@@ -160,7 +160,7 @@ const fixed = (v, n = 2) => v.toFixed(n);
 const summary = [
   `# JS stability summary — \`${name}\``,
   "",
-  `Phase 4 D13 verdict computed from **${passes.length} consecutive passes** of`,
+  `Stability verdict computed from **${passes.length} consecutive passes** of`,
   `\`bench/${name}.mjs\`, each a separate node process. Thresholds are per cell on the`,
   "cross-pass RSD of mitata's `avg`: ≤ 5% verified; 5–10% publishable but the report must carry",
   "this table; > 10% blocks publication.",
@@ -186,7 +186,7 @@ const summary = [
 ].join("\n");
 writeFileSync(path.join(artifactsDir, `stability-summary-${name}.md`), summary, "utf8");
 
-// D11 requires the human-readable capture and the machine-readable numbers to describe the SAME
+// The human-readable capture and the machine-readable numbers must describe the SAME
 // data, so the published tables and artifacts cannot disagree. Each pass still writes both views
 // of itself (under stability/<name>/run-<k>.txt|.json), but `writeArtifacts` also leaves
 // artifacts/<name>.txt holding the LAST pass while the JSON beside it is now the aggregate.
@@ -194,14 +194,14 @@ writeFileSync(path.join(artifactsDir, `stability-summary-${name}.md`), summary, 
 writeFileSync(
   path.join(artifactsDir, `${name}.txt`),
   [
-    `# ${name} — aggregate of ${passes.length} passes (ledger E6)`,
+    `# ${name} — aggregate of ${passes.length} passes`,
     "#",
     "# This is NOT a single mitata run. The published statistic is the median of the per-pass",
     "# `avg` values and the dispersion is their min…max spread, so the interval below is",
     "# cross-process variation. Each pass's own mitata-format capture and JSON — the two views",
-    `# of one run that D11 requires — are under stability/${name}/run-<k>.txt|.json.`,
+    `# every run must publish — are under stability/${name}/run-<k>.txt|.json.`,
     "#",
-    `# STABILITY: ${verdict} (D13; cross-pass RSD median ${fixed(median(rows.map((r) => r.rsd)))}%, max ${fixed(worst.rsd)}%)`,
+    `# STABILITY: ${verdict} (cross-pass RSD median ${fixed(median(rows.map((r) => r.rsd)))}%, max ${fixed(worst.rsd)}%)`,
     `# Full verdict table: stability-summary-${name}.md`,
     "",
     ...rows.map(

@@ -1,5 +1,6 @@
-//! Tera cold-parse bench (WI7, README D12). Custom main (`harness = false`): calls
-//! `assert_all()` first (cold numbers are also numbers — D11), then times exactly one thing:
+//! Tera cold-parse bench. Custom main (`harness = false`): calls
+//! `assert_all()` first (cold numbers are also numbers — no number without a green gate),
+//! then times exactly one thing:
 //! constructing fresh `Tera` instances and registering the same template sets the three
 //! runtime instances hold (all 21 Tera template files across both tracks — the full parse
 //! set). Reported as "Tera cold parse (all templates)" in the per-ecosystem report section,
@@ -13,10 +14,10 @@ use heddle_bench_rust::engines::{tera_controlled, tera_idiomatic};
 use heddle_bench_rust::gates;
 
 fn main() {
-    // D11: parity before timing — all 32 cells, before any Criterion construction.
+    // Parity before timing — all 32 cells, before any Criterion construction.
     gates::assert_all();
 
-    // D9 config; the trailing `.configure_from_args()` is mandatory and last.
+    // The shared pinned config; the trailing `.configure_from_args()` is mandatory and last.
     let mut criterion = Criterion::default()
         .warm_up_time(Duration::from_secs(5))
         .measurement_time(Duration::from_secs(26))

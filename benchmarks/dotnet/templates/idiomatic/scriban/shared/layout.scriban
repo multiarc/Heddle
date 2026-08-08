@@ -1,12 +1,12 @@
-{{## Idiomatic Scriban -- composed-page layout (phase 9; authoring standard D16).
+{{## Idiomatic Scriban -- composed-page layout.
 
      Patterns followed, from Scriban's own documentation:
        language          https://github.com/scriban/scriban/blob/master/doc/language.md
        builtins/html     https://github.com/scriban/scriban/blob/master/doc/builtins.md#html-functions
        runtime/includes  https://github.com/scriban/scriban/blob/master/doc/runtime.md
 
-     The layout half of the capture-then-include idiom (ledger E20): the full page chrome as
-     literal template text (ledger E22 -- no text lives in the C# tier), the captured
+     The layout half of the capture-then-include idiom: the full page chrome as
+     literal template text (no text lives in the C# tier), the captured
      body_content emitted at the body slot, the inert chrome fragments included from the
      per-fragment partial library, and the structured nav rendered by nested for loops over
      nested partials (mega-menu -> nav-column -> nav-section -> nav-link, scope-shared loop

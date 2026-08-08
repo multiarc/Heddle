@@ -1,8 +1,8 @@
-## Idiomatic Mako composed-page layout (ledger E20/E22): the full literal page chrome
+## Idiomatic Mako composed-page layout: the full literal page chrome
 ## with a live body slot -- the inheriting page's content splices at ${self.body()}.
 ## The inert chrome fragments are <%def>s imported from chrome.mako; the two mega menus
 ## and the footer columns render from the structured nav model through the nav.mako
-## defs inside % for loops. All display text lives in templates (Phase 5 D5, Q1.7).
+## defs inside % for loops. All display text lives in templates.
 ## Docs: https://docs.makotemplates.org/en/latest/inheritance.html
 ##       https://docs.makotemplates.org/en/latest/namespaces.html
 ##       https://docs.makotemplates.org/en/latest/syntax.html#control-structures

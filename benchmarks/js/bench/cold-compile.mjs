@@ -1,36 +1,34 @@
-// Cold-compile bench script — Phase 4 WI6 (spec: README D14, harness-and-run.md §mitata run
-// shape / §Harness layout "cold-compile.mjs ← gate (reuses controlled outputs) → 16 cold
-// benches → artifacts"). Invocation (canonical flags, D11):
+// Cold-compile bench script. Invocation (canonical flags):
 //   node --expose-gc --allow-natives-syntax bench/cold-compile.mjs    (npm run bench:cold)
 //
-// Measures cold compile + first render per controlled template, per engine (D14):
+// Measures cold compile + first render per controlled template, per engine:
 //   - Handlebars: fresh `Handlebars.create()` environment (+ partial registration where the
 //     workload has partials) + `compile(src)` + one render PER ITERATION — the render forces
 //     Handlebars' lazy compile, so pure-compile() timing would be a lie;
 //   - Eta: fresh `new Eta()` (+ `loadTemplate` of the workload's partials, the registration
 //     analogue) + `renderString(src, model)` per iteration — methodologically identical cells.
 // Template sources are read from src/templates/*/controlled/ ONCE at startup; file I/O is
-// never inside a timed body. Per Q1.3 the resulting figures are per-ecosystem only.
+// never inside a timed body. The resulting figures are comparable within this ecosystem only,
+// never across ecosystems.
 //
 // Support templates (partials + layout shells) are DISCOVERED from each engine's controlled
 // track's `shared/` subdirectory (`src/templates/<engine>/controlled/shared/` — only the eight
 // entry templates sit at a track's top level; legacy top-level scan kept as fallback while a
 // track has no `shared/`) by the shared file convention `<name>.partial.<ext>` / `<name>.layout.<ext>`
 // (registered as `<name>` for Handlebars, `@<name>` for Eta — the names the engine modules
-// register). The E20 fragment-heavy partial set ({tile, card, badge, price, media_row, stat})
+// register). The fragment-heavy partial set ({tile, card, badge, price, media_row, stat})
 // belongs to the fragment-heavy cell; every other support template belongs to composed-page
-// (the E20/E22 native-layout shell, nav partials and literal chrome fragments). The pre-E20
-// `area` helper is gone with the model's text blobs (E22: composed-page is pure template
-// composition on every engine — no registered helpers anywhere in the suite).
+// (the native-layout shell, nav partials and literal chrome fragments). No helpers are
+// registered anywhere in the suite: composed-page is pure template composition on every engine.
 //
 // Shape: in-process controlled byte gate (reuses the controlled render tables) over all 16
-// cells BEFORE any bench() registration (failure exits 1 before run(), D10) → the 16 cold
-// benches under group `cold-compile [per-ecosystem]` (harness-and-run.md §mitata run shape),
+// cells BEFORE any bench() registration (failure exits 1 before run()) → the 16 cold
+// benches under group `cold-compile [per-ecosystem]`,
 // bench names `<engine> <workload-id>`, bodies
-// `() => do_not_optimize(flatten(coldRender()))` (D11 as amended, records.md E4 — the compile
-// is only half the cell; without flatten the first render's rope is never materialised) → a
+// `() => do_not_optimize(flatten(coldRender()))` (the compile is only half the cell; without
+// flatten the first render's rope is never materialised) → a
 // SINGLE run() → artifacts/cold-compile.txt + artifacts/cold-compile.json (two views of the
-// same samples) → DEOPT-CHECK trailer over the in-process capture buffer (D12).
+// same samples) → DEOPT-CHECK trailer over the in-process capture buffer.
 //
 // No MATERIALISATION-CHECK here: these cells time compile + first render together, so their
 // implied output throughput is dominated by compilation and the physical ceiling says nothing
@@ -81,9 +79,9 @@ const readControlled = (engine, file) => readFileSync(path.join(templatesDir, en
 const hbsSources = Object.fromEntries(WORKLOAD_IDS.map((id) => [id, readControlled("handlebars", `${id}.hbs`)]));
 const etaSources = Object.fromEntries(WORKLOAD_IDS.map((id) => [id, readControlled("eta", `${id}.eta`)]));
 
-// The fragment-heavy partial family (Phase 1 workloads.md workload 6, E20); every other
-// support template is composed-page's (workload 1, E20/E22). Both dash and underscore
-// spellings of media_row are accepted so either engine's file naming resolves.
+// The fragment-heavy partial family; every other support template is composed-page's. Both
+// dash and underscore spellings of media_row are accepted so either engine's file naming
+// resolves.
 const FRAGMENT_PARTIAL_NAMES = new Set(["tile", "card", "badge", "price", "media_row", "media-row", "stat"]);
 const SUPPORT_FILE = /^(.+)\.(?:partial|layout)\.(?:hbs|eta)$/;
 
@@ -115,7 +113,7 @@ function supportFor(support, id) {
 const hbsSupport = supportTemplates("handlebars");
 const etaSupport = supportTemplates("eta");
 
-/** Handlebars cold closure: fresh environment + registration + compile + one render (D14). */
+/** Handlebars cold closure: fresh environment + registration + compile + one render. */
 function handlebarsCold(id) {
   const src = hbsSources[id];
   const model = MODELS[id];
@@ -127,7 +125,7 @@ function handlebarsCold(id) {
   };
 }
 
-/** Eta cold closure: fresh instance + partial loadTemplate + renderString (D14). */
+/** Eta cold closure: fresh instance + partial loadTemplate + renderString. */
 function etaCold(id) {
   const src = etaSources[id];
   const model = MODELS[id];
@@ -139,11 +137,11 @@ function etaCold(id) {
   };
 }
 
-// ---- gate (D10): reuses the controlled render tables; exits 1 before any registration --------
+// ---- gate: reuses the controlled render tables; exits 1 before any registration --------------
 
 assertControlledGate(tracks.controlled);
 
-// ---- the 16 cold benches, single group (harness-and-run.md §mitata run shape) ----------------
+// ---- the 16 cold benches, single group --------------------------------------------------------
 
 group("cold-compile [per-ecosystem]", () => {
   for (const id of WORKLOAD_IDS) {

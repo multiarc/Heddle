@@ -1,6 +1,6 @@
 <%doc>
 Idiomatic Mako trivial-substitution: plain template, multi-line card,
-${} expression substitution (Phase 5 D5).
+${} expression substitution.
 Doc: https://docs.makotemplates.org/en/latest/syntax.html#expression-substitution
 </%doc>
 <article>

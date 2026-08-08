@@ -1,14 +1,13 @@
-// Idiomatic-track bench script — Phase 4 WI6 (spec: README D9–D12, harness-and-run.md
-// §mitata run shape). Invocation (canonical flags, D11):
+// Idiomatic-track bench script. Invocation (canonical flags):
 //   node --expose-gc --allow-natives-syntax bench/idiomatic.mjs       (npm run bench:idiomatic)
 // Shape: in-process idiomatic verifier (corpus `<id>.verify.json` definitions) over all 16
-// cells BEFORE any bench() registration (failure exits 1 before run(), D10) → one group per
+// cells BEFORE any bench() registration (failure exits 1 before run()) → one group per
 // workload with `handlebars`/`eta` benches, bodies
-// `() => do_not_optimize(flatten(render()))` (D11 as amended, records.md E4) → a
+// `() => do_not_optimize(flatten(render()))` so every rendered rope is materialised → a
 // SINGLE run() → artifacts/idiomatic.txt + artifacts/idiomatic.json (two views of the same
-// samples) → DEOPT-CHECK trailer over the in-process capture buffer (D12) → its
+// samples) → DEOPT-CHECK trailer over the in-process capture buffer → its
 // MATERIALISATION-CHECK companion, which exits 1 if any cell's implied output throughput is
-// physically impossible (E4).
+// physically impossible.
 import { tracks } from "../src/engines/index.mjs";
 import {
   assertIdiomaticGate,
@@ -21,11 +20,11 @@ import {
 
 const renderers = tracks.idiomatic; // per-track render table: renderers.<engine>[id] -> () => string
 
-assertIdiomaticGate(renderers); // exits 1 before any registration on any verifier miss (D10)
+assertIdiomaticGate(renderers); // exits 1 before any registration on any verifier miss
 
 registerTrackGroups("idiomatic", renderers);
 
 const result = await runAndCapture(); // default 'mitata' format → stdout + in-process buffer
 writeArtifacts("idiomatic", result); // JSON: result.benchmarks, BigInt→string replacer
 deoptCheckTrailer(); // scans the in-process capture buffer for '!' → DEOPT-CHECK line
-materialisationCheckTrailer(result); // implied throughput vs the physical ceiling; fatal (E4)
+materialisationCheckTrailer(result); // implied throughput vs the physical ceiling; fatal

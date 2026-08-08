@@ -64,8 +64,8 @@ namespace Heddle.Benchmarks.Dotnet.Engines
             // divergence from the oracle, not something normalization absorbs -- it inflated
             // encoded-loop by 125,000 characters.
             //
-            // Widening the encoder to the full Unicode range is engine CONFIGURATION, which D2
-            // prefers over a normalization carve-out, and is exactly parallel to the
+            // Widening the encoder to the full Unicode range is engine CONFIGURATION, which the
+            // parity contract prefers over a normalization carve-out, and is exactly parallel to the
             // FiveEntityTextEncoder the Handlebars twin configures for the same reason. The five
             // markup characters are still escaped -- the security floor proves it -- and the
             // apostrophe's `&#x27;` spelling is what N5 canonicalizes to `&#39;`.

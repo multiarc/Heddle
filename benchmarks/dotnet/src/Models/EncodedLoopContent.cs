@@ -1,4 +1,4 @@
-// The fixtures every engine renders this workload from (ledger E8).
+// The fixtures every engine renders this workload from.
 //
 // Load-bearing values: the golden corpus is Heddle's render OF THESE, so changing one changes the
 // oracle every ecosystem is gated against. Change them only with a corpus re-export in the same
@@ -14,7 +14,7 @@ using DotLiquid;
 namespace Heddle.Benchmarks.Dotnet.Models
 {
     /// <summary>
-    /// Shared, engine-neutral model for the encoded-loop workload (cross-stack phase 1 WI1):
+    /// Shared, engine-neutral model for the encoded-loop workload:
     /// 5,000 rows with characters from the five-character escapable set in every cell and the
     /// Japanese run <c>こんにちは</c> in every comment, so the escaper both rewrites entities and
     /// scans multi-byte UTF-8 it must pass through. Every per-engine view is materialized once

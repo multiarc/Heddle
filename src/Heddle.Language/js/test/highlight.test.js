@@ -3,8 +3,7 @@
 /*
  * WS2 regression fixtures: per-construct Ace token classification.
  *
- * Each test tokenizes a v2 construct and asserts the produced Ace token class
- * (the §4 "Ace token class" column of docs/archive/ace-v2-migration-plan.md).
+ * Each test tokenizes a v2 construct and asserts the produced Ace token class.
  * Token types are of the form `<state-bucket>.<ace-class>` (e.g.
  * `heddle-call.constant.language`); `aceClass()` strips the leading bucket so
  * fixtures assert on the meaningful Ace scope.
