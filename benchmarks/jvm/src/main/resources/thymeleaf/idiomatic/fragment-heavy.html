@@ -12,16 +12,16 @@
 <div class="panel">
     <th:block th:each="item : ${items}" th:switch="${item.kind}">
         <th:block th:case="'tile'">
-            <section th:replace="~{idiomatic/tile :: tile(${item})}">tile</section>
+            <section th:replace="~{idiomatic/shared/tile :: tile(${item})}">tile</section>
         </th:block>
         <th:block th:case="'card'">
-            <article th:replace="~{idiomatic/card :: card(${item})}">card</article>
+            <article th:replace="~{idiomatic/shared/card :: card(${item})}">card</article>
         </th:block>
         <th:block th:case="'media'">
-            <div th:replace="~{idiomatic/media-row :: media_row(${item})}">media row</div>
+            <div th:replace="~{idiomatic/shared/media-row :: media_row(${item})}">media row</div>
         </th:block>
         <th:block th:case="*">
-            <div th:replace="~{idiomatic/stat :: stat(${item})}">stat</div>
+            <div th:replace="~{idiomatic/shared/stat :: stat(${item})}">stat</div>
         </th:block>
     </th:block>
 </div>

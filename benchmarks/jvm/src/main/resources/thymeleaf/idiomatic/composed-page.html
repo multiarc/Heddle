@@ -10,7 +10,7 @@
   defined as a local fragment — splices where the layout inserts ${bodySlot}
   (ledger E20: native layout mechanism with a live body slot on every engine).
 */-->
-<th:block th:replace="~{idiomatic/layout :: layout(~{:: slider-body})}">
+<th:block th:replace="~{idiomatic/shared/layout :: layout(~{:: slider-body})}">
     <th:block th:fragment="slider-body">
         <div class="slider-wrapper theme-default">
             <div id="slider" class="nivoSlider">

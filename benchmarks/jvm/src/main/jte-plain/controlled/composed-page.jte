@@ -1,5 +1,5 @@
 @param heddle.benchmarks.jvm.model.Models.ComposedModel m
-@template.controlled.layout(m, bodySlot = @`<div class="slider-wrapper theme-default">
+@template.controlled.shared.layout(m, bodySlot = @`<div class="slider-wrapper theme-default">
             <div id="slider" class="nivoSlider">
             </div>
             <div class="home-content">

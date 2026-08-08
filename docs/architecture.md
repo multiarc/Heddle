@@ -220,7 +220,7 @@ structural, not incidental:
   `[MethodImpl(AggressiveInlining)]` transforms, avoiding per‑scope heap allocation as the
   renderer descends into elements and subtemplates.
 - **Composition is near‑free at run time.** Splitting a page into independent reusable templates
-  recombined by a layout (see the benchmark's `@<<{{layout.heddle}}` import + `<body:body>`
+  recombined by a layout (see the benchmark's `@<<{{shared/layout.heddle}}` import + `<body:body>`
   override) renders through one pre‑built extension node per definition invocation — no per‑render
   lookup, activation, or buffer indirection — unlike Razor sections, whose layout/section binding
   adds indirection. See

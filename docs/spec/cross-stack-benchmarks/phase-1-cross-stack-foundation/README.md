@@ -156,7 +156,7 @@ mechanisms and close the spec-territory details the plan delegated.)
 - **Rationale.** Q1.4 resolution verbatim; changing the shape requires an engine change ruled
   out of scope.
 - **Alternatives rejected.** New full-page composition workload (engine change, out of scope);
-  compiling `layout.heddle` as entry point (drops the `<body:body>` override and forces twins to
+  compiling `shared/layout.heddle` as entry point (drops the `<body:body>` override and forces twins to
   embed layout HTML verbatim — parity-drift risk documented in the Runners README).
 - **Grounding.** [Runners README fidelity note + root cause](../../../../benchmarks/dotnet/GoldenCorpus/README.md);
   [open-questions Q1.4](../../../plan/open-questions.md).

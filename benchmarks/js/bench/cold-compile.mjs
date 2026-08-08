@@ -13,7 +13,9 @@
 // never inside a timed body. Per Q1.3 the resulting figures are per-ecosystem only.
 //
 // Support templates (partials + layout shells) are DISCOVERED from each engine's controlled
-// directory by the shared file convention `<name>.partial.<ext>` / `<name>.layout.<ext>`
+// track's `shared/` subdirectory (`src/templates/<engine>/controlled/shared/` — only the eight
+// entry templates sit at a track's top level; legacy top-level scan kept as fallback while a
+// track has no `shared/`) by the shared file convention `<name>.partial.<ext>` / `<name>.layout.<ext>`
 // (registered as `<name>` for Handlebars, `@<name>` for Eta — the names the engine modules
 // register). The E20 fragment-heavy partial set ({tile, card, badge, price, media_row, stat})
 // belongs to the fragment-heavy cell; every other support template belongs to composed-page
@@ -33,7 +35,7 @@
 // No MATERIALISATION-CHECK here: these cells time compile + first render together, so their
 // implied output throughput is dominated by compilation and the physical ceiling says nothing
 // about them. The two track scripts carry that check.
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import Handlebars from "handlebars";
@@ -85,12 +87,20 @@ const etaSources = Object.fromEntries(WORKLOAD_IDS.map((id) => [id, readControll
 const FRAGMENT_PARTIAL_NAMES = new Set(["tile", "card", "badge", "price", "media_row", "media-row", "stat"]);
 const SUPPORT_FILE = /^(.+)\.(?:partial|layout)\.(?:hbs|eta)$/;
 
-/** [{ name, src }] support templates of one engine's controlled dir, by the file convention. */
+/**
+ * [{ name, src }] support templates of one engine's controlled track, by the file convention.
+ * Canonical location is the track's `shared/` subdirectory; when an engine's track has no
+ * `shared/` yet, the legacy top-level scan of the track directory applies (fallback, never
+ * both — `shared/` wins outright when present).
+ */
 function supportTemplates(engine) {
+  const trackDir = path.join(templatesDir, engine, "controlled");
+  const sharedDir = path.join(trackDir, "shared");
+  const scanDir = existsSync(sharedDir) ? sharedDir : trackDir;
   const support = [];
-  for (const file of readdirSync(path.join(templatesDir, engine, "controlled")).sort()) {
+  for (const file of readdirSync(scanDir).sort()) {
     const match = SUPPORT_FILE.exec(file);
-    if (match) support.push({ name: match[1], src: readControlled(engine, file) });
+    if (match) support.push({ name: match[1], src: readFileSync(path.join(scanDir, file), "utf8") });
   }
   return support;
 }

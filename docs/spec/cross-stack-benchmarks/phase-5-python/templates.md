@@ -18,7 +18,8 @@ byte on its line.
 
 ```
 benchmarks/python/templates/                        (landed E20/E22 port layout, 2026-08-08)
-  jinja2/controlled/   the eight <id>.jinja workload templates + layout.jinja
+  jinja2/controlled/   the eight <id>.jinja workload templates (top level = entries only);
+                       every non-entry lives in shared/ (21 files): layout.jinja
                        + the ten chrome-fragment includes (alert-top, alert-below,
                          secondary-wholesale-menu, secondary-retail-menu, assets-styles,
                          assets-scripts, custom-styles, head-scripts, body-scripts,
@@ -28,16 +29,19 @@ benchmarks/python/templates/                        (landed E20/E22 port layout,
                          nav-link .jinja)
                        + the six fragment-heavy partials (tile, card, badge, price,
                          media-row, stat .jinja)
-  jinja2/idiomatic/    same eight ids + layout.jinja + the chrome includes
+  jinja2/idiomatic/    same eight entry ids at the top level; shared/ (18 files):
+                       layout.jinja + the chrome includes
                        + nav.jinja (the nav MACRO library) + the six fragment macro files;
                        fortunes-encoded.html  encoded-loop.html (the .html-named encoded
-                       pair — select_autoescape); NO base.jinja (idiomatic mixed-page is
-                       single-file, E20)
-  mako/controlled/     the eight <id>.mako + layout.mako + chrome-*.mako per-fragment
+                       entry pair — select_autoescape); NO base.jinja (idiomatic mixed-page
+                       is single-file, E20)
+  mako/controlled/     the eight <id>.mako entries at the top level; shared/ (21 files):
+                       layout.mako + chrome-*.mako per-fragment
                        includes + nav-mega-menu/nav-column/nav-section/nav-link.mako
                        + the six fragment partials (tile, card, badge, price, media-row,
                          stat .mako)
-  mako/idiomatic/      the eight <id>.mako + layout.mako + the <%def> libraries
+  mako/idiomatic/      the eight <id>.mako entries at the top level; shared/ (4 files):
+                       layout.mako + the <%def> libraries
                        chrome.mako / nav.mako / fragments.mako; NO base.mako
 ```
 
@@ -86,16 +90,16 @@ and encoded engine objects.
 Jinja2 `composed-page.jinja` — genuine inheritance with a **live block**:
 
 ```jinja
-{% extends "layout.jinja" %}
+{% extends "shared/layout.jinja" %}
 {% block content %}…the slider markup, transcribed from home.heddle…{% endblock %}
 ```
 
-Jinja2 `layout.jinja` (~128 lines): the full literal chrome, with the overridable
+Jinja2 `shared/layout.jinja` (~128 lines): the full literal chrome, with the overridable
 section-default blocks (`{% block meta %}<title>Title</title>{% endblock %}`,
-`{% block socialmeta %}…{% endblock %}`), ten `{% include "<fragment>.jinja" %}` sites for
+`{% block socialmeta %}…{% endblock %}`), ten `{% include "shared/<fragment>.jinja" %}` sites for
 the chrome fragments (`alert-below.jinja` is the zero-byte pinned-empty fragment), the nav
-include chain — `{% for menu in nav.menus %}{% include "mega-menu.jinja" %}{% endfor %}` at
-the mega-menu site and `{% for column in nav.footer_columns %}{% include "nav-column.jinja" %}{% endfor %}`
+include chain — `{% for menu in nav.menus %}{% include "shared/mega-menu.jinja" %}{% endfor %}` at
+the mega-menu site and `{% for column in nav.footer_columns %}{% include "shared/nav-column.jinja" %}{% endfor %}`
 in the footer, with `mega-menu → nav-column → nav-section → nav-link` each including the next
 (includes share the active context, so the loop variable is visible in the partial — the
 probe-H mechanism) — and `{% block content %}{% endblock %}` at the body-slot position.
@@ -103,11 +107,11 @@ probe-H mechanism) — and `{% block content %}{% endblock %}` at the body-slot 
 Mako `composed-page.mako` — native inheritance:
 
 ```mako
-<%inherit file="layout.mako"/>\
+<%inherit file="shared/layout.mako"/>\
 …the slider markup…
 ```
 
-Mako `layout.mako` (~130 lines): the full literal chrome with `${self.body()}` at the
+Mako `shared/layout.mako` (~130 lines): the full literal chrome with `${self.body()}` at the
 body-slot position (the inheriting page's content splices there), the section defaults inline
 literal text (Mako blocks are not used on the controlled track), ten
 `<%include file="chrome-<fragment>.mako"/>` sites for the per-fragment chrome includes, and
@@ -117,6 +121,9 @@ local, not a context member — probe H):
 `<%include file="nav-column.mako" args="column=column"/>`, with
 `nav-mega-menu → nav-column → nav-section → nav-link` each passing its node down via
 `args=`, and each nav partial opening with the matching `<%page args="…"/>`.
+(Mako URI rule: relative URIs resolve against the calling template's directory, so
+entry→shared references are `shared/`-prefixed while shared→shared sibling references
+stay plain — the includes inside `shared/layout.mako` above are unprefixed for that reason.)
 
 ### Workload 2 — `trivial-substitution`
 
@@ -134,8 +141,9 @@ Mako `trivial-substitution.mako`: the same literal with each `{{ x }}` replaced 
 ### Workload 3 — `large-loop`
 
 Jinja2 `large-loop.jinja` (the
-[LoopLiquidTemplates.cs](../../../../benchmarks/dotnet/templates/controlled/liquid/large-loop.liquid)
-text, itself valid Jinja2):
+[LoopLiquidTemplates.cs](../../../../benchmarks/dotnet/templates/controlled/liquid/large-loop.fluid.liquid)
+text — the .NET Liquid entry, now dialect-suffixed, identical in both dialect copies —
+itself valid Jinja2):
 
 ```jinja
 {% for item in items %}<tr><td>row-{{ item.value }}</td><td>{{ item.value }}</td></tr>{% endfor %}
@@ -248,7 +256,7 @@ Jinja2 `fragment-heavy.jinja` — include shares the active context, so the loop
 is visible in the partials (probe H, byte-exact):
 
 ```jinja
-<div class="panel">{% for item in items %}{% if item.is_tile %}{% include "tile.jinja" %}{% elif item.is_card %}{% include "card.jinja" %}{% elif item.is_media %}{% include "media-row.jinja" %}{% else %}{% include "stat.jinja" %}{% endif %}{% endfor %}</div>
+<div class="panel">{% for item in items %}{% if item.is_tile %}{% include "shared/tile.jinja" %}{% elif item.is_card %}{% include "shared/card.jinja" %}{% elif item.is_media %}{% include "shared/media-row.jinja" %}{% else %}{% include "shared/stat.jinja" %}{% endif %}{% endfor %}</div>
 ```
 
 The Jinja2 partials (the card's badge/price includes read `item.promo.*` through the shared
@@ -258,7 +266,7 @@ context; the media caption, image source and `.99` display price are template-co
 tile.jinja:      <section class="tile"><h3>{{ item.name }}</h3><p class="v">{{ item.value }}</p><span class="badge">{{ item.badge }}</span></section>
 badge.jinja:     <span class="promo-badge">{{ item.promo.label }}</span>
 price.jinja:     <p class="price">{{ item.promo.price }}.99</p>
-card.jinja:      <article class="card"><h3>{{ item.name }}</h3>{% include "badge.jinja" %}{% include "price.jinja" %}<p class="v">{{ item.value }}</p></article>
+card.jinja:      <article class="card"><h3>{{ item.name }}</h3>{% include "shared/badge.jinja" %}{% include "shared/price.jinja" %}<p class="v">{{ item.value }}</p></article>
 media-row.jinja: <div class="media-row"><img src="/img/{{ item.name }}.jpg" alt="{{ item.name }}" /><div class="media-body"><h4>{{ item.name }}</h4><p>Caption for {{ item.name }}</p></div></div>
 stat.jinja:      <div class="stat"><span class="stat-name">{{ item.name }}</span><span class="stat-value">{{ item.value }}</span><span class="stat-delta">{{ item.delta }}</span></div>
 ```
@@ -273,13 +281,13 @@ each partial opens with `<%page args="…"/>`:
 <div class="panel">\
 % for item in items:
 % if item["is_tile"]:
-<%include file="tile.mako" args="item=item"/>\
+<%include file="shared/tile.mako" args="item=item"/>\
 % elif item["is_card"]:
-<%include file="card.mako" args="item=item"/>\
+<%include file="shared/card.mako" args="item=item"/>\
 % elif item["is_media"]:
-<%include file="media-row.mako" args="item=item"/>\
+<%include file="shared/media-row.mako" args="item=item"/>\
 % else:
-<%include file="stat.mako" args="item=item"/>\
+<%include file="shared/stat.mako" args="item=item"/>\
 % endif
 % endfor
 </div>
@@ -365,12 +373,12 @@ authoring standard:
 
 | Workload | Jinja2 idiomatic construct | Jinja2 doc cited | Mako idiomatic construct | Mako doc cited |
 |---|---|---|---|---|
-| composed-page | `layout.jinja` carries the full literal chrome, section-default blocks, per-fragment chrome includes, the nav rendered through `mega_menu`/`nav_column` macros imported from `nav.jinja` (the macro library — the four nested nav fragments as macros taking their model node explicitly), and a live `{% block content %}`; `composed-page.jinja` extends it and fills the block with the slider | [Template inheritance](https://jinja.palletsprojects.com/en/stable/templates/#template-inheritance), [Macros](https://jinja.palletsprojects.com/en/stable/templates/#macros), [Import](https://jinja.palletsprojects.com/en/stable/templates/#import) | `layout.mako` carries the full chrome with `${self.body()}` as the live body slot, the chrome fragments as `<%def>`s imported from `chrome.mako`, the nav through the `nav.mako` `<%def>` library inside `% for` loops; `composed-page.mako` opens with `<%inherit file="layout.mako"/>` and its body is the slider | [Inheritance](https://docs.makotemplates.org/en/latest/inheritance.html), [Defs](https://docs.makotemplates.org/en/latest/defs.html), [Namespaces](https://docs.makotemplates.org/en/latest/namespaces.html) |
+| composed-page | `shared/layout.jinja` carries the full literal chrome, section-default blocks, per-fragment chrome includes, the nav rendered through `mega_menu`/`nav_column` macros imported from `shared/nav.jinja` (the macro library — the four nested nav fragments as macros taking their model node explicitly), and a live `{% block content %}`; `composed-page.jinja` extends it and fills the block with the slider | [Template inheritance](https://jinja.palletsprojects.com/en/stable/templates/#template-inheritance), [Macros](https://jinja.palletsprojects.com/en/stable/templates/#macros), [Import](https://jinja.palletsprojects.com/en/stable/templates/#import) | `shared/layout.mako` carries the full chrome with `${self.body()}` as the live body slot, the chrome fragments as `<%def>`s imported from `chrome.mako`, the nav through the `nav.mako` `<%def>` library inside `% for` loops (shared→shared sibling URIs stay plain); `composed-page.mako` opens with `<%inherit file="shared/layout.mako"/>` and its body is the slider | [Inheritance](https://docs.makotemplates.org/en/latest/inheritance.html), [Defs](https://docs.makotemplates.org/en/latest/defs.html), [Namespaces](https://docs.makotemplates.org/en/latest/namespaces.html) |
 | trivial-substitution | plain template, multi-line card | [Variables](https://jinja.palletsprojects.com/en/stable/templates/#variables) | plain template, `${x}` expressions | [Expression substitution](https://docs.makotemplates.org/en/latest/syntax.html#expression-substitution) |
 | large-loop | `{% for %}` over `items`, one row per source line | [For](https://jinja.palletsprojects.com/en/stable/templates/#for) | `% for` control lines | [Control structures](https://docs.makotemplates.org/en/latest/syntax.html#control-structures) |
 | mixed-page | **single-file** (workloads.md idiomatic mixed-page rule, added E20: layout composition is composed-page's dimension — `base.jinja` is deleted); full skeleton inline, loop + `{% if %}` indented naturally | [For](https://jinja.palletsprojects.com/en/stable/templates/#for), [If](https://jinja.palletsprojects.com/en/stable/templates/#if) | **single-file** (`base.mako` deleted, same rule); `%` control lines inline | [Control structures](https://docs.makotemplates.org/en/latest/syntax.html#control-structures) |
 | conditional-heavy | `{% if %}/{% elif %}/{% else %}` chain inside `{% for %}`, indented | [If](https://jinja.palletsprojects.com/en/stable/templates/#if) | `% if/% elif/% else` control lines | [Control structures](https://docs.makotemplates.org/en/latest/syntax.html#control-structures) |
-| fragment-heavy | each of the four kinds is a macro in its own partial file (`{% macro tile(item) %}` …); main imports via `{% from "tile.jinja" import tile %}` etc. and dispatches with the `{% if %}/{% elif %}` chain, calling `{{ tile(item) }}`; the card macro nests the badge/price sub-macros against `item.promo` (E20) | [Macros](https://jinja.palletsprojects.com/en/stable/templates/#macros), [Import](https://jinja.palletsprojects.com/en/stable/templates/#import), [If](https://jinja.palletsprojects.com/en/stable/templates/#if) | the per-kind `<%def>`s live in `fragments.mako`; main imports via `<%namespace file="fragments.mako" import="tile, card, media_row, stat"/>` and dispatches with `% if/% elif` control lines calling `${tile(item)}` etc.; card nests badge/price defs (E20) | [Defs](https://docs.makotemplates.org/en/latest/defs.html), [Namespaces](https://docs.makotemplates.org/en/latest/namespaces.html), [Control structures](https://docs.makotemplates.org/en/latest/syntax.html#control-structures) |
+| fragment-heavy | each of the four kinds is a macro in its own partial file (`{% macro tile(item) %}` …); main imports via `{% from "shared/tile.jinja" import tile %}` etc. and dispatches with the `{% if %}/{% elif %}` chain, calling `{{ tile(item) }}`; the card macro nests the badge/price sub-macros against `item.promo` (E20) | [Macros](https://jinja.palletsprojects.com/en/stable/templates/#macros), [Import](https://jinja.palletsprojects.com/en/stable/templates/#import), [If](https://jinja.palletsprojects.com/en/stable/templates/#if) | the per-kind `<%def>`s live in `shared/fragments.mako`; main imports via `<%namespace file="shared/fragments.mako" import="tile, card, media_row, stat"/>` and dispatches with `% if/% elif` control lines calling `${tile(item)}` etc.; card nests badge/price defs (E20) | [Defs](https://docs.makotemplates.org/en/latest/defs.html), [Namespaces](https://docs.makotemplates.org/en/latest/namespaces.html), [Control structures](https://docs.makotemplates.org/en/latest/syntax.html#control-structures) |
 | fortunes-encoded | `.html` template; escaping via the environment's `select_autoescape()` | [Autoescaping](https://jinja.palletsprojects.com/en/stable/api/#autoescaping) | `<%page expression_filter="h"/>` at the top of the template | [Filtering — expression_filter](https://docs.makotemplates.org/en/latest/filtering.html) |
 | encoded-loop | `.html` template; same environment | same | same directive | same |
 

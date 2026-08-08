@@ -12,10 +12,10 @@
 @{ Layout = null; }
 <div class="panel">@foreach (var item in Model.Items)
 {if (item.IsTile)
-    {@await Html.PartialAsync("/Views/tile.cshtml", item)}
+    {@await Html.PartialAsync("/Views/Shared/tile.cshtml", item)}
     else if (item.IsCard)
-    {@await Html.PartialAsync("/Views/card.cshtml", item)}
+    {@await Html.PartialAsync("/Views/Shared/card.cshtml", item)}
     else if (item.IsMedia)
-    {@await Html.PartialAsync("/Views/media-row.cshtml", item)}
+    {@await Html.PartialAsync("/Views/Shared/media-row.cshtml", item)}
     else
-    {@await Html.PartialAsync("/Views/stat.cshtml", item)}}</div>
+    {@await Html.PartialAsync("/Views/Shared/stat.cshtml", item)}}</div>

@@ -46,10 +46,12 @@ namespace Heddle.Benchmarks.Dotnet.Engines
             // includes through a process-wide static. Every include target of the redesigned
             // workloads is registered here: the layout, its chrome-fragment partials and the nested
             // nav partial chain (composed-page, E20/E22), and the six fragment partials
-            // (fragment-heavy, E20).
+            // (fragment-heavy, E20). Non-entry templates live under liquid/shared/; the registry
+            // key stays the bare logical name, so {% include 'name' %} in the templates is
+            // untouched by the on-disk layout.
             var partials = new Dictionary<string, string>();
             foreach (var name in PartialNames)
-                partials[track + "/" + name] = Src(name + ".dotliquid.liquid");
+                partials[track + "/" + name] = Src("shared/" + name + ".dotliquid.liquid");
             InstallFileSystem(partials);
 
             // ---- composed-page: {% capture body_content %}…{% endcapture %}{% include 'layout' %}

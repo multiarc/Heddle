@@ -3,7 +3,7 @@
   Idiomatic jte authoring (Q1.7/D7) — official doc citations:
   https://jte.gg/syntax/#content (content blocks: `bodySlot = @`...`` passes the page
       body as a gg.jte.Content parameter — the native jte layout mechanism)
-  https://jte.gg/syntax/ (template calls: @template.idiomatic.layout)
+  https://jte.gg/syntax/ (template calls: @template.idiomatic.shared.layout)
   https://jte.gg/pre-compiling/ (precompiled engine setup)
 
   Native full-page layout composition (ledger E20, workloads.md workload 1): the page
@@ -11,7 +11,7 @@
   carry the SAME slider body — the verifier's removed-segment calibration pin is the
   slider, so an empty body fails.
 --%>
-@template.idiomatic.layout(m, bodySlot = @`
+@template.idiomatic.shared.layout(m, bodySlot = @`
     <div class="slider-wrapper theme-default">
         <div id="slider" class="nivoSlider">
         </div>

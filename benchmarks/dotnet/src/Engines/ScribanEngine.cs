@@ -33,21 +33,21 @@ namespace Heddle.Benchmarks.Dotnet.Engines
             // twin's shared/chrome-fragments.heddle) and the nested nav partials.
             var composedLoader = new NamedLoader(new Dictionary<string, string>
             {
-                ["layout"] = Src("layout.scriban"),
-                ["alert-top"] = Src("alert-top.scriban"),
-                ["secondary-wholesale-menu"] = Src("secondary-wholesale-menu.scriban"),
-                ["secondary-retail-menu"] = Src("secondary-retail-menu.scriban"),
-                ["alert-below"] = Src("alert-below.scriban"),
-                ["assets-styles"] = Src("assets-styles.scriban"),
-                ["assets-scripts"] = Src("assets-scripts.scriban"),
-                ["custom-styles"] = Src("custom-styles.scriban"),
-                ["head-scripts"] = Src("head-scripts.scriban"),
-                ["body-scripts"] = Src("body-scripts.scriban"),
-                ["body-end-scripts"] = Src("body-end-scripts.scriban"),
-                ["mega-menu"] = Src("mega-menu.scriban"),
-                ["nav-column"] = Src("nav-column.scriban"),
-                ["nav-section"] = Src("nav-section.scriban"),
-                ["nav-link"] = Src("nav-link.scriban"),
+                ["layout"] = Src("shared/layout.scriban"),
+                ["alert-top"] = Src("shared/alert-top.scriban"),
+                ["secondary-wholesale-menu"] = Src("shared/secondary-wholesale-menu.scriban"),
+                ["secondary-retail-menu"] = Src("shared/secondary-retail-menu.scriban"),
+                ["alert-below"] = Src("shared/alert-below.scriban"),
+                ["assets-styles"] = Src("shared/assets-styles.scriban"),
+                ["assets-scripts"] = Src("shared/assets-scripts.scriban"),
+                ["custom-styles"] = Src("shared/custom-styles.scriban"),
+                ["head-scripts"] = Src("shared/head-scripts.scriban"),
+                ["body-scripts"] = Src("shared/body-scripts.scriban"),
+                ["body-end-scripts"] = Src("shared/body-end-scripts.scriban"),
+                ["mega-menu"] = Src("shared/mega-menu.scriban"),
+                ["nav-column"] = Src("shared/nav-column.scriban"),
+                ["nav-section"] = Src("shared/nav-section.scriban"),
+                ["nav-link"] = Src("shared/nav-link.scriban"),
             });
             var composed = Template.Parse(Src("composed-page.scriban"));
             yield return new Cell
@@ -69,12 +69,12 @@ namespace Heddle.Benchmarks.Dotnet.Engines
             // against the row's promo — the one nesting level.
             var fragmentLoader = new NamedLoader(new Dictionary<string, string>
             {
-                ["tile"] = Src("tile.scriban"),
-                ["card"] = Src("card.scriban"),
-                ["badge"] = Src("badge.scriban"),
-                ["price"] = Src("price.scriban"),
-                ["media-row"] = Src("media-row.scriban"),
-                ["stat"] = Src("stat.scriban"),
+                ["tile"] = Src("shared/tile.scriban"),
+                ["card"] = Src("shared/card.scriban"),
+                ["badge"] = Src("shared/badge.scriban"),
+                ["price"] = Src("shared/price.scriban"),
+                ["media-row"] = Src("shared/media-row.scriban"),
+                ["stat"] = Src("shared/stat.scriban"),
             });
             yield return Flat(track, "fragment-heavy", Src("fragment-heavy.scriban"),
                 FragmentContent.LiquidModel(), fragmentLoader);

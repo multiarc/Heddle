@@ -20,12 +20,12 @@ unescaped `[(...)]`/`th:utext`, encoded via escaped `[[...]]`/`th:text`.
 
 | # | Workload | JTE controlled | JTE idiomatic | Thymeleaf controlled | Thymeleaf idiomatic |
 |---|---|---|---|---|---|
-| 1 | composed-page | `@template.controlled.layout(m, bodySlot = @`…`)` — layout takes `gg.jte.Content bodySlot`, renders `${bodySlot}` at the slot; nav via `@for` + megamenu/navcolumn/navsection/navlink sub-templates; chrome as per-fragment sub-templates (Plain; E20/E22) | same constructs, `@template.idiomatic.*`, multi-line (Plain) | parameterized fragment `layout(~{:: slider-body})` + `th:replace="${bodySlot}"` slot + chrome-fragment library + nested nav fragments — feasibility rung 8 re-run 2026-08-08, byte gate green (B10/B2b recorded) | natural layout: parameterized fragment + `th:each`/`th:replace` on elements |
+| 1 | composed-page | `@template.controlled.shared.layout(m, bodySlot = @`…`)` — layout takes `gg.jte.Content bodySlot`, renders `${bodySlot}` at the slot; nav via `@for` + megamenu/navcolumn/navsection/navlink sub-templates; chrome as per-fragment sub-templates (Plain; E20/E22) | same constructs, `@template.idiomatic.shared.*`, multi-line (Plain) | parameterized fragment `layout(~{:: slider-body})` + `th:replace="${bodySlot}"` slot + chrome-fragment library + nested nav fragments — feasibility rung 8 re-run 2026-08-08, byte gate green (B10/B2b recorded) | natural layout: parameterized fragment + `th:each`/`th:replace` on elements |
 | 2 | trivial-substitution | `${...}` × 10 (Plain) | same, multi-line | literal tags + `[(...)]` text; `th:attr` for `href`/`src` — rung 1 | `th:utext`/`th:href`-style attrs on elements |
 | 3 | large-loop | `@for` + `${...}` (Plain) | same, multi-line | `th:block th:each` + `[(...)]` — rung 3 | `th:each` on `<tr>`, `th:utext` on `<td>` |
 | 4 | mixed-page | `@if` + `@for` + nested `@if` (Plain) | same, multi-line | `th:block th:if`/`th:each` + `[(...)]` — rung 5 | `th:if`/`th:each` on elements, `th:utext` |
 | 5 | conditional-heavy | `@if/@elseif/@else` chain + two `@if` (Plain) | same, multi-line | `th:block th:switch`/`th:case`/`*` + `th:block th:if` — rung 4 | `th:switch`/`th:case` on `<span>`s, `th:if` on elements |
-| 6 | fragment-heavy | `@if(item.isTile())…@elseif…@else` boolean chain dispatching `@template.controlled.{tile,card,media_row→mediarow,stat}(item)` over six sub-templates; card nests badge + price against `getPromo()` (Plain; E20) | same chain, `@template.idiomatic.*`, multi-line | `th:switch="${true}"` over the boolean `th:case`s, each arm `th:replace`-ing its kind fragment — rung 6 (E20) | `th:switch` on `${item.kind}` with string `th:case`s (the documented native switch — workloads.md idiomatic allowance) |
+| 6 | fragment-heavy | `@if(item.isTile())…@elseif…@else` boolean chain dispatching `@template.controlled.shared.{tile,card,media_row→mediarow,stat}(item)` over six sub-templates; card nests badge + price against `getPromo()` (Plain; E20) | same chain, `@template.idiomatic.shared.*`, multi-line | `th:switch="${true}"` over the boolean `th:case`s, each arm `th:replace`-ing its kind fragment — rung 6 (E20) | `th:switch` on `${item.kind}` with string `th:case`s (the documented native switch — workloads.md idiomatic allowance) |
 | 7 | fortunes-encoded | `${...}` under `FiveEntityHtmlOutput` (Html, [D4](README.md#d4--jte-controlled-encoded-suite-renders-through-a-custom-fiveentityhtmloutput)) | `${...}` under stock OWASP output (Html; verifier per [D6](README.md#d6--jte-idiomatic-encoded-cells-need-a-verifier-needle-amendment-erratum-not-local-patch) amendment) | `[[...]]` escaped inlining — rung 2 | `th:text` on `<td>` elements |
 | 8 | encoded-loop | `${...}` text + attribute under `FiveEntityHtmlOutput` (Html) | stock OWASP output (Html; D6) | `[[...]]` text + `th:attr` attribute — rung 7 | `th:text` + `th:attr` on elements |
 
@@ -82,6 +82,10 @@ idiomatic templates are multi-line with a header comment citing jte.gg doc pages
 `M` below abbreviates `heddle.benchmarks.jvm.model.Models`.
 
 ### Controlled — raw suite (`jte-plain/controlled/`)
+
+Entry templates sit at the top of the track folder; every sub-template (layout, chrome,
+nav, fragment kinds) lives in the `shared` sub-package (`jte-plain/controlled/shared/`),
+called as `@template.controlled.shared.<name>(…)`.
 
 `trivial-substitution.jte`:
 
@@ -149,14 +153,14 @@ row's promo):
 
 ```jte
 @param java.util.List<heddle.benchmarks.jvm.model.Models.FragmentRow> items
-<div class="panel">@for(var item : items)@if(item.isTile())@template.controlled.tile(item)@elseif(item.isCard())@template.controlled.card(item)@elseif(item.isMedia())@template.controlled.mediarow(item)@else@template.controlled.stat(item)@endif@endfor</div>
+<div class="panel">@for(var item : items)@if(item.isTile())@template.controlled.shared.tile(item)@elseif(item.isCard())@template.controlled.shared.card(item)@elseif(item.isMedia())@template.controlled.shared.mediarow(item)@else@template.controlled.shared.stat(item)@endif@endfor</div>
 ```
 
 ```jte
 tile.jte:     <section class="tile"><h3>${row.getName()}</h3><p class="v">${row.getValue()}</p><span class="badge">${row.getBadge()}</span></section>
 badge.jte:    <span class="promo-badge">${p.getLabel()}</span>
 price.jte:    <p class="price">${p.getPrice()}.99</p>
-card.jte:     <article class="card"><h3>${row.getName()}</h3>@template.controlled.badge(row.getPromo())@template.controlled.price(row.getPromo())<p class="v">${row.getValue()}</p></article>
+card.jte:     <article class="card"><h3>${row.getName()}</h3>@template.controlled.shared.badge(row.getPromo())@template.controlled.shared.price(row.getPromo())<p class="v">${row.getValue()}</p></article>
 mediarow.jte: <div class="media-row"><img src="/img/${row.getName()}.jpg" alt="${row.getName()}" /><div class="media-body"><h4>${row.getName()}</h4><p>Caption for ${row.getName()}</p></div></div>
 stat.jte:     <div class="stat"><span class="stat-name">${row.getName()}</span><span class="stat-value">${row.getValue()}</span><span class="stat-delta">${row.getDelta()}</span></div>
 ```
@@ -166,12 +170,12 @@ price are template-composed — E21.)
 
 `composed-page.jte` + `layout.jte` (E20/E22 landed form — native layout with a live body
 slot): `composed-page.jte` passes the slider markup as a **content block** —
-`@template.controlled.layout(m, bodySlot = @`…slider markup…`)` — and `layout.jte` declares
+`@template.controlled.shared.layout(m, bodySlot = @`…slider markup…`)` — and `layout.jte` declares
 `@param heddle.benchmarks.jvm.model.Models.ComposedModel m` + `@param gg.jte.Content
 bodySlot`, carries the full literal chrome (section defaults inlined — JTE has no
 overridable-block mechanism, so `<title>Title</title>`/socialmeta are literal text and the
 empty `page_scripts`/`endpage_scripts` defaults are simply absent), calls the per-fragment
-chrome sub-templates (`@template.controlled.assetsstyles()`, `…alerttop()`,
+chrome sub-templates (`@template.controlled.shared.assetsstyles()`, `…alerttop()`,
 `…secondarywholesalemenu()`, `…secondaryretailmenu()`, `…alertbelow()`, `…customstyles()`,
 `…headscripts()`, `…bodyscripts()`, `…assetsscripts()`, `…bodyendscripts()`) at their chrome
 positions, renders the nav through `@for` + the nested `megamenu`/`navcolumn`/`navsection`/
@@ -200,6 +204,8 @@ Rendered through `FiveEntityHtmlOutput` (D4).
 
 ### Idiomatic (`jte-plain/idiomatic/`, `jte-html/idiomatic/`)
 
+Same entries-at-top/`shared` sub-package split as the controlled tree
+(`@template.idiomatic.shared.<name>(…)` for sub-templates).
 Same constructs and the same model access, authored the way jte's documentation writes
 templates — multi-line, indented, control structures on their own lines (output-layout freedom
 is what the verifier-not-byte gate buys) — rendered through the **stock** engine
@@ -268,7 +274,7 @@ evaluation chain; the tier booleans are mutually exclusive by construction.)
 ```
 
 ```html
-<div class="panel"><th:block th:each="item : ${items}"><th:block th:switch="${true}"><th:block th:case="${item.tile}"><th:block th:replace="~{controlled/tile :: tile(${item})}"/></th:block><th:block th:case="${item.card}"><th:block th:replace="~{controlled/card :: card(${item})}"/></th:block><th:block th:case="${item.media}"><th:block th:replace="~{controlled/media-row :: media_row(${item})}"/></th:block><th:block th:case="*"><th:block th:replace="~{controlled/stat :: stat(${item})}"/></th:block></th:block></th:block></div>
+<div class="panel"><th:block th:each="item : ${items}"><th:block th:switch="${true}"><th:block th:case="${item.tile}"><th:block th:replace="~{controlled/shared/tile :: tile(${item})}"/></th:block><th:block th:case="${item.card}"><th:block th:replace="~{controlled/shared/card :: card(${item})}"/></th:block><th:block th:case="${item.media}"><th:block th:replace="~{controlled/shared/media-row :: media_row(${item})}"/></th:block><th:block th:case="*"><th:block th:replace="~{controlled/shared/stat :: stat(${item})}"/></th:block></th:block></th:block></div>
 ```
 
 (the boolean `th:switch="${true}"` chain — the conditional-heavy rung-4 pattern — is the
@@ -276,7 +282,7 @@ controlled dispatch; the idiomatic track switches on `${item.kind}` with string 
 
 `composed-page.html` + `layout.html` + `chrome-fragments.html` (rung 8 re-run 2026-08-08 —
 E20/E22 landed form, byte gate green): `composed-page.html` is
-`<th:block th:replace="~{controlled/layout :: layout(~{:: slider-body})}">` wrapping a
+`<th:block th:replace="~{controlled/shared/layout :: layout(~{:: slider-body})}">` wrapping a
 `<th:block th:fragment="slider-body">…slider markup…</th:block>`; `layout.html` carries the
 section-default fragments (`meta_section` — renamed from `meta` per divergence class **B10**,
 a fragment selector also matches literal `<meta>` elements by tag name — `socialmeta`, empty
@@ -318,7 +324,7 @@ themselves, prototype body text inside `th:text`/`th:utext` elements. Representa
 - iteration: `<tr th:each="r : ${rows}">…</tr>`;
 - condition: `<p class="sale" th:if="${p.onSale}">On sale</p>`;
 - tier chain: `th:switch`/`th:case` on the `<span>` elements inside a `<li th:each=…>`;
-- partial: `<div th:replace="~{idiomatic/tile :: tile(${item})}"></div>`;
+- partial: `<div th:replace="~{idiomatic/shared/tile :: tile(${item})}"></div>`;
 - attribute: `<td th:attr="data-tag=${item.tag}" th:text="${item.name}">item</td>`.
 
 The idiomatic gate is the verifier alone; output layout, extra whitespace, and the `xmlns:th`

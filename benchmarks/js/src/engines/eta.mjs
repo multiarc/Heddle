@@ -56,9 +56,14 @@ function readTemplate(track, file) {
   return readFileSync(path.join(templatesDir, track, file), "utf8");
 }
 
-// Support templates (partials + the layout shell), identical name sets in both tracks. File
+function readSupportTemplate(track, file) {
+  return readFileSync(path.join(templatesDir, track, "shared", file), "utf8");
+}
+
+// Support templates (partials + the layout shell), identical name sets in both tracks, living
+// under `<track>/shared/` (only the eight entry templates sit at the track's top level). File
 // naming is the convention bench/cold-compile.mjs discovers support templates by:
-// `<name>.partial.eta` / `<name>.layout.eta` registers as `@<name>`.
+// `shared/<name>.partial.eta` / `shared/<name>.layout.eta` registers as `@<name>`.
 const SUPPORT_TEMPLATES = Object.freeze([
   // composed-page (E20/E22): native-layout shell + nested nav partials + chrome fragments.
   ["@shell", "shell.layout.eta"],
@@ -89,7 +94,7 @@ const SUPPORT_TEMPLATES = Object.freeze([
 function buildTrack(track) {
   const eta = new Eta();
   for (const [name, file] of SUPPORT_TEMPLATES) {
-    eta.loadTemplate(name, readTemplate(track, file));
+    eta.loadTemplate(name, readSupportTemplate(track, file));
   }
   const renderers = {};
   for (const id of WORKLOAD_IDS) {

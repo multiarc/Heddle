@@ -110,15 +110,16 @@ functions, not user extensions, and are named as such in the report's methodolog
 
 ## Handlebars — controlled track
 
-Files: `benchmarks/js/src/templates/handlebars/controlled/<id>.hbs` + the partial files
+Files: `benchmarks/js/src/templates/handlebars/controlled/<id>.hbs` (the eight entry
+templates at the top level) + the partial files under `controlled/shared/`
 (`<name>.partial.hbs` — the cold-compile discovery convention, below). Compile mode: runtime
 `hb.compile` once at startup (README D7). Raw workloads: triple-mustache throughout; encoded
 workloads: double-mustache, stock escaper, N5 in the gate (README D4). Each workload gets its
 own `Handlebars.create()` environment (partial registration is per-environment).
 
 **Cold-compile support-file convention (bench/cold-compile.mjs):** any file named
-`<name>.partial.<ext>` or `<name>.layout.<ext>` under an engine's `controlled/` directory is
-auto-discovered and registered (Handlebars `registerPartial(name, …)`; Eta
+`<name>.partial.<ext>` or `<name>.layout.<ext>` under an engine's `controlled/shared/`
+subdirectory is auto-discovered and registered (Handlebars `registerPartial(name, …)`; Eta
 `loadTemplate("@" + name, …)`) before the workload's cold compile — the support set needs no
 per-workload list in the cold harness.
 
@@ -271,7 +272,8 @@ Same walkthrough: data `&`/`<`/`>`/`"` escape to the canonical named forms; ever
 
 ## Handlebars — idiomatic track
 
-Files: `benchmarks/js/src/templates/handlebars/idiomatic/<id>.hbs` (+ the same partial set).
+Files: `benchmarks/js/src/templates/handlebars/idiomatic/<id>.hbs` (+ the same partial set
+under `idiomatic/shared/`).
 Texts: identical to the controlled texts above (README D9 — the controlled twins already are
 the documented patterns), with `mixed-page.hbs` and `fortunes-encoded.hbs` kept in the same
 multi-line/single-line form as controlled (no gratuitous reformatting — one less diff surface).
@@ -297,8 +299,9 @@ whitespace-insensitive verifier regardless.)
 ## Eta — controlled track
 
 Files: `benchmarks/js/src/templates/eta/controlled/` — the eight `<id>.eta` workload
-templates + `shell.layout.eta` + **20 `<name>.partial.eta`** files (the ten chrome fragments,
-the four nav partials, and the six fragment-heavy partials). Instance: `new Eta()` defaults;
+templates at the top level, with `shell.layout.eta` + **20 `<name>.partial.eta`** files (the
+ten chrome fragments, the four nav partials, and the six fragment-heavy partials) under
+`controlled/shared/`. Instance: `new Eta()` defaults;
 templates registered as `@<id>`/`@<name>` via `loadTemplate`; render call
 `eta.render("@<id>", model)` (README D8). Raw workloads use `<%~ %>`; encoded use `<%= %>`.
 The floor workload texts are single physical lines with no trailing newline *(wrapped for
@@ -437,7 +440,8 @@ oracle before N5 (N5 is applied uniformly to encoded candidates and is an identi
 
 ## Eta — idiomatic track
 
-Files: `benchmarks/js/src/templates/eta/idiomatic/…`. Docs-styled, multi-line, layout system
+Files: `benchmarks/js/src/templates/eta/idiomatic/…` (entries at the top level, support
+files under `idiomatic/shared/`). Docs-styled, multi-line, layout system
 exercised where the docs prescribe it (README D9). Gate: the functional-equivalence verifier
 (whitespace-insensitive). Raw workloads may use `<%= %>` here (docs default): raw model values
 contain no `& < > " '` by Phase 1 rule 4, so escaping is a byte no-op — except the

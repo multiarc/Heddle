@@ -3,7 +3,7 @@
 ## markup, the same in both tracks) splices at the layout's live ${self.body()} slot
 ## (Phase 5 D5, Q1.7).
 ## Doc: https://docs.makotemplates.org/en/latest/inheritance.html
-<%inherit file="layout.mako"/>
+<%inherit file="shared/layout.mako"/>
 <div class="slider-wrapper theme-default">
     <div id="slider" class="nivoSlider">
     </div>

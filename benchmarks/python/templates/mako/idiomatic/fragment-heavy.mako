@@ -4,7 +4,7 @@
 ## Docs: https://docs.makotemplates.org/en/latest/defs.html
 ##       https://docs.makotemplates.org/en/latest/namespaces.html
 ##       https://docs.makotemplates.org/en/latest/syntax.html#control-structures
-<%namespace file="fragments.mako" import="tile, card, media_row, stat"/>
+<%namespace file="shared/fragments.mako" import="tile, card, media_row, stat"/>
 <div class="panel">
 % for item in items:
 % if item["is_tile"]:

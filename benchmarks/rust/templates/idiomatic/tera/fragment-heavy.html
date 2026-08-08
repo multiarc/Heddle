@@ -6,13 +6,13 @@
 <div class="panel">
   {% for item in items %}
     {% if item.is_tile %}
-      {% include "idiomatic/tera/fragment-heavy-tile.html" %}
+      {% include "idiomatic/tera/shared/fragment-heavy-tile.html" %}
     {% elif item.is_card %}
-      {% include "idiomatic/tera/fragment-heavy-card.html" %}
+      {% include "idiomatic/tera/shared/fragment-heavy-card.html" %}
     {% elif item.is_media %}
-      {% include "idiomatic/tera/fragment-heavy-media-row.html" %}
+      {% include "idiomatic/tera/shared/fragment-heavy-media-row.html" %}
     {% else %}
-      {% include "idiomatic/tera/fragment-heavy-stat.html" %}
+      {% include "idiomatic/tera/shared/fragment-heavy-stat.html" %}
     {% endif %}
   {% endfor %}
 </div>

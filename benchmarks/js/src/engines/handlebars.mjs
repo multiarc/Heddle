@@ -57,7 +57,7 @@ const MODELS = {
   "encoded-loop": encodedLoop,
 };
 
-/** Workload id -> partial names; each name N is the file `{track}/N.partial.hbs`. */
+/** Workload id -> partial names; each name N is the file `{track}/shared/N.partial.hbs`. */
 const PARTIALS = {
   // Partial-block layout (E20) + the E22 chrome-fragment library + the nested nav partials.
   "composed-page": [
@@ -85,7 +85,7 @@ const PARTIALS = {
 function compileControlled(id) {
   const env = Handlebars.create();
   for (const name of PARTIALS[id] ?? []) {
-    env.registerPartial(name, readTemplate("controlled", `${name}.partial.hbs`));
+    env.registerPartial(name, readTemplate("controlled", path.join("shared", `${name}.partial.hbs`)));
   }
   return env.compile(readTemplate("controlled", `${id}.hbs`));
 }
@@ -102,7 +102,7 @@ function compileIdiomatic(id) {
   const env = Handlebars.create();
   const options = { knownHelpersOnly: true };
   for (const name of PARTIALS[id] ?? []) {
-    env.registerPartial(name, materialize(env, readTemplate("idiomatic", `${name}.partial.hbs`), options));
+    env.registerPartial(name, materialize(env, readTemplate("idiomatic", path.join("shared", `${name}.partial.hbs`)), options));
   }
   return materialize(env, readTemplate("idiomatic", `${id}.hbs`), options);
 }

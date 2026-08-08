@@ -54,9 +54,9 @@ namespace Heddle.Benchmarks.Dotnet.Bench
             _heddleRoot = System.IO.Path.Combine(Templates.Root(), "controlled", "heddle");
             _heddleHome = Templates.Load("controlled", "heddle", "home.heddle");
             _heddleLayout = Templates.Load("controlled", "heddle", "shared/layout.heddle");
-            _fluid = Templates.Load("controlled", "liquid", "composed-page.liquid");
+            _fluid = Templates.Load("controlled", "liquid", "composed-page.fluid.liquid");
             _scriban = Templates.Load("controlled", "scriban", "composed-page.scriban");
-            _liquid = Templates.Load("controlled", "liquid", "composed-page.liquid");
+            _liquid = Templates.Load("controlled", "liquid", "composed-page.dotliquid.liquid");
             _handlebars = Templates.Load("controlled", "handlebars", "composed-page.hbs");
         }
 

@@ -6,10 +6,10 @@
    Docs: https://jinja.palletsprojects.com/en/stable/templates/#macros
          https://jinja.palletsprojects.com/en/stable/templates/#import
          https://jinja.palletsprojects.com/en/stable/templates/#if #}
-{% from "tile.jinja" import tile %}
-{% from "card.jinja" import card %}
-{% from "media-row.jinja" import media_row %}
-{% from "stat.jinja" import stat %}
+{% from "shared/tile.jinja" import tile %}
+{% from "shared/card.jinja" import card %}
+{% from "shared/media-row.jinja" import media_row %}
+{% from "shared/stat.jinja" import stat %}
 <div class="panel">
 {% for item in items %}
 {% if item.is_tile %}

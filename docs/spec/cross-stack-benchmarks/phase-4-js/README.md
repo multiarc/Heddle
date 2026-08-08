@@ -559,8 +559,9 @@ root is `benchmarks/js/` (D1); full file tree in
   its Phase 1 canonical corruptions (two per raw, three per encoded workload).
 
 ### WI4 — Handlebars implementations, both tracks
-- **Files.** New: `benchmarks/js/src/templates/handlebars/controlled/<id>.hbs` (8, plus the
-  partial files — as landed under E20/E22: `layout.partial.hbs` + the 20 chrome/nav/fragment
+- **Files.** New: `benchmarks/js/src/templates/handlebars/controlled/<id>.hbs` (8 entries at
+  the top level, plus the partial files under `controlled/shared/` — as landed under E20/E22:
+  `layout.partial.hbs` + the 20 chrome/nav/fragment
   `<name>.partial.hbs`), `src/templates/handlebars/idiomatic/…` (mirror set with Q1.7
   citation headers), `src/engines/handlebars.mjs` (environment factories: controlled
   runtime-compile / idiomatic precompile per D7 — zero helpers, E22 — partial registration,
@@ -573,9 +574,10 @@ root is `benchmarks/js/` (D1); full file tree in
   contain zero raw `<script>alert(` and the intact Japanese strings (gate-enforced).
 
 ### WI5 — Eta implementations, both tracks
-- **Files.** New: `benchmarks/js/src/templates/eta/controlled/<id>.eta` (8, plus — as landed
-  under E20/E22 — `shell.layout.eta` and the 20 chrome/nav/fragment `<name>.partial.eta`),
-  `src/templates/eta/idiomatic/…` (mirror set incl. `shell.layout.eta`; no `page.layout.eta`
+- **Files.** New: `benchmarks/js/src/templates/eta/controlled/<id>.eta` (8 entries at the top
+  level, plus — as landed under E20/E22, under `controlled/shared/` — `shell.layout.eta` and
+  the 20 chrome/nav/fragment `<name>.partial.eta`),
+  `src/templates/eta/idiomatic/…` (mirror set incl. `shared/shell.layout.eta`; no `page.layout.eta`
   — idiomatic mixed-page is single-file, E20), `src/engines/eta.mjs` (per-track instances,
   `loadTemplate` registration, render table).
 - **Change.** Template texts verbatim from

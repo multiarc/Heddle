@@ -1,0 +1,29 @@
+@*
+    Idiomatic Razor -- composed-page nav-section partial (phase 9; authoring standard D16;
+    ledger E20/E22).
+
+    Patterns followed, from Microsoft's own documentation:
+      Razor syntax        https://learn.microsoft.com/aspnet/core/mvc/views/razor
+      Partial views       https://learn.microsoft.com/aspnet/core/mvc/views/partial
+
+    One navigation section: the precomputed TitleLinked branch and the link loop through the
+    nested nav-link partial. Checked by the functional verifier, not the byte gate.
+*@
+@using Heddle.Benchmarks.Dotnet.Models
+@model NavSection
+<div class="nav-section">
+    @if (Model.TitleLinked)
+    {
+        <span class="nav-title"><a href="@Model.Href">@Model.Title</a></span>
+    }
+    else
+    {
+        <span class="nav-title">@Model.Title</span>
+    }
+    <ul>
+        @foreach (var link in Model.Links)
+        {
+            @await Html.PartialAsync("/Views/Shared/nav-link.cshtml", link)
+        }
+    </ul>
+</div>
