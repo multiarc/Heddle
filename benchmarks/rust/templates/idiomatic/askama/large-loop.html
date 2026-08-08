@@ -1,8 +1,10 @@
-{# Idiomatic Askama template (WI5, README D8/Q1.7). Patterns follow the Askama 0.16 book:
-   "Template syntax - For" (loop over a slice); default HTML escaping left on. #}
+{# Idiomatic Askama template (WI5, README D8/Q1.7; ledger E21). Patterns follow the
+   Askama 0.16 book: "Template syntax - For" (loop over a slice); the display name is
+   composed by the template as the literal "row-" + the value substitution (the model
+   carries data, never display strings). Default HTML escaping left on. #}
 {% for item in items %}
   <tr>
-    <td>{{ item.name }}</td>
+    <td>row-{{ item.value }}</td>
     <td>{{ item.value }}</td>
   </tr>
 {% endfor %}

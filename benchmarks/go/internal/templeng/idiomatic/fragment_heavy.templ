@@ -1,11 +1,15 @@
-// Workload 6 — fragment-heavy, templ idiomatic port. The tile partial is a templ component
-// called @tile(item) in the loop — templ's partial-with-argument construct — authored in
-// the naturally formatted one-element-per-line shape.
+// Workload 6 — fragment-heavy, templ idiomatic port (workloads.md workload 6, ledger
+// E20/E21). Six components — tile, card (nesting @badge/@price against the row's Promo,
+// the one nesting level), badge, price, mediaRow, stat — dispatched per row with templ's
+// native switch statement over Kind (the idiomatic switch form the workloads.md dispatch
+// table sanctions for templ). Derived display text is composed in the template as
+// literal-plus-substitution (E21): price + ".99", "Caption for " + name, "/img/" + name +
+// ".jpg".
 //
 // Doc citations (Q1.7):
-//   - https://templ.guide/syntax-and-usage/template-composition/
-//   - https://templ.guide/syntax-and-usage/statements/
-//   - https://templ.guide/syntax-and-usage/expressions/
+//   - https://templ.guide/syntax-and-usage/statements/  (switch, for)
+//   - https://templ.guide/syntax-and-usage/template-composition/  (component nesting)
+//   - https://templ.guide/syntax-and-usage/expressions/  (text and attribute expressions)
 package idiomatic
 
 import "heddle.dev/benchmarks/go/internal/model"
@@ -18,10 +22,54 @@ templ tile(r model.FragmentRow) {
 	</section>
 }
 
+templ badge(p model.FragmentPromo) {
+	<span class="promo-badge">{ p.Label }</span>
+}
+
+templ price(p model.FragmentPromo) {
+	<p class="price">{ p.Price }.99</p>
+}
+
+templ card(r model.FragmentRow) {
+	<article class="card">
+		<h3>{ r.Name }</h3>
+		@badge(r.Promo)
+		@price(r.Promo)
+		<p class="v">{ r.Value }</p>
+	</article>
+}
+
+templ mediaRow(r model.FragmentRow) {
+	<div class="media-row">
+		<img src={ "/img/" + r.Name + ".jpg" } alt={ r.Name }/>
+		<div class="media-body">
+			<h4>{ r.Name }</h4>
+			<p>Caption for { r.Name }</p>
+		</div>
+	</div>
+}
+
+templ stat(r model.FragmentRow) {
+	<div class="stat">
+		<span class="stat-name">{ r.Name }</span>
+		<span class="stat-value">{ r.Value }</span>
+		<span class="stat-delta">{ r.Delta }</span>
+	</div>
+}
+
 templ fragmentHeavy(m model.FragmentModel) {
 	<div class="panel">
-		for _, item := range m.Items {
-			@tile(item)
+		for _, r := range m.Items {
+			switch r.Kind {
+				case "tile":
+					@tile(r)
+				case "card":
+					@card(r)
+				case "media":
+					@mediaRow(r)
+				default:
+					@stat(r)
+			}
 		}
 	</div>
 }

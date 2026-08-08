@@ -1,0 +1,44 @@
+{# Idiomatic Jinja2 nav macro library for composed-page: the four nested nav
+   fragments (menu -> column -> section -> link) as macros taking their model
+   node explicitly; layout.jinja imports mega_menu and nav_column (Phase 5 D5,
+   ledger E20).
+   Docs: https://jinja.palletsprojects.com/en/stable/templates/#macros
+         https://jinja.palletsprojects.com/en/stable/templates/#import #}
+{% macro nav_link(link) %}
+<li class="nav-link"><a href="{{ link.href }}">{{ link.label }}</a></li>
+{% endmacro %}
+
+{% macro nav_section(section) %}
+<div class="nav-section">
+  {% if section.title_linked %}
+  <span class="nav-title"><a href="{{ section.href }}">{{ section.title }}</a></span>
+  {% else %}
+  <span class="nav-title">{{ section.title }}</span>
+  {% endif %}
+  <ul>
+    {% for link in section.links %}{{ nav_link(link) }}{% endfor %}
+  </ul>
+</div>
+{% endmacro %}
+
+{% macro nav_column(column) %}
+<div class="nav-column">
+  {% for section in column.sections %}{{ nav_section(section) }}{% endfor %}
+</div>
+{% endmacro %}
+
+{% macro mega_menu(menu) %}
+<div class="top-menu-wrapper">
+  <ul class="top-menu">
+    {% for tab in menu.tabs %}
+    <li class="{{ tab.css }}"><a href="{{ tab.href }}" class="drop">{{ tab.label }}</a>
+      {% if tab.has_dropdown %}
+      <div class="{{ tab.dropdown_css }}">
+        {% for column in tab.columns %}{{ nav_column(column) }}{% endfor %}
+      </div>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+{% endmacro %}

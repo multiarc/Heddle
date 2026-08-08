@@ -1,0 +1,1 @@
+<%page args="item"/><div class="media-row"><img src="/img/${item["name"]}.jpg" alt="${item["name"]}" /><div class="media-body"><h4>${item["name"]}</h4><p>Caption for ${item["name"]}</p></div></div>\

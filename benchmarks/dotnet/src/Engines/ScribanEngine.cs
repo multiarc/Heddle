@@ -8,12 +8,17 @@ using Scriban.Runtime;
 namespace Heddle.Benchmarks.Dotnet.Engines
 {
     /// <summary>
-    /// Scriban twin, all eight workloads (ledger E8).
+    /// Scriban twin, all eight workloads (ledger E8; composed-page/fragment-heavy redesigned under
+    /// E20/E21/E22).
     ///
     /// Scriban does not HTML-encode output, matching Heddle's <c>OutputProfile.Text</c>; the encoded
-    /// workloads escape in-template with the <c>| html.escape</c> filter. Composed-page pulls its
-    /// layout through an <see cref="ITemplateLoader"/>, and the area lookup is an imported function
-    /// because bracket indexing with a variable key is not a documented Scriban construct.
+    /// workloads escape in-template with the <c>| html.escape</c> filter. Composed-page renders the
+    /// capture-then-include layout idiom: the page captures its body into <c>body_content</c> and
+    /// includes the layout, which emits the captured slot; the layout pulls the per-fragment chrome
+    /// partials and the nested nav partials (mega-menu/nav-column/nav-section/nav-link) through an
+    /// <see cref="ITemplateLoader"/>. Partials see the includer's loop variables because Scriban
+    /// includes share the render context (the tile.scriban precedent). All literal chrome is
+    /// template text (E22 — no text fixture is served from C#; the model passes only <c>nav</c>).
     /// </summary>
     public static class ScribanEngine
     {
@@ -23,10 +28,26 @@ namespace Heddle.Benchmarks.Dotnet.Engines
         {
             string Src(string file) => Templates.Load(track, "scriban", file);
 
-            // ---- composed-page: {{ include 'layout' }}
+            // ---- composed-page: capture-then-include; the layout includes the chrome-fragment
+            // partials (the E22 fragment library, one partial per named definition in the Heddle
+            // twin's chrome-fragments.heddle) and the nested nav partials.
             var composedLoader = new NamedLoader(new Dictionary<string, string>
             {
                 ["layout"] = Src("layout.scriban"),
+                ["alert-top"] = Src("alert-top.scriban"),
+                ["secondary-wholesale-menu"] = Src("secondary-wholesale-menu.scriban"),
+                ["secondary-retail-menu"] = Src("secondary-retail-menu.scriban"),
+                ["alert-below"] = Src("alert-below.scriban"),
+                ["assets-styles"] = Src("assets-styles.scriban"),
+                ["assets-scripts"] = Src("assets-scripts.scriban"),
+                ["custom-styles"] = Src("custom-styles.scriban"),
+                ["head-scripts"] = Src("head-scripts.scriban"),
+                ["body-scripts"] = Src("body-scripts.scriban"),
+                ["body-end-scripts"] = Src("body-end-scripts.scriban"),
+                ["mega-menu"] = Src("mega-menu.scriban"),
+                ["nav-column"] = Src("nav-column.scriban"),
+                ["nav-section"] = Src("nav-section.scriban"),
+                ["nav-link"] = Src("nav-link.scriban"),
             });
             var composed = Template.Parse(Src("composed-page.scriban"));
             yield return new Cell
@@ -44,10 +65,16 @@ namespace Heddle.Benchmarks.Dotnet.Engines
                 },
             };
 
-            // ---- fragment-heavy: tile partial through the same loader mechanism
+            // ---- fragment-heavy: six partials (E20); the card partial nests badge + price
+            // against the row's promo — the one nesting level.
             var fragmentLoader = new NamedLoader(new Dictionary<string, string>
             {
                 ["tile"] = Src("tile.scriban"),
+                ["card"] = Src("card.scriban"),
+                ["badge"] = Src("badge.scriban"),
+                ["price"] = Src("price.scriban"),
+                ["media-row"] = Src("media-row.scriban"),
+                ["stat"] = Src("stat.scriban"),
             });
             yield return Flat(track, "fragment-heavy", Src("fragment-heavy.scriban"),
                 FragmentContent.LiquidModel(), fragmentLoader);
@@ -83,13 +110,6 @@ namespace Heddle.Benchmarks.Dotnet.Engines
                     return template.Render(ctx);
                 },
             };
-        }
-
-        private static ScriptObject ToScriptObject(IEnumerable<KeyValuePair<string, string>> src)
-        {
-            var o = new ScriptObject();
-            foreach (var kv in src) o[kv.Key] = kv.Value;
-            return o;
         }
 
         /// <summary>Serves the registered partials by name; anything else is a harness defect.</summary>

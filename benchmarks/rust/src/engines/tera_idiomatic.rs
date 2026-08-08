@@ -2,11 +2,14 @@
 //! template file carries a doc-citation header comment; this declaration file's patterns
 //! follow the Tera docs (keats.github.io/tera) pages cited per workload below: *Getting
 //! started* (one `Tera` instance holding the parsed template set), *Inheritance*
-//! (composed-page, mixed-page), *Control structures* (for / if), *Include*
-//! (fragment-heavy) and *Auto-escaping* (ONE default-escaping instance — `.html` names
-//! keep autoescape on, README D3 quadrants 3–4; the `safe` filter appears only in
-//! composed-page's trusted fragments). Templates are registered with `add_template_file`
-//! and contexts built once, so parse/compile sits outside every `render()`.
+//! (composed-page — base with a live body block; mixed-page is single-file by the E20
+//! workloads.md rule), *Control structures* (for / if), *Include* (composed-page chrome
+//! fragments + nested nav partials, fragment-heavy per-kind partials) and *Auto-escaping*
+//! (ONE default-escaping instance — `.html` names keep autoescape on, README D3 quadrants
+//! 3–4; no `safe` filter anywhere — E22 made the chrome literal template text, and every
+//! raw-suite substitution is rule-4 clean, so default escaping is byte-neutral).
+//! Templates are registered with `add_template_file` and contexts built once, so
+//! parse/compile sits outside every `render()`.
 
 use std::path::Path;
 use std::sync::OnceLock;
@@ -17,15 +20,39 @@ use crate::models;
 
 // ---- the single default-escaping idiomatic instance (README D3 quadrants 3–4) ----------------
 
-const IDIOMATIC_TEMPLATES: [&str; 11] = [
+const IDIOMATIC_TEMPLATES: [&str; 29] = [
+    // composed-page (E20/E22): chrome-fragment includes, the nested nav partial chain,
+    // the base layout with the live body block, and the extending child page.
+    "idiomatic/tera/chrome/alert-top.html",
+    "idiomatic/tera/chrome/secondary-wholesale-menu.html",
+    "idiomatic/tera/chrome/secondary-retail-menu.html",
+    "idiomatic/tera/chrome/alert-below.html",
+    "idiomatic/tera/chrome/assets-styles.html",
+    "idiomatic/tera/chrome/assets-scripts.html",
+    "idiomatic/tera/chrome/custom-styles.html",
+    "idiomatic/tera/chrome/head-scripts.html",
+    "idiomatic/tera/chrome/body-scripts.html",
+    "idiomatic/tera/chrome/body-end-scripts.html",
+    "idiomatic/tera/nav/link.html",
+    "idiomatic/tera/nav/section.html",
+    "idiomatic/tera/nav/column.html",
+    "idiomatic/tera/nav/mega-menu.html",
     "idiomatic/tera/composed-page-base.html",
     "idiomatic/tera/composed-page.html",
     "idiomatic/tera/trivial-substitution.html",
     "idiomatic/tera/large-loop.html",
-    "idiomatic/tera/mixed-page-base.html",
+    // mixed-page is single-file (E20 workloads.md rule — layout composition is
+    // composed-page's dimension).
     "idiomatic/tera/mixed-page.html",
     "idiomatic/tera/conditional-heavy.html",
+    // fragment-heavy (E20): four dispatched per-kind partials plus the card's two
+    // sub-partials, then the dispatching main template.
     "idiomatic/tera/fragment-heavy-tile.html",
+    "idiomatic/tera/fragment-heavy-badge.html",
+    "idiomatic/tera/fragment-heavy-price.html",
+    "idiomatic/tera/fragment-heavy-card.html",
+    "idiomatic/tera/fragment-heavy-media-row.html",
+    "idiomatic/tera/fragment-heavy-stat.html",
     "idiomatic/tera/fragment-heavy.html",
     "idiomatic/tera/fortunes-encoded.html",
     "idiomatic/tera/encoded-loop.html",
@@ -38,7 +65,7 @@ pub fn tera_idiomatic() -> &'static Tera {
     TERA.get_or_init(build_fresh)
 }
 
-/// Cold-parse support (README D12): a fresh instance parsing the same 11 template files the
+/// Cold-parse support (README D12): a fresh instance parsing the same 29 template files the
 /// runtime `tera_idiomatic` instance holds.
 pub fn build_fresh() -> Tera {
     let mut tera = Tera::default();

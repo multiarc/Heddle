@@ -1,0 +1,13 @@
+{%- comment -%}
+  Idiomatic Liquid -- composed-page nav-section partial (Fluid) (phase 9; authoring standard D16).
+
+  Patterns followed, from the engines' own documentation:
+    Liquid language reference   https://shopify.github.io/liquid/
+    Fluid                       https://github.com/sebastienros/fluid#readme
+
+  Authored the way the docs teach rather than to match the oracle byte-for-byte: readable
+  whitespace, Liquid's own control-flow tags, and the documented capture/include composition.
+  Checked by the functional verifier, not the byte gate.
+{%- endcomment -%}
+
+<div class="nav-section">{% if nav-section.title_linked %}<span class="nav-title"><a href="{{ nav-section.href }}">{{ nav-section.title }}</a></span>{% else %}<span class="nav-title">{{ nav-section.title }}</span>{% endif %}<ul>{% for link in nav-section.links %}{% include 'nav-link' with link %}{% endfor %}</ul></div>

@@ -1,0 +1,6 @@
+{# Idiomatic Tera price sub-partial (WI5, README D8/Q1.7): rendered by the card partial
+   against the row's promo. The display price is template-composed as the price substitution
+   + the literal `.99` (ledger E21 - the model carries the int, never the display string).
+   Patterns follow the Tera docs (keats.github.io/tera): "Include"; default auto-escaping
+   left on. #}
+<p class="price">{{ item.promo.price }}.99</p>

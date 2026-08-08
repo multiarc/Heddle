@@ -1,15 +1,15 @@
 @*
-    Idiomatic Razor -- fragment-heavy (phase 9; authoring standard D16).
+    Idiomatic Razor -- fragment-heavy (phase 9; authoring standard D16; ledger E20).
 
     Patterns followed, from Microsoft's own documentation:
       Razor syntax        https://learn.microsoft.com/aspnet/core/mvc/views/razor
-      Layouts             https://learn.microsoft.com/aspnet/core/mvc/views/layout
       Partial views       https://learn.microsoft.com/aspnet/core/mvc/views/partial
 
-    Strongly-typed @model, C# control flow, and the DEFAULT @expression output -- which HTML-encodes
-    -- rather than Html.Raw. That is the substantive idiomatic difference from the controlled twin:
-    a Razor developer reaches for Html.Raw only when the value genuinely is markup, which here is
-    only the composed-page fragments. Checked by the functional verifier, not the byte gate.
+    Per-row fragment dispatch plus nested composition: a C# switch on Kind -- Razor's
+    documented native switch form, permitted on the idiomatic track by workloads.md --
+    selects which of the four partial views to invoke; the card partial nests the badge and
+    price partials against the row's Promo. Checked by the functional verifier, not the
+    byte gate.
 *@
 @using Heddle.Benchmarks.Dotnet.Models
 @model FragmentContent.FragmentModel
@@ -17,6 +17,20 @@
 <div class="panel">
     @foreach (var item in Model.Items)
     {
-        @await Html.PartialAsync("/Views/tile.cshtml", item)
+        switch (item.Kind)
+        {
+            case "tile":
+                @await Html.PartialAsync("/Views/tile.cshtml", item)
+                break;
+            case "card":
+                @await Html.PartialAsync("/Views/card.cshtml", item)
+                break;
+            case "media":
+                @await Html.PartialAsync("/Views/media-row.cshtml", item)
+                break;
+            default:
+                @await Html.PartialAsync("/Views/stat.cshtml", item)
+                break;
+        }
     }
 </div>

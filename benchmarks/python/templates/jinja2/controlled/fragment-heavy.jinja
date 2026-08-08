@@ -1,1 +1,1 @@
-<div class="panel">{% for item in items %}{% include "tile.jinja" %}{% endfor %}</div>
+<div class="panel">{% for item in items %}{% if item.is_tile %}{% include "tile.jinja" %}{% elif item.is_card %}{% include "card.jinja" %}{% elif item.is_media %}{% include "media-row.jinja" %}{% else %}{% include "stat.jinja" %}{% endif %}{% endfor %}</div>

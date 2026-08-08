@@ -1,0 +1,19 @@
+@*
+    Idiomatic Razor -- fragment-heavy card partial (phase 9; authoring standard D16;
+    ledger E20).
+
+    Patterns followed, from Microsoft's own documentation:
+      Razor syntax        https://learn.microsoft.com/aspnet/core/mvc/views/razor
+      Partial views       https://learn.microsoft.com/aspnet/core/mvc/views/partial
+
+    The nesting fragment: renders the badge and price partials against the row's Promo.
+    Checked by the functional verifier, not the byte gate.
+*@
+@using Heddle.Benchmarks.Dotnet.Models
+@model FragmentContent.FragmentRow
+<article class="card">
+    <h3>@Model.Name</h3>
+    @await Html.PartialAsync("/Views/badge.cshtml", Model.Promo)
+    @await Html.PartialAsync("/Views/price.cshtml", Model.Promo)
+    <p class="v">@Model.Value</p>
+</article>

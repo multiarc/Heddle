@@ -1,11 +1,27 @@
 <!--/*
   Idiomatic Thymeleaf authoring (Q1.7/D7) — official doc citations:
   https://www.thymeleaf.org/doc/tutorials/3.1/usingthymeleaf.html
-    §6 (iteration: th:each), §8.1 (including fragments: th:replace),
-    §11.4 (synthetic th:block container)
+    §6 (iteration: th:each), §7.2 (switch statements: th:switch on the row's kind,
+    th:case string literals, default th:case="*"), §8.1 (including fragments:
+    th:replace), §8.2 (fragment parameters), §11.4 (synthetic th:block container)
+
+  Ledger E20: four fragment kinds dispatched per row (the natural th:switch on the
+  kind discriminator), one level of nesting (the card fragment renders the badge
+  and price fragments against the row's promo).
 */-->
 <div class="panel">
-    <th:block th:each="item : ${items}">
-        <div th:replace="~{idiomatic/tile :: tile(${item})}"></div>
+    <th:block th:each="item : ${items}" th:switch="${item.kind}">
+        <th:block th:case="'tile'">
+            <section th:replace="~{idiomatic/tile :: tile(${item})}">tile</section>
+        </th:block>
+        <th:block th:case="'card'">
+            <article th:replace="~{idiomatic/card :: card(${item})}">card</article>
+        </th:block>
+        <th:block th:case="'media'">
+            <div th:replace="~{idiomatic/media-row :: media_row(${item})}">media row</div>
+        </th:block>
+        <th:block th:case="*">
+            <div th:replace="~{idiomatic/stat :: stat(${item})}">stat</div>
+        </th:block>
     </th:block>
 </div>

@@ -13,10 +13,11 @@ import (
 )
 
 // ColdParseText parses the six raw-suite text/template controlled sources from scratch
-// (composed-page's layout + home land in one associated-template set) and returns the
-// parsed set to keep it alive in the caller's sink.
+// (composed-page's chrome library + layout + home land in one associated-template set) and
+// returns the parsed set to keep it alive in the caller's sink.
 func ColdParseText() any {
 	composed := texttemplate.New("composed-page")
+	texttemplate.Must(composed.Parse(composedChromeSrc))
 	texttemplate.Must(composed.Parse(composedLayoutSrc))
 	texttemplate.Must(composed.Parse(composedHomeSrc))
 	return []*texttemplate.Template{

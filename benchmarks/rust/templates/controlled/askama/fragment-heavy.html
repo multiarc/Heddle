@@ -1,1 +1,1 @@
-<div class="panel">{% for item in items %}{% include "controlled/askama/fragment-heavy-tile.html" %}{% endfor %}</div>
+<div class="panel">{% for item in items %}{% if item.is_tile %}{% include "controlled/askama/fragment-heavy-tile.html" %}{% elif item.is_card %}{% include "controlled/askama/fragment-heavy-card.html" %}{% elif item.is_media %}{% include "controlled/askama/fragment-heavy-media-row.html" %}{% else %}{% include "controlled/askama/fragment-heavy-stat.html" %}{% endif %}{% endfor %}</div>

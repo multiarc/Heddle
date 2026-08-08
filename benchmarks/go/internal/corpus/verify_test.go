@@ -29,11 +29,15 @@ const encodedLoopRow0 = `<tr><td data-tag="tag-0&amp;&#39;0&#39;">item &lt;0&gt;
 
 var calibrationPins = [8]pins{
 	{
+		// E20 pins (VerifierDefinitions.ComposedPage): the removed segment is the slider
+		// fragment home.heddle splices into the layout's body slot — an idiomatic page
+		// with an EMPTY body must fail; the swap crosses the wholesale-only and
+		// retail-only mega-menu anchors.
 		workload:       "composed-page",
-		removedSegment: `<meta property="og:image" content="/files/catalog/img.jpg">`,
+		removedSegment: `<img src="/files/homepage/homebtmbanners/gluten-hp.jpg" width="984" border="0" />`,
 		removedKind:    corpus.KindMarker,
-		swapA:          "<title>Title</title>",
-		swapB:          `<meta property="og:image" content="/files/catalog/img.jpg">`,
+		swapA:          "/product/coming-soon-paleo-pork",
+		swapB:          "/products/paleo-friendly-pork",
 	},
 	{
 		workload:       "trivial-substitution",
@@ -64,11 +68,14 @@ var calibrationPins = [8]pins{
 		swapB:          "unit-100",
 	},
 	{
+		// E20 pins (VerifierDefinitions.FragmentHeavy): row 0's whole tile fragment is
+		// the removed-row corruption; rows 0 and 24 are both tiles (i % 4 == 0), so the
+		// swap crosses the dispatch cycle.
 		workload:       "fragment-heavy",
-		removedSegment: "tile-00",
+		removedSegment: `<section class="tile"><h3>item-00</h3><p class="v">0</p><span class="badge">new</span></section>`,
 		removedKind:    corpus.KindValue,
-		swapA:          "tile-00",
-		swapB:          "tile-24",
+		swapA:          "item-00",
+		swapB:          "item-24",
 	},
 	{
 		workload:       "fortunes-encoded",

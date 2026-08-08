@@ -15,7 +15,7 @@
       <span class="t3">platinum</span>
     <% } %>
     <em><%= r.name %></em>
-    <% if (r.has_note) { %><small><%= r.note %></small><% } %>
+    <% if (r.has_note) { %><small>note <%= r.seq %></small><% } %>
     <% if (r.is_active) { %><b>active</b><% } %>
   </li>
 <% }) %>

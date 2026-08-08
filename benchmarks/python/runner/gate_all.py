@@ -43,7 +43,10 @@ def run_cell(engines_mod, engine: str, track: str, workload: str) -> tuple[str, 
         template = engines_mod.load(engine, track, workload)
     except (KeyError, NotImplementedError, FileNotFoundError) as e:
         return "UNREGISTERED", f"cell not registered: {e}"
-    output = engines_mod.render(template, MODELS[workload])
+    try:
+        output = engines_mod.render(template, MODELS[workload])
+    except Exception as e:  # noqa: BLE001 -- a cell's render crash must not abort the sweep
+        return "FAIL", f"RENDER FAIL {engine}/{track}/{workload}: {type(e).__name__}: {e}"
     if track == "controlled":
         failure = gates.check_parity(workload, output)
         if failure is not None:

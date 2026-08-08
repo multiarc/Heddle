@@ -5,13 +5,24 @@
        builtins/html     https://github.com/scriban/scriban/blob/master/doc/builtins.md#html-functions
        runtime/includes  https://github.com/scriban/scriban/blob/master/doc/runtime.md
 
-     Uses Scriban's whitespace-control markers, its for/if statements, and the documented
-     html.escape builtin on untrusted values. Checked by the functional verifier, not the
-     byte gate. Note the multi-line comment delimiters: the single-line form ends at the
-     first newline, which would leave the doc URLs to parse as expressions. ##}}
+     Per-row dispatch through Scriban's native switch form, `case`/`when` (the idiomatic-track
+     allowance in workloads.md workload 6), selecting one of the four fragment partials; the
+     card partial nests badge + price against the row's promo -- the one nesting level.
+     Checked by the functional verifier, not the byte gate. Note the multi-line comment
+     delimiters: the single-line form ends at the first newline, which would leave the doc
+     URLs to parse as expressions. ##}}
 
 <div class="panel">
   {{~ for item in items ~}}
-    {{~ include 'tile' ~}}
+    {{~ case item.kind ~}}
+    {{~ when 'tile' ~}}
+      {{ include 'tile' }}
+    {{~ when 'card' ~}}
+      {{ include 'card' }}
+    {{~ when 'media' ~}}
+      {{ include 'media-row' }}
+    {{~ else ~}}
+      {{ include 'stat' }}
+    {{~ end ~}}
   {{~ end ~}}
 </div>

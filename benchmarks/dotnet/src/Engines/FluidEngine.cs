@@ -10,12 +10,23 @@ using Microsoft.Extensions.Primitives;
 namespace Heddle.Benchmarks.Dotnet.Engines
 {
     /// <summary>
-    /// Fluid (Liquid) twin, all eight workloads (ledger E8).
+    /// Fluid (Liquid) twin, all eight workloads (ledger E8; composed-page/fragment-heavy redesign
+    /// per E20/E22, model/display separation per E21).
     ///
-    /// Shares its Liquid sources with <see cref="DotLiquidEngine"/> — both consume the same dialect,
-    /// so the templates are authored once under <c>templates/controlled/liquid/</c>. The one
-    /// exception is fragment-heavy, where the two dialects genuinely diverge on partial invocation;
-    /// those carry an engine suffix rather than being silently forked.
+    /// Template sources are dialect-suffixed (<c>*.fluid.liquid</c>) wherever this twin's authoring
+    /// diverges from DotLiquid's ownership: the composed-page layout family, the fragment-heavy
+    /// partial family, and the three E21-composed workloads. The remaining flat workloads
+    /// (trivial-substitution and the two encoded ones) still share one un-suffixed Liquid source
+    /// with <see cref="DotLiquidEngine"/>.
+    ///
+    /// composed-page follows the workloads.md Liquid layout idiom: the page captures its body into
+    /// <c>body_content</c> and <c>{% include %}</c>s the layout, which emits the slot; ALL literal
+    /// chrome is template text (E22), the ten inert fragments living as per-fragment partials
+    /// mirroring <c>chrome-fragments.heddle</c>, and the nav rendering through nested loops +
+    /// nested partials (mega-menu, nav-column, nav-section, nav-link) bound with the documented
+    /// <c>{% include ... with ... %}</c> form. fragment-heavy dispatches per row over the
+    /// precomputed booleans (<c>{% if %}/{% elsif %}</c> chain) into six partials, the card partial
+    /// nesting badge + price against the row's promo.
     ///
     /// Fluid's default convenience encoder is the raw (non-encoding) encoder, which matches the
     /// Heddle oracle's <c>OutputProfile.Text</c>. The encoded workloads escape in-template with the
@@ -32,12 +43,24 @@ namespace Heddle.Benchmarks.Dotnet.Engines
         {
             string Src(string file) => Templates.Load(track, "liquid", file);
 
-            // ---- composed-page: layout via {% include 'layout' %} through an in-memory provider
-            var composedOptions = new TemplateOptions
+            // A partial set served to {% include %} under its logical name: 'layout' resolves to
+            // layout.liquid in the provider, whose bytes come from layout.fluid.liquid on disk.
+            TemplateOptions Options(params string[] partials)
             {
-                FileProvider = new SingleFileProvider(Src("layout.liquid"), "layout.liquid"),
-            };
-            var composed = Parser.Parse(Src("composed-page.liquid"));
+                var files = new Dictionary<string, string>(StringComparer.Ordinal);
+                foreach (var p in partials) files[p + ".liquid"] = Src(p + ".fluid.liquid");
+                return new TemplateOptions { FileProvider = new DictionaryFileProvider(files) };
+            }
+
+            // ---- composed-page: capture-then-include layout, per-fragment chrome partials (E22),
+            //      nested nav partials (E20)
+            var composedOptions = Options(
+                "layout",
+                "alert-top", "secondary-wholesale-menu", "secondary-retail-menu", "alert-below",
+                "assets-styles", "assets-scripts", "custom-styles", "head-scripts", "body-scripts",
+                "body-end-scripts",
+                "mega-menu", "nav-column", "nav-section", "nav-link");
+            var composed = Parser.Parse(Src("composed-page.fluid.liquid"));
             yield return new Cell
             {
                 Engine = Name, Track = track, Workload = "composed-page", InCrossStack = true,
@@ -45,25 +68,22 @@ namespace Heddle.Benchmarks.Dotnet.Engines
                 {
                     var ctx = new TemplateContext(composedOptions);
                     // E22: the model carries structured nav DATA only — all literal chrome and
-                    // fragment text now lives in the templates (Stage 3 rewrites this twin's).
+                    // fragment text lives in the templates.
                     ctx.SetValue("nav", ComposedContent.LiquidModel()["nav"]);
                     return composed.Render(ctx);
                 },
             };
 
-            // ---- fragment-heavy: tile partial, Fluid's {% render %} form
-            var fragmentOptions = new TemplateOptions
-            {
-                FileProvider = new SingleFileProvider(Src("tile.fluid.liquid"), "tile.liquid"),
-            };
+            // ---- fragment-heavy: six partials, boolean dispatch chain, card nests badge + price
+            var fragmentOptions = Options("tile", "card", "badge", "price", "media-row", "stat");
             yield return Flat(track, "fragment-heavy", Src("fragment-heavy.fluid.liquid"),
                 FragmentContent.LiquidModel(), fragmentOptions);
 
             // ---- the six flat workloads: one template, a dictionary model, no partials
             yield return Flat(track, "trivial-substitution", Src("trivial-substitution.liquid"), SubstitutionContent.LiquidModel());
-            yield return Flat(track, "large-loop", Src("large-loop.liquid"), LoopContent.LiquidModel());
-            yield return Flat(track, "mixed-page", Src("mixed-page.liquid"), MixedContent.LiquidModel());
-            yield return Flat(track, "conditional-heavy", Src("conditional-heavy.liquid"), ConditionalContent.LiquidModel());
+            yield return Flat(track, "large-loop", Src("large-loop.fluid.liquid"), LoopContent.LiquidModel());
+            yield return Flat(track, "mixed-page", Src("mixed-page.fluid.liquid"), MixedContent.LiquidModel());
+            yield return Flat(track, "conditional-heavy", Src("conditional-heavy.fluid.liquid"), ConditionalContent.LiquidModel());
             yield return Flat(track, "fortunes-encoded", Src("fortunes-encoded.liquid"), FortunesContent.LiquidModel());
             yield return Flat(track, "encoded-loop", Src("encoded-loop.liquid"), EncodedLoopContent.LiquidModel());
         }
@@ -87,20 +107,26 @@ namespace Heddle.Benchmarks.Dotnet.Engines
             };
         }
 
-        private static Dictionary<string, object> ToObjectDict(IEnumerable<KeyValuePair<string, string>> src)
+        /// <summary>An <see cref="IFileProvider"/> serving a fixed set of in-memory templates by
+        /// logical name — the include-resolution seam for the partial families.</summary>
+        private sealed class DictionaryFileProvider : IFileProvider
         {
-            var d = new Dictionary<string, object>();
-            foreach (var kv in src) d[kv.Key] = kv.Value;
-            return d;
-        }
+            private readonly Dictionary<string, IFileInfo> _files;
 
-        /// <summary>An <see cref="IFileProvider"/> serving exactly one in-memory template.</summary>
-        private sealed class SingleFileProvider : IFileProvider
-        {
-            private readonly IFileInfo _file;
-            public SingleFileProvider(string content, string name) => _file = new StringFileInfo(content, name);
+            public DictionaryFileProvider(Dictionary<string, string> files)
+            {
+                _files = new Dictionary<string, IFileInfo>(StringComparer.Ordinal);
+                foreach (var kv in files) _files[kv.Key] = new StringFileInfo(kv.Value, kv.Key);
+            }
+
             public IDirectoryContents GetDirectoryContents(string subpath) => NotFoundDirectoryContents.Singleton;
-            public IFileInfo GetFileInfo(string subpath) => _file; // only one include target exists
+
+            public IFileInfo GetFileInfo(string subpath)
+            {
+                var name = subpath.Replace('\\', '/').TrimStart('/');
+                return _files.TryGetValue(name, out var file) ? file : new NotFoundFileInfo(name);
+            }
+
             public IChangeToken Watch(string filter) => NullChangeToken.Singleton;
         }
 

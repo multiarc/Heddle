@@ -1,0 +1,1 @@
+<div class="nav-column"><% it.sections.forEach(s => { %><%~ include("@nav_section", s) %><% }) %></div>

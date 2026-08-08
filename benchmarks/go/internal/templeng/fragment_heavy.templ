@@ -1,7 +1,16 @@
-// Workload 6 — fragment-heavy, templ controlled port (port-mapping.md §Controlled track —
-// templ, rule 4). The tile partial is a templ component called @tile(item) in the loop
-// (F6) — templ's partial-with-argument construct, mirroring the stdlib's
-// {{define "tile"}} + {{template "tile" .}} pair.
+// Workload 6 — fragment-heavy, templ controlled port (workloads.md workload 6, ledger
+// E20/E21). Six components — tile, card (which nests @badge(r.Promo) + @price(r.Promo),
+// the one nesting level), badge, price, mediaRow, stat — dispatched per row by the
+// controlled boolean if/else if/else chain (never on the Kind string). Derived display
+// text is composed IN THE TEMPLATE as literal-plus-substitution (E21): the display price
+// is { p.Price } + the literal ".99", the media caption is the literal "Caption for " +
+// { r.Name }, and the media image source is "/img/" + Name + ".jpg".
+//
+// Raw discipline (byte-gate accommodation, the mixed-page doctype precedent): the media
+// row's <img …" /> — the oracle spells the void element with a self-closing " />", which
+// templ's generator normalizes to the slashless form (a NON-whitespace divergence, probed
+// at v0.3.1020) — is emitted via @templ.Raw over the pinned literal-plus-substitution
+// text (Name is rule-4 clean). Every other node is authored natively.
 package templeng
 
 import "heddle.dev/benchmarks/go/internal/model"
@@ -10,10 +19,38 @@ templ tile(r model.FragmentRow) {
 	<section class="tile"><h3>{ r.Name }</h3><p class="v">{ r.Value }</p><span class="badge">{ r.Badge }</span></section>
 }
 
+templ badge(p model.FragmentPromo) {
+	<span class="promo-badge">{ p.Label }</span>
+}
+
+templ price(p model.FragmentPromo) {
+	<p class="price">{ p.Price }.99</p>
+}
+
+templ card(r model.FragmentRow) {
+	<article class="card"><h3>{ r.Name }</h3>@badge(r.Promo)@price(r.Promo)<p class="v">{ r.Value }</p></article>
+}
+
+templ mediaRow(r model.FragmentRow) {
+	<div class="media-row">@templ.Raw(`<img src="/img/` + r.Name + `.jpg" alt="` + r.Name + `" />`)<div class="media-body"><h4>{ r.Name }</h4><p>Caption for { r.Name }</p></div></div>
+}
+
+templ stat(r model.FragmentRow) {
+	<div class="stat"><span class="stat-name">{ r.Name }</span><span class="stat-value">{ r.Value }</span><span class="stat-delta">{ r.Delta }</span></div>
+}
+
 templ fragmentHeavy(m model.FragmentModel) {
 	<div class="panel">
-		for _, item := range m.Items {
-			@tile(item)
+		for _, r := range m.Items {
+			if r.IsTile {
+				@tile(r)
+			} else if r.IsCard {
+				@card(r)
+			} else if r.IsMedia {
+				@mediaRow(r)
+			} else {
+				@stat(r)
+			}
 		}
 	</div>
 }

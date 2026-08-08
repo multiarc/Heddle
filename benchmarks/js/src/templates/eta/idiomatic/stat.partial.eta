@@ -1,0 +1,9 @@
+<% /* idiomatic Eta implementation (Phase 4).
+      Patterns followed: https://eta.js.org/docs/4.x.x/syntax/cheatsheet,
+      https://eta.js.org/docs/4.x.x/syntax/layouts-and-blocks (layout, it.body),
+      https://eta.js.org/docs/4.x.x/api/overview (loadTemplate, render). */ %>
+<div class="stat">
+  <span class="stat-name"><%= it.name %></span>
+  <span class="stat-value"><%= it.value %></span>
+  <span class="stat-delta"><%= it.delta %></span>
+</div>

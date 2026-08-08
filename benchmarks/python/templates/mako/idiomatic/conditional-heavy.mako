@@ -1,8 +1,7 @@
-<%doc>
-Idiomatic Mako conditional-heavy: % if / % elif / % else control lines inside
-a % for loop, authored naturally (Phase 5 D5).
-Doc: https://docs.makotemplates.org/en/latest/syntax.html#control-structures
-</%doc>
+## Idiomatic Mako conditional-heavy: % if / % elif / % else control lines inside a
+## % for loop, authored naturally; the note text (note `seq`) is composed by the
+## template per ledger E21 (Phase 5 D5, Q1.7).
+## Doc: https://docs.makotemplates.org/en/latest/syntax.html#control-structures
 <ul class="matrix">
 % for r in rows:
 <li>
@@ -17,7 +16,7 @@ Doc: https://docs.makotemplates.org/en/latest/syntax.html#control-structures
 % endif
 <em>${r["name"]}</em>
 % if r["has_note"]:
-<small>${r["note"]}</small>
+<small>note ${r["seq"]}</small>
 % endif
 % if r["is_active"]:
 <b>active</b>

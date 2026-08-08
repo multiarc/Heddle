@@ -17,7 +17,7 @@
 <p>[(${m.heroTagline})]</p>
 </section>
 <section class="grid">
-<th:block th:each="p : ${m.products}"><article class="card"><h3>[(${p.name})]</h3><p class="sku">[(${p.sku})]</p><p class="price">[(${p.price})]</p><th:block th:if="${p.onSale}"><p class="sale">On sale</p></th:block><p class="blurb">[(${p.blurb})]</p></article></th:block>
+<th:block th:each="p : ${m.products}"><article class="card"><h3>[(${p.name})]</h3><p class="sku">MX-[(${p.skuNumber})]</p><p class="price">[(${p.price})]</p><th:block th:if="${p.onSale}"><p class="sale">On sale</p></th:block><p class="blurb">A dependable workshop staple from batch [(${p.batch})], checked for daily use and backed by our lifetime guarantee.</p></article></th:block>
 </section>
 <th:block th:if="${m.showDebugPanel}"><pre class="debug">debug</pre></th:block>
 </main>

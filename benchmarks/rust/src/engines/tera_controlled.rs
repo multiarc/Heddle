@@ -15,14 +15,37 @@ use crate::models;
 
 // ---- instances (README D3) -------------------------------------------------------------------
 
-const RAW_TEMPLATES: [&str; 8] = [
+const RAW_TEMPLATES: [&str; 27] = [
+    // composed-page (E20/E22): chrome-fragment includes, the nested nav partial chain,
+    // the base layout with the live body block, and the extending child page.
+    "controlled/tera/chrome/alert-top.html",
+    "controlled/tera/chrome/secondary-wholesale-menu.html",
+    "controlled/tera/chrome/secondary-retail-menu.html",
+    "controlled/tera/chrome/alert-below.html",
+    "controlled/tera/chrome/assets-styles.html",
+    "controlled/tera/chrome/assets-scripts.html",
+    "controlled/tera/chrome/custom-styles.html",
+    "controlled/tera/chrome/head-scripts.html",
+    "controlled/tera/chrome/body-scripts.html",
+    "controlled/tera/chrome/body-end-scripts.html",
+    "controlled/tera/nav/link.html",
+    "controlled/tera/nav/section.html",
+    "controlled/tera/nav/column.html",
+    "controlled/tera/nav/mega-menu.html",
     "controlled/tera/composed-page-layout.html",
     "controlled/tera/composed-page.html",
     "controlled/tera/trivial-substitution.html",
     "controlled/tera/large-loop.html",
     "controlled/tera/mixed-page.html",
     "controlled/tera/conditional-heavy.html",
+    // fragment-heavy (E20): four dispatched per-kind partials plus the card's two
+    // sub-partials, then the dispatching main template.
     "controlled/tera/fragment-heavy-tile.html",
+    "controlled/tera/fragment-heavy-badge.html",
+    "controlled/tera/fragment-heavy-price.html",
+    "controlled/tera/fragment-heavy-card.html",
+    "controlled/tera/fragment-heavy-media-row.html",
+    "controlled/tera/fragment-heavy-stat.html",
     "controlled/tera/fragment-heavy.html",
 ];
 
@@ -44,7 +67,7 @@ fn build_instance(names: &[&str], autoescape_off: bool) -> Tera {
     tera
 }
 
-/// Cold-parse support (README D12): a fresh raw instance parsing the same 8 template files
+/// Cold-parse support (README D12): a fresh raw instance parsing the same 27 template files
 /// the runtime `tera_controlled_raw` instance holds.
 pub fn build_fresh_raw() -> Tera {
     build_instance(&RAW_TEMPLATES, true)

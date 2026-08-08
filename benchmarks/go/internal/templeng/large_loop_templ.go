@@ -3,9 +3,13 @@
 // templ: version: v0.3.1020
 // Workload 3 — large-loop, templ controlled port (port-mapping.md §Controlled track —
 
-// templ, rules 1–3). Dense single-line row body; Value is an int — templ renders numbers
+// templ, rules 1–3). Dense single-line row body; the display name is composed IN THE
 
-// natively (F5), identical bytes to strconv.Itoa on the raw alphabet.
+// TEMPLATE as the literal "row-" plus the value substitution (E21 — the model carries
+
+// ONLY Value). Value is an int — templ renders numbers natively (F5), identical bytes to
+
+// strconv.Itoa on the raw alphabet.
 
 package templeng
 
@@ -38,14 +42,14 @@ func largeLoop(m model.LoopModel) templ.Component {
 		}
 		ctx = templ.ClearChildren(ctx)
 		for _, r := range m.Items {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<tr><td>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<tr><td>row-")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var2 string
-			templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(r.Name)
+			templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(r.Value)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/large_loop.templ`, Line: 10, Col: 18}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/large_loop.templ`, Line: 12, Col: 23}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 			if templ_7745c5c3_Err != nil {
@@ -58,7 +62,7 @@ func largeLoop(m model.LoopModel) templ.Component {
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(r.Value)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/large_loop.templ`, Line: 10, Col: 38}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/large_loop.templ`, Line: 12, Col: 43}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {

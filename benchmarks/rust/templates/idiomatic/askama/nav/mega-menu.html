@@ -1,0 +1,19 @@
+{# Idiomatic Askama nav partial (WI5, README D8/Q1.7; ledger E20). One mega menu: the
+   tab strip with per-tab dropdowns on the precomputed has_dropdown boolean (Askama book:
+   "Template syntax - For" / "If" + nested "Include" of the column partial). #}
+<div class="top-menu-wrapper">
+  <ul class="top-menu">
+    {% for tab in menu.tabs %}
+      <li class="{{ tab.css }}">
+        <a href="{{ tab.href }}" class="drop">{{ tab.label }}</a>
+        {% if tab.has_dropdown %}
+          <div class="{{ tab.dropdown_css }}">
+            {% for column in tab.columns %}
+              {% include "idiomatic/askama/nav/nav-column.html" %}
+            {% endfor %}
+          </div>
+        {% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+</div>

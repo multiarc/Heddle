@@ -64,7 +64,9 @@ namespace Heddle.Benchmarks.Dotnet.Engines
 
         public static IEnumerable<Cell> Cells(string track)
         {
-            yield return Make(track, "composed-page", (object)null);
+            // The typed nav model (ledger E20/E22): the layout renders ComposedModel.Nav through
+            // nested loops and partials; all literal chrome is template text in the views.
+            yield return Make(track, "composed-page", ComposedContent.Model());
             yield return Make(track, "trivial-substitution", SubstitutionContent.Model());
             yield return Make(track, "large-loop", LoopContent.Model());
             yield return Make(track, "mixed-page", MixedContent.Model());

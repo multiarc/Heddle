@@ -1,0 +1,11 @@
+{# Idiomatic Tera media-row partial (WI5, README D8/Q1.7). The image source and caption are
+   template-composed as `/img/` + name + `.jpg` and `Caption for ` + name (ledger E21 - the
+   model carries data, never display strings). Patterns follow the Tera docs
+   (keats.github.io/tera): "Include"; default auto-escaping left on. #}
+<div class="media-row">
+  <img src="/img/{{ item.name }}.jpg" alt="{{ item.name }}" />
+  <div class="media-body">
+    <h4>{{ item.name }}</h4>
+    <p>Caption for {{ item.name }}</p>
+  </div>
+</div>

@@ -226,26 +226,27 @@ LOH_THRESHOLD_BYTES = 85_000
 UTF16_BYTES_PER_CHAR = 2
 
 # Rendered output length in CHARACTERS, which is what decides the LOH question. This is NOT the
-# golden `byteLength`: the golden is the NORMALIZED form, because TwinContent.Normalize collapses
-# every inter-tag whitespace run before the oracle is stored. The two agree within 2.4% on seven
-# of the eight workloads and differ by 1.56x on composed-page (34,847 B stored, 54,401 chars
-# rendered), so using the golden here would misclassify that workload into tier 1 and would also
-# understate its implied throughput by the same factor.
+# golden `byteLength`: the golden is the NORMALIZED form (the stored-form whitespace collapse in
+# Gate/Normalize.cs runs before the oracle is stored). The two agree within a few percent on
+# seven of the eight workloads and differ by ~1.15x on composed-page (41,111 B stored, 47,455
+# chars rendered at the E20 full-page redesign), so using the golden here would understate that
+# workload's implied throughput.
 #
-# Measured 2026-07-25 by rendering each workload and taking the length: .NET via
-# `HeddleTest.Render()`, JS via `tracks.controlled.<engine>[<id>]()`, Rust via
-# `engines::askama_controlled::render_*()`. The three ecosystems agree within 2% (they differ only
-# in whitespace, which N3b erases before the gate compares); the .NET figure is recorded because
-# it is the one that decides the LOH question. Re-measure if templates or models change. A
-# workload missing from this table falls back to the golden byteLength and is footnoted as such
-# in the generated tables, so a new workload degrades loudly rather than silently.
+# Measured 2026-07-25, re-measured 2026-08-08 at the E20/E21/E22 redesign for the two workloads
+# whose output changed (composed-page, fragment-heavy): .NET via `HeddleTest.Render()`, JS via
+# `tracks.controlled.<engine>[<id>]()`, Rust via `engines::askama_controlled::render_*()`. The
+# three ecosystems agree within 2% (they differ only in whitespace, which N3b erases before the
+# gate compares); the .NET figure is recorded because it is the one that decides the LOH
+# question. Re-measure if templates or models change. A workload missing from this table falls
+# back to the golden byteLength and is footnoted as such in the generated tables, so a new
+# workload degrades loudly rather than silently.
 RENDERED_CHARS: dict[str, int] = {
-    "composed-page": 54_401,
+    "composed-page": 47_455,
     "trivial-substitution": 338,
     "large-loop": 192_780,
     "mixed-page": 9_740,
     "conditional-heavy": 15_549,
-    "fragment-heavy": 4_730,
+    "fragment-heavy": 6_058,
     "fortunes-encoded": 1_157,
     "encoded-loop": 851_685,
 }

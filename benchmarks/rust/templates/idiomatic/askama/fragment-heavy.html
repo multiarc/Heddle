@@ -1,9 +1,18 @@
-{# Idiomatic Askama template (WI5, README D8/Q1.7). Patterns follow the Askama 0.16 book:
-   "Template syntax - Include" (include-per-iteration; included templates get full access
-   to the context, loop variables included) and "Template syntax - For";
-   default HTML escaping left on. #}
+{# Idiomatic Askama template (WI5, README D8/Q1.7; ledger E20). Per-row four-way fragment
+   dispatch on the precomputed kind booleans, invoking one per-kind partial per row
+   (Askama book: "Template syntax - If" - if / elif / else chain - and "Template syntax -
+   Include"; included partials have full access to the loop variable). Default HTML
+   escaping left on. #}
 <div class="panel">
   {% for item in items %}
-    {% include "idiomatic/askama/fragment-heavy-tile.html" %}
+    {% if item.is_tile %}
+      {% include "idiomatic/askama/fragment-heavy-tile.html" %}
+    {% elif item.is_card %}
+      {% include "idiomatic/askama/fragment-heavy-card.html" %}
+    {% elif item.is_media %}
+      {% include "idiomatic/askama/fragment-heavy-media-row.html" %}
+    {% else %}
+      {% include "idiomatic/askama/fragment-heavy-stat.html" %}
+    {% endif %}
   {% endfor %}
 </div>

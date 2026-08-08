@@ -49,7 +49,7 @@ func render(t executer, buf *bytes.Buffer, data any) string {
 
 // RenderComposedPage renders workload 1 via text/template (stdlib-text).
 func RenderComposedPage() string {
-	return render(composedTpl, composedBuf, model.Composed)
+	return render(composedTpl, composedBuf, model.Composed())
 }
 
 // RenderTrivialSubstitution renders workload 2 via text/template (stdlib-text).

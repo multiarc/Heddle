@@ -1,21 +1,140 @@
-<%doc>
-Idiomatic Mako layout for composed-page: renders the section/component
-fragments and the ordered area menus, then calls the inheriting page's
-(empty) body (Phase 5 D5).
-Docs: https://docs.makotemplates.org/en/latest/inheritance.html
-      https://docs.makotemplates.org/en/latest/syntax.html#control-structures
-</%doc>
-${section["meta"]}
-${section["social"]}
-${comp["assets_styles"]}
-${comp["custom_styles"]}
-${comp["head_scripts"]}
-${comp["body_scripts"]}
-% for name in area_names:
-${areas[name]}
+## Idiomatic Mako composed-page layout (ledger E20/E22): the full literal page chrome
+## with a live body slot -- the inheriting page's content splices at ${self.body()}.
+## The inert chrome fragments are <%def>s imported from chrome.mako; the two mega menus
+## and the footer columns render from the structured nav model through the nav.mako
+## defs inside % for loops. All display text lives in templates (Phase 5 D5, Q1.7).
+## Docs: https://docs.makotemplates.org/en/latest/inheritance.html
+##       https://docs.makotemplates.org/en/latest/namespaces.html
+##       https://docs.makotemplates.org/en/latest/syntax.html#control-structures
+<%namespace file="chrome.mako" import="*"/>
+<%namespace file="nav.mako" import="mega_menu, nav_column"/>
+<!DOCTYPE html>
+<!--[if lt IE 9]>
+    <html class="no-js lt-ie9" lang="en">
+<![endif]-->
+<!--[if gte IE 9]>
+    <html class="no-js" lang="en">
+<![endif]-->
+<!--[if !IE]><!-->
+<html class="no-js" lang="en">
+<!--<![endif]-->
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <title>Title</title>
+    <meta property="og:image" content="/files/catalog/img.jpg">
+    <meta itemprop="image" content="/files/catalog/img.jpg"/>
+    <link rel="image_src" href="/files/catalog/img.jpg"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="msvalidate.01" content="4A9D524947EE62F01A1A9607511248C4" />
+    <link href="//fonts.googleapis.com/css?family=Francois+One" rel="stylesheet" type="text/css">
+    <link rel="apple-touch-icon" href="/assets/miscellaneous/apple-touch-icon.png">
+    <link rel="icon" type="img/ico" href="/assets/miscellaneous/favicon.ico">
+    ${assets_styles()}
+    <style>
+        ${custom_styles()}
+    </style>
+    ${head_scripts()}
+</head>
+<body>
+    ${body_scripts()}
+    <div>
+        <div class="header-top main">
+            <div class="header-top-right">
+                <div class="actions-top-nav">
+                    <a href="/index/profile">Your Account</a>
+                    <a href="/Account/Register">Register</a>
+                    <a class="last-child" href="/content/contact-customer-service">Contact Us</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="separator-top"></div>
+    <div class="alert-banner">
+        ${alert_top()}
+    </div>
+    <div class="main">
+        <header>
+            <div class="header-main">
+                <div class="logo-holder">
+                    <a href="/">
+                    </a>
+                </div>
+                <div class="header-right-sidebar">
+                    <div class="search-area">
+                        <form id="search-area-form" action="/help/search" method="get">
+                            <input type="text" name="q" value="What can we help you find?" onclick="this.value = ( this.value == this.defaultValue ) ? '' : this.value;return true;" dir="ltr" autocomplete="off" spellcheck="false" style="outline: none;">
+                            <input type="image" class="active" style="display: none;" src="/Assets/images/mag.jpg" />
+                            <input type="image" class="not-active" src="/Assets/images/mag-off.png" />
+                        </form>
+                    </div>
+                    <div class="header-actions-holder">
+                        <div class="cart-work-area">
+                            <a class="view-cart" href="#">
+                                <div class="cart-icon"></div>
+                                <div class="item-total">
+                                    <span id="cart-lite-component"></span>
+                                    <span>Item(s)</span>
+                                </div>
+                            </a>
+                            <a class="checkout-button" href="#">
+                                <button>CHECKOUT</button>
+                            </a>
+                        </div>
+                    </div>
+                    <div class="clear"></div>
+                    <div class="header-top-right">
+                        <div class="actions-top-nav">
+                            <a class="wholesale-home" href="/products/wholesale">Wholesale Home</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <nav class="hide top-nav secondary-nav">
+                ${secondary_wholesale_menu()}
+                ${secondary_retail_menu()}
+            </nav>
+% for menu in nav["menus"]:
+            ${mega_menu(menu)}
 % endfor
-${comp["assets_scripts"]}
-${section["page_scripts"]}
-${section["endpage_scripts"]}
-${comp["body_end_scripts"]}
-${self.body()}
+        </header>
+        <div class="content">
+            <div class="alert-banner">
+                ${alert_below()}
+            </div>
+            <div class="content-dynamic">
+                ${self.body()}
+            </div>
+            <div class="content-bottom">
+            </div>
+        </div>
+        <footer>
+            <div class="footer-main">
+                <nav class="footer-nav">
+% for column in nav["footer_columns"]:
+                    ${nav_column(column)}
+% endfor
+                </nav>
+                <div class="footer-market">
+                    <div class="market-left">
+                        <a href="/content/request-catalog">
+                            <img alt="See Our Catalog" src="/Assets/images/seeourcatalog.jpg" />
+                        </a>
+                    </div>
+                    <div class="market-right">
+                        <div class="ssl-area">
+                        </div>
+                        <div id="socialiconshome-102413">
+                            <img src="/Assets/images/socialicons5-home.jpg" usemap="#Social">
+                        </div>
+                        <div class="clear"></div>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </div>
+    ${assets_scripts()}
+    <script src="/app/modules/profile/gccheckform.js"></script>
+    ${body_end_scripts()}
+</body>
+</html>

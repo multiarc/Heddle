@@ -1,9 +1,18 @@
-{# Idiomatic Tera template (WI5, README D8/Q1.7). Patterns follow the Tera docs
-   (keats.github.io/tera): "Include" (include-per-iteration; includes render using the
-   current context, loop variables included) and "Control structures - For loops";
+{# Idiomatic Tera template (WI5, README D8/Q1.7): per-row fragment dispatch. Patterns follow
+   the Tera docs (keats.github.io/tera): "Control structures - If" (if / elif / elif / else
+   chain over the precomputed kind booleans - common-denominator dispatch, ledger E20) and
+   "Include" (per-kind partial rendered with the current context, loop variable included);
    default auto-escaping left on. #}
 <div class="panel">
   {% for item in items %}
-    {% include "idiomatic/tera/fragment-heavy-tile.html" %}
+    {% if item.is_tile %}
+      {% include "idiomatic/tera/fragment-heavy-tile.html" %}
+    {% elif item.is_card %}
+      {% include "idiomatic/tera/fragment-heavy-card.html" %}
+    {% elif item.is_media %}
+      {% include "idiomatic/tera/fragment-heavy-media-row.html" %}
+    {% else %}
+      {% include "idiomatic/tera/fragment-heavy-stat.html" %}
+    {% endif %}
   {% endfor %}
 </div>

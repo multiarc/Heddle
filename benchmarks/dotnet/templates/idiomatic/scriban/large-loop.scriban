@@ -5,11 +5,12 @@
        builtins/html     https://github.com/scriban/scriban/blob/master/doc/builtins.md#html-functions
        runtime/includes  https://github.com/scriban/scriban/blob/master/doc/runtime.md
 
-     Uses Scriban's whitespace-control markers, its for/if statements, and the documented
-     html.escape builtin on untrusted values. Checked by the functional verifier, not the
-     byte gate. Note the multi-line comment delimiters: the single-line form ends at the
-     first newline, which would leave the doc URLs to parse as expressions. ##}}
+     The display name is composed template-side as `row-` plus the value substitution (ledger
+     E21) -- the model carries data, never display strings. Checked by the functional
+     verifier, not the byte gate. Note the multi-line comment delimiters: the single-line
+     form ends at the first newline, which would leave the doc URLs to parse as
+     expressions. ##}}
 
 {{~ for item in items ~}}
-  <tr><td>{{ item.name }}</td><td>{{ item.value }}</td></tr>
+  <tr><td>row-{{ item.value }}</td><td>{{ item.value }}</td></tr>
 {{~ end ~}}

@@ -1,0 +1,14 @@
+@*
+    Razor parity twin -- composed-page nav-section partial (ledger E20/E22).
+
+    One navigation section: the (pre-computed) TitleLinked branch and the link loop rendered
+    through the nested nav-link partial, mirroring Heddle's nav_section definition.
+    Html.Raw: raw-suite non-encoding path.
+*@
+@using Heddle.Benchmarks.Dotnet.Models
+@model NavSection
+<div class="nav-section">@if (Model.TitleLinked)
+{<span class="nav-title"><a href="@Html.Raw(Model.Href)">@Html.Raw(Model.Title)</a></span>}
+else
+{<span class="nav-title">@Html.Raw(Model.Title)</span>}<ul>@foreach (var link in Model.Links)
+{@await Html.PartialAsync("/Views/nav-link.cshtml", link)}</ul></div>

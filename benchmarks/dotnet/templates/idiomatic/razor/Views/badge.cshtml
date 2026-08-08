@@ -1,0 +1,14 @@
+@*
+    Idiomatic Razor -- fragment-heavy badge sub-partial (phase 9; authoring standard D16;
+    ledger E20).
+
+    Patterns followed, from Microsoft's own documentation:
+      Razor syntax        https://learn.microsoft.com/aspnet/core/mvc/views/razor
+      Partial views       https://learn.microsoft.com/aspnet/core/mvc/views/partial
+
+    Nested by the card partial against the row's Promo. Checked by the functional verifier,
+    not the byte gate.
+*@
+@using Heddle.Benchmarks.Dotnet.Models
+@model FragmentContent.FragmentPromo
+<span class="promo-badge">@Model.Label</span>

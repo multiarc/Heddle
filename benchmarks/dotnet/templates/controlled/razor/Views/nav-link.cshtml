@@ -1,0 +1,9 @@
+@*
+    Razor parity twin -- composed-page nav-link partial (ledger E20/E22).
+
+    One navigation link, mirroring Heddle's nav_link definition. Html.Raw: raw-suite
+    non-encoding path.
+*@
+@using Heddle.Benchmarks.Dotnet.Models
+@model NavLink
+<li class="nav-link"><a href="@Html.Raw(Model.Href)">@Html.Raw(Model.Label)</a></li>

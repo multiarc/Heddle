@@ -18,7 +18,7 @@
 <p>${m.getHeroTagline()}</p>
 </section>
 <section class="grid">
-@for(var p : m.getProducts())<article class="card"><h3>${p.getName()}</h3><p class="sku">${p.getSku()}</p><p class="price">${p.getPrice()}</p>@if(p.isOnSale())<p class="sale">On sale</p>@endif<p class="blurb">${p.getBlurb()}</p></article>@endfor
+@for(var p : m.getProducts())<article class="card"><h3>${p.getName()}</h3><p class="sku">MX-${p.getSkuNumber()}</p><p class="price">${p.getPrice()}</p>@if(p.isOnSale())<p class="sale">On sale</p>@endif<p class="blurb">A dependable workshop staple from batch ${p.getBatch()}, checked for daily use and backed by our lifetime guarantee.</p></article>@endfor
 </section>
 @if(m.isShowDebugPanel())<pre class="debug">debug</pre>@endif
 </main>

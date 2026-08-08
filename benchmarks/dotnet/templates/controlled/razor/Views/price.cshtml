@@ -1,0 +1,10 @@
+@*
+    Razor parity twin -- fragment-heavy price sub-partial (ledger E20).
+
+    Nested by the card partial against the row's Promo. The display price is composed by the
+    TEMPLATE as literal-plus-substitution (`@(Model.Price).99` -- E21): formatting is rendering
+    work, not model work.
+*@
+@using Heddle.Benchmarks.Dotnet.Models
+@model FragmentContent.FragmentPromo
+<p class="price">@(Model.Price).99</p>

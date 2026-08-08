@@ -1,5 +1,7 @@
 {# Idiomatic Jinja2 conditional-heavy: an {% if %}/{% elif %}/{% else %} chain
-   inside a {% for %} loop, authored indented (Phase 5 D5).
+   inside a {% for %} loop, authored indented; the note text is
+   template-composed as the literal `note ` plus the seq substitution
+   (Phase 5 D5, ledger E21).
    Docs: https://jinja.palletsprojects.com/en/stable/templates/#if
          https://jinja.palletsprojects.com/en/stable/templates/#for #}
 <ul class="matrix">
@@ -16,7 +18,7 @@
   {% endif %}
   <em>{{ r.name }}</em>
   {% if r.has_note %}
-  <small>{{ r.note }}</small>
+  <small>note {{ r.seq }}</small>
   {% endif %}
   {% if r.is_active %}
   <b>active</b>

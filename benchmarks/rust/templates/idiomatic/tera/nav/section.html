@@ -1,0 +1,16 @@
+{# Idiomatic Tera nav partial (WI5, README D8/Q1.7): one navigation section - an optionally
+   linked title plus its link list. Patterns follow the Tera docs (keats.github.io/tera):
+   "Include", "Control structures - If" (precomputed title_linked boolean) and
+   "Control structures - For loops"; default auto-escaping left on. #}
+<div class="nav-section">
+  {% if section.title_linked %}
+    <span class="nav-title"><a href="{{ section.href }}">{{ section.title }}</a></span>
+  {% else %}
+    <span class="nav-title">{{ section.title }}</span>
+  {% endif %}
+  <ul>
+    {% for link in section.links %}
+      {% include "idiomatic/tera/nav/link.html" %}
+    {% endfor %}
+  </ul>
+</div>

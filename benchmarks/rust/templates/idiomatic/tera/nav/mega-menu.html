@@ -1,0 +1,21 @@
+{# Idiomatic Tera nav partial (WI5, README D8/Q1.7): one mega menu - its tab bar plus the
+   per-tab dropdown columns (menu -> column -> section -> link, the nested-partial chain).
+   Patterns follow the Tera docs (keats.github.io/tera): "Include", "Control structures -
+   For loops" and "Control structures - If" (precomputed has_dropdown boolean); default
+   auto-escaping left on. #}
+<div class="top-menu-wrapper">
+  <ul class="top-menu">
+    {% for tab in menu.tabs %}
+      <li class="{{ tab.css }}">
+        <a href="{{ tab.href }}" class="drop">{{ tab.label }}</a>
+        {% if tab.has_dropdown %}
+          <div class="{{ tab.dropdown_css }}">
+            {% for column in tab.columns %}
+              {% include "idiomatic/tera/nav/column.html" %}
+            {% endfor %}
+          </div>
+        {% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+</div>

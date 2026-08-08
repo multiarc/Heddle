@@ -18,7 +18,8 @@ use crate::models::{
 // ---- composed-page (raw) ---------------------------------------------------------------------
 
 /// E20/E22 model shape: the structured nav only — all chrome/blob text lives in the
-/// templates (next-wave template scope).
+/// templates (`composed-page-layout.html` + the `chrome/` fragment includes), and the
+/// page fills the layout's live `{% block body %}` with the slider.
 #[derive(Template)]
 #[template(path = "controlled/askama/composed-page.html", escape = "none")]
 pub struct ComposedControlled<'a> {

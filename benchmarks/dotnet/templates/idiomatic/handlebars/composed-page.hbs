@@ -5,9 +5,22 @@
     Handlebars language   https://handlebarsjs.com/guide/
     Handlebars.Net        https://github.com/Handlebars-Net/Handlebars.Net#readme
 
-  Uses `{{#each}}` blocks with `this`, `{{#if}}`/`{{else}}` chains, and registered partials. Raw
-  triple-mustaches appear only where the value genuinely IS an HTML fragment; plain text goes
-  through the default encoder, which is what the guide teaches. Checked by the functional verifier.
+  Uses `{{#each}}` blocks with `this`, `{{#if}}`/`{{else if}}` chains, partial blocks
+  (`{{#> layout}}` with `{{> @partial-block}}`), and registered partials. Raw triple-mustaches
+  appear only where the value genuinely IS an HTML fragment; plain text goes through the
+  default encoder, which is what the guide teaches. Checked by the functional verifier.
 --}}
 
-{{> layout}}
+{{#> layout}}
+        <div class="slider-wrapper theme-default">
+            <div id="slider" class="nivoSlider">
+            </div>
+            <div class="home-content">
+                <div>
+                    <a href="/products/gluten-free">
+                        <img src="/files/homepage/homebtmbanners/gluten-hp.jpg" width="984" border="0" />
+                    </a>
+                </div>
+            </div>
+        </div>
+{{/layout}}

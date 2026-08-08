@@ -1,0 +1,28 @@
+{%- comment -%}
+  Idiomatic Liquid -- composed-page (Fluid) (phase 9; authoring standard D16).
+
+  Patterns followed, from the engines' own documentation:
+    Liquid language reference   https://shopify.github.io/liquid/
+    Fluid                       https://github.com/sebastienros/fluid#readme
+
+  The Liquid layout idiom (workloads.md, composed-page mechanism table): the page captures its
+  body into `body_content` and includes the layout, which emits `{{ body_content }}` at its
+  body-slot position. The slider content is the SAME as the controlled track's -- the verifier's
+  calibration pin (RemovedSegment = the slider fragment) fails an empty body, deliberately.
+  Checked by the functional verifier, not the byte gate.
+{%- endcomment -%}
+
+{% capture body_content %}
+  <div class="slider-wrapper theme-default">
+    <div id="slider" class="nivoSlider">
+    </div>
+    <div class="home-content">
+      <div>
+        <a href="/products/gluten-free">
+          <img src="/files/homepage/homebtmbanners/gluten-hp.jpg" width="984" border="0" />
+        </a>
+      </div>
+    </div>
+  </div>
+{% endcapture %}
+{% include 'layout' %}

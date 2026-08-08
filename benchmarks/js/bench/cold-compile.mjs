@@ -4,13 +4,22 @@
 //   node --expose-gc --allow-natives-syntax bench/cold-compile.mjs    (npm run bench:cold)
 //
 // Measures cold compile + first render per controlled template, per engine (D14):
-//   - Handlebars: fresh `Handlebars.create()` environment (+ partial/helper registration where
-//     the workload has them) + `compile(src)` + one render PER ITERATION — the render forces
+//   - Handlebars: fresh `Handlebars.create()` environment (+ partial registration where the
+//     workload has partials) + `compile(src)` + one render PER ITERATION — the render forces
 //     Handlebars' lazy compile, so pure-compile() timing would be a lie;
 //   - Eta: fresh `new Eta()` (+ `loadTemplate` of the workload's partials, the registration
 //     analogue) + `renderString(src, model)` per iteration — methodologically identical cells.
 // Template sources are read from src/templates/*/controlled/ ONCE at startup; file I/O is
 // never inside a timed body. Per Q1.3 the resulting figures are per-ecosystem only.
+//
+// Support templates (partials + layout shells) are DISCOVERED from each engine's controlled
+// directory by the shared file convention `<name>.partial.<ext>` / `<name>.layout.<ext>`
+// (registered as `<name>` for Handlebars, `@<name>` for Eta — the names the engine modules
+// register). The E20 fragment-heavy partial set ({tile, card, badge, price, media_row, stat})
+// belongs to the fragment-heavy cell; every other support template belongs to composed-page
+// (the E20/E22 native-layout shell, nav partials and literal chrome fragments). The pre-E20
+// `area` helper is gone with the model's text blobs (E22: composed-page is pure template
+// composition on every engine — no registered helpers anywhere in the suite).
 //
 // Shape: in-process controlled byte gate (reuses the controlled render tables) over all 16
 // cells BEFORE any bench() registration (failure exits 1 before run(), D10) → the 16 cold
@@ -24,7 +33,7 @@
 // No MATERIALISATION-CHECK here: these cells time compile + first render together, so their
 // implied output throughput is dominated by compilation and the physical ceiling says nothing
 // about them. The two track scripts carry that check.
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import Handlebars from "handlebars";
@@ -68,36 +77,42 @@ const templatesDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 
 const readControlled = (engine, file) => readFileSync(path.join(templatesDir, engine, "controlled", file), "utf8");
 
 const hbsSources = Object.fromEntries(WORKLOAD_IDS.map((id) => [id, readControlled("handlebars", `${id}.hbs`)]));
-const hbsLayoutPartial = readControlled("handlebars", "layout.partial.hbs");
-const hbsTilePartial = readControlled("handlebars", "tile.partial.hbs");
-
 const etaSources = Object.fromEntries(WORKLOAD_IDS.map((id) => [id, readControlled("eta", `${id}.eta`)]));
-const etaLayoutPartial = readControlled("eta", "layout.partial.eta");
-const etaTilePartial = readControlled("eta", "tile.partial.eta");
 
-// The suite's single registered helper (README D5), re-registered on every fresh cold
-// environment — mirrors src/engines/handlebars.mjs registerAreaHelper.
-function registerAreaHelper(env) {
-  env.registerHelper("area", function (name) {
-    return new Handlebars.SafeString(
-      Object.prototype.hasOwnProperty.call(composedPage.areas, name) ? composedPage.areas[name] : "",
-    );
-  });
+// The fragment-heavy partial family (Phase 1 workloads.md workload 6, E20); every other
+// support template is composed-page's (workload 1, E20/E22). Both dash and underscore
+// spellings of media_row are accepted so either engine's file naming resolves.
+const FRAGMENT_PARTIAL_NAMES = new Set(["tile", "card", "badge", "price", "media_row", "media-row", "stat"]);
+const SUPPORT_FILE = /^(.+)\.(?:partial|layout)\.(?:hbs|eta)$/;
+
+/** [{ name, src }] support templates of one engine's controlled dir, by the file convention. */
+function supportTemplates(engine) {
+  const support = [];
+  for (const file of readdirSync(path.join(templatesDir, engine, "controlled")).sort()) {
+    const match = SUPPORT_FILE.exec(file);
+    if (match) support.push({ name: match[1], src: readControlled(engine, file) });
+  }
+  return support;
 }
+
+/** The support templates one workload's cold cell must register (empty for most workloads). */
+function supportFor(support, id) {
+  if (id === "fragment-heavy") return support.filter((s) => FRAGMENT_PARTIAL_NAMES.has(s.name));
+  if (id === "composed-page") return support.filter((s) => !FRAGMENT_PARTIAL_NAMES.has(s.name));
+  return [];
+}
+
+const hbsSupport = supportTemplates("handlebars");
+const etaSupport = supportTemplates("eta");
 
 /** Handlebars cold closure: fresh environment + registration + compile + one render (D14). */
 function handlebarsCold(id) {
   const src = hbsSources[id];
   const model = MODELS[id];
+  const partials = supportFor(hbsSupport, id);
   return () => {
     const env = Handlebars.create();
-    if (id === "composed-page") {
-      env.registerPartial("layout", hbsLayoutPartial);
-      registerAreaHelper(env);
-    }
-    if (id === "fragment-heavy") {
-      env.registerPartial("tile", hbsTilePartial);
-    }
+    for (const { name, src: partialSrc } of partials) env.registerPartial(name, partialSrc);
     return env.compile(src)(model);
   };
 }
@@ -106,10 +121,10 @@ function handlebarsCold(id) {
 function etaCold(id) {
   const src = etaSources[id];
   const model = MODELS[id];
+  const partials = supportFor(etaSupport, id);
   return () => {
     const eta = new Eta();
-    if (id === "composed-page") eta.loadTemplate("@layout", etaLayoutPartial);
-    if (id === "fragment-heavy") eta.loadTemplate("@tile", etaTilePartial);
+    for (const { name, src: partialSrc } of partials) eta.loadTemplate(`@${name}`, partialSrc);
     return eta.renderString(src, model);
   };
 }

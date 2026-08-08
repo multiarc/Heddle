@@ -1,0 +1,8 @@
+<!--/*
+  Idiomatic Thymeleaf authoring (Q1.7/D7) — official doc citations:
+  https://www.thymeleaf.org/doc/tutorials/3.1/usingthymeleaf.html
+    §4.8 (literal substitutions: |...| — the display price is composed by the
+    template from the whole-currency int, ledger E21), §8.1 (defining fragments),
+    §12 (unescaped text: th:utext)
+*/-->
+<p class="price" th:fragment="price(promo)" th:utext="|${promo.price}.99|">9.99</p>
