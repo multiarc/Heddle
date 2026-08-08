@@ -1,0 +1,26 @@
+# idiomatic — aggregate of 38 passes (ledger E6)
+#
+# This is NOT a single mitata run. The published statistic is the median of the per-pass
+# `avg` values and the dispersion is their min…max spread, so the interval below is
+# cross-process variation. Each pass's own mitata-format capture and JSON — the two views
+# of one run that D11 requires — are under stability/idiomatic/run-<k>.txt|.json.
+#
+# STABILITY: verified (D13; cross-pass RSD median 1.77%, max 4.77%)
+# Full verdict table: stability-summary-idiomatic.md
+
+ 0  handlebars           5322.1 ns   5270.5 … 5380.3 ns   RSD 0.46%
+ 1  eta                  4230.6 ns   4195.1 … 4318.3 ns   RSD 0.74%
+ 2  handlebars            629.5 ns   609.9 … 650.8 ns   RSD 1.38%
+ 3  eta                   253.6 ns   244.7 … 276.1 ns   RSD 3.28%
+ 4  handlebars         355768.3 ns   352404.6 … 441995.4 ns   RSD 4.77%
+ 5  eta                355803.0 ns   352378.3 … 361565.8 ns   RSD 0.56%
+ 6  handlebars           6470.9 ns   6267.9 … 7750.4 ns   RSD 3.94%
+ 7  eta                  4955.6 ns   4922.5 … 5046.7 ns   RSD 0.51%
+ 8  handlebars          98231.1 ns   90994.1 … 110659.6 ns   RSD 4.67%
+ 9  eta                 15325.8 ns   15211.5 … 15772.7 ns   RSD 0.86%
+10  handlebars           5763.2 ns   5679.5 … 6391.7 ns   RSD 2.68%
+11  eta                  6508.2 ns   6428.4 … 6800.2 ns   RSD 1.66%
+12  handlebars           2472.9 ns   2443.4 … 2721.4 ns   RSD 1.80%
+13  eta                  1859.3 ns   1811.8 … 1998.9 ns   RSD 1.74%
+14  handlebars        4553071.2 ns   4394283.4 … 4898513.6 ns   RSD 2.09%
+15  eta               4448684.7 ns   4297611.3 … 4747080.0 ns   RSD 2.38%
