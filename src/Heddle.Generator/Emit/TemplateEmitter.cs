@@ -1124,7 +1124,9 @@ namespace Heddle.Generator.Emit
         /// extension (no <c>InitStart</c>/<c>CompleteInit</c> override) carries exactly the base behavior
         /// <c>PrecompiledRuntime.Bind</c> reproduces, so it renders byte-identically. A non-engine hook override is
         /// refused as <c>HED7015</c>; an engine-assembly hook override the emitter has no pinned knowledge of, and a
-        /// bodied custom call whose body model-typing is extension-specific, degrade to a safe dynamic fallback.</summary>
+        /// bodied custom call whose body model-typing is extension-specific, degrade to a safe dynamic fallback.
+        /// The exception is a BODILESS call to a pinned step-back encoder
+        /// (<see cref="ExtensionBinder.Info.HasPinnedStepBackHook"/>), which binds like a plain extension.</summary>
         private Call BuildCustomExtensionCall(string name, ExtensionBinder.Info info, OutputItem item,
             CallParameter cp, BodyContext bctx, out string reason)
         {
@@ -1141,11 +1143,17 @@ namespace Heddle.Generator.Emit
                 return null;
             }
 
-            if (info.OverridesHook)
+            // A pinned step-back encoder's hook re-types only its DEFAULT BODY; a bodiless call has no body for
+            // the hook to touch, so it binds below exactly like a plain custom extension (its [EncodeOutput]
+            // render type included). A bodied call's typing IS the hook's business — that stays a dynamic
+            // fallback, through the bodied-custom refusal just after this one.
+            if (info.OverridesHook && !(info.HasPinnedStepBackHook && string.IsNullOrEmpty(item.ParameterTemplate)))
             {
                 reason = info.Role.HasValue
                     ? "custom branch extension <" + name + ">"
-                    : "engine extension <" + name + "> with a compile-time hook (no pinned knowledge)";
+                    : info.HasPinnedStepBackHook
+                        ? "bodied step-back encoder <" + name + ">"
+                        : "engine extension <" + name + "> with a compile-time hook (no pinned knowledge)";
                 return null;
             }
 

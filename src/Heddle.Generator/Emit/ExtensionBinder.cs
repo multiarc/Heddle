@@ -53,6 +53,17 @@ namespace Heddle.Generator.Emit
         }
 
         private static readonly IReadOnlyList<PropParameter> EmptyParameters = new PropParameter[0];
+
+        /// <summary>The audited step-back encoder set behind <see cref="Info.HasPinnedStepBackHook"/>. Adding a
+        /// name here asserts its <c>InitStart</c> is exactly the step-back shape and nothing more — audit the
+        /// extension source before extending the set; the differential suite proves each member byte-identical.</summary>
+        private static readonly HashSet<string> StepBackEncoders = new HashSet<string>(System.StringComparer.Ordinal)
+        {
+            "Heddle.Extensions.StringExtension",
+            "Heddle.Extensions.AttrExtension",
+            "Heddle.Extensions.UrlExtension",
+            "Heddle.Extensions.JsExtension",
+        };
         private static readonly IReadOnlyList<ITypeSymbol> EmptyDataTypes = new ITypeSymbol[0];
 
         internal readonly struct Info
@@ -106,6 +117,17 @@ namespace Heddle.Generator.Emit
 
             /// <summary>The type (or a base below <c>AbstractExtension</c>) overrides <c>InitStart</c>/<c>CompleteInit</c>.</summary>
             public bool OverridesHook { get; }
+
+            /// <summary>The emitter's pinned knowledge of the engine's step-back encoders
+            /// (<c>@string</c>/<c>@attr</c>/<c>@url</c>/<c>@js</c>): their one hook override is the documented
+            /// step-back shape — <c>base.InitStart(ctx, parent, chainedType, null)</c> — which re-types only the
+            /// DEFAULT BODY (compiled against the caller's scope, not the call value) and changes nothing else the
+            /// base bind carries. A BODILESS call has no body for the hook to re-type, so binding it exactly like a
+            /// plain custom extension reproduces the dynamic tier; a bodied call's typing is the hook's business and
+            /// stays a dynamic fallback. Membership is by exact engine type name: a non-engine subclass, or a future
+            /// engine encoder this table has not been audited for, keeps the conservative refusal.</summary>
+            public bool HasPinnedStepBackHook =>
+                IsEngineAssembly && OverridesHook && StepBackEncoders.Contains(BareTypeName);
 
             public bool IsEngineAssembly { get; }
 
