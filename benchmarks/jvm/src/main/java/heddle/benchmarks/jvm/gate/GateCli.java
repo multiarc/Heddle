@@ -429,11 +429,16 @@ public final class GateCli {
         Map<String, String[]> pins = new LinkedHashMap<>();
         switch (entry.workload) {
             case "composed-page" -> {
-                // Delete the SectionSocial marker fragment; swap the leading SectionMeta and
-                // SectionSocial marker fragments (both from the exported verifier markers).
-                List<String> markers = entry.verifier.markers;
-                pins.put("removed", new String[] {markers.get(1), "marker"});
-                pins.put("swap", new String[] {markers.get(0), markers.get(1)});
+                // E20 pins, mirroring Phase 1's VerifierDefinitions.ComposedPage(): the
+                // removed segment is the slider fragment the page splices into the layout's
+                // live body slot - so an idiomatic page with an EMPTY body fails - and the
+                // swap pair is one anchor unique to each mega menu (wholesale vs retail).
+                pins.put("removed", new String[] {
+                        "<img src=\"/files/homepage/homebtmbanners/gluten-hp.jpg\""
+                                + " width=\"984\" border=\"0\" />",
+                        "marker"});
+                pins.put("swap", new String[] {
+                        "/product/coming-soon-paleo-pork", "/products/paleo-friendly-pork"});
             }
             case "trivial-substitution" -> {
                 pins.put("removed", new String[] {"HB-2001", "value"});
@@ -453,8 +458,15 @@ public final class GateCli {
                 pins.put("swap", new String[] {"unit-000", "unit-100"});
             }
             case "fragment-heavy" -> {
-                pins.put("removed", new String[] {"tile-00", "value"});
-                pins.put("swap", new String[] {"tile-00", "tile-24"});
+                // E20 pins, mirroring Phase 1's VerifierDefinitions.FragmentHeavy(): row 0
+                // is a tile; its whole fragment is the removed-row corruption, computed
+                // from the model so the pin cannot drift. Rows 0 and 24 are both tiles.
+                Models.FragmentRow row0 = Models.FRAGMENT_ROWS.get(0);
+                String firstTile = "<section class=\"tile\"><h3>" + row0.getName()
+                        + "</h3><p class=\"v\">" + row0.getValue()
+                        + "</p><span class=\"badge\">" + row0.getBadge() + "</span></section>";
+                pins.put("removed", new String[] {firstTile, "value"});
+                pins.put("swap", new String[] {"item-00", "item-24"});
             }
             case "fortunes-encoded" -> {
                 Models.FortuneRow row0 = Models.FORTUNE_ROWS.get(0);

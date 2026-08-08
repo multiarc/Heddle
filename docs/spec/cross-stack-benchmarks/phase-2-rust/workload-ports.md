@@ -33,58 +33,44 @@ Conventions used throughout:
   registered in the autoescape-off instance, encoded ones in the default instance
   ([README D3](README.md#d3--escaping-mode-per-template-per-track)).
 
-## Model construction (`src/models.rs`)
+## Model construction (`src/models.rs`) — Amended (E20, E21, E22)
 
 One module builds every model exactly once (`std::sync::OnceLock`), mirroring the .NET
-`Shared`-instance discipline. All numeric formatting is `i32` `Display` (no locale, matching C#
-invariant `int` formatting). Construction formulas, per workload:
+`Shared`-instance discipline. All numeric formatting is integer `Display` (no locale, matching
+C# invariant `int` formatting). Per ledger [E21/E22](../../records.md#cross-spec-amendments-ledger)
+the model tier carries **DATA only** — no derived display strings (the templates compose them as
+literal-plus-substitution) and no literal page text (chrome/blob text is template text).
+Construction formulas, per workload:
 
 | Workload | Rust construction (normative) |
 |---|---|
-| `composed-page` | `ComposedModel { section_meta, section_social, section_page_scripts: "", section_endpage_scripts: "", comp_assets_styles, comp_custom_styles, comp_head_scripts, comp_body_scripts, comp_assets_scripts, comp_body_end_scripts, area_names: Vec<String> (the 7 names in TwinContent.AreaOrder order), areas: HashMap<String, String> (all 7 entries, the empty-content area included as "") }`. Fragment strings come from `include_str!` of the data files below |
+| `composed-page` | **(E20 + E22)** `ComposedModel { nav: NavModel }` and NOTHING else — the structured navigation, nested under the `nav` key exactly as the Phase 1 dictionary views nest it. Struct chain (all snake_case fields, matching the fixture keys byte-for-byte): `NavModel { menus: Vec<MegaMenu>, footer_columns: Vec<NavColumn> }` → `MegaMenu { tabs: Vec<MenuTab> }` → `MenuTab { label, href, css, has_dropdown: bool, dropdown_css, columns: Vec<NavColumn> }` → `NavColumn { sections: Vec<NavSection> }` → `NavSection { title, href, title_linked: bool, links: Vec<NavLink> }` → `NavLink { label, href }`. Loaded ONCE at init (`OnceLock`) by `corpus::load_nav()` deserializing the corpus fixture `GoldenCorpus/fixtures/composed-page/nav.json` (`serde(deny_unknown_fields)` so fixture drift fails loudly; the manifest's `fixtures` section carries the fixture's golden-grade hash + byteLength, asserted by a corpus unit test). Every other former model member is GONE (E22): the `data/composed-page/*.html` blob files, their `include_str!` loading, the `section_*`/`comp_*` fragment fields and the `area_names`/`areas` map are deleted — the inert chrome is literal template text, policed by the byte gate/verifier, not model data |
 | `trivial-substitution` | `SubstitutionModel { title: "Heddle Handbook", sku: "HB-2001", price: 4200, brand: "Heddle Press", category: "Reference", availability: "In stock", url: "/catalog/handbook", image_url: "/img/handbook.png", summary: "A concise field guide to the engine.", rating: "4.8" }` |
-| `large-loop` | 5,000 rows, `i` in `[0, 4999]`: `LoopRow { name: format!("row-{i}"), value: i }` |
-| `mixed-page` | Page scalars exactly as Phase 1 pins them (`page_title: "Mercantile - Catalog"`, …, `show_banner: true`, `show_debug_panel: false`, `year: 2026`, `support_email: "support at mercantile.example"`); 36 products, `i` in `[1, 36]`: `MixedProduct { name: format!("Product {i:02}"), sku: format!("MX-{}", 1000 + i), price: 950 + i * 7, on_sale: i % 3 == 0, blurb: format!("A dependable workshop staple from batch {i}, checked for daily use and backed by our lifetime guarantee.") }` |
-| `conditional-heavy` | 200 rows, `i` in `[0, 199]`: `ConditionalRow { name: format!("unit-{i:03}"), note: format!("note {i}"), is_bronze: i % 4 == 0, is_silver: i % 4 == 1, is_gold: i % 4 == 2, has_note: i % 2 == 0, is_active: i % 5 != 0 }` |
-| `fragment-heavy` | 48 rows, `i` in `[0, 47]`: `FragmentRow { name: format!("tile-{i:02}"), value: i * 11, badge: ["new", "hot", "sale", "std"][i as usize % 4] }` |
+| `large-loop` | **(E21)** 5,000 rows, `i` in `[0, 4999]`: `LoopRow { value: i }` — value ONLY; the display name `row-{i}` is composed by the templates as the literal `row-` + the value substitution |
+| `mixed-page` | Page scalars exactly as Phase 1 pins them (`page_title: "Mercantile - Catalog"`, …, `show_banner: true`, `show_debug_panel: false`, `year: 2026`, `support_email: "support at mercantile.example"`); 36 products, `i` in `[1, 36]`: **(E21)** `MixedProduct { name: format!("Product {i:02}"), sku_number: 1000 + i, price: 950 + i * 7, on_sale: i % 3 == 0, batch: i }` — ints replace the former `sku`/`blurb` strings; the templates compose the display SKU (`MX-` + sku_number) and the blurb sentence (around the batch substitution) |
+| `conditional-heavy` | 200 rows, `i` in `[0, 199]`: **(E21)** `ConditionalRow { name: format!("unit-{i:03}"), seq: i, is_bronze: i % 4 == 0, is_silver: i % 4 == 1, is_gold: i % 4 == 2, has_note: i % 2 == 0, is_active: i % 5 != 0 }` — the int `seq` replaces the `note` string; the templates compose `note ` + the seq substitution |
+| `fragment-heavy` | **(E20 + E21)** 48 rows, `i` in `[0, 47]`: `FragmentRow { kind: ["tile", "card", "media", "stat"][i % 4], is_tile, is_card, is_media, is_stat (precomputed booleans — engines dispatch on these, never on the string), name: format!("item-{i:02}"), value: i * 11, badge: ["new", "hot", "sale", "std"][i % 4], delta: (i % 7) as i64 - 3, promo: FragmentPromo { label: badge, price: 9 + i } }` — `promo` on EVERY row (no null guard), `price` an int. NO caption/image-url/price-string fields: the media caption (`Caption for ` + name), image source (`/img/` + name + `.jpg`) and display price (price + `.99`) are template-composed (E21 — pre-formatting them model-side is a port defect) |
 | `fortunes-encoded` | Exactly the 12 pinned `(id, message)` rows of Phase 1 [workloads.md — workload 7](../phase-1-cross-stack-foundation/workloads.md#workload-7--fortunes-encoded-encoded), transcribed as Rust string literals byte-for-byte (row 4/8 em dashes are U+2014; row 11 is the XSS payload; row 12 the Japanese string) |
 | `encoded-loop` | 5,000 rows, `i` in `[0, 4999]`: `EncodedLoopRow { tag: format!("tag-{i}&'{}'", i % 7), name: format!("item <{i}> & \"co\""), comment: format!("'q' & <angle> \"d\" こんにちは {i}") }` |
 
-All model structs derive `serde::Serialize` (Tera contexts are built from them); Askama template
-structs borrow them (`&'static` references to the `OnceLock` singletons). A unit test per model
-pins the counts and distinctive values ([README testing plan](README.md#testing-plan)).
+All model structs derive `serde::Serialize` (Tera contexts are built from them); the nav structs
+additionally derive `Deserialize` (they are the fixture's parse target). Askama template structs
+borrow them (`&'static` references to the `OnceLock` singletons). A unit test per model pins the
+counts and distinctive values ([README testing plan](README.md#testing-plan)); the composed-page
+tests additionally pin the nav totals the verifier derives from the same model (2 menus × 6
+tabs, 4 footer columns, 36 total columns, 245 total links, the unique privacy deep link) and
+assert workloads.md rule-4 cleanliness over every nav text value.
 
-### Composed-page fragment data files (`data/composed-page/`)
+### Composed-page fragment data files — Deleted (E22)
 
-The composed-page model data is Heddle's own fragment set, exactly as the .NET twins consume it
-from `TwinContent.cs` and
-`AreaComponent.cs`
-(`AreaComponent.Areas` — the very dictionary Heddle renders from). The Rust port cannot
-reference C# statics, so the fragments are committed as data files consumed via `include_str!`:
-
-```
-benchmarks/rust/data/composed-page/
-  section-meta.html            ← TwinContent.SectionMeta
-  section-social.html          ← TwinContent.SectionSocial
-  comp-assets-styles.html      ← TwinContent.CompAssetsStyles
-  comp-custom-styles.html      ← TwinContent.CompCustomStyles
-  comp-head-scripts.html       ← TwinContent.CompHeadScripts
-  comp-body-scripts.html       ← TwinContent.CompBodyScripts
-  comp-assets-scripts.html     ← TwinContent.CompAssetsScripts
-  comp-body-end-scripts.html   ← TwinContent.CompBodyEndScripts
-  area-1.html … area-7.html    ← AreaComponent.Areas values, in TwinContent.AreaOrder order
-                                 (area-6 is the empty "Alert Top Section Below Nav" entry: a 0-byte file)
-```
-
-The two empty sections (`SectionPageScripts`, `SectionEndPageScripts`) are empty-string consts in
-`models.rs`, not files. Copy rule: the file content is the C# string literal's value, byte-for-byte
-(the multi-line verbatim literals keep their internal indentation — it is inter-tag whitespace
-and N3 erases it). Any copy error is caught by the controlled byte gate, which is exactly the
-"twins cannot silently drift" property the .NET suite gets from sharing the statics. These files
-are pinned `-text` in `.gitattributes` ([README D2](README.md#d2--harness-location-benchmarksrust-a-new-top-level-benchmarks-directory)).
-*(Verify at implementation: the exact `AreaComponent.Areas` entry for "Alert Top Section Below
-Nav" — TwinContent's `AreaOrder` comment records it as empty content; transcribe whatever the
-dictionary actually holds.)*
+*Superseded (E20/E22, 2026-08-08).* This section previously pinned `data/composed-page/` — 15
+committed blob files (`section-*.html`, `comp-*.html`, `area-1…7.html`) consumed via
+`include_str!` as the composed-page model's fragment strings. Per
+[E22](../../records.md#cross-spec-amendments-ledger) the per-ecosystem blob fixture files and
+their freshness tests are **deleted when each port lands**: the inert chrome is literal template
+text in every engine, transcribed from the Heddle templates/golden and policed by the byte gate
+(controlled) and the verifier (idiomatic). `fixtures/composed-page/nav.json` is the ONLY
+composed-page data fixture, and the model row above is its single Rust consumer.
 
 ---
 

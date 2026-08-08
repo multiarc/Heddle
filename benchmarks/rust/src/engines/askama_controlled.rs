@@ -6,61 +6,29 @@
 //! `render()`" holds by construction; the template structs themselves are `OnceLock`
 //! singletons borrowing the shared models.
 
-use std::collections::HashMap;
 use std::sync::OnceLock;
 
 use askama::Template;
 
 use crate::models;
 use crate::models::{
-    ConditionalRow, EncodedLoopRow, FortuneRow, FragmentRow, LoopRow, MixedProduct,
+    ConditionalRow, EncodedLoopRow, FortuneRow, FragmentRow, LoopRow, MixedProduct, NavModel,
 };
 
 // ---- composed-page (raw) ---------------------------------------------------------------------
 
+/// E20/E22 model shape: the structured nav only — all chrome/blob text lives in the
+/// templates (next-wave template scope).
 #[derive(Template)]
 #[template(path = "controlled/askama/composed-page.html", escape = "none")]
 pub struct ComposedControlled<'a> {
-    pub section_meta: &'a str,
-    pub section_social: &'a str,
-    pub section_page_scripts: &'a str,
-    pub section_endpage_scripts: &'a str,
-    pub comp_assets_styles: &'a str,
-    pub comp_custom_styles: &'a str,
-    pub comp_head_scripts: &'a str,
-    pub comp_body_scripts: &'a str,
-    pub comp_assets_scripts: &'a str,
-    pub comp_body_end_scripts: &'a str,
-    pub area_names: &'a [String],
-    pub areas: &'a HashMap<String, String>,
-}
-
-impl ComposedControlled<'_> {
-    /// The area lookup (README D7 — bracket indexing with a variable key is not a documented
-    /// Askama construct; a `self` method call is).
-    fn area(&self, name: &str) -> &str {
-        &self.areas[name]
-    }
+    pub nav: &'a NavModel,
 }
 
 pub fn composed() -> &'static ComposedControlled<'static> {
     static RUNNER: OnceLock<ComposedControlled<'static>> = OnceLock::new();
-    RUNNER.get_or_init(|| {
-        let m = models::composed();
-        ComposedControlled {
-            section_meta: m.section_meta,
-            section_social: m.section_social,
-            section_page_scripts: m.section_page_scripts,
-            section_endpage_scripts: m.section_endpage_scripts,
-            comp_assets_styles: m.comp_assets_styles,
-            comp_custom_styles: m.comp_custom_styles,
-            comp_head_scripts: m.comp_head_scripts,
-            comp_body_scripts: m.comp_body_scripts,
-            comp_assets_scripts: m.comp_assets_scripts,
-            comp_body_end_scripts: m.comp_body_end_scripts,
-            area_names: &m.area_names,
-            areas: &m.areas,
-        }
+    RUNNER.get_or_init(|| ComposedControlled {
+        nav: &models::composed().nav,
     })
 }
 

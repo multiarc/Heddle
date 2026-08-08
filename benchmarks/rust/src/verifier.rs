@@ -234,11 +234,15 @@ mod tests {
     fn pins() -> [Pins; 8] {
         [
             Pins {
+                // E20 pins (VerifierDefinitions.ComposedPage): the removed segment is the
+                // slider fragment home.heddle splices into the layout's body slot — an
+                // idiomatic page with an EMPTY body must fail; the swap crosses the
+                // wholesale-only and retail-only mega-menu anchors.
                 workload: "composed-page",
-                removed_segment: "<meta property=\"og:image\" content=\"/files/catalog/img.jpg\">",
+                removed_segment: "<img src=\"/files/homepage/homebtmbanners/gluten-hp.jpg\" width=\"984\" border=\"0\" />",
                 removed_kind: FailureKind::Marker,
-                swap_a: "<title>Title</title>",
-                swap_b: "<meta property=\"og:image\" content=\"/files/catalog/img.jpg\">",
+                swap_a: "/product/coming-soon-paleo-pork",
+                swap_b: "/products/paleo-friendly-pork",
                 unescape: None,
             },
             Pins {
@@ -274,11 +278,14 @@ mod tests {
                 unescape: None,
             },
             Pins {
+                // E20 pins (VerifierDefinitions.FragmentHeavy): row 0's whole tile fragment
+                // is the removed-row corruption; rows 0 and 24 are both tiles (i % 4 == 0),
+                // so the swap crosses the dispatch cycle.
                 workload: "fragment-heavy",
-                removed_segment: "tile-00",
+                removed_segment: "<section class=\"tile\"><h3>item-00</h3><p class=\"v\">0</p><span class=\"badge\">new</span></section>",
                 removed_kind: FailureKind::Value,
-                swap_a: "tile-00",
-                swap_b: "tile-24",
+                swap_a: "item-00",
+                swap_b: "item-24",
                 unescape: None,
             },
             Pins {

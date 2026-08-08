@@ -192,12 +192,14 @@ func TestP3StyleContentPassesThroughByteIdentical(t *testing.T) {
 // ---- P4 — inter-statement whitespace (evidence only) -----------------------------------------
 
 func TestP4ComposedPageBoundaryBytes(t *testing.T) {
-	// The composed-page CSS-comment neighborhood: comp-assets-styles →
-	// comp-custom-styles → comp-head-scripts, issued as consecutive @templ.Raw calls on
-	// separate lines — the fragments verbatim from the pinned model data.
-	link := model.Composed.Comp["assets_styles"]
-	css := model.Composed.Comp["custom_styles"]
-	script := model.Composed.Comp["head_scripts"]
+	// The composed-page CSS-comment neighborhood: assets_styles → custom_styles →
+	// head_scripts, issued as consecutive @templ.Raw calls on separate lines. The
+	// fragments are literals here: E22 moved all composed-page chrome text out of the
+	// model tier into the templates, so the probe pins the bytes it exercises directly
+	// (byte-identical to the retired embedded copies it originally read).
+	link := `<link rel="stylesheet" href="/main.css" />`
+	css := `/* CSS Comment Test */`
+	script := `<script src="/head.js"></script>`
 	output := render(t, boundary(link, css, script))
 
 	// Evidence: the exact bytes templ emits between consecutive statement nodes.
