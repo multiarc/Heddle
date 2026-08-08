@@ -1,4 +1,4 @@
-@<<{{layout.heddle}}
+@<<{{shared/layout.heddle}}
 @layout()
 {{
         <div class="slider-wrapper theme-default">

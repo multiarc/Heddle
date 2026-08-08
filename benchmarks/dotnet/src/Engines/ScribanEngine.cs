@@ -30,7 +30,7 @@ namespace Heddle.Benchmarks.Dotnet.Engines
 
             // ---- composed-page: capture-then-include; the layout includes the chrome-fragment
             // partials (the E22 fragment library, one partial per named definition in the Heddle
-            // twin's chrome-fragments.heddle) and the nested nav partials.
+            // twin's shared/chrome-fragments.heddle) and the nested nav partials.
             var composedLoader = new NamedLoader(new Dictionary<string, string>
             {
                 ["layout"] = Src("layout.scriban"),

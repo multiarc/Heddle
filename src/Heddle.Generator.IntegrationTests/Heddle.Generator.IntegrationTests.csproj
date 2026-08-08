@@ -1,7 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net48;net8.0;net10.0</TargetFrameworks>
+    <!-- net48 is Windows-only: .NET Framework under mono on Linux has no practical value and is unstable. -->
+    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
+    <TargetFrameworks Condition="'$(OS)' == 'Windows_NT'">net48;net8.0;net10.0</TargetFrameworks>
     <LangVersion>latest</LangVersion>
     <Nullable>disable</Nullable>
     <IsPackable>false</IsPackable>

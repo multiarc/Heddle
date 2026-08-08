@@ -55,11 +55,11 @@
     <HeddleGeneratedNamespace>Heddle.Benchmarks.Dotnet.Generated</HeddleGeneratedNamespace>
     <!--
       Template keys are derived RELATIVE to this root, and the generator's own default is the
-      project directory. Left at that default the key for layout.heddle would be
-      `templates/controlled/heddle/layout.heddle`, while `@<<{{layout.heddle}}` looks up the bare
-      name, and the import fails with HED7011. Rooting at the template directory makes the two
-      agree, and it matches the RootPath the runtime backend is given so both backends resolve
-      imports identically.
+      project directory. Left at that default the key for shared/layout.heddle would be
+      `templates/controlled/heddle/shared/layout.heddle`, while `@<<{{shared/layout.heddle}}`
+      looks up the root-relative path, and the import fails with HED7011. Rooting at the template
+      directory makes the two agree, and it matches the RootPath the runtime backend is given so
+      both backends resolve imports identically.
     -->
     <HeddleTemplateRoot>$(MSBuildProjectDirectory)/templates/controlled/heddle</HeddleTemplateRoot>
     <!-- The templates tree is data read at runtime; default-globbing it would also sweep the
@@ -71,11 +71,18 @@
     <!--
       Precompiled templates, CONTROLLED TRACK ONLY.
 
-      No Key metadata: with no HeddleTemplateRoot set the generator derives the key from the file
-      NAME, which is exactly what `@<<{{layout.heddle}}` writes, so imports resolve. (Self-
-      referencing `%(Filename)` metadata on a wildcard include does not survive item creation, and
-      the resulting empty key fails import resolution with HED7011.) Both tracks contain a
-      `layout.heddle`, so including both would collide on key and on generated class name.
+      No Key metadata: keys derive from the path RELATIVE to HeddleTemplateRoot (set above to the
+      controlled heddle directory), so the glob below yields bare-name keys for the top-level
+      entry templates and `shared/`-prefixed keys for the libraries — `shared/layout.heddle`,
+      exactly what `@<<{{shared/layout.heddle}}` writes, so imports resolve. (Self-referencing
+      `%(Filename)` metadata on a wildcard include does not survive item creation, and the
+      resulting empty key fails import resolution with HED7011.) Both tracks contain a
+      `shared/layout.heddle`, so including both would collide on key and on generated class name.
+
+      The glob is recursive on purpose: the template-tree layout rule keeps ONLY the eight
+      directly-runnable entry templates at the top level, with every non-entry (the layout, the
+      chrome-fragment and fragment libraries) under `shared/`, and the import map needs both
+      levels.
 
       Precompilation is a COMPILATION strategy rather than an authoring one: the same three sinks,
       reached through a build-time-generated tree instead of a runtime-compiled one. Measuring it on
@@ -90,7 +97,7 @@
 
       All six raw workloads are emitted, home.heddle included: the benchmark templates carry no
       embedded C# and, since E22, call no extensions at all — every fragment of literal page text
-      is template text (chrome-fragments.heddle definitions), so the compilation-wide Native
+      is template text (shared/chrome-fragments.heddle definitions), so the compilation-wide Native
       HeddleExpressionMode covers every template, and the redesigned page splices its body through
       the documented @out() slot (the old <body:body> full-override refusal no longer applies
       either). The redesigned fragment-heavy.heddle (four dispatched kinds, nested badge/price
@@ -99,7 +106,7 @@
       measured and labelled "precompiled" would be reporting the runtime backend under the wrong
       name.
     -->
-    <HeddleTemplate Include="templates\controlled\heddle\*.heddle"
+    <HeddleTemplate Include="templates\controlled\heddle\**\*.heddle"
                     Exclude="templates\controlled\heddle\fortunes-encoded.heddle;templates\controlled\heddle\encoded-loop.heddle">
       <Precompile>true</Precompile>
     </HeddleTemplate>

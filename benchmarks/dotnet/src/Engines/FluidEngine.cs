@@ -22,7 +22,7 @@ namespace Heddle.Benchmarks.Dotnet.Engines
     /// composed-page follows the workloads.md Liquid layout idiom: the page captures its body into
     /// <c>body_content</c> and <c>{% include %}</c>s the layout, which emits the slot; ALL literal
     /// chrome is template text (E22), the ten inert fragments living as per-fragment partials
-    /// mirroring <c>chrome-fragments.heddle</c>, and the nav rendering through nested loops +
+    /// mirroring <c>shared/chrome-fragments.heddle</c>, and the nav rendering through nested loops +
     /// nested partials (mega-menu, nav-column, nav-section, nav-link) bound with the documented
     /// <c>{% include ... with ... %}</c> form. fragment-heavy dispatches per row over the
     /// precomputed booleans (<c>{% if %}/{% elsif %}</c> chain) into six partials, the card partial

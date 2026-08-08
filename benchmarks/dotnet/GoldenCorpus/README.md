@@ -41,17 +41,17 @@ Since the E20 redesign the `composed-page` entry is a genuine **full HTML page**
 through Heddle's documented layout-as-definition idiom
 (docs/language-reference.md §"Composition without coupling" — **no engine change**):
 
-- `layout.heddle` is **definition-only** — the whole ~150-line chrome (doctype, IE
+- `shared/layout.heddle` is **definition-only** — the whole ~150-line chrome (doctype, IE
   conditionals, head, header, footer) lives *inside* a `<layout>{{ … }} :: ComposedModel`
   definition, so importing the file renders nothing;
-- a bare `@out()` marks the **live body slot**; `home.heddle` does `@<<{{layout.heddle}}` and
+- a bare `@out()` marks the **live body slot**; `home.heddle` does `@<<{{shared/layout.heddle}}` and
   calls `@layout(){{ …slider markup… }}`, whose body splices at the slot (both tracks carry the
   same slider body — the verifier's removed-segment calibration pin is that slider, so an empty
   body FAILS);
 - the model is **pure structured data** (ledger E22): `ComposedModel { Nav }` and nothing
   else. The inert chrome fragments — the alert banner, both secondary menus, the pinned-empty
   alert-below slot, and the fixed asset/script snippets — are named definitions in the
-  definition-only `chrome-fragments.heddle` library (imported by the layout via `@<<`) that
+  definition-only `shared/chrome-fragments.heddle` library (imported by the layout via `@<<`) that
   the chrome calls at its composition points; the two mega menus and the footer links are
   **structured data** in `NavData` rendered by `@list(Nav.Menus){{@mega_menu()}}` /
   `@list(Nav.FooterColumns){{@nav_column()}}` over nested `mega_menu` → `nav_column` →
