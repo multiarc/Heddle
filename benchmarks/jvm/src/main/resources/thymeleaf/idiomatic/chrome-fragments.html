@@ -1,0 +1,275 @@
+<!--/*
+  Idiomatic Thymeleaf authoring (Q1.7/D7) — official doc citations:
+  https://www.thymeleaf.org/doc/tutorials/3.1/usingthymeleaf.html
+    §8.1 (defining fragments: th:fragment on the fragment's own root element),
+    §11.4 (synthetic th:block for the pinned-empty fragment)
+
+  Definition-only chrome-fragment library (ledger E22): the page's inert literal
+  text — alert banner, the two secondary menus, the pinned-empty alert-below slot
+  and the fixed asset/script fragments — as named fragments the layout includes at
+  its composition points. Rendering this template whole is never done.
+*/-->
+<div class="top-banner" style="" th:fragment="alert_top"><a href="/content/shipping-information#Holidays"><img src="/files/images/sitewide-alerts/xmas-shipping-alert-1.jpg" alt="holiday shipping"/></a></div>
+                <ul class="hide" th:fragment="secondary_wholesale_menu">
+                <li>
+                <a href="#">New</a>
+                </li>
+                <li>
+                <a href="#">Signature Products</a>
+                </li>
+                <li>
+                <a href="/products/specials-and-top-sellers">Special Offers</a>
+                </li>
+                <li>
+                <a href="/content/in-the-kitchen">Recipes</a>
+                <div class="dropdown_1column">
+                <div class="col_1">
+                <ul>
+                <li>
+                <a href="/content/in-the-kitchen">All Recipes</a>
+                </li>
+                <li>
+                <a href="/recipe/Vital-Choice-Seafood-Cooking-Videos">Recipe Videos</a>
+                </li>
+                <li>
+                <a href="/content/Seafood-Storage-Cooking-Tips">Seafood Cooking Tips</a>
+                </li>
+                </ul>
+                </div>
+                </div>
+                </li>
+                <li>
+                <a href="/content/About-Vital-Choice">Why Vital Choice?</a>
+                <div class="dropdown_1column">
+                <div class="col_1">
+                <ul>
+                <li>
+                <a href="/content/About-Vital-Choice">About Us</a>
+                </li>
+                <li>
+                <a href="/content/our-mission">Our Mission</a>
+                </li>
+                <li>
+                <a href="/content/what-are-people-saying-about-vital-choice">Testimonials</a>
+                </li>
+                <li>
+                <a href="/content/Giving-Back-to-the-Community">Giving Back</a>
+                </li>
+                <li>
+                <a href="/content/News-Room">News Room</a>
+                </li>
+                <li>
+                <a href="/content/Vital-Green-Environmental-Stewardship-Program">Vital Green™</a>
+                </li>
+                <li>
+                <a href="/content/Sustainability">Sustainability</a>
+                </li>
+                <li>
+                <a href="/content/Purity-Story">Product Purity</a>
+                </li>
+                <li>
+                <a href="/content/The-Antidote-Podcast-Series">Randy's Podcasts</a>
+                </li>
+                <li>
+                <a href="/content/HealthWise-Rewards-Program">Customer Rewards</a>
+                </li>
+                <li>
+                <a href="/faqs">Frequent Questions (FAQs)</a>
+                </li>
+                </ul>
+                </div>
+                </div>
+                </li>
+                <li>
+                <a href="#">Health & Nutrition</a>
+                <div class="dropdown_1column">
+                <div class="col_1">
+                <ul>
+                <li>
+                <a href="/content/omega-3-facts-sources">Omega-3 Basics</a>
+                </li>
+                <li>
+                <a href="/content/Health-Benefits-of-Fish">Seafood Benefits</a>
+                </li>
+                <li>
+                <a href="/content/Omega-3-6-Balance-Scores-How-to-Use-Them">Omega-3/6 Balance</a>
+                </li>
+                <li>
+                <a href="/content/Healthy-Mom-Baby">Healthy Mom & Baby</a>
+                </li>
+                <li>
+                <a href="/content/Purity-Story">Seafood Purity & Safety</a>
+                </li>
+                <li>
+                <a href="/content/recommended-reading">Recommended Reading</a>
+                </li>
+                </ul>
+                </div>
+                </div>
+                </li>
+                <li>
+                <a href="/products/wholesale" class="highlighted-sec-menu">Wholesale</a>
+                <div class="dropdown_1column">
+                <div class="col_1">
+                <ul>
+                <li>
+                <a href="/products/canned-wild-seafood">Canned Wild Seafood</a>
+                </li>
+                <li>
+                <a href="/products/dietary-supplements">Dietary Supplements</a>
+                </li>
+                <li>
+                <a href="/products/organic-foods">Organic Foods</a>
+                </li>
+                <div class="sub-sec-menu-separator"></div>
+                <li>
+                <a href="/content/wholesale-promotions">Wholesale Promotions</a>
+                </li>
+                <li>
+                <a href="/content/wholesale-faq">FAQ</a>
+                </li>
+                </ul>
+                </div>
+                </div>
+                </li>
+                <li class="last-child">
+                <a href="/content/newsletter-sign-up">Newsletter</a>
+                <div class="dropdown_1column">
+                <div class="col_1">
+                <ul>
+                <li>
+                <a href="/content/newsletter-sign-up">Sign Up</a>
+                </li>
+                <li>
+                <a href="/articles">Archives</a>
+                </li>
+                </ul>
+                </div>
+                </div>
+                </li>
+                </ul>
+                <ul class="hide" th:fragment="secondary_retail_menu">
+                <li>
+                <a href="#">New</a>
+                </li>
+                <li>
+                <a href="#">Signature Products</a>
+                </li>
+                <li>
+                <a href="/products/specials-and-top-sellers">Special Offers</a>
+                </li>
+                <li>
+                <a href="/content/in-the-kitchen">Recipes</a>
+                <div class="dropdown_1column">
+                <div class="col_1">
+                <ul>
+                <li>
+                <a href="/content/in-the-kitchen">All Recipes</a>
+                </li>
+                <li>
+                <a href="/recipe/Vital-Choice-Seafood-Cooking-Videos">Recipe Videos</a>
+                </li>
+                <li>
+                <a href="/content/Seafood-Storage-Cooking-Tips">Seafood Cooking Tips</a>
+                </li>
+                </ul>
+                </div>
+                </div>
+                </li>
+                <li>
+                <a href="/content/About-Vital-Choice">Why Vital Choice?</a>
+                <div class="dropdown_1column">
+                <div class="col_1">
+                <ul>
+                <li>
+                <a href="/content/About-Vital-Choice">About Us</a>
+                </li>
+                <li>
+                <a href="/content/our-mission">Our Mission</a>
+                </li>
+                <li>
+                <a href="/content/what-are-people-saying-about-vital-choice">Testimonials</a>
+                </li>
+                <li>
+                <a href="/content/Giving-Back-to-the-Community">Giving Back</a>
+                </li>
+                <li>
+                <a href="/content/News-Room">News Room</a>
+                </li>
+                <li>
+                <a href="/content/Vital-Green-Environmental-Stewardship-Program">Vital Green™</a>
+                </li>
+                <li>
+                <a href="/content/Sustainability">Sustainability</a>
+                </li>
+                <li>
+                <a href="/content/Purity-Story">Product Purity</a>
+                </li>
+                <li>
+                <a href="/content/The-Antidote-Podcast-Series">Randy's Podcasts</a>
+                </li>
+                <li>
+                <a href="/content/HealthWise-Rewards-Program">Customer Rewards</a>
+                </li>
+                <li>
+                <a href="/faqs">Frequent Questions (FAQs)</a>
+                </li>
+                </ul>
+                </div>
+                </div>
+                </li>
+                <li>
+                <a href="#">Health & Nutrition</a>
+                <div class="dropdown_1column">
+                <div class="col_1">
+                <ul>
+                <li>
+                <a href="/content/omega-3-facts-sources">Omega-3 Basics</a>
+                </li>
+                <li>
+                <a href="/content/Health-Benefits-of-Fish">Seafood Benefits</a>
+                </li>
+                <li>
+                <a href="/content/Omega-3-6-Balance-Scores-How-to-Use-Them">Omega-3/6 Balance</a>
+                </li>
+                <li>
+                <a href="/content/Healthy-Mom-Baby">Healthy Mom & Baby</a>
+                </li>
+                <li>
+                <a href="/content/Purity-Story">Seafood Purity & Safety</a>
+                </li>
+                <li>
+                <a href="/content/recommended-reading">Recommended Reading</a>
+                </li>
+                </ul>
+                </div>
+                </div>
+                </li>
+                <li>
+                <a href="/content/request-catalog">Catalog</a>
+                </li>
+                <li class="last-child">
+                <a href="/content/newsletter-sign-up">Newsletter</a>
+                <div class="dropdown_1column">
+                <div class="col_1">
+                <ul>
+                <li>
+                <a href="/content/newsletter-sign-up">Sign Up</a>
+                </li>
+                <li>
+                <a href="/articles">Archives</a>
+                </li>
+                </ul>
+                </div>
+                </div>
+                </li>
+                </ul>
+<th:block th:fragment="alert_below"></th:block>
+<link rel="stylesheet" href="/main.css" th:fragment="assets_styles" />
+<style th:fragment="custom_styles">
+        /* CSS Comment Test */
+    </style>
+<script src="/head.js" th:fragment="head_scripts"></script>
+<script src="/body.js" th:fragment="body_scripts"></script>
+<script src="/main.js" th:fragment="assets_scripts"></script>
+<script src="/bodyend.js" th:fragment="body_end_scripts"></script>

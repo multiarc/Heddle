@@ -1,0 +1,14 @@
+{{!--
+  Idiomatic Handlebars -- composed-page assets_styles chrome fragment (phase 9; authoring standard D16).
+
+  Patterns followed, from the engines' own documentation:
+    Handlebars language   https://handlebarsjs.com/guide/
+    Handlebars.Net        https://github.com/Handlebars-Net/Handlebars.Net#readme
+
+  Uses `{{#each}}` blocks with `this`, `{{#if}}`/`{{else if}}` chains, partial blocks
+  (`{{#> layout}}` with `{{> @partial-block}}`), and registered partials. Raw triple-mustaches
+  appear only where the value genuinely IS an HTML fragment; plain text goes through the
+  default encoder, which is what the guide teaches. Checked by the functional verifier.
+--}}
+
+<link rel="stylesheet" href="/main.css" />

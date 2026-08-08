@@ -69,6 +69,10 @@ public final class ThymeleafEngines {
         resolver.setPrefix("thymeleaf/");
         resolver.setSuffix(".html");
         resolver.setTemplateMode(TemplateMode.HTML);
+        // E22: the chrome-fragment literals carry non-ASCII bytes (the secondary menus'
+        // U+2122 trademark sign), so the template read encoding is pinned rather than
+        // left to the platform default.
+        resolver.setCharacterEncoding("UTF-8");
         resolver.setCacheable(true);
         TemplateEngine engine = new TemplateEngine();
         engine.setTemplateResolver(resolver);

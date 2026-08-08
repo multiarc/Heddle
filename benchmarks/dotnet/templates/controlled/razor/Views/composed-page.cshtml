@@ -1,18 +1,24 @@
 @*
-    Razor parity twin -- composed-page (ledger E8/E9).
+    Razor parity twin -- composed-page (ledger E20/E22).
 
-    Razor is now measured on ALL EIGHT workloads. It previously existed for composed-page only,
-    which meant the repository's "faster than Razor" claim rested on the single least favourable
-    workload in the set. An engine with one workload does not belong in a cross-stack table.
-
-    Every value comes from the shared PUBLIC fixtures under src/Models/, the same objects every
-    other engine reads, so this twin cannot drift from the engine it is compared against. Its
-    predecessor did drift -- it carried a hand-duplicated 56 KB copy of the area dictionary that had
-    diverged unnoticed -- precisely because nothing compared the two.
-
-    Html.Raw throughout: Heddle emits these fragments unencoded, which is the same reason the
-    Handlebars twin uses triple mustaches. Whitespace is free -- N3b strips every whitespace run
-    from both sides before the byte comparison.
+    The page is Razor's native composition: it names the layout and its markup body splices
+    at the layout's single mid-page @RenderBody() -- a LIVE body slot, mirroring Heddle's
+    home.heddle (`@<<{{layout.heddle}}` + `@layout(){{ ...slider... }}` splicing at @out()).
+    The slider body is the verifier's removed-segment calibration pin, so an empty body fails.
+    Whitespace is free -- N3b strips every whitespace run from both sides before the byte
+    comparison.
 *@
 @using Heddle.Benchmarks.Dotnet.Models
+@model ComposedModel
 @{ Layout = "/Views/composed-page-layout.cshtml"; }
+        <div class="slider-wrapper theme-default">
+            <div id="slider" class="nivoSlider">
+            </div>
+            <div class="home-content">
+                <div>
+                    <a href="/products/gluten-free">
+                        <img src="/files/homepage/homebtmbanners/gluten-hp.jpg" width="984" border="0" />
+                    </a>
+                </div>
+            </div>
+        </div>

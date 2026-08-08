@@ -1,0 +1,15 @@
+{%- comment -%}
+  Idiomatic Liquid -- large-loop (Fluid) (phase 9; authoring standard D16).
+
+  Patterns followed, from the engines' own documentation:
+    Liquid language reference   https://shopify.github.io/liquid/
+    Fluid                       https://github.com/sebastienros/fluid#readme
+
+  The display name is composed by the template as `row-` + the value substitution (ledger E21:
+  the model carries data only). Authored the way the docs teach rather than to match the oracle
+  byte-for-byte. Checked by the functional verifier, not the byte gate.
+{%- endcomment -%}
+
+{% for item in items %}
+  <tr><td>row-{{ item.value }}</td><td>{{ item.value }}</td></tr>
+{% endfor %}

@@ -1,5 +1,7 @@
 @*
-    Idiomatic Razor -- mixed-page (phase 9; authoring standard D16).
+    Idiomatic Razor -- mixed-page (phase 9; authoring standard D16; E21 composed display
+    text: the template composes the display SKU (`MX-@(p.SkuNumber)`) and the blurb sentence
+    around `@p.Batch` -- the model carries the ints only).
 
     Patterns followed, from Microsoft's own documentation:
       Razor syntax        https://learn.microsoft.com/aspnet/core/mvc/views/razor
@@ -40,13 +42,13 @@
             {
                 <article class="card">
                     <h3>@p.Name</h3>
-                    <p class="sku">@p.Sku</p>
+                    <p class="sku">MX-@p.SkuNumber</p>
                     <p class="price">@p.Price</p>
                     @if (p.OnSale)
                     {
                         <p class="sale">On sale</p>
                     }
-                    <p class="blurb">@p.Blurb</p>
+                    <p class="blurb">A dependable workshop staple from batch @p.Batch, checked for daily use and backed by our lifetime guarantee.</p>
                 </article>
             }
         </section>

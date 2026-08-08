@@ -1,0 +1,13 @@
+{{## Idiomatic Scriban -- fragment-heavy badge partial (phase 9; authoring standard D16).
+
+     Patterns followed, from Scriban's own documentation:
+       language          https://github.com/scriban/scriban/blob/master/doc/language.md
+       builtins/html     https://github.com/scriban/scriban/blob/master/doc/builtins.md#html-functions
+       runtime/includes  https://github.com/scriban/scriban/blob/master/doc/runtime.md
+
+     Renders the promo badge from the scope-shared row's promo. Checked by the functional
+     verifier, not the byte gate. Note the multi-line comment delimiters: the single-line
+     form ends at the first newline, which would leave the doc URLs to parse as
+     expressions. ##}}
+
+<span class="promo-badge">{{ item.promo.label }}</span>

@@ -1,14 +1,25 @@
-// Handlebars engine module — Phase 4 WI4 (spec: README D4/D5/D7, templates-and-models.md
-// §Handlebars, harness-and-run.md §Harness layout). Stock engine, never patched: no
-// escapeExpression override — the encoded-suite `&#x27;` spelling is reconciled by N5 in the
-// gate (README D4). Per-track environment factories on `Handlebars.create()` (one environment
-// per workload, mirroring the per-test environments of the intra-.NET Handlebars.Net twins):
+// Handlebars engine module — Phase 4 WI4 (spec: README D4/D7, templates-and-models.md
+// §Handlebars, harness-and-run.md §Harness layout; Phase 1 workloads.md workloads 1 & 6,
+// ledger E20/E21/E22). Stock engine, never patched: no escapeExpression override — the
+// encoded-suite `&#x27;` spelling is reconciled by N5 in the gate (README D4). Per-track
+// environment factories on `Handlebars.create()` (one environment per workload, mirroring the
+// per-test environments of the intra-.NET Handlebars.Net twins):
 //   - controlled: runtime `env.compile(src)` once at startup (README D7);
-//   - idiomatic: `env.precompile(src, { knownHelpersOnly: true, knownHelpers })` +
-//     `env.template(eval("(" + spec + ")"))` once at startup — `knownHelpers: { area: true }`
-//     only for the composed-page environment (README D7/D9).
-// The complete registered-helper surface of the suite is the single `area` helper below
-// (composed-page only — README D5); all other templates use only built-in helpers.
+//   - idiomatic: `env.precompile(src, { knownHelpersOnly: true })` +
+//     `env.template(eval("(" + spec + ")"))` once at startup (README D7/D9).
+// The suite registers NO helpers (E22 retired the `area` helper with the blob dictionary it
+// read from — composed-page is pure template composition now), so `knownHelpersOnly: true`
+// needs no `knownHelpers` extension anywhere: the built-ins (#if/#each) are the whole helper
+// surface. Composition is partials only:
+//   - composed-page (E20/E22): partial-block layout — the page is `{{#> layout}}…slider…{{/layout}}`,
+//     the layout partial carries the full literal chrome and splices the body at
+//     `{{> @partial-block}}` (handlebarsjs.com/guide/partials.html#partial-blocks); the inert
+//     chrome fragments are per-fragment literal partials mirroring chrome-fragments.heddle,
+//     and the nav renders through nested partials (mega_menu → nav_column → nav_section →
+//     nav_link) over the fixture-loaded nav model.
+//   - fragment-heavy (E20): six partials (tile, card, badge, price, media_row, stat)
+//     dispatched per row by the chained `{{#if is_*}}` boolean chain; card nests
+//     `{{> badge promo}}{{> price promo}}`.
 import Handlebars from "handlebars";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -46,26 +57,35 @@ const MODELS = {
   "encoded-loop": encodedLoop,
 };
 
-// The one registered helper of the whole JS suite (README D5; templates-and-models.md
-// §Registered helpers): name -> prebuilt fragment lookup, SafeString emission, empty string
-// on a miss — the behavioral mirror of the Handlebars.Net twin's WriteSafeString helper.
-function registerAreaHelper(env) {
-  env.registerHelper("area", function (name) {
-    return new Handlebars.SafeString(
-      Object.prototype.hasOwnProperty.call(composedPage.areas, name) ? composedPage.areas[name] : "",
-    );
-  });
-}
+/** Workload id -> partial names; each name N is the file `{track}/N.partial.hbs`. */
+const PARTIALS = {
+  // Partial-block layout (E20) + the E22 chrome-fragment library + the nested nav partials.
+  "composed-page": [
+    "layout",
+    "alert_top",
+    "secondary_wholesale_menu",
+    "secondary_retail_menu",
+    "alert_below",
+    "assets_styles",
+    "assets_scripts",
+    "custom_styles",
+    "head_scripts",
+    "body_scripts",
+    "body_end_scripts",
+    "mega_menu",
+    "nav_column",
+    "nav_section",
+    "nav_link",
+  ],
+  // Six dispatched fragment partials (E20); card nests badge + price against the row promo.
+  "fragment-heavy": ["tile", "card", "badge", "price", "media_row", "stat"],
+};
 
 /** Controlled track: fresh environment per workload, runtime compile (README D7). */
 function compileControlled(id) {
   const env = Handlebars.create();
-  if (id === "composed-page") {
-    env.registerPartial("layout", readTemplate("controlled", "layout.partial.hbs"));
-    registerAreaHelper(env);
-  }
-  if (id === "fragment-heavy") {
-    env.registerPartial("tile", readTemplate("controlled", "tile.partial.hbs"));
+  for (const name of PARTIALS[id] ?? []) {
+    env.registerPartial(name, readTemplate("controlled", `${name}.partial.hbs`));
   }
   return env.compile(readTemplate("controlled", `${id}.hbs`));
 }
@@ -80,16 +100,9 @@ function materialize(env, source, options) {
 /** Idiomatic track: fresh environment per workload, precompiled `knownHelpersOnly` (README D7/D9). */
 function compileIdiomatic(id) {
   const env = Handlebars.create();
-  const options =
-    id === "composed-page"
-      ? { knownHelpersOnly: true, knownHelpers: { area: true } }
-      : { knownHelpersOnly: true };
-  if (id === "composed-page") {
-    env.registerPartial("layout", materialize(env, readTemplate("idiomatic", "layout.partial.hbs"), options));
-    registerAreaHelper(env);
-  }
-  if (id === "fragment-heavy") {
-    env.registerPartial("tile", materialize(env, readTemplate("idiomatic", "tile.partial.hbs"), options));
+  const options = { knownHelpersOnly: true };
+  for (const name of PARTIALS[id] ?? []) {
+    env.registerPartial(name, materialize(env, readTemplate("idiomatic", `${name}.partial.hbs`), options));
   }
   return materialize(env, readTemplate("idiomatic", `${id}.hbs`), options);
 }

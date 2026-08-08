@@ -1,0 +1,18 @@
+@*
+    Idiomatic Razor -- fragment-heavy stat partial (phase 9; authoring standard D16;
+    ledger E20).
+
+    Patterns followed, from Microsoft's own documentation:
+      Razor syntax        https://learn.microsoft.com/aspnet/core/mvc/views/razor
+      Partial views       https://learn.microsoft.com/aspnet/core/mvc/views/partial
+
+    One of the four dispatched fragment kinds. Checked by the functional verifier, not the
+    byte gate.
+*@
+@using Heddle.Benchmarks.Dotnet.Models
+@model FragmentContent.FragmentRow
+<div class="stat">
+    <span class="stat-name">@Model.Name</span>
+    <span class="stat-value">@Model.Value</span>
+    <span class="stat-delta">@Model.Delta</span>
+</div>

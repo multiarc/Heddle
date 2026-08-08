@@ -3,4 +3,4 @@
      https://handlebarsjs.com/guide/builtin-helpers.html (#if, #each),
      https://handlebarsjs.com/guide/partials.html (partials, partial contexts),
      https://handlebarsjs.com/guide/installation/precompilation.html (precompiled execution). --}}
-<div class="panel">{{#each items}}{{> tile this}}{{/each}}</div>
+<div class="panel">{{#each items}}{{#if is_tile}}{{> tile this}}{{else if is_card}}{{> card this}}{{else if is_media}}{{> media_row this}}{{else}}{{> stat this}}{{/if}}{{/each}}</div>

@@ -6,7 +6,7 @@
 --%>
 @for(var r : items)
     <tr>
-        <td>${r.getName()}</td>
+        <td>row-${r.getValue()}</td>
         <td>${r.getValue()}</td>
     </tr>
 @endfor

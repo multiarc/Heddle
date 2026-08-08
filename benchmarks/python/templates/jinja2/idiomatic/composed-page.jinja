@@ -1,4 +1,21 @@
 {# Idiomatic Jinja2 composed-page: template inheritance -- the page extends the
-   layout, which renders the ordered fragment sequence (Phase 5 D5).
+   full-page layout and fills its live content block with the slider body; the
+   body is the SAME as the controlled track's (the verifier's removed-segment
+   calibration pin is the slider, so an empty block fails) (Phase 5 D5, ledger
+   E20/E22).
    Doc: https://jinja.palletsprojects.com/en/stable/templates/#template-inheritance #}
 {% extends "layout.jinja" %}
+
+{% block content %}
+<div class="slider-wrapper theme-default">
+  <div id="slider" class="nivoSlider">
+  </div>
+  <div class="home-content">
+    <div>
+      <a href="/products/gluten-free">
+        <img src="/files/homepage/homebtmbanners/gluten-hp.jpg" width="984" border="0" />
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}

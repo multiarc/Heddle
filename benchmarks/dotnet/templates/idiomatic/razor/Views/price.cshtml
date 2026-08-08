@@ -1,0 +1,15 @@
+@*
+    Idiomatic Razor -- fragment-heavy price sub-partial (phase 9; authoring standard D16;
+    ledger E20).
+
+    Patterns followed, from Microsoft's own documentation:
+      Razor syntax        https://learn.microsoft.com/aspnet/core/mvc/views/razor
+      Partial views       https://learn.microsoft.com/aspnet/core/mvc/views/partial
+
+    Nested by the card partial against the row's Promo. The display price is composed by the
+    TEMPLATE as literal-plus-substitution (`@(Model.Price).99` -- E21). Checked by the
+    functional verifier, not the byte gate.
+*@
+@using Heddle.Benchmarks.Dotnet.Models
+@model FragmentContent.FragmentPromo
+<p class="price">@(Model.Price).99</p>

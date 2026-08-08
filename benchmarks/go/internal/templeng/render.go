@@ -49,8 +49,9 @@ func render(c templ.Component, buf *bytes.Buffer) string {
 
 // ---- the eight controlled cells --------------------------------------------------------------
 
-// RenderComposedPage renders workload 1 via templ.
-func RenderComposedPage() string { return render(composedPage(model.Composed), composedBuf) }
+// RenderComposedPage renders workload 1 via templ (model.Composed() loads the nav fixture
+// exactly once — sync.Once — so the per-render cost is a call plus a struct copy).
+func RenderComposedPage() string { return render(composedPage(model.Composed()), composedBuf) }
 
 // RenderTrivialSubstitution renders workload 2 via templ.
 func RenderTrivialSubstitution() string {

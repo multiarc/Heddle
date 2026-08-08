@@ -17,7 +17,7 @@
 <p>{{{hero_tagline}}}</p>
 </section>
 <section class="grid">
-{{#each products}}<article class="card"><h3>{{{name}}}</h3><p class="sku">{{{sku}}}</p><p class="price">{{{price}}}</p>{{#if on_sale}}<p class="sale">On sale</p>{{/if}}<p class="blurb">{{{blurb}}}</p></article>{{/each}}
+{{#each products}}<article class="card"><h3>{{{name}}}</h3><p class="sku">MX-{{{sku_number}}}</p><p class="price">{{{price}}}</p>{{#if on_sale}}<p class="sale">On sale</p>{{/if}}<p class="blurb">A dependable workshop staple from batch {{{batch}}}, checked for daily use and backed by our lifetime guarantee.</p></article>{{/each}}
 </section>
 {{#if show_debug_panel}}<pre class="debug">debug</pre>{{/if}}
 </main>

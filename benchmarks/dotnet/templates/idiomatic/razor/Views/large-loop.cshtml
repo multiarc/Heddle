@@ -1,5 +1,6 @@
 @*
-    Idiomatic Razor -- large-loop (phase 9; authoring standard D16).
+    Idiomatic Razor -- large-loop (phase 9; authoring standard D16; E21 composed display
+    name: the template composes `row-@(item.Value)` -- the model carries the int only).
 
     Patterns followed, from Microsoft's own documentation:
       Razor syntax        https://learn.microsoft.com/aspnet/core/mvc/views/razor
@@ -16,5 +17,5 @@
 @{ Layout = null; }
 @foreach (var item in Model.Items)
 {
-    <tr><td>@item.Name</td><td>@item.Value</td></tr>
+    <tr><td>row-@item.Value</td><td>@item.Value</td></tr>
 }

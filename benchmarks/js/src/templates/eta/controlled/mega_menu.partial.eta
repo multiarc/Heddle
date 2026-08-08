@@ -1,0 +1,1 @@
+<div class="top-menu-wrapper"><ul class="top-menu"><% it.tabs.forEach(t => { %><li class="<%~ t.css %>"><a href="<%~ t.href %>" class="drop"><%~ t.label %></a><% if (t.has_dropdown) { %><div class="<%~ t.dropdown_css %>"><% t.columns.forEach(c => { %><%~ include("@nav_column", c) %><% }) %></div><% } %></li><% }) %></ul></div>

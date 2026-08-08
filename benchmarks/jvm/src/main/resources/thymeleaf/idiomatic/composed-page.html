@@ -1,6 +1,27 @@
 <!--/*
   Idiomatic Thymeleaf authoring (Q1.7/D7) — official doc citations:
   https://www.thymeleaf.org/doc/tutorials/3.1/usingthymeleaf.html
-    §8.1 (including fragments: th:replace)
+    §8.2 (fragment signatures and parameters), §8.3 (flexible layouts: fragment
+    expressions as arguments, ~{:: selector} against this template),
+    §11.4 (synthetic th:block container)
+
+  The page hands its body fragment to the layout's live slot: th:replace on the
+  root block swaps the whole page for the composed layout, and the slider body —
+  defined as a local fragment — splices where the layout inserts ${bodySlot}
+  (ledger E20: native layout mechanism with a live body slot on every engine).
 */-->
-<div th:replace="~{idiomatic/layout :: layout}"></div>
+<th:block th:replace="~{idiomatic/layout :: layout(~{:: slider-body})}">
+    <th:block th:fragment="slider-body">
+        <div class="slider-wrapper theme-default">
+            <div id="slider" class="nivoSlider">
+            </div>
+            <div class="home-content">
+                <div>
+                    <a href="/products/gluten-free">
+                        <img src="/files/homepage/homebtmbanners/gluten-hp.jpg" width="984" border="0" />
+                    </a>
+                </div>
+            </div>
+        </div>
+    </th:block>
+</th:block>

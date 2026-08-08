@@ -1,0 +1,7 @@
+<!--/*
+  Idiomatic Thymeleaf authoring (Q1.7/D7) — official doc citations:
+  https://www.thymeleaf.org/doc/tutorials/3.1/usingthymeleaf.html
+    §8.1 (defining fragments: th:fragment with arguments),
+    §12 (unescaped text: th:utext)
+*/-->
+<span class="promo-badge" th:fragment="badge(promo)" th:utext="${promo.label}">badge label</span>

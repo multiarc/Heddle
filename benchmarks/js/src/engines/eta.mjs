@@ -1,12 +1,20 @@
 // Eta engine module (Phase 4 WI5; spec: README D8, harness-and-run.md §Harness layout,
-// templates-and-models.md §Eta). One `new Eta()` instance per track, ALL defaults
-// (autoEscape: true, autoTrim: [false, "nl"], varName: "it", default tags and escapeFunction).
-// Templates are registered by name at startup via `eta.loadTemplate("@<id>", src)` (`@` =
-// cached, non-filesystem); the measured render call is `eta.render("@<id>", model)` — Eta's
-// documented cached-template render path. Raw suites use the raw tag `<%~ %>`; encoded suites
-// use `<%= %>` (default XMLEscape — byte-canonical, N5 identity). The idiomatic track uses
-// Eta's native layout system (`layout("@shell"/"@page", it)` + `<%~ it.body %>`) for
-// composed-page and mixed-page.
+// templates-and-models.md §Eta; Phase 1 workloads.md workloads 1 & 6 as amended by records.md
+// E20/E21/E22). One `new Eta()` instance per track, ALL defaults (autoEscape: true,
+// autoTrim: [false, "nl"], varName: "it", default tags and escapeFunction). Templates are
+// registered by name at startup via `eta.loadTemplate("@<id>", src)` (`@` = cached,
+// non-filesystem); the measured render call is `eta.render("@<id>", model)` — Eta's documented
+// cached-template render path. Raw suites use the raw tag `<%~ %>` in the controlled track
+// (idiomatic scalar substitutions use the docs-default `<%= %>`, a byte no-op under Phase 1
+// rule 4); encoded suites use `<%= %>` (default XMLEscape — byte-canonical, N5 identity).
+//
+// composed-page (E20/E22) uses Eta's NATIVE layout system in BOTH tracks: the child declares
+// `<% layout("@shell", it) %>` with the slider markup as its body, and the shell — the full
+// literal page chrome transcribed from the Heddle layout — splices it at `<%~ it.body %>`.
+// The structured nav renders through nested partials (mega_menu → nav_column → nav_section →
+// nav_link) and the inert chrome fragments are per-fragment literal partials mirroring the
+// Heddle chrome-fragments.heddle definition library. fragment-heavy (E20) dispatches four
+// fragment kinds per row over six partials (card nests badge + price against the row's promo).
 //
 // Exported registry fragment: `tracks[track].eta[workloadId] -> () => string`, merged by
 // src/engines/index.mjs (WI6) into the harness-wide `tracks` / per-track `renderers` tables.
@@ -48,10 +56,39 @@ function readTemplate(track, file) {
   return readFileSync(path.join(templatesDir, track, file), "utf8");
 }
 
+// Support templates (partials + the layout shell), identical name sets in both tracks. File
+// naming is the convention bench/cold-compile.mjs discovers support templates by:
+// `<name>.partial.eta` / `<name>.layout.eta` registers as `@<name>`.
+const SUPPORT_TEMPLATES = Object.freeze([
+  // composed-page (E20/E22): native-layout shell + nested nav partials + chrome fragments.
+  ["@shell", "shell.layout.eta"],
+  ["@nav_link", "nav_link.partial.eta"],
+  ["@nav_section", "nav_section.partial.eta"],
+  ["@nav_column", "nav_column.partial.eta"],
+  ["@mega_menu", "mega_menu.partial.eta"],
+  ["@alert_top", "alert_top.partial.eta"],
+  ["@alert_below", "alert_below.partial.eta"],
+  ["@secondary_wholesale_menu", "secondary_wholesale_menu.partial.eta"],
+  ["@secondary_retail_menu", "secondary_retail_menu.partial.eta"],
+  ["@assets_styles", "assets_styles.partial.eta"],
+  ["@assets_scripts", "assets_scripts.partial.eta"],
+  ["@custom_styles", "custom_styles.partial.eta"],
+  ["@head_scripts", "head_scripts.partial.eta"],
+  ["@body_scripts", "body_scripts.partial.eta"],
+  ["@body_end_scripts", "body_end_scripts.partial.eta"],
+  // fragment-heavy (E20): six dispatched fragment partials (card nests badge + price).
+  ["@tile", "tile.partial.eta"],
+  ["@card", "card.partial.eta"],
+  ["@badge", "badge.partial.eta"],
+  ["@price", "price.partial.eta"],
+  ["@media_row", "media_row.partial.eta"],
+  ["@stat", "stat.partial.eta"],
+]);
+
 /** Builds one track's Eta instance (defaults) with its templates registered, and the render table. */
-function buildTrack(track, partials) {
+function buildTrack(track) {
   const eta = new Eta();
-  for (const [name, file] of partials) {
+  for (const [name, file] of SUPPORT_TEMPLATES) {
     eta.loadTemplate(name, readTemplate(track, file));
   }
   const renderers = {};
@@ -63,15 +100,8 @@ function buildTrack(track, partials) {
   return { eta, renderers: Object.freeze(renderers) };
 }
 
-const controlledTrack = buildTrack("controlled", [
-  ["@layout", "layout.partial.eta"],
-  ["@tile", "tile.partial.eta"],
-]);
-const idiomaticTrack = buildTrack("idiomatic", [
-  ["@tile", "tile.partial.eta"],
-  ["@shell", "shell.layout.eta"],
-  ["@page", "page.layout.eta"],
-]);
+const controlledTrack = buildTrack("controlled");
+const idiomaticTrack = buildTrack("idiomatic");
 
 /** Controlled-track render table: `controlled[id]() -> string`. */
 export const controlled = controlledTrack.renderers;

@@ -1,0 +1,1 @@
+<%page args="item"/><article class="card"><h3>${item["name"]}</h3><%include file="badge.mako" args="promo=item['promo']"/><%include file="price.mako" args="promo=item['promo']"/><p class="v">${item["value"]}</p></article>\

@@ -5,9 +5,25 @@
        builtins/html     https://github.com/scriban/scriban/blob/master/doc/builtins.md#html-functions
        runtime/includes  https://github.com/scriban/scriban/blob/master/doc/runtime.md
 
-     Uses Scriban's whitespace-control markers, its for/if statements, and the documented
-     html.escape builtin on untrusted values. Checked by the functional verifier, not the
-     byte gate. Note the multi-line comment delimiters: the single-line form ends at the
-     first newline, which would leave the doc URLs to parse as expressions. ##}}
+     The capture-then-include layout idiom (ledger E20): the page captures its body into
+     body_content, then includes the layout, which emits the captured slot at its body
+     position -- Scriban's documented equivalent of a live body slot. The slider body is the
+     SAME as the controlled track's: the verifier's calibration pin (RemovedSegment = the
+     slider fragment) fails an empty body, deliberately. Checked by the functional verifier,
+     not the byte gate. Note the multi-line comment delimiters: the single-line form ends at
+     the first newline, which would leave the doc URLs to parse as expressions. ##}}
 
+{{ capture body_content }}
+  <div class="slider-wrapper theme-default">
+    <div id="slider" class="nivoSlider">
+    </div>
+    <div class="home-content">
+      <div>
+        <a href="/products/gluten-free">
+          <img src="/files/homepage/homebtmbanners/gluten-hp.jpg" width="984" border="0" />
+        </a>
+      </div>
+    </div>
+  </div>
+{{ end }}
 {{ include 'layout' }}

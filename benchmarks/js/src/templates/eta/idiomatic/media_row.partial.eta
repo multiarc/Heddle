@@ -1,0 +1,11 @@
+<% /* idiomatic Eta implementation (Phase 4).
+      Patterns followed: https://eta.js.org/docs/4.x.x/syntax/cheatsheet,
+      https://eta.js.org/docs/4.x.x/syntax/layouts-and-blocks (layout, it.body),
+      https://eta.js.org/docs/4.x.x/api/overview (loadTemplate, render). */ %>
+<div class="media-row">
+  <img src="/img/<%= it.name %>.jpg" alt="<%= it.name %>" />
+  <div class="media-body">
+    <h4><%= it.name %></h4>
+    <p>Caption for <%= it.name %></p>
+  </div>
+</div>

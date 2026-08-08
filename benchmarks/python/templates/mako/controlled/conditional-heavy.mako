@@ -12,7 +12,7 @@
 % endif
 <em>${r["name"]}</em>\
 % if r["has_note"]:
-<small>${r["note"]}</small>\
+<small>note ${r["seq"]}</small>\
 % endif
 % if r["is_active"]:
 <b>active</b>\

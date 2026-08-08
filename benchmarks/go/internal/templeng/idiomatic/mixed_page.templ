@@ -1,6 +1,10 @@
-// Workload 4 — mixed-page, templ idiomatic port. Idiomatic component decomposition: a page
-// layout component wrapping content components via { children... } (templ's documented
-// composition mechanism), plus per-section components.
+// Workload 4 — mixed-page, templ idiomatic port. Single-file, no layout/body split (E20:
+// layout composition is composed-page's dimension — an idiomatic mixed-page that split
+// into a layout plus body would measure the wrong thing on the wrong row); idiomatic
+// decomposition is limited to a product-card component invoked from the loop. The display
+// SKU is composed in the template as the literal "MX-" plus the SkuNumber substitution and
+// the blurb sentence lives in the template around the Batch substitution (E21 — the model
+// carries data only).
 //
 // Doctype authoring note (same variant as the controlled port): templ's generator
 // normalizes a literal <!DOCTYPE html> to lowercase <!doctype html> — a non-whitespace byte
@@ -11,13 +15,25 @@
 // Doc citations (Q1.7):
 //   - https://templ.guide/syntax-and-usage/expressions/
 //   - https://templ.guide/syntax-and-usage/statements/
-//   - https://templ.guide/syntax-and-usage/template-composition/  (layout with children)
+//   - https://templ.guide/syntax-and-usage/template-composition/  (component call in loop)
 //   - https://templ.guide/syntax-and-usage/rendering-raw-html/  (doctype literal)
 package idiomatic
 
 import "heddle.dev/benchmarks/go/internal/model"
 
-templ layout(m model.MixedModel) {
+templ productCard(p model.MixedProduct) {
+	<article class="card">
+		<h3>{ p.Name }</h3>
+		<p class="sku">MX-{ p.SkuNumber }</p>
+		<p class="price">{ p.Price }</p>
+		if p.OnSale {
+			<p class="sale">On sale</p>
+		}
+		<p class="blurb">A dependable workshop staple from batch { p.Batch }, checked for daily use and backed by our lifetime guarantee.</p>
+	</article>
+}
+
+templ mixedPage(m model.MixedModel) {
 	@templ.Raw("<!DOCTYPE html>")
 	<html>
 		<head>
@@ -38,7 +54,21 @@ templ layout(m model.MixedModel) {
 				</nav>
 			</header>
 			<main>
-				{ children... }
+				if m.ShowBanner {
+					<div class="banner">{ m.BannerText }</div>
+				}
+				<section class="hero">
+					<h2>{ m.HeroHeading }</h2>
+					<p>{ m.HeroTagline }</p>
+				</section>
+				<section class="grid">
+					for _, p := range m.Products {
+						@productCard(p)
+					}
+				</section>
+				if m.ShowDebugPanel {
+					<pre class="debug">debug</pre>
+				}
 			</main>
 			<footer>
 				<p>{ m.FooterNote }</p>
@@ -46,52 +76,4 @@ templ layout(m model.MixedModel) {
 			</footer>
 		</body>
 	</html>
-}
-
-templ banner(m model.MixedModel) {
-	if m.ShowBanner {
-		<div class="banner">{ m.BannerText }</div>
-	}
-}
-
-templ hero(m model.MixedModel) {
-	<section class="hero">
-		<h2>{ m.HeroHeading }</h2>
-		<p>{ m.HeroTagline }</p>
-	</section>
-}
-
-templ productCard(p model.MixedProduct) {
-	<article class="card">
-		<h3>{ p.Name }</h3>
-		<p class="sku">{ p.Sku }</p>
-		<p class="price">{ p.Price }</p>
-		if p.OnSale {
-			<p class="sale">On sale</p>
-		}
-		<p class="blurb">{ p.Blurb }</p>
-	</article>
-}
-
-templ productGrid(m model.MixedModel) {
-	<section class="grid">
-		for _, p := range m.Products {
-			@productCard(p)
-		}
-	</section>
-}
-
-templ debugPanel(m model.MixedModel) {
-	if m.ShowDebugPanel {
-		<pre class="debug">debug</pre>
-	}
-}
-
-templ mixedPage(m model.MixedModel) {
-	@layout(m) {
-		@banner(m)
-		@hero(m)
-		@productGrid(m)
-		@debugPanel(m)
-	}
 }

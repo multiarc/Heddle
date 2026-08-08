@@ -5,13 +5,10 @@
     Handlebars language   https://handlebarsjs.com/guide/
     Handlebars.Net        https://github.com/Handlebars-Net/Handlebars.Net#readme
 
-  Uses `{{#each}}` blocks with `this`, `{{#if}}`/`{{else}}` chains, and registered partials. Raw
-  triple-mustaches appear only where the value genuinely IS an HTML fragment; plain text goes
-  through the default encoder, which is what the guide teaches. Checked by the functional verifier.
+  Uses `{{#each}}` blocks with `this`, `{{#if}}`/`{{else if}}` chains, partial blocks
+  (`{{#> layout}}` with `{{> @partial-block}}`), and registered partials. Raw triple-mustaches
+  appear only where the value genuinely IS an HTML fragment; plain text goes through the
+  default encoder, which is what the guide teaches. Checked by the functional verifier.
 --}}
 
-<div class="panel">
-  {{#each items}}
-    {{> tile this}}
-  {{/each}}
-</div>
+<div class="panel">{{#each items}}{{#if is_tile}}{{> tile this}}{{else if is_card}}{{> card this}}{{else if is_media}}{{> media_row this}}{{else}}{{> stat this}}{{/if}}{{/each}}</div>

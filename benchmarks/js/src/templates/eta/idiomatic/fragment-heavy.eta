@@ -4,6 +4,14 @@
       https://eta.js.org/docs/4.x.x/api/overview (loadTemplate, render). */ %>
 <div class="panel">
 <% it.items.forEach(item => { %>
-  <%~ include("@tile", item) %>
+  <% if (item.is_tile) { %>
+    <%~ include("@tile", item) %>
+  <% } else if (item.is_card) { %>
+    <%~ include("@card", item) %>
+  <% } else if (item.is_media) { %>
+    <%~ include("@media_row", item) %>
+  <% } else { %>
+    <%~ include("@stat", item) %>
+  <% } %>
 <% }) %>
 </div>

@@ -3,7 +3,13 @@
 // templ: version: v0.3.1020
 // Workload 4 — mixed-page, templ controlled port (port-mapping.md §Controlled track —
 
-// templ, rules 1–3 and 6). The pinned skeleton with newlines only between sibling
+// templ, rules 1–3 and 6). The display SKU is composed IN THE TEMPLATE as the literal
+
+// "MX-" plus the SkuNumber substitution, and the blurb sentence lives in the template
+
+// around the { p.Batch } substitution (E21 — the model carries data only).
+
+// The pinned skeleton with newlines only between sibling
 
 // elements/statements (N2/N3-erased); all text-bearing elements dense; the <style> block is
 
@@ -66,7 +72,7 @@ func mixedPage(m model.MixedModel) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(m.PageTitle)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/mixed_page.templ`, Line: 22, Col: 23}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/mixed_page.templ`, Line: 25, Col: 23}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -79,7 +85,7 @@ func mixedPage(m model.MixedModel) templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(m.StoreName)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/mixed_page.templ`, Line: 27, Col: 21}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/mixed_page.templ`, Line: 30, Col: 21}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -97,7 +103,7 @@ func mixedPage(m model.MixedModel) templ.Component {
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(m.BannerText)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/mixed_page.templ`, Line: 32, Col: 39}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/mixed_page.templ`, Line: 35, Col: 39}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
@@ -115,7 +121,7 @@ func mixedPage(m model.MixedModel) templ.Component {
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(m.HeroHeading)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/mixed_page.templ`, Line: 35, Col: 24}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/mixed_page.templ`, Line: 38, Col: 24}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
@@ -128,7 +134,7 @@ func mixedPage(m model.MixedModel) templ.Component {
 		var templ_7745c5c3_Var6 string
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(m.HeroTagline)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/mixed_page.templ`, Line: 36, Col: 23}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/mixed_page.templ`, Line: 39, Col: 23}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 		if templ_7745c5c3_Err != nil {
@@ -146,20 +152,20 @@ func mixedPage(m model.MixedModel) templ.Component {
 			var templ_7745c5c3_Var7 string
 			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(p.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/mixed_page.templ`, Line: 41, Col: 19}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/mixed_page.templ`, Line: 44, Col: 19}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</h3><p class=\"sku\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</h3><p class=\"sku\">MX-")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var8 string
-			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(p.Sku)
+			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(p.SkuNumber)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/mixed_page.templ`, Line: 42, Col: 29}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/mixed_page.templ`, Line: 45, Col: 38}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 			if templ_7745c5c3_Err != nil {
@@ -172,7 +178,7 @@ func mixedPage(m model.MixedModel) templ.Component {
 			var templ_7745c5c3_Var9 string
 			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(p.Price)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/mixed_page.templ`, Line: 43, Col: 33}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/mixed_page.templ`, Line: 46, Col: 33}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 			if templ_7745c5c3_Err != nil {
@@ -188,20 +194,20 @@ func mixedPage(m model.MixedModel) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<p class=\"blurb\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<p class=\"blurb\">A dependable workshop staple from batch ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var10 string
-			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(p.Blurb)
+			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(p.Batch)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/mixed_page.templ`, Line: 47, Col: 33}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/mixed_page.templ`, Line: 50, Col: 73}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "</p></article>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, ", checked for daily use and backed by our lifetime guarantee.</p></article>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -223,7 +229,7 @@ func mixedPage(m model.MixedModel) templ.Component {
 		var templ_7745c5c3_Var11 string
 		templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(m.FooterNote)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/mixed_page.templ`, Line: 56, Col: 21}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/mixed_page.templ`, Line: 59, Col: 21}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 		if templ_7745c5c3_Err != nil {
@@ -236,7 +242,7 @@ func mixedPage(m model.MixedModel) templ.Component {
 		var templ_7745c5c3_Var12 string
 		templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(m.StoreName)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/mixed_page.templ`, Line: 57, Col: 20}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/mixed_page.templ`, Line: 60, Col: 20}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 		if templ_7745c5c3_Err != nil {
@@ -249,7 +255,7 @@ func mixedPage(m model.MixedModel) templ.Component {
 		var templ_7745c5c3_Var13 string
 		templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(m.Year)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/mixed_page.templ`, Line: 57, Col: 31}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/mixed_page.templ`, Line: 60, Col: 31}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 		if templ_7745c5c3_Err != nil {
@@ -262,7 +268,7 @@ func mixedPage(m model.MixedModel) templ.Component {
 		var templ_7745c5c3_Var14 string
 		templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(m.SupportEmail)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/mixed_page.templ`, Line: 57, Col: 50}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/mixed_page.templ`, Line: 60, Col: 50}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 		if templ_7745c5c3_Err != nil {

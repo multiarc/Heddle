@@ -1,0 +1,12 @@
+<%page args="section"/>\
+<div class="nav-section">\
+% if section["title_linked"]:
+<span class="nav-title"><a href="${section["href"]}">${section["title"]}</a></span>\
+% else:
+<span class="nav-title">${section["title"]}</span>\
+% endif
+<ul>\
+% for link in section["links"]:
+<%include file="nav-link.mako" args="link=link"/>\
+% endfor
+</ul></div>\

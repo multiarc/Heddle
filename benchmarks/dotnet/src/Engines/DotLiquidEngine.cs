@@ -7,14 +7,25 @@ using Heddle.Benchmarks.Dotnet.Models;
 namespace Heddle.Benchmarks.Dotnet.Engines
 {
     /// <summary>
-    /// DotLiquid (Liquid) twin, all eight workloads (ledger E8).
+    /// DotLiquid (Liquid) twin, all eight workloads (ledger E8; E20/E21/E22 redesign).
     ///
-    /// Shares <c>templates/controlled/liquid/</c> with <see cref="FluidEngine"/>. DotLiquid does not
-    /// HTML-encode output, matching Heddle's <c>OutputProfile.Text</c>; the encoded workloads escape
-    /// in-template with the <c>| escape</c> filter.
+    /// Shares <c>templates/{track}/liquid/</c> with <see cref="FluidEngine"/>; every template that
+    /// leans on DotLiquid's scope-shared <c>{% include %}</c> (or otherwise diverges from the Fluid
+    /// dialect) is <c>*.dotliquid.liquid</c>-suffixed. DotLiquid does not HTML-encode output,
+    /// matching Heddle's <c>OutputProfile.Text</c>; the encoded workloads escape in-template with
+    /// the <c>| escape</c> filter.
+    ///
+    /// composed-page (E20/E22) is the capture-then-include layout idiom: the page captures the
+    /// slider body into <c>body_content</c> and includes <c>layout</c>, which emits the slot plus
+    /// the literal chrome, calling the chrome-fragment partials and the nested nav partial chain
+    /// (mega-menu -> nav-column -> nav-section -> nav-link) from <c>{% for %}</c> loops.
+    /// fragment-heavy (E20) dispatches one of four fragment partials per row; the card partial
+    /// nests badge + price against the row's promo. All partials rely on DotLiquid's include
+    /// sharing the enclosing scope (loop variables visible inside the partial — the historical
+    /// tile precedent).
     ///
     /// DotLiquid resolves <c>{% include %}</c> through a PROCESS-WIDE static
-    /// <c>Template.FileSystem</c>. Two workloads need includes with different targets, so the
+    /// <c>Template.FileSystem</c>. Several workloads need includes with different targets, so the
     /// provider dispatches on the requested name instead of returning a single template the way the
     /// Fluid provider can. A static like this is exactly the kind of shared state that makes cells
     /// order-dependent, so it is installed once and dispatches by key rather than being reassigned
@@ -32,15 +43,17 @@ namespace Heddle.Benchmarks.Dotnet.Engines
             string Src(string file) => Templates.Load(track, "liquid", file);
 
             // Installed per track: the partial sources differ between them, and DotLiquid resolves
-            // includes through a process-wide static.
-            InstallFileSystem(new Dictionary<string, string>
-            {
-                [track + "/layout"] = Src("layout.liquid"),
-                [track + "/tile"] = Src("tile.dotliquid.liquid"),
-            });
+            // includes through a process-wide static. Every include target of the redesigned
+            // workloads is registered here: the layout, its chrome-fragment partials and the nested
+            // nav partial chain (composed-page, E20/E22), and the six fragment partials
+            // (fragment-heavy, E20).
+            var partials = new Dictionary<string, string>();
+            foreach (var name in PartialNames)
+                partials[track + "/" + name] = Src(name + ".dotliquid.liquid");
+            InstallFileSystem(partials);
 
-            // ---- composed-page: {% include 'layout' %}
-            var composed = Template.Parse(Src("composed-page.liquid"));
+            // ---- composed-page: {% capture body_content %}…{% endcapture %}{% include 'layout' %}
+            var composed = Template.Parse(Src("composed-page.dotliquid.liquid"));
             yield return new Cell
             {
                 Engine = Name, Track = track, Workload = "composed-page", InCrossStack = true,
@@ -51,13 +64,31 @@ namespace Heddle.Benchmarks.Dotnet.Engines
             // scalars, so the shared lowercase-keyed dictionary converts directly.
             yield return Flat(track, "trivial-substitution", Src("trivial-substitution.liquid"),
                 ToHash(SubstitutionContent.LiquidModel()));
-            yield return Flat(track, "large-loop", Src("large-loop.liquid"), LoopContent.DotLiquidModel());
-            yield return Flat(track, "mixed-page", Src("mixed-page.liquid"), MixedContent.DotLiquidModel());
-            yield return Flat(track, "conditional-heavy", Src("conditional-heavy.liquid"), ConditionalContent.DotLiquidModel());
+            yield return Flat(track, "large-loop", Src("large-loop.dotliquid.liquid"), LoopContent.DotLiquidModel());
+            yield return Flat(track, "mixed-page", Src("mixed-page.dotliquid.liquid"), MixedContent.DotLiquidModel());
+            yield return Flat(track, "conditional-heavy", Src("conditional-heavy.dotliquid.liquid"), ConditionalContent.DotLiquidModel());
             yield return Flat(track, "fragment-heavy", Src("fragment-heavy.dotliquid.liquid"), FragmentContent.DotLiquidModel());
             yield return Flat(track, "fortunes-encoded", Src("fortunes-encoded.liquid"), FortunesContent.DotLiquidModel());
             yield return Flat(track, "encoded-loop", Src("encoded-loop.liquid"), EncodedLoopContent.DotLiquidModel());
         }
+
+        /// <summary>
+        /// Every include target, one <c>*.dotliquid.liquid</c> file each: the composed-page layout,
+        /// its ten chrome-fragment partials (ledger E22 — the inert literal chrome), the four nested
+        /// nav partials (ledger E20), and the six fragment-heavy partials (ledger E20).
+        /// </summary>
+        private static readonly string[] PartialNames =
+        {
+            // composed-page layout + chrome fragments (E22)
+            "layout",
+            "alert-top", "secondary-wholesale-menu", "secondary-retail-menu", "alert-below",
+            "assets-styles", "assets-scripts", "custom-styles",
+            "head-scripts", "body-scripts", "body-end-scripts",
+            // composed-page nested nav chain (E20)
+            "mega-menu", "nav-column", "nav-section", "nav-link",
+            // fragment-heavy fragment kinds (E20; card nests badge + price)
+            "tile", "card", "badge", "price", "media-row", "stat",
+        };
 
         /// <summary>The model key carrying the current track for include resolution.</summary>
         private const string TrackKey = "__track";

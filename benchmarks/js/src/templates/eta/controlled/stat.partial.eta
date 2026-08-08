@@ -1,0 +1,1 @@
+<div class="stat"><span class="stat-name"><%~ it.name %></span><span class="stat-value"><%~ it.value %></span><span class="stat-delta"><%~ it.delta %></span></div>

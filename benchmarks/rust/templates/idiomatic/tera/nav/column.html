@@ -1,0 +1,9 @@
+{# Idiomatic Tera nav partial (WI5, README D8/Q1.7): one navigation column - included per
+   mega-menu dropdown column and per footer column. Patterns follow the Tera docs
+   (keats.github.io/tera): "Include" and "Control structures - For loops"; default
+   auto-escaping left on. #}
+<div class="nav-column">
+  {% for section in column.sections %}
+    {% include "idiomatic/tera/nav/section.html" %}
+  {% endfor %}
+</div>

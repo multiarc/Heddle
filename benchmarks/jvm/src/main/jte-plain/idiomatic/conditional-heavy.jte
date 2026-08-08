@@ -18,7 +18,7 @@
             @endif
             <em>${r.getName()}</em>
             @if(r.isHasNote())
-                <small>${r.getNote()}</small>
+                <small>note ${r.getSeq()}</small>
             @endif
             @if(r.isActive())
                 <b>active</b>

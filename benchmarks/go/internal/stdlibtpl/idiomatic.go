@@ -2,14 +2,14 @@
 // html/template on the two encoded workloads (README D1 / Q6.1 — same surface split as the
 // controlled track). Authoring standard (Q1.7/D16): naturally formatted multi-line
 // templates with indentation, {{- -}} trim markers where the Go docs use them, and template
-// composition via the {{define}}/{{template}} idiom — the way the official docs teach the
-// engine, not the byte-exact controlled shape. These sources may diverge freely in
-// whitespace and structure; they are gated by the Phase 1 idiomatic verifier
+// composition via the {{define}}/{{template}}/{{block}} idiom — the way the official docs
+// teach the engine, not the byte-exact controlled shape. These sources may diverge freely
+// in whitespace and structure; they are gated by the Phase 1 idiomatic verifier
 // (<id>.verify.json semantics), not the byte gate.
 //
 // Doc citations (Q1.7 — official documentation patterns followed here):
 //   - https://pkg.go.dev/text/template   (Actions, Text and spaces / trim markers,
-//     Nested template definitions, Examples)
+//     Nested template definitions, the {{block}} shorthand for define-plus-invoke)
 //   - https://pkg.go.dev/html/template   (same template API; contextual auto-escaping)
 //
 // Spec: docs/spec/cross-stack-benchmarks/phase-6-go/port-mapping.md
@@ -24,24 +24,478 @@ import (
 )
 
 // ---- workload 1 — composed-page (text/template) ----------------------------------------------
+//
+// Layout composition with the engine's own documented mechanism (text/template §Nested
+// template definitions + the {{block}} action): the layout template carries the full
+// literal page chrome (E22 — all display text lives in the template tier) with a live
+// {{block "body" .}} slot; the page's parse adds a non-empty {{define "body"}} that
+// overrides the block's empty default in the associated set. The chrome fragments are
+// per-fragment {{define}}s and the structured nav renders through nested definitions
+// (menu → column → section → link), branching on the precomputed .HasDropdown /
+// .TitleLinked booleans. The slider body is the SAME as the controlled track's — the
+// verifier's removed-segment calibration pin is the slider, so an empty body fails,
+// deliberately.
 
-// Layout composition via nested template definitions ({{define "layout"}} +
-// {{template "layout" .}}), one fragment per line; the HTML fragments are runtime data and
-// text/template passes them through unescaped.
-const idiomaticComposedSrc = `{{define "layout"}}
-{{index .Section "meta"}}
-{{index .Section "social"}}
-{{index .Comp "assets_styles"}}
-{{index .Comp "custom_styles"}}
-{{index .Comp "head_scripts"}}
-{{index .Comp "body_scripts"}}
-{{range .AreaNames -}}
-{{index $.Areas .}}
-{{end -}}
-{{index .Comp "assets_scripts"}}
-{{index .Section "page_scripts"}}
-{{index .Section "endpage_scripts"}}
-{{index .Comp "body_end_scripts"}}
+// idiomaticComposedChromeSrc is the definition-only chrome-fragment library (E22):
+// parsing it renders nothing; the layout calls each fragment at its composition point.
+const idiomaticComposedChromeSrc = `{{define "alert_top"}}<div class="top-banner" style=""><a href="/content/shipping-information#Holidays"><img src="/files/images/sitewide-alerts/xmas-shipping-alert-1.jpg" alt="holiday shipping"/></a></div>{{end}}
+{{define "secondary_wholesale_menu"}}				<ul class="hide">
+                <li>
+                <a href="#">New</a>
+                </li>
+                <li>
+                <a href="#">Signature Products</a>
+                </li>
+                <li>
+                <a href="/products/specials-and-top-sellers">Special Offers</a>
+                </li>
+                <li>
+                <a href="/content/in-the-kitchen">Recipes</a>
+                <div class="dropdown_1column">
+                <div class="col_1">
+                <ul>
+                <li>
+                <a href="/content/in-the-kitchen">All Recipes</a>
+                </li>
+                <li>
+                <a href="/recipe/Vital-Choice-Seafood-Cooking-Videos">Recipe Videos</a>
+                </li>
+                <li>
+                <a href="/content/Seafood-Storage-Cooking-Tips">Seafood Cooking Tips</a>
+                </li>
+                </ul>
+                </div>
+                </div>
+                </li>
+                <li>
+                <a href="/content/About-Vital-Choice">Why Vital Choice?</a>
+                <div class="dropdown_1column">
+                <div class="col_1">
+                <ul>
+                <li>
+                <a href="/content/About-Vital-Choice">About Us</a>
+                </li>
+                <li>
+                <a href="/content/our-mission">Our Mission</a>
+                </li>
+                <li>
+                <a href="/content/what-are-people-saying-about-vital-choice">Testimonials</a>
+                </li>
+                <li>
+                <a href="/content/Giving-Back-to-the-Community">Giving Back</a>
+                </li>
+                <li>
+                <a href="/content/News-Room">News Room</a>
+                </li>
+                <li>
+                <a href="/content/Vital-Green-Environmental-Stewardship-Program">Vital Green™</a>
+                </li>
+                <li>
+                <a href="/content/Sustainability">Sustainability</a>
+                </li>
+                <li>
+                <a href="/content/Purity-Story">Product Purity</a>
+                </li>
+                <li>
+                <a href="/content/The-Antidote-Podcast-Series">Randy's Podcasts</a>
+                </li>
+                <li>
+                <a href="/content/HealthWise-Rewards-Program">Customer Rewards</a>
+                </li>
+                <li>
+                <a href="/faqs">Frequent Questions (FAQs)</a>
+                </li>
+                </ul>
+                </div>
+                </div>
+                </li>
+                <li>
+                <a href="#">Health & Nutrition</a>
+                <div class="dropdown_1column">
+                <div class="col_1">
+                <ul>
+                <li>
+                <a href="/content/omega-3-facts-sources">Omega-3 Basics</a>
+                </li>
+                <li>
+                <a href="/content/Health-Benefits-of-Fish">Seafood Benefits</a>
+                </li>
+                <li>
+                <a href="/content/Omega-3-6-Balance-Scores-How-to-Use-Them">Omega-3/6 Balance</a>
+                </li>
+                <li>
+                <a href="/content/Healthy-Mom-Baby">Healthy Mom & Baby</a>
+                </li>
+                <li>
+                <a href="/content/Purity-Story">Seafood Purity & Safety</a>
+                </li>
+                <li>
+                <a href="/content/recommended-reading">Recommended Reading</a>
+                </li>
+                </ul>
+                </div>
+                </div>
+                </li>
+                <li>
+                <a href="/products/wholesale" class="highlighted-sec-menu">Wholesale</a>
+                <div class="dropdown_1column">
+                <div class="col_1">
+                <ul>
+                <li>
+                <a href="/products/canned-wild-seafood">Canned Wild Seafood</a>
+                </li>
+                <li>
+                <a href="/products/dietary-supplements">Dietary Supplements</a>
+                </li>
+                <li>
+                <a href="/products/organic-foods">Organic Foods</a>
+                </li>
+                <div class="sub-sec-menu-separator"></div>
+                <li>
+                <a href="/content/wholesale-promotions">Wholesale Promotions</a>
+                </li>
+                <li>
+                <a href="/content/wholesale-faq">FAQ</a>
+                </li>
+                </ul>
+                </div>
+                </div>
+                </li>
+                <li class="last-child">
+                <a href="/content/newsletter-sign-up">Newsletter</a>
+                <div class="dropdown_1column">
+                <div class="col_1">
+                <ul>
+                <li>
+                <a href="/content/newsletter-sign-up">Sign Up</a>
+                </li>
+                <li>
+                <a href="/articles">Archives</a>
+                </li>
+                </ul>
+                </div>
+                </div>
+                </li>
+                </ul>{{end}}
+{{define "secondary_retail_menu"}}				<ul class="hide">
+                <li>
+                <a href="#">New</a>
+                </li>
+                <li>
+                <a href="#">Signature Products</a>
+                </li>
+                <li>
+                <a href="/products/specials-and-top-sellers">Special Offers</a>
+                </li>
+                <li>
+                <a href="/content/in-the-kitchen">Recipes</a>
+                <div class="dropdown_1column">
+                <div class="col_1">
+                <ul>
+                <li>
+                <a href="/content/in-the-kitchen">All Recipes</a>
+                </li>
+                <li>
+                <a href="/recipe/Vital-Choice-Seafood-Cooking-Videos">Recipe Videos</a>
+                </li>
+                <li>
+                <a href="/content/Seafood-Storage-Cooking-Tips">Seafood Cooking Tips</a>
+                </li>
+                </ul>
+                </div>
+                </div>
+                </li>
+                <li>
+                <a href="/content/About-Vital-Choice">Why Vital Choice?</a>
+                <div class="dropdown_1column">
+                <div class="col_1">
+                <ul>
+                <li>
+                <a href="/content/About-Vital-Choice">About Us</a>
+                </li>
+                <li>
+                <a href="/content/our-mission">Our Mission</a>
+                </li>
+                <li>
+                <a href="/content/what-are-people-saying-about-vital-choice">Testimonials</a>
+                </li>
+                <li>
+                <a href="/content/Giving-Back-to-the-Community">Giving Back</a>
+                </li>
+                <li>
+                <a href="/content/News-Room">News Room</a>
+                </li>
+                <li>
+                <a href="/content/Vital-Green-Environmental-Stewardship-Program">Vital Green™</a>
+                </li>
+                <li>
+                <a href="/content/Sustainability">Sustainability</a>
+                </li>
+                <li>
+                <a href="/content/Purity-Story">Product Purity</a>
+                </li>
+                <li>
+                <a href="/content/The-Antidote-Podcast-Series">Randy's Podcasts</a>
+                </li>
+                <li>
+                <a href="/content/HealthWise-Rewards-Program">Customer Rewards</a>
+                </li>
+                <li>
+                <a href="/faqs">Frequent Questions (FAQs)</a>
+                </li>
+                </ul>
+                </div>
+                </div>
+                </li>
+                <li>
+                <a href="#">Health & Nutrition</a>
+                <div class="dropdown_1column">
+                <div class="col_1">
+                <ul>
+                <li>
+                <a href="/content/omega-3-facts-sources">Omega-3 Basics</a>
+                </li>
+                <li>
+                <a href="/content/Health-Benefits-of-Fish">Seafood Benefits</a>
+                </li>
+                <li>
+                <a href="/content/Omega-3-6-Balance-Scores-How-to-Use-Them">Omega-3/6 Balance</a>
+                </li>
+                <li>
+                <a href="/content/Healthy-Mom-Baby">Healthy Mom & Baby</a>
+                </li>
+                <li>
+                <a href="/content/Purity-Story">Seafood Purity & Safety</a>
+                </li>
+                <li>
+                <a href="/content/recommended-reading">Recommended Reading</a>
+                </li>
+                </ul>
+                </div>
+                </div>
+                </li>
+                <li>
+                <a href="/content/request-catalog">Catalog</a>
+                </li>
+                <li class="last-child">
+                <a href="/content/newsletter-sign-up">Newsletter</a>
+                <div class="dropdown_1column">
+                <div class="col_1">
+                <ul>
+                <li>
+                <a href="/content/newsletter-sign-up">Sign Up</a>
+                </li>
+                <li>
+                <a href="/articles">Archives</a>
+                </li>
+                </ul>
+                </div>
+                </div>
+                </li>
+                </ul>{{end}}
+{{define "alert_below"}}{{end}}
+{{define "assets_styles"}}<link rel="stylesheet" href="/main.css" />{{end}}
+{{define "assets_scripts"}}<script src="/main.js"></script>{{end}}
+{{define "custom_styles"}}/* CSS Comment Test */{{end}}
+{{define "head_scripts"}}<script src="/head.js"></script>{{end}}
+{{define "body_scripts"}}<script src="/body.js"></script>{{end}}
+{{define "body_end_scripts"}}<script src="/bodyend.js"></script>{{end}}`
+
+// idiomaticComposedLayoutSrc is the definition-only layout parse: overridable section
+// defaults, the nested nav definitions, and the "layout" definition holding the full
+// literal chrome with the {{block "body" .}} slot.
+const idiomaticComposedLayoutSrc = `{{define "meta"}}<title>Title</title>{{end}}
+{{define "socialmeta"}}<meta property="og:image" content="/files/catalog/img.jpg">
+        <meta itemprop="image" content="/files/catalog/img.jpg"/>
+        <link rel="image_src" href="/files/catalog/img.jpg"/>{{end}}
+{{define "page_scripts"}}{{end}}
+{{define "endpage_scripts"}}{{end}}
+
+{{define "nav_link"}}<li class="nav-link"><a href="{{.Href}}">{{.Label}}</a></li>{{end}}
+
+{{define "nav_section"}}
+<div class="nav-section">
+  {{- if .TitleLinked}}
+  <span class="nav-title"><a href="{{.Href}}">{{.Title}}</a></span>
+  {{- else}}
+  <span class="nav-title">{{.Title}}</span>
+  {{- end}}
+  <ul>
+    {{- range .Links}}
+    {{template "nav_link" .}}
+    {{- end}}
+  </ul>
+</div>
+{{- end}}
+
+{{define "nav_column"}}
+<div class="nav-column">
+  {{- range .Sections}}
+  {{template "nav_section" .}}
+  {{- end}}
+</div>
+{{- end}}
+
+{{define "mega_menu"}}
+<div class="top-menu-wrapper">
+  <ul class="top-menu">
+    {{- range .Tabs}}
+    <li class="{{.Css}}">
+      <a href="{{.Href}}" class="drop">{{.Label}}</a>
+      {{- if .HasDropdown}}
+      <div class="{{.DropdownCss}}">
+        {{- range .Columns}}
+        {{template "nav_column" .}}
+        {{- end}}
+      </div>
+      {{- end}}
+    </li>
+    {{- end}}
+  </ul>
+</div>
+{{- end}}
+
+{{define "layout"}}<!DOCTYPE html>
+<!--[if lt IE 9]>
+    <html class="no-js lt-ie9" lang="en">
+<![endif]-->
+<!--[if gte IE 9]>
+    <html class="no-js" lang="en">
+<![endif]-->
+<!--[if !IE]><!-->
+<html class="no-js" lang="en">
+<!--<![endif]-->
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    {{template "meta"}}
+    {{template "socialmeta"}}
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="msvalidate.01" content="4A9D524947EE62F01A1A9607511248C4" />
+    <link href="//fonts.googleapis.com/css?family=Francois+One" rel="stylesheet" type="text/css">
+    <link rel="apple-touch-icon" href="/assets/miscellaneous/apple-touch-icon.png">
+    <link rel="icon" type="img/ico" href="/assets/miscellaneous/favicon.ico">
+    {{template "assets_styles"}}
+    <style>
+        {{template "custom_styles"}}
+    </style>
+    {{template "head_scripts"}}
+</head>
+<body>
+    {{template "body_scripts"}}
+    <div>
+        <div class="header-top main">
+            <div class="header-top-right">
+                <div class="actions-top-nav">
+                    <a href="/index/profile">Your Account</a>
+                    <a href="/Account/Register">Register</a>
+                    <a class="last-child" href="/content/contact-customer-service">Contact Us</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="separator-top"></div>
+<div class="alert-banner">
+    {{template "alert_top"}}
+</div>
+    <div class="main">
+        <header>
+            <div class="header-main">
+                <div class="logo-holder">
+                    <a href="/">
+                    </a>
+                </div>
+                <div class="header-right-sidebar">
+                    <div class="search-area">
+                        <form id="search-area-form" action="/help/search" method="get">
+                            <input type="text" name="q" value="What can we help you find?" onclick="this.value = ( this.value == this.defaultValue ) ? '' : this.value;return true;" dir="ltr" autocomplete="off" spellcheck="false" style="outline: none;">
+                            <input type="image" class="active" style="display: none;" src="/Assets/images/mag.jpg" />
+                            <input type="image" class="not-active" src="/Assets/images/mag-off.png" />
+                        </form>
+                    </div>
+                    <div class="header-actions-holder">
+                        <div class="cart-work-area">
+                            <a class="view-cart" href="#">
+                                <div class="cart-icon"></div>
+                                <div class="item-total">
+                                    <span id="cart-lite-component"></span>
+                                    <span>Item(s)</span>
+                                </div>
+                            </a>
+                            <a class="checkout-button" href="#">
+                                <button>CHECKOUT</button>
+                            </a>
+                        </div>
+                    </div>
+                    <div class="clear"></div>
+                    <div class="header-top-right">
+                        <div class="actions-top-nav">
+                            <a class="wholesale-home" href="/products/wholesale">Wholesale Home</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <nav class="hide top-nav secondary-nav">
+                {{template "secondary_wholesale_menu"}}
+                {{template "secondary_retail_menu"}}
+            </nav>
+            {{range .Nav.Menus}}{{template "mega_menu" .}}{{end}}
+        </header>
+        <div class="content">
+            <div class="alert-banner">
+                {{template "alert_below"}}
+            </div>
+            <div class="content-dynamic">
+                {{block "body" .}}{{end}}
+            </div>
+            <div class="content-bottom">
+            </div>
+        </div>
+        <footer>
+            <div class="footer-main">
+                <nav class="footer-nav">
+                    {{range .Nav.FooterColumns}}{{template "nav_column" .}}{{end}}
+                </nav>
+                <div class="footer-market">
+                    <div class="market-left">
+                        <a href="/content/request-catalog">
+                            <img alt="See Our Catalog" src="/Assets/images/seeourcatalog.jpg" />
+                        </a>
+                    </div>
+                    <div class="market-right">
+                        <div class="ssl-area">
+                        </div>
+                        <div id="socialiconshome-102413">
+                            <img src="/Assets/images/socialicons5-home.jpg" usemap="#Social">
+                        </div>
+                        <div class="clear"></div>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </div>
+    {{template "assets_scripts"}}
+    <script src="/app/modules/profile/gccheckform.js"></script>
+    {{template "page_scripts"}}
+    {{template "endpage_scripts"}}
+    {{template "body_end_scripts"}}
+</body>
+</html>{{end}}`
+
+// idiomaticComposedHomeSrc is the page: the body definition (the slider) overriding the
+// layout's empty block default, then the root action rendering the layout.
+const idiomaticComposedHomeSrc = `{{define "body"}}
+<div class="slider-wrapper theme-default">
+            <div id="slider" class="nivoSlider">
+            </div>
+            <div class="home-content">
+                <div>
+                    <a href="/products/gluten-free">
+                        <img src="/files/homepage/homebtmbanners/gluten-hp.jpg" width="984" border="0" />
+                    </a>
+                </div>
+            </div>
+        </div>
 {{end}}
 {{- template "layout" .}}`
 
@@ -63,10 +517,11 @@ const idiomaticTrivialSubstitutionSrc = `<article>
 // ---- workload 3 — large-loop (text/template) -------------------------------------------------
 
 // Trim markers around the range body, the shape the text/template docs' "Text and spaces"
-// section teaches for loop output.
+// section teaches for loop output; the display name is composed as the literal row- + the
+// value substitution (E21).
 const idiomaticLargeLoopSrc = `{{range .Items -}}
 <tr>
-  <td>{{.Name}}</td>
+  <td>row-{{.Value}}</td>
   <td>{{.Value}}</td>
 </tr>
 {{end -}}
@@ -74,6 +529,9 @@ const idiomaticLargeLoopSrc = `{{range .Items -}}
 
 // ---- workload 4 — mixed-page (text/template) -------------------------------------------------
 
+// Single-file by rule (E20 — layout composition is composed-page's dimension). The display
+// SKU is composed as MX-{{.SkuNumber}} and the blurb sentence lives in the template around
+// {{.Batch}} (E21).
 const idiomaticMixedPageSrc = `<!DOCTYPE html>
 <html>
   <head>
@@ -103,10 +561,10 @@ const idiomaticMixedPageSrc = `<!DOCTYPE html>
         {{range .Products -}}
         <article class="card">
           <h3>{{.Name}}</h3>
-          <p class="sku">{{.Sku}}</p>
+          <p class="sku">MX-{{.SkuNumber}}</p>
           <p class="price">{{.Price}}</p>
           {{if .OnSale}}<p class="sale">On sale</p>{{end}}
-          <p class="blurb">{{.Blurb}}</p>
+          <p class="blurb">A dependable workshop staple from batch {{.Batch}}, checked for daily use and backed by our lifetime guarantee.</p>
         </article>
         {{end -}}
       </section>
@@ -122,6 +580,7 @@ const idiomaticMixedPageSrc = `<!DOCTYPE html>
 
 // ---- workload 5 — conditional-heavy (text/template) ------------------------------------------
 
+// The note text is composed as the literal note + {{.Seq}} (E21).
 const idiomaticConditionalHeavySrc = `<ul class="matrix">
   {{range .Rows -}}
   <li>
@@ -135,7 +594,7 @@ const idiomaticConditionalHeavySrc = `<ul class="matrix">
     <span class="t3">platinum</span>
     {{- end}}
     <em>{{.Name}}</em>
-    {{if .HasNote}}<small>{{.Note}}</small>{{end}}
+    {{if .HasNote}}<small>note {{.Seq}}</small>{{end}}
     {{if .IsActive}}<b>active</b>{{end}}
   </li>
   {{end -}}
@@ -144,8 +603,11 @@ const idiomaticConditionalHeavySrc = `<ul class="matrix">
 
 // ---- workload 6 — fragment-heavy (text/template) ---------------------------------------------
 
-// The partial-with-current-row construct exactly as the docs' nested-template-definition
-// examples show it: a named {{define}} invoked with {{template "tile" .}} per row.
+// The E20 four-kind dispatch exactly as the docs' nested-template-definition examples show
+// it: one named {{define}} per fragment kind plus the badge/price sub-definitions the card
+// invokes against its .Promo (the one nesting level), selected per row by the boolean
+// {{if}}/{{else if}} chain. Derived display text is composed by the template (E21):
+// /img/{{.Name}}.jpg, Caption for {{.Name}}, {{.Price}}.99.
 const idiomaticFragmentHeavySrc = `{{define "tile"}}
 <section class="tile">
   <h3>{{.Name}}</h3>
@@ -153,11 +615,45 @@ const idiomaticFragmentHeavySrc = `{{define "tile"}}
   <span class="badge">{{.Badge}}</span>
 </section>
 {{end}}
-{{- define "panel"}}
-<div class="panel">
-  {{range .Items}}{{template "tile" .}}{{end}}
+
+{{- define "badge"}}<span class="promo-badge">{{.Label}}</span>{{end}}
+
+{{- define "price"}}<p class="price">{{.Price}}.99</p>{{end}}
+
+{{- define "card"}}
+<article class="card">
+  <h3>{{.Name}}</h3>
+  {{template "badge" .Promo}}{{template "price" .Promo}}
+  <p class="v">{{.Value}}</p>
+</article>
+{{end}}
+
+{{- define "media_row"}}
+<div class="media-row">
+  <img src="/img/{{.Name}}.jpg" alt="{{.Name}}" />
+  <div class="media-body">
+    <h4>{{.Name}}</h4>
+    <p>Caption for {{.Name}}</p>
+  </div>
 </div>
 {{end}}
+
+{{- define "stat"}}
+<div class="stat">
+  <span class="stat-name">{{.Name}}</span>
+  <span class="stat-value">{{.Value}}</span>
+  <span class="stat-delta">{{.Delta}}</span>
+</div>
+{{end}}
+
+{{- define "panel"}}
+<div class="panel">
+  {{- range .Items}}
+  {{- if .IsTile}}{{template "tile" .}}{{else if .IsCard}}{{template "card" .}}{{else if .IsMedia}}{{template "media_row" .}}{{else}}{{template "stat" .}}{{end}}
+  {{- end}}
+</div>
+{{end}}
+
 {{- template "panel" .}}`
 
 // ---- workload 7 — fortunes-encoded (html/template) -------------------------------------------
@@ -200,7 +696,12 @@ const idiomaticEncodedLoopSrc = `<table>
 // ---- parsed templates (once, at package init — the cached-template render path) --------------
 
 var (
-	idiomaticComposedTpl            = texttemplate.Must(texttemplate.New("composed-page").Parse(idiomaticComposedSrc))
+	idiomaticComposedTpl = func() *texttemplate.Template {
+		t := texttemplate.New("composed-page")
+		texttemplate.Must(t.Parse(idiomaticComposedChromeSrc))
+		texttemplate.Must(t.Parse(idiomaticComposedLayoutSrc))
+		return texttemplate.Must(t.Parse(idiomaticComposedHomeSrc))
+	}()
 	idiomaticTrivialSubstitutionTpl = texttemplate.Must(texttemplate.New("trivial-substitution").Parse(idiomaticTrivialSubstitutionSrc))
 	idiomaticLargeLoopTpl           = texttemplate.Must(texttemplate.New("large-loop").Parse(idiomaticLargeLoopSrc))
 	idiomaticMixedPageTpl           = texttemplate.Must(texttemplate.New("mixed-page").Parse(idiomaticMixedPageSrc))
@@ -227,7 +728,7 @@ var (
 
 // RenderIdiomaticComposedPage renders workload 1 idiomatically via text/template.
 func RenderIdiomaticComposedPage() string {
-	return render(idiomaticComposedTpl, idComposedBuf, model.Composed)
+	return render(idiomaticComposedTpl, idComposedBuf, model.Composed())
 }
 
 // RenderIdiomaticTrivialSubstitution renders workload 2 idiomatically via text/template.

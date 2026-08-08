@@ -1,0 +1,1 @@
+<article class="card"><h3><%~ it.name %></h3><%~ include("@badge", it.promo) %><%~ include("@price", it.promo) %><p class="v"><%~ it.value %></p></article>

@@ -1,4 +1,19 @@
-{% extends "idiomatic/askama/composed-page-base.html" %}
-{# Idiomatic Askama child template (WI5, README D8/Q1.7). Patterns follow the Askama 0.16
-   book: "Template syntax - Template inheritance" (child extends the base, overriding no
-   blocks - the base's section defaults render, mirroring layout.heddle). #}
+{% extends "idiomatic/askama/composed-page-layout.html" %}
+{# Idiomatic Askama page template (WI5, README D8/Q1.7; ledger E20/E22). Patterns follow
+   the Askama 0.16 book: "Template syntax - Template inheritance" (the page extends the
+   layout and fills the live body block with the slider markup - both tracks carry the
+   same slider body, the verifier's removed-segment calibration pin; the layout's
+   section-default blocks render unoverridden). #}
+{% block body %}
+  <div class="slider-wrapper theme-default">
+    <div id="slider" class="nivoSlider">
+    </div>
+    <div class="home-content">
+      <div>
+        <a href="/products/gluten-free">
+          <img src="/files/homepage/homebtmbanners/gluten-hp.jpg" width="984" border="0" />
+        </a>
+      </div>
+    </div>
+  </div>
+{% endblock %}

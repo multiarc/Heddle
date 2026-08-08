@@ -3,5 +3,5 @@
       https://eta.js.org/docs/4.x.x/syntax/layouts-and-blocks (layout, it.body),
       https://eta.js.org/docs/4.x.x/api/overview (loadTemplate, render). */ %>
 <% it.items.forEach(r => { %>
-  <tr><td><%= r.name %></td><td><%= r.value %></td></tr>
+  <tr><td>row-<%= r.value %></td><td><%= r.value %></td></tr>
 <% }) %>

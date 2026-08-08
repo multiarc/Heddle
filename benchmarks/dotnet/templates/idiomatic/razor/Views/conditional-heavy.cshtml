@@ -1,5 +1,6 @@
 @*
-    Idiomatic Razor -- conditional-heavy (phase 9; authoring standard D16).
+    Idiomatic Razor -- conditional-heavy (phase 9; authoring standard D16; E21 composed note
+    text: the template composes `note @(r.Seq)` -- the model carries the int only).
 
     Patterns followed, from Microsoft's own documentation:
       Razor syntax        https://learn.microsoft.com/aspnet/core/mvc/views/razor
@@ -37,7 +38,7 @@
             <em>@r.Name</em>
             @if (r.HasNote)
             {
-                <small>@r.Note</small>
+                <small>note @r.Seq</small>
             }
             @if (r.IsActive)
             {

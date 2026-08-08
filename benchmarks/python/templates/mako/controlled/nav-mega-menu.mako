@@ -1,0 +1,14 @@
+<%page args="menu"/>\
+<div class="top-menu-wrapper"><ul class="top-menu">\
+% for tab in menu["tabs"]:
+<li class="${tab["css"]}"><a href="${tab["href"]}" class="drop">${tab["label"]}</a>\
+% if tab["has_dropdown"]:
+<div class="${tab["dropdown_css"]}">\
+% for column in tab["columns"]:
+<%include file="nav-column.mako" args="column=column"/>\
+% endfor
+</div>\
+% endif
+</li>\
+% endfor
+</ul></div>\

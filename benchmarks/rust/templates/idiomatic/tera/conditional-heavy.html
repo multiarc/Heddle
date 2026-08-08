@@ -1,6 +1,7 @@
 {# Idiomatic Tera template (WI5, README D8/Q1.7). Patterns follow the Tera docs
    (keats.github.io/tera): "Control structures - If" (if / elif / else chain) and
-   "Control structures - For loops"; default auto-escaping left on. #}
+   "Control structures - For loops"; default auto-escaping left on. The note text is
+   template-composed as the literal `note ` + the seq substitution (ledger E21). #}
 <ul class="matrix">
   {% for r in rows %}
     <li>
@@ -15,7 +16,7 @@
       {% endif %}
       <em>{{ r.name }}</em>
       {% if r.has_note %}
-        <small>{{ r.note }}</small>
+        <small>note {{ r.seq }}</small>
       {% endif %}
       {% if r.is_active %}
         <b>active</b>

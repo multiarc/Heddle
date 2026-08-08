@@ -5,10 +5,10 @@
        builtins/html     https://github.com/scriban/scriban/blob/master/doc/builtins.md#html-functions
        runtime/includes  https://github.com/scriban/scriban/blob/master/doc/runtime.md
 
-     Uses Scriban's whitespace-control markers, its for/if statements, and the documented
-     html.escape builtin on untrusted values. Checked by the functional verifier, not the
-     byte gate. Note the multi-line comment delimiters: the single-line form ends at the
-     first newline, which would leave the doc URLs to parse as expressions. ##}}
+     Renders one tile row from the scope-shared loop variable `item`. Checked by the
+     functional verifier, not the byte gate. Note the multi-line comment delimiters: the
+     single-line form ends at the first newline, which would leave the doc URLs to parse as
+     expressions. ##}}
 
 <section class="tile">
   <h3>{{ item.name }}</h3>

@@ -1,0 +1,1 @@
+<th:block th:fragment="card(item)"><article class="card"><h3>[(${item.name})]</h3><th:block th:replace="~{controlled/badge :: badge(${item.promo})}"/><th:block th:replace="~{controlled/price :: price(${item.promo})}"/><p class="v">[(${item.value})]</p></article></th:block>

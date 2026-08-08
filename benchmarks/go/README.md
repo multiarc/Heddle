@@ -32,9 +32,10 @@ Layout (harness-and-measurement.md §Module layout):
   strip included), controlled byte gate + encoded security floor, idiomatic verifier,
   untrusted-data alphabet assert (D5).
 - `internal/model/` — the eight pinned models (C# field spellings, `strconv`/`%d` numerics);
-  composed-page fragments embedded byte-exact as runtime data under
-  `internal/model/data/composed-page/` (pinned `-text` in `.gitattributes`) and byte-checked
-  against the oracle by `TestComposedAssemblyMatchesTheCorpusOracle`.
+  the composed-page model is pure structured data (`ComposedModel{Nav}` — ledger E20/E22),
+  loaded once from the corpus fixture `fixtures/composed-page/nav.json`; every fragment of
+  literal page text lives in the templates as `{{define}}`d chrome fragments, never in Go
+  data files.
 - `internal/spike/` — the S1 templ feasibility probes (evidence, excluded from timing).
 - `suites/` — `gate_test.go` (TestMain + gate registry; engine cells register here as WI3–WI5
   land), later `bench_test.go` / `coldparse_test.go`.

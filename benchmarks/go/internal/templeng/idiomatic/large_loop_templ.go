@@ -3,7 +3,11 @@
 // templ: version: v0.3.1020
 // Workload 3 — large-loop, templ idiomatic port. Idiomatic component decomposition: a row
 
-// component invoked from the loop; ints render natively via { } expressions.
+// component invoked from the loop; the display name is composed in the template as the
+
+// literal "row-" plus the value substitution (E21 — the model carries only Value); ints
+
+// render natively via { } expressions.
 
 //
 
@@ -45,14 +49,14 @@ func largeLoopRow(r model.LoopRow) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<tr><td>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<tr><td>row-")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var2 string
-		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(r.Name)
+		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(r.Value)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/idiomatic/large_loop.templ`, Line: 14, Col: 14}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/idiomatic/large_loop.templ`, Line: 16, Col: 19}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -65,7 +69,7 @@ func largeLoopRow(r model.LoopRow) templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(r.Value)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/idiomatic/large_loop.templ`, Line: 15, Col: 15}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templeng/idiomatic/large_loop.templ`, Line: 17, Col: 15}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {

@@ -1,5 +1,6 @@
 @*
-    Razor parity twin -- conditional-heavy (ledger E8/E9).
+    Razor parity twin -- conditional-heavy (ledger E8/E9; E21 composed note text: the template
+    composes `note @(r.Seq)` -- the model carries the int only).
 
     Razor is now measured on ALL EIGHT workloads. It previously existed for composed-page only,
     which meant the repository's "faster than Razor" claim rested on the single least favourable
@@ -22,5 +23,5 @@
     {<span class="t2">gold</span>}
     else
     {<span class="t3">platinum</span>}<em>@Html.Raw(r.Name)</em>@if (r.HasNote)
-    {<small>@Html.Raw(r.Note)</small>}@if (r.IsActive)
+    {<small>note @r.Seq</small>}@if (r.IsActive)
     {<b>active</b>}</li>}</ul>

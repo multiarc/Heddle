@@ -1,30 +1,399 @@
 @*
-    Razor parity twin -- composed-page (layout) (ledger E8/E9).
+    Razor parity twin -- composed-page layout (ledger E20/E22).
 
-    Razor is now measured on ALL EIGHT workloads. It previously existed for composed-page only,
-    which meant the repository's "faster than Razor" claim rested on the single least favourable
-    workload in the set. An engine with one workload does not belong in a cross-stack table.
+    A genuine full-page layout with a LIVE body slot: Razor's native Layout/@RenderBody
+    mechanism, mirroring Heddle's layout-as-definition idiom (layout.heddle's @out() slot).
+    The inert chrome fragments -- the alert banner, the two secondary menus, the fixed
+    asset/script snippets -- are literal template text transcribed from
+    templates/controlled/heddle/{layout,chrome-fragments}.heddle (E22: all display text
+    lives in templates; the C# tier carries only model DATA). The structured navigation
+    renders from ComposedModel.Nav through nested loops and partials
+    (menu -> column -> section -> link), matching the normative per-engine table in
+    workloads.md. The transcribed chrome contains no literal '@', so no @@ escapes were
+    needed. Whitespace is free -- N3b strips every whitespace run from both sides before
+    the byte comparison.
 
-    Every value comes from the shared PUBLIC fixtures under src/Models/, the same objects every
-    other engine reads, so this twin cannot drift from the engine it is compared against. Its
-    predecessor did drift -- it carried a hand-duplicated 56 KB copy of the area dictionary that had
-    diverged unnoticed -- precisely because nothing compared the two.
-
-    Reproduces the byte sequence Heddle's home.heddle + layout.heddle actually emit -- the
-    reusable-section defaults, the fixed component outputs and the ordered area menus -- rather
-    than transcribing the layout's literal HTML chrome. See GoldenCorpus/README.md for why
-    Heddle's output is that fragment sequence.
+    Html.Raw for the nav string values: the raw suite renders every engine's non-encoding
+    path, same discipline as the other twins' triple-mustache / no-escape-filter forms.
 *@
 @using Heddle.Benchmarks.Dotnet.Models
-@{
-    var sections = TwinContent.Sections();
-    var comp = TwinContent.Components();
-    var areas = TwinContent.Areas;
-    var order = TwinContent.AreaOrder;
-}
-@Html.Raw(sections["meta"])@Html.Raw(sections["social"])@Html.Raw(comp["assets_styles"])@Html.Raw(comp["custom_styles"])@Html.Raw(comp["head_scripts"])@Html.Raw(comp["body_scripts"])@for (var i = 0; i < order.Length - 1; i++)
-{@Html.Raw(areas[order[i]])}@*
-    layout.heddle's @body() slot sits here, between the last navigation area and the footer area.
-    It resolves to the layout's empty default, so this renders nothing -- but the slot is kept in
-    its real position, and Razor requires a layout to call RenderBody exactly once.
-*@@RenderBody()@Html.Raw(areas[order[order.Length - 1]])@Html.Raw(comp["assets_scripts"])@Html.Raw(sections["page_scripts"])@Html.Raw(sections["endpage_scripts"])@Html.Raw(comp["body_end_scripts"])
+@model ComposedModel
+<!DOCTYPE html>
+<!--[if lt IE 9]>
+    <html class="no-js lt-ie9" lang="en">
+<![endif]-->
+<!--[if gte IE 9]>
+    <html class="no-js" lang="en">
+<![endif]-->
+<!--[if !IE]><!-->
+<html class="no-js" lang="en">
+<!--<![endif]-->
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <title>Title</title>
+    <meta property="og:image" content="/files/catalog/img.jpg">
+    <meta itemprop="image" content="/files/catalog/img.jpg"/>
+    <link rel="image_src" href="/files/catalog/img.jpg"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="msvalidate.01" content="4A9D524947EE62F01A1A9607511248C4" />
+    <link href="//fonts.googleapis.com/css?family=Francois+One" rel="stylesheet" type="text/css">
+    <link rel="apple-touch-icon" href="/assets/miscellaneous/apple-touch-icon.png">
+    <link rel="icon" type="img/ico" href="/assets/miscellaneous/favicon.ico">
+    <link rel="stylesheet" href="/main.css" />
+    <style>
+        /* CSS Comment Test */
+    </style>
+    <script src="/head.js"></script>
+</head>
+<body>
+    <script src="/body.js"></script>
+    <div>
+        <div class="header-top main">
+            <div class="header-top-right">
+                <div class="actions-top-nav">
+                    <a href="/index/profile">Your Account</a>
+                    <a href="/Account/Register">Register</a>
+                    <a class="last-child" href="/content/contact-customer-service">Contact Us</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="separator-top"></div>
+<div class="alert-banner">
+    <div class="top-banner" style=""><a href="/content/shipping-information#Holidays"><img src="/files/images/sitewide-alerts/xmas-shipping-alert-1.jpg" alt="holiday shipping"/></a></div>
+</div>
+    <div class="main">
+        <header>
+            <div class="header-main">
+                <div class="logo-holder">
+                    <a href="/">
+                    </a>
+                </div>
+                <div class="header-right-sidebar">
+                    <div class="search-area">
+                        <form id="search-area-form" action="/help/search" method="get">
+                            <input type="text" name="q" value="What can we help you find?" onclick="this.value = ( this.value == this.defaultValue ) ? '' : this.value;return true;" dir="ltr" autocomplete="off" spellcheck="false" style="outline: none;">
+                            <input type="image" class="active" style="display: none;" src="/Assets/images/mag.jpg" />
+                            <input type="image" class="not-active" src="/Assets/images/mag-off.png" />
+                        </form>
+                    </div>
+                    <div class="header-actions-holder">
+                        <div class="cart-work-area">
+                            <a class="view-cart" href="#">
+                                <div class="cart-icon"></div>
+                                <div class="item-total">
+                                    <span id="cart-lite-component"></span>
+                                    <span>Item(s)</span>
+                                </div>
+                            </a>
+                            <a class="checkout-button" href="#">
+                                <button>CHECKOUT</button>
+                            </a>
+                        </div>
+                    </div>
+                    <div class="clear"></div>
+                    <div class="header-top-right">
+                        <div class="actions-top-nav">
+                            <a class="wholesale-home" href="/products/wholesale">Wholesale Home</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <nav class="hide top-nav secondary-nav">
+				<ul class="hide">
+                <li>
+                <a href="#">New</a>
+                </li>
+                <li>
+                <a href="#">Signature Products</a>
+                </li>
+                <li>
+                <a href="/products/specials-and-top-sellers">Special Offers</a>
+                </li>
+                <li>
+                <a href="/content/in-the-kitchen">Recipes</a>
+                <div class="dropdown_1column">
+                <div class="col_1">
+                <ul>
+                <li>
+                <a href="/content/in-the-kitchen">All Recipes</a>
+                </li>
+                <li>
+                <a href="/recipe/Vital-Choice-Seafood-Cooking-Videos">Recipe Videos</a>
+                </li>
+                <li>
+                <a href="/content/Seafood-Storage-Cooking-Tips">Seafood Cooking Tips</a>
+                </li>
+                </ul>
+                </div>
+                </div>
+                </li>
+                <li>
+                <a href="/content/About-Vital-Choice">Why Vital Choice?</a>
+                <div class="dropdown_1column">
+                <div class="col_1">
+                <ul>
+                <li>
+                <a href="/content/About-Vital-Choice">About Us</a>
+                </li>
+                <li>
+                <a href="/content/our-mission">Our Mission</a>
+                </li>
+                <li>
+                <a href="/content/what-are-people-saying-about-vital-choice">Testimonials</a>
+                </li>
+                <li>
+                <a href="/content/Giving-Back-to-the-Community">Giving Back</a>
+                </li>
+                <li>
+                <a href="/content/News-Room">News Room</a>
+                </li>
+                <li>
+                <a href="/content/Vital-Green-Environmental-Stewardship-Program">Vital Green™</a>
+                </li>
+                <li>
+                <a href="/content/Sustainability">Sustainability</a>
+                </li>
+                <li>
+                <a href="/content/Purity-Story">Product Purity</a>
+                </li>
+                <li>
+                <a href="/content/The-Antidote-Podcast-Series">Randy's Podcasts</a>
+                </li>
+                <li>
+                <a href="/content/HealthWise-Rewards-Program">Customer Rewards</a>
+                </li>
+                <li>
+                <a href="/faqs">Frequent Questions (FAQs)</a>
+                </li>
+                </ul>
+                </div>
+                </div>
+                </li>
+                <li>
+                <a href="#">Health & Nutrition</a>
+                <div class="dropdown_1column">
+                <div class="col_1">
+                <ul>
+                <li>
+                <a href="/content/omega-3-facts-sources">Omega-3 Basics</a>
+                </li>
+                <li>
+                <a href="/content/Health-Benefits-of-Fish">Seafood Benefits</a>
+                </li>
+                <li>
+                <a href="/content/Omega-3-6-Balance-Scores-How-to-Use-Them">Omega-3/6 Balance</a>
+                </li>
+                <li>
+                <a href="/content/Healthy-Mom-Baby">Healthy Mom & Baby</a>
+                </li>
+                <li>
+                <a href="/content/Purity-Story">Seafood Purity & Safety</a>
+                </li>
+                <li>
+                <a href="/content/recommended-reading">Recommended Reading</a>
+                </li>
+                </ul>
+                </div>
+                </div>
+                </li>
+                <li>
+                <a href="/products/wholesale" class="highlighted-sec-menu">Wholesale</a>
+                <div class="dropdown_1column">
+                <div class="col_1">
+                <ul>
+                <li>
+                <a href="/products/canned-wild-seafood">Canned Wild Seafood</a>
+                </li>
+                <li>
+                <a href="/products/dietary-supplements">Dietary Supplements</a>
+                </li>
+                <li>
+                <a href="/products/organic-foods">Organic Foods</a>
+                </li>
+                <div class="sub-sec-menu-separator"></div>
+                <li>
+                <a href="/content/wholesale-promotions">Wholesale Promotions</a>
+                </li>
+                <li>
+                <a href="/content/wholesale-faq">FAQ</a>
+                </li>
+                </ul>
+                </div>
+                </div>
+                </li>
+                <li class="last-child">
+                <a href="/content/newsletter-sign-up">Newsletter</a>
+                <div class="dropdown_1column">
+                <div class="col_1">
+                <ul>
+                <li>
+                <a href="/content/newsletter-sign-up">Sign Up</a>
+                </li>
+                <li>
+                <a href="/articles">Archives</a>
+                </li>
+                </ul>
+                </div>
+                </div>
+                </li>
+                </ul>
+				<ul class="hide">
+                <li>
+                <a href="#">New</a>
+                </li>
+                <li>
+                <a href="#">Signature Products</a>
+                </li>
+                <li>
+                <a href="/products/specials-and-top-sellers">Special Offers</a>
+                </li>
+                <li>
+                <a href="/content/in-the-kitchen">Recipes</a>
+                <div class="dropdown_1column">
+                <div class="col_1">
+                <ul>
+                <li>
+                <a href="/content/in-the-kitchen">All Recipes</a>
+                </li>
+                <li>
+                <a href="/recipe/Vital-Choice-Seafood-Cooking-Videos">Recipe Videos</a>
+                </li>
+                <li>
+                <a href="/content/Seafood-Storage-Cooking-Tips">Seafood Cooking Tips</a>
+                </li>
+                </ul>
+                </div>
+                </div>
+                </li>
+                <li>
+                <a href="/content/About-Vital-Choice">Why Vital Choice?</a>
+                <div class="dropdown_1column">
+                <div class="col_1">
+                <ul>
+                <li>
+                <a href="/content/About-Vital-Choice">About Us</a>
+                </li>
+                <li>
+                <a href="/content/our-mission">Our Mission</a>
+                </li>
+                <li>
+                <a href="/content/what-are-people-saying-about-vital-choice">Testimonials</a>
+                </li>
+                <li>
+                <a href="/content/Giving-Back-to-the-Community">Giving Back</a>
+                </li>
+                <li>
+                <a href="/content/News-Room">News Room</a>
+                </li>
+                <li>
+                <a href="/content/Vital-Green-Environmental-Stewardship-Program">Vital Green™</a>
+                </li>
+                <li>
+                <a href="/content/Sustainability">Sustainability</a>
+                </li>
+                <li>
+                <a href="/content/Purity-Story">Product Purity</a>
+                </li>
+                <li>
+                <a href="/content/The-Antidote-Podcast-Series">Randy's Podcasts</a>
+                </li>
+                <li>
+                <a href="/content/HealthWise-Rewards-Program">Customer Rewards</a>
+                </li>
+                <li>
+                <a href="/faqs">Frequent Questions (FAQs)</a>
+                </li>
+                </ul>
+                </div>
+                </div>
+                </li>
+                <li>
+                <a href="#">Health & Nutrition</a>
+                <div class="dropdown_1column">
+                <div class="col_1">
+                <ul>
+                <li>
+                <a href="/content/omega-3-facts-sources">Omega-3 Basics</a>
+                </li>
+                <li>
+                <a href="/content/Health-Benefits-of-Fish">Seafood Benefits</a>
+                </li>
+                <li>
+                <a href="/content/Omega-3-6-Balance-Scores-How-to-Use-Them">Omega-3/6 Balance</a>
+                </li>
+                <li>
+                <a href="/content/Healthy-Mom-Baby">Healthy Mom & Baby</a>
+                </li>
+                <li>
+                <a href="/content/Purity-Story">Seafood Purity & Safety</a>
+                </li>
+                <li>
+                <a href="/content/recommended-reading">Recommended Reading</a>
+                </li>
+                </ul>
+                </div>
+                </div>
+                </li>
+                <li>
+                <a href="/content/request-catalog">Catalog</a>
+                </li>
+                <li class="last-child">
+                <a href="/content/newsletter-sign-up">Newsletter</a>
+                <div class="dropdown_1column">
+                <div class="col_1">
+                <ul>
+                <li>
+                <a href="/content/newsletter-sign-up">Sign Up</a>
+                </li>
+                <li>
+                <a href="/articles">Archives</a>
+                </li>
+                </ul>
+                </div>
+                </div>
+                </li>
+                </ul>
+            </nav>
+            @foreach (var menu in Model.Nav.Menus)
+            {@await Html.PartialAsync("/Views/mega-menu.cshtml", menu)}
+        </header>
+        <div class="content">
+            <div class="alert-banner">
+            </div>
+            <div class="content-dynamic">
+                @RenderBody()
+            </div>
+            <div class="content-bottom">
+            </div>
+        </div>
+        <footer>
+            <div class="footer-main">
+                <nav class="footer-nav">
+                    @foreach (var column in Model.Nav.FooterColumns)
+                    {@await Html.PartialAsync("/Views/nav-column.cshtml", column)}
+                </nav>
+                <div class="footer-market">
+                    <div class="market-left">
+                        <a href="/content/request-catalog">
+                            <img alt="See Our Catalog" src="/Assets/images/seeourcatalog.jpg" />
+                        </a>
+                    </div>
+                    <div class="market-right">
+                        <div class="ssl-area">
+                        </div>
+                        <div id="socialiconshome-102413">
+                            <img src="/Assets/images/socialicons5-home.jpg" usemap="#Social">
+                        </div>
+                        <div class="clear"></div>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </div>
+    <script src="/main.js"></script>
+    <script src="/app/modules/profile/gccheckform.js"></script>
+    <script src="/bodyend.js"></script>
+</body>
+</html>

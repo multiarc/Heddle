@@ -1,0 +1,1 @@
+<article class="card"><h3>{{ item.name }}</h3>{{ include 'badge' }}{{ include 'price' }}<p class="v">{{ item.value }}</p></article>

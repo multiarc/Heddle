@@ -26,10 +26,10 @@
     <section class="grid">
         <article class="card" th:each="p : ${m.products}">
             <h3 th:utext="${p.name}">Product name</h3>
-            <p class="sku" th:utext="${p.sku}">SKU</p>
+            <p class="sku" th:utext="|MX-${p.skuNumber}|">MX-1000</p>
             <p class="price" th:utext="${p.price}">0</p>
             <p class="sale" th:if="${p.onSale}">On sale</p>
-            <p class="blurb" th:utext="${p.blurb}">Blurb</p>
+            <p class="blurb" th:utext="|A dependable workshop staple from batch ${p.batch}, checked for daily use and backed by our lifetime guarantee.|">Blurb</p>
         </article>
     </section>
     <pre class="debug" th:if="${m.showDebugPanel}">debug</pre>
