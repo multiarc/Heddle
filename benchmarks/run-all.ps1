@@ -66,7 +66,8 @@ $ErrorActionPreference = 'Continue'
 # runs through BenchmarkDotNet's pilot stage and does not. More to the point, a single launch
 # never samples the cross-process term AT ALL: one process, one JIT, one heap layout. That is the
 # same gap JMH closes with plural forks and JS with repeat passes, and the .NET leg was the one
-# that had never bought it.
+# that had never bought it. The launches multiply the harness job's E28 five-iteration floor:
+# 10 x 5 = 50 samples per cell here, against short's 3 x 5 = 15.
 if ($Budget -eq 'baseline') {
     $dotnetProfileArgs = ' --launchCount 10'
     $rustProfileArgs   = ' --warm-up-time 10 --measurement-time 84'
@@ -77,7 +78,7 @@ if ($Budget -eq 'baseline') {
     $profileJsPasses   = 114
 }
 else {
-    $dotnetProfileArgs = ''            # harness default job: LaunchCount 3 / W3 / I3
+    $dotnetProfileArgs = ''            # harness default job: LaunchCount 3 / W3 / I5 (E28 five-sample floor)
     $rustProfileArgs   = ''            # source: warm-up 5 s, measurement 26 s
     $jmhProfileArgs    = ''            # annotations: Fork 5, W 1x2s, M 5x1s
     $pyValuesArgs      = ' --values 6 --warmups 1'

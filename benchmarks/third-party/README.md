@@ -14,7 +14,7 @@ PR (the D3-R1 deliverable) is prepared-but-not-submitted. See
 | Benchmark project | `Fluid.Benchmarks/` (at the repo root) |
 | **Commit SHA** | `1fa7c0bc0d86b51279272da4438a802650b8a89b` |
 | Commit date | 2026-06-22 |
-| Methodology | BenchmarkDotNet `0.15.8`, `[MemoryDiagnoser]`, `ShortRunJob`, `GroupBenchmarksBy(ByCategory)` |
+| Methodology | BenchmarkDotNet `0.15.8`, `[MemoryDiagnoser]`, `SimpleJob(launchCount: 1, warmupCount: 3, iterationCount: 5)` (upstream's `ShortRunJob` with the repo-wide five-sample floor, E28), `GroupBenchmarksBy(ByCategory)` |
 
 ## Tracking status (D3-R4)
 

@@ -81,6 +81,12 @@ namespace Heddle.Benchmarks.Dotnet.Bench
         /// the pilot stage and is not. Three launches is what puts each engine's 16 cells at the
         /// program's ~10-minute per-engine budget (ledger E14).</para>
         ///
+        /// <para><b>Five measurement iterations per launch, not ShortRun's three.</b> The suite-wide
+        /// floor (ledger E28) is at least five samples per run: three is too few for the outlier
+        /// trimming and the variance estimate the report derives per launch. Iterations are cheap
+        /// next to the launch overhead that dominates this leg, so the floor costs little; the
+        /// <c>baseline</c> budget inherits it through the same job (10 launches × 5 iterations).</para>
+        ///
         /// <para><b>Supplied as configuration, not as a <c>[SimpleJob]</c> attribute.</b> An
         /// attribute job cannot be replaced from the command line — BenchmarkDotNet ADDS the CLI job
         /// to it — so <c>--job Dry</c> would run the full measurement as well as the dry one, which
@@ -90,7 +96,8 @@ namespace Heddle.Benchmarks.Dotnet.Bench
         private static IConfig Config(string[] args)
         {
             if (Has(args, "--job")) return null;
-            return ManualConfig.Create(DefaultConfig.Instance).AddJob(Job.ShortRun.WithLaunchCount(3));
+            return ManualConfig.Create(DefaultConfig.Instance)
+                .AddJob(Job.ShortRun.WithLaunchCount(3).WithIterationCount(5));
         }
 
         private static bool Has(IEnumerable<string> args, string option)
