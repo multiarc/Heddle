@@ -212,19 +212,28 @@ simplification:
 | Engine | Layout mechanism (live body slot) | Nav rendering |
 |---|---|---|
 | Heddle | definition-only import + `@layout(){{ body }}` splicing at `@out()` | nested definitions (above) |
-| Razor | `Layout` + one mid-page `@RenderBody()` | nested `@foreach` + partials; chrome fragments as literal HTML in the layout view (Razor-native — no workaround needed) |
+| Razor | `Layout` + one mid-page `@RenderBody()` (mega-menu → nav-column → nav-section → nav-link partial views, one per Heddle nav definition) | nested `@foreach` + partials; chrome fragments as literal HTML in the layout view (Razor-native — no workaround needed) |
 | Fluid / DotLiquid | capture-then-include: `{% capture body_content %}…{% endcapture %}{% include 'layout' %}`, layout emits the slot | nested `{% for %}` + `nav-column`-family partials (dialect-suffixed) |
 | Scriban | same capture-then-include shape in Scriban syntax | nested `{{ for }}` + partials |
-| Handlebars | partial block `{{#> layout}}…{{/layout}}` + `{{> @partial-block}}` (probe against Handlebars.Net 2.1.6 first; documented fallback: registered body partial) | `{{#each}}` + partials |
+| Handlebars | partial block `{{#> layout}}…{{/layout}}` + `{{> @partial-block}}` — probe EXECUTED 2026-08-08 against Handlebars.Net 2.1.6: supported, exact bytes; the documented registered-body-partial fallback was not needed | `{{#each}}` + partials |
 | Rust (Askama / Tera) | `{% extends %}` + `{% block body %}` with a real child body | nav loops + nested `{% include %}` |
-| JVM (JTE) | layout with a `gg.jte.Content bodySlot` parameter | `@for` + `@template` calls |
-| JVM (Thymeleaf) | parameterized fragment `layout(~{:: body})` — re-run feasibility rungs first; exclusion-with-evidence is the accepted controlled-cell fallback | `th:each` + fragments |
-| JS (eta) | native `layout()` + `it.body` | loops + partials |
-| JS (handlebars) | partial-block layout | `{{#each}}` + partials |
+| JVM (JTE) | layout with a `gg.jte.Content bodySlot` parameter, rendered `${bodySlot}` | `@for` + `@template` calls |
+| JVM (Thymeleaf) | parameterized fragment `layout(~{:: slider-body})` + `th:replace="${bodySlot}"` — feasibility re-run completed 2026-08-08: ALL controlled cells pass the byte gate, no exclusion invoked (new authoring classes B10 fragment-selector tag-name collision and B2b `th:attr` append-at-end order recorded in [thymeleaf-controlled-feasibility.md](../phase-3-jvm/thymeleaf-controlled-feasibility.md)) | `th:each` + fragments |
+| JS (eta) | native `layout()` + `<%~ it.body %>` slot — in BOTH tracks | loops + partials |
+| JS (handlebars) | partial-block layout — verified against handlebars 4.7.9 in both the runtime-compile and precompile/`template` paths | `{{#each}}` + partials |
 | Python (Jinja2) | `{% extends %}` + filled block | loops + `{% include %}` |
 | Python (Mako) | `<%inherit/>` + `${self.body()}` | loops + defs |
 | Go (stdlib) | `{{block "body"}}` + `{{define "body"}}` override in the associated set | `{{range}}` + `{{template}}` |
-| Go (templ) | `@layout(m) { children }` | nav components |
+| Go (templ) | `@layout(m) { children }` — landed as real children composition (`{ children... }` at the slot), with the void-element `templ.Raw` accommodation documented in [phase-6 port-mapping](../phase-6-go/port-mapping.md#controlled-track--templ) | nav components |
+
+> **Added (ports landed, 2026-08-08):** section defaults (`meta`, `socialmeta`, empty
+> `page_scripts`/`endpage_scripts`) map to each engine's overridable-default mechanism where
+> one exists (Heddle definitions, Askama/Tera/Jinja2 `{% block %}`s, Go stdlib
+> `{{define}}`/`{{block}}`, Thymeleaf fragments) and are inlined literal text where none does
+> (the Liquid family, Handlebars, JTE, eta, Mako) — the byte gate polices the rendered
+> defaults either way. One engine-forced rename: Thymeleaf's `meta` fragment is
+> `meta_section` (B10 — a fragment selector also matches literal `<meta>` tags by element
+> name).
 
 > **Added (E22):** the inert chrome fragments are **literal template text in every engine** —
 > transcribed from the Heddle templates/golden and policed by the byte gate (controlled) and
@@ -483,22 +492,25 @@ dispatch chain, so no `HED3001` gap warning fires.
 Six partials per engine (`tile`, `card`, `badge`, `price`, `media-row`, `stat`; card invokes
 badge + price against the row's promo), dispatched per row:
 
-| Family | Dispatch construct |
+| Family | Dispatch construct (controlled — landed forms) |
 |---|---|
 | Heddle | `@if(IsTile){{…}}@elif(IsCard){{…}}@elif(IsMedia){{…}}@else(){{…}}` (above) |
-| Fluid / DotLiquid (Liquid) | `{% case kind %}{% when 'tile' %}…{% endcase %}` or the boolean `{% if is_tile %}/{% elsif %}` chain, with the per-kind `{% include %}` inside each arm |
-| Scriban | `{{ case kind }}{{ when 'tile' }}…{{ end }}` (or boolean `if/else if` chain) + `{{ include }}` |
-| Handlebars | chained `{{#if is_tile}}{{> tile this}}{{else if is_card}}{{> card this}}…{{/if}}` (the probe-verified pattern from conditional-heavy) |
-| Razor | C# `switch` on `Kind` or an if-chain, invoking `Html.PartialAsync` per kind |
-| Rust (Askama / Tera) | `{% if item.is_tile %}…{% elif %}` chain; per-kind include/partial |
-| JVM (JTE / Thymeleaf) | JTE `@if/@elseif` chain; Thymeleaf `th:switch` over the boolean cases (conditional-heavy precedent) |
-| JS (eta / handlebars) | boolean chain + partials |
-| Python (Jinja2 / Mako) | `{% if %}/{% elif %}` include chains; Mako `args=` pass-through |
-| Go (stdlib / templ) | `{{if .IsTile}}{{template "tile" .}}{{else if}}` chain; templ `switch` |
+| Fluid | boolean `{% if item.is_tile %}/{% elsif %}` chain with the per-kind `{% include '<kind>' with item %}` inside each arm — BOTH tracks |
+| DotLiquid | controlled: the boolean chain with scope-sharing `{% include '<kind>' %}`; idiomatic: `{% case kind %}{% when 'tile' %}…{% endcase %}` |
+| Scriban | controlled: boolean `{{ if item.is_tile }}/{{ else if }}` chain + `{{ include }}`; idiomatic: `{{ case kind }}{{ when 'tile' }}…{{ end }}` |
+| Handlebars (.NET + JS) | chained `{{#if is_tile}}{{> tile this}}{{else if is_card}}{{> card this}}…{{/if}}` (the probe-verified pattern from conditional-heavy) — both tracks |
+| Razor | controlled: C# if-chain on the booleans, invoking `Html.PartialAsync` per kind; idiomatic: C# `switch` on `Kind` |
+| Rust (Askama / Tera) | `{% if item.is_tile %}…{% elif %}` chain; per-kind `{% include %}` (loop-variable/shared-context visibility) |
+| JVM (JTE / Thymeleaf) | JTE `@if(item.isTile())/@elseif` chain + `@template` calls; Thymeleaf controlled `th:switch="${true}"` over the boolean `th:case`s; idiomatic `th:switch` on `${item.kind}` |
+| JS (eta / handlebars) | eta boolean `if/else if` chain + `include("@<kind>", item)`; handlebars chained `{{else if}}` + partials |
+| Python (Jinja2 / Mako) | `{% if %}/{% elif %}` include chains; Mako `args=` pass-through (idiomatic: macro / `<%def>` libraries) |
+| Go (stdlib / templ) | stdlib `{{if .IsTile}}{{template "tile" .}}{{else if}}` chain; templ controlled Go `if/else if` chain over the booleans; templ idiomatic `switch r.Kind` |
 
-Idiomatic tracks may use each engine's documented native switch form where one exists; the
-controlled track uses the constructs above. Main templates wrap the loop in
-`<div class="panel">…</div>`.
+The string-vs-boolean tension is resolved explicitly: **CONTROLLED tracks dispatch on the
+precomputed booleans everywhere** (the common-denominator guarantee — no engine evaluates a
+string test); **IDIOMATIC tracks may use the engine's documented native switch on `kind`**
+where one exists (DotLiquid/Scriban `case`/`when`, Razor and templ `switch`, Thymeleaf
+`th:switch`). Main templates wrap the loop in `<div class="panel">…</div>`.
 
 ### Expected output characteristics
 

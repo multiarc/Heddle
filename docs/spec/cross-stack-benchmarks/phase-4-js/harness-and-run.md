@@ -27,10 +27,12 @@ benchmarks/js/
   src/
     models/<id>.mjs            ← 8 frozen models (templates-and-models.md)
     templates/
-      handlebars/controlled/   ← 8 × .hbs + layout.partial.hbs + tile.partial.hbs
+      handlebars/controlled/   ← 8 × .hbs + layout.partial.hbs + the 20 <name>.partial.hbs
+                                 (chrome, nav, fragment partials — E20/E22 landed set)
       handlebars/idiomatic/    ← mirror set with citation headers
-      eta/controlled/          ← 8 × .eta + layout.partial.eta + tile.partial.eta
-      eta/idiomatic/           ← mirror set + shell.layout.eta + page.layout.eta
+      eta/controlled/          ← 8 × .eta + shell.layout.eta + 20 <name>.partial.eta
+      eta/idiomatic/           ← mirror set (shell.layout.eta; page.layout.eta deleted —
+                                 idiomatic mixed-page is single-file, E20)
     engines/
       handlebars.mjs           ← per-track environment factories + render table
       eta.mjs                  ← per-track Eta instances + render table

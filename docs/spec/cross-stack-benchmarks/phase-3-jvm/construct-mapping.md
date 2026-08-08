@@ -20,12 +20,12 @@ unescaped `[(...)]`/`th:utext`, encoded via escaped `[[...]]`/`th:text`.
 
 | # | Workload | JTE controlled | JTE idiomatic | Thymeleaf controlled | Thymeleaf idiomatic |
 |---|---|---|---|---|---|
-| 1 | composed-page | `@template.controlled.layout(m)` + map lookups + `@for` over area names (Plain) | same constructs, multi-line (Plain) | `th:replace` layout fragment + `[(...)]` map lookups + `th:block th:each` — feasibility rung 8 | natural layout: `th:replace`, `th:utext` on elements |
+| 1 | composed-page | `@template.controlled.layout(m, bodySlot = @`…`)` — layout takes `gg.jte.Content bodySlot`, renders `${bodySlot}` at the slot; nav via `@for` + megamenu/navcolumn/navsection/navlink sub-templates; chrome as per-fragment sub-templates (Plain; E20/E22) | same constructs, `@template.idiomatic.*`, multi-line (Plain) | parameterized fragment `layout(~{:: slider-body})` + `th:replace="${bodySlot}"` slot + chrome-fragment library + nested nav fragments — feasibility rung 8 re-run 2026-08-08, byte gate green (B10/B2b recorded) | natural layout: parameterized fragment + `th:each`/`th:replace` on elements |
 | 2 | trivial-substitution | `${...}` × 10 (Plain) | same, multi-line | literal tags + `[(...)]` text; `th:attr` for `href`/`src` — rung 1 | `th:utext`/`th:href`-style attrs on elements |
 | 3 | large-loop | `@for` + `${...}` (Plain) | same, multi-line | `th:block th:each` + `[(...)]` — rung 3 | `th:each` on `<tr>`, `th:utext` on `<td>` |
 | 4 | mixed-page | `@if` + `@for` + nested `@if` (Plain) | same, multi-line | `th:block th:if`/`th:each` + `[(...)]` — rung 5 | `th:if`/`th:each` on elements, `th:utext` |
 | 5 | conditional-heavy | `@if/@elseif/@else` chain + two `@if` (Plain) | same, multi-line | `th:block th:switch`/`th:case`/`*` + `th:block th:if` — rung 4 | `th:switch`/`th:case` on `<span>`s, `th:if` on elements |
-| 6 | fragment-heavy | `@template.controlled.tile(item)` × 48 (Plain) | `@template.idiomatic.tile(item)` | `th:block th:replace="~{controlled/tile :: tile(${item})}"` — rung 6 | `th:replace` on a host element |
+| 6 | fragment-heavy | `@if(item.isTile())…@elseif…@else` boolean chain dispatching `@template.controlled.{tile,card,media_row→mediarow,stat}(item)` over six sub-templates; card nests badge + price against `getPromo()` (Plain; E20) | same chain, `@template.idiomatic.*`, multi-line | `th:switch="${true}"` over the boolean `th:case`s, each arm `th:replace`-ing its kind fragment — rung 6 (E20) | `th:switch` on `${item.kind}` with string `th:case`s (the documented native switch — workloads.md idiomatic allowance) |
 | 7 | fortunes-encoded | `${...}` under `FiveEntityHtmlOutput` (Html, [D4](README.md#d4--jte-controlled-encoded-suite-renders-through-a-custom-fiveentityhtmloutput)) | `${...}` under stock OWASP output (Html; verifier per [D6](README.md#d6--jte-idiomatic-encoded-cells-need-a-verifier-needle-amendment-erratum-not-local-patch) amendment) | `[[...]]` escaped inlining — rung 2 | `th:text` on `<td>` elements |
 | 8 | encoded-loop | `${...}` text + attribute under `FiveEntityHtmlOutput` (Html) | stock OWASP output (Html; D6) | `[[...]]` text + `th:attr` attribute — rung 7 | `th:text` + `th:attr` on elements |
 
@@ -94,14 +94,16 @@ idiomatic templates are multi-line with a header comment citing jte.gg doc pages
 
 ```jte
 @param java.util.List<heddle.benchmarks.jvm.model.Models.LoopRow> items
-@for(var r : items)<tr><td>${r.getName()}</td><td>${r.getValue()}</td></tr>@endfor
+@for(var r : items)<tr><td>row-${r.getValue()}</td><td>${r.getValue()}</td></tr>@endfor
 ```
+
+(the display name is composed in the template as `row-` + the value substitution — E21)
 
 `conditional-heavy.jte`:
 
 ```jte
 @param java.util.List<heddle.benchmarks.jvm.model.Models.ConditionalRow> rows
-<ul class="matrix">@for(var r : rows)<li>@if(r.isBronze())<span class="t0">bronze</span>@elseif(r.isSilver())<span class="t1">silver</span>@elseif(r.isGold())<span class="t2">gold</span>@else<span class="t3">platinum</span>@endif<em>${r.getName()}</em>@if(r.isHasNote())<small>${r.getNote()}</small>@endif@if(r.isActive())<b>active</b>@endif</li>@endfor</ul>
+<ul class="matrix">@for(var r : rows)<li>@if(r.isBronze())<span class="t0">bronze</span>@elseif(r.isSilver())<span class="t1">silver</span>@elseif(r.isGold())<span class="t2">gold</span>@else<span class="t3">platinum</span>@endif<em>${r.getName()}</em>@if(r.isHasNote())<small>note ${r.getSeq()}</small>@endif@if(r.isActive())<b>active</b>@endif</li>@endfor</ul>
 ```
 
 `mixed-page.jte` — the full HTML skeleton of
@@ -129,7 +131,7 @@ transcribed literally (including the one-line `<style>` block), with these dynam
 <p>${m.getHeroTagline()}</p>
 </section>
 <section class="grid">
-@for(var p : m.getProducts())<article class="card"><h3>${p.getName()}</h3><p class="sku">${p.getSku()}</p><p class="price">${p.getPrice()}</p>@if(p.isOnSale())<p class="sale">On sale</p>@endif<p class="blurb">${p.getBlurb()}</p></article>@endfor
+@for(var p : m.getProducts())<article class="card"><h3>${p.getName()}</h3><p class="sku">MX-${p.getSkuNumber()}</p><p class="price">${p.getPrice()}</p>@if(p.isOnSale())<p class="sale">On sale</p>@endif<p class="blurb">A dependable workshop staple from batch ${p.getBatch()}, checked for daily use and backed by our lifetime guarantee.</p></article>@endfor
 </section>
 @if(m.isShowDebugPanel())<pre class="debug">debug</pre>@endif
 </main>
@@ -141,26 +143,42 @@ transcribed literally (including the one-line `<style>` block), with these dynam
 </html>
 ```
 
-`tile.jte` (the partial) and `fragment-heavy.jte`:
-
-```jte
-@param heddle.benchmarks.jvm.model.Models.FragmentRow row
-<section class="tile"><h3>${row.getName()}</h3><p class="v">${row.getValue()}</p><span class="badge">${row.getBadge()}</span></section>
-```
+`fragment-heavy.jte` + the six sub-templates (E20 landed form — `tile.jte`, `card.jte`,
+`badge.jte`, `price.jte`, `mediarow.jte`, `stat.jte`; card nests badge + price against the
+row's promo):
 
 ```jte
 @param java.util.List<heddle.benchmarks.jvm.model.Models.FragmentRow> items
-<div class="panel">@for(var item : items)@template.controlled.tile(item)@endfor</div>
+<div class="panel">@for(var item : items)@if(item.isTile())@template.controlled.tile(item)@elseif(item.isCard())@template.controlled.card(item)@elseif(item.isMedia())@template.controlled.mediarow(item)@else@template.controlled.stat(item)@endif@endfor</div>
 ```
 
-`composed-page.jte` + `layout.jte` — mirror the intra-.NET twin construct set (layout call,
-`sections`/`comps` map lookups, `areas` lookups driven by one `@for` over `areaNames`):
-`composed-page.jte` is `@template.controlled.layout(m)`; `layout.jte` takes the
-`ComposedModel` and emits the twin fragment sequence with
-`${m.getSections().get("meta")}`-style lookups and
-`@for(var name : m.getAreaNames())${m.getAreas().get(name)}@endfor` at the area sites, in the
-exact order the golden dictates. The corpus entry is the byte target; the checked-in template
-is complete when the gate passes.
+```jte
+tile.jte:     <section class="tile"><h3>${row.getName()}</h3><p class="v">${row.getValue()}</p><span class="badge">${row.getBadge()}</span></section>
+badge.jte:    <span class="promo-badge">${p.getLabel()}</span>
+price.jte:    <p class="price">${p.getPrice()}.99</p>
+card.jte:     <article class="card"><h3>${row.getName()}</h3>@template.controlled.badge(row.getPromo())@template.controlled.price(row.getPromo())<p class="v">${row.getValue()}</p></article>
+mediarow.jte: <div class="media-row"><img src="/img/${row.getName()}.jpg" alt="${row.getName()}" /><div class="media-body"><h4>${row.getName()}</h4><p>Caption for ${row.getName()}</p></div></div>
+stat.jte:     <div class="stat"><span class="stat-name">${row.getName()}</span><span class="stat-value">${row.getValue()}</span><span class="stat-delta">${row.getDelta()}</span></div>
+```
+
+(each file opens with its own `@param`; the media caption, image source and `.99` display
+price are template-composed — E21.)
+
+`composed-page.jte` + `layout.jte` (E20/E22 landed form — native layout with a live body
+slot): `composed-page.jte` passes the slider markup as a **content block** —
+`@template.controlled.layout(m, bodySlot = @`…slider markup…`)` — and `layout.jte` declares
+`@param heddle.benchmarks.jvm.model.Models.ComposedModel m` + `@param gg.jte.Content
+bodySlot`, carries the full literal chrome (section defaults inlined — JTE has no
+overridable-block mechanism, so `<title>Title</title>`/socialmeta are literal text and the
+empty `page_scripts`/`endpage_scripts` defaults are simply absent), calls the per-fragment
+chrome sub-templates (`@template.controlled.assetsstyles()`, `…alerttop()`,
+`…secondarywholesalemenu()`, `…secondaryretailmenu()`, `…alertbelow()`, `…customstyles()`,
+`…headscripts()`, `…bodyscripts()`, `…assetsscripts()`, `…bodyendscripts()`) at their chrome
+positions, renders the nav through `@for` + the nested `megamenu`/`navcolumn`/`navsection`/
+`navlink` sub-templates, and emits `${bodySlot}` at the body-slot position. **Sub-template
+names are flattened** (`megamenu.jte`, not `mega-menu.jte`): `@template.<path>` segments must
+be valid Java identifiers, so hyphenated names are not addressable. The corpus entry is the
+byte target; the checked-in template is complete when the gate passes.
 
 ### Controlled — encoded suite (`jte-html/controlled/`)
 
@@ -203,7 +221,10 @@ strictly; `th:*` attributes on output tags appear **only** where an attribute va
 substituted (`th:attr` — trivial-substitution's `href`/`src`, encoded-loop's `data-tag`),
 because inlining operates in tag bodies, not attribute values. Context variables are set once
 per workload: `m` (page models), `rows`/`items` (lists), plus `nav` (the `NavModel` view —
-E20/E22) for composed-page.
+E20/E22) for composed-page. The classloader resolver additionally pins
+`resolver.setCharacterEncoding("UTF-8")` (`ThymeleafEngines.java`) — without it the resolver
+reads templates in the platform charset, and the multi-byte chrome/fixture text would corrupt
+on a non-UTF-8 default locale.
 
 ### Controlled — raw suite
 
@@ -220,13 +241,13 @@ escaping is a byte-level no-op here; the raw *text* path stays the unescaped `[(
 `large-loop.html` (rung 3):
 
 ```html
-<th:block th:each="r : ${items}"><tr><td>[(${r.name})]</td><td>[(${r.value})]</td></tr></th:block>
+<th:block th:each="r : ${items}"><tr><td>row-[(${r.value})]</td><td>[(${r.value})]</td></tr></th:block>
 ```
 
 `conditional-heavy.html` (rung 4):
 
 ```html
-<ul class="matrix"><th:block th:each="r : ${rows}"><li><th:block th:switch="${true}"><th:block th:case="${r.bronze}"><span class="t0">bronze</span></th:block><th:block th:case="${r.silver}"><span class="t1">silver</span></th:block><th:block th:case="${r.gold}"><span class="t2">gold</span></th:block><th:block th:case="*"><span class="t3">platinum</span></th:block></th:block><em>[(${r.name})]</em><th:block th:if="${r.hasNote}"><small>[(${r.note})]</small></th:block><th:block th:if="${r.active}"><b>active</b></th:block></li></th:block></ul>
+<ul class="matrix"><th:block th:each="r : ${rows}"><li><th:block th:switch="${true}"><th:block th:case="${r.bronze}"><span class="t0">bronze</span></th:block><th:block th:case="${r.silver}"><span class="t1">silver</span></th:block><th:block th:case="${r.gold}"><span class="t2">gold</span></th:block><th:block th:case="*"><span class="t3">platinum</span></th:block></th:block><em>[(${r.name})]</em><th:block th:if="${r.hasNote}"><small>note [(${r.seq})]</small></th:block><th:block th:if="${r.active}"><b>active</b></th:block></li></th:block></ul>
 ```
 
 (`th:case` values evaluate in order, first true wins, `*` is the default — a genuine 1–4
@@ -235,25 +256,40 @@ evaluation chain; the tier booleans are mutually exclusive by construction.)
 `mixed-page.html` (rung 5) — the literal skeleton of workload 4 with:
 `[(${m.pageTitle})]` etc. at the nine scalar sites;
 `<th:block th:if="${m.showBanner}"><div class="banner">[(${m.bannerText})]</div></th:block>`;
-`<th:block th:each="p : ${m.products}"><article class="card"><h3>[(${p.name})]</h3><p class="sku">[(${p.sku})]</p><p class="price">[(${p.price})]</p><th:block th:if="${p.onSale}"><p class="sale">On sale</p></th:block><p class="blurb">[(${p.blurb})]</p></article></th:block>`;
+`<th:block th:each="p : ${m.products}"><article class="card"><h3>[(${p.name})]</h3><p class="sku">MX-[(${p.skuNumber})]</p><p class="price">[(${p.price})]</p><th:block th:if="${p.onSale}"><p class="sale">On sale</p></th:block><p class="blurb">A dependable workshop staple from batch [(${p.batch})], checked for daily use and backed by our lifetime guarantee.</p></article></th:block>`;
 `<th:block th:if="${m.showDebugPanel}"><pre class="debug">debug</pre></th:block>`.
 
-`tile.html` + `fragment-heavy.html` (rung 6):
+`fragment-heavy.html` + the six kind fragments (rung 6; E20 landed form — `tile.html`,
+`card.html`, `badge.html`, `price.html`, `media-row.html`, `stat.html`, each a
+`th:fragment(item/promo)` file; card nests badge + price against `${item.promo}`):
 
 ```html
 <th:block th:fragment="tile(item)"><section class="tile"><h3>[(${item.name})]</h3><p class="v">[(${item.value})]</p><span class="badge">[(${item.badge})]</span></section></th:block>
 ```
 
 ```html
-<div class="panel"><th:block th:each="item : ${items}"><th:block th:replace="~{controlled/tile :: tile(${item})}"/></th:block></div>
+<div class="panel"><th:block th:each="item : ${items}"><th:block th:switch="${true}"><th:block th:case="${item.tile}"><th:block th:replace="~{controlled/tile :: tile(${item})}"/></th:block><th:block th:case="${item.card}"><th:block th:replace="~{controlled/card :: card(${item})}"/></th:block><th:block th:case="${item.media}"><th:block th:replace="~{controlled/media-row :: media_row(${item})}"/></th:block><th:block th:case="*"><th:block th:replace="~{controlled/stat :: stat(${item})}"/></th:block></th:block></th:block></div>
 ```
 
-`composed-page.html` + `layout.html` (rung 8 — highest exposure, divergence class B4):
-`composed-page.html` is `<th:block th:replace="~{controlled/layout :: layout}"/>`;
-`layout.html` wraps the twin fragment sequence in `<th:block th:fragment="layout">…</th:block>`
-with `[(${sections.meta})]`-style lookups and
-`<th:block th:each="name : ${areaNames}">[(${areas[name]})]</th:block>` at the area sites, in
-golden order.
+(the boolean `th:switch="${true}"` chain — the conditional-heavy rung-4 pattern — is the
+controlled dispatch; the idiomatic track switches on `${item.kind}` with string cases.)
+
+`composed-page.html` + `layout.html` + `chrome-fragments.html` (rung 8 re-run 2026-08-08 —
+E20/E22 landed form, byte gate green): `composed-page.html` is
+`<th:block th:replace="~{controlled/layout :: layout(~{:: slider-body})}">` wrapping a
+`<th:block th:fragment="slider-body">…slider markup…</th:block>`; `layout.html` carries the
+section-default fragments (`meta_section` — renamed from `meta` per divergence class **B10**,
+a fragment selector also matches literal `<meta>` elements by tag name — `socialmeta`, empty
+`page_scripts`/`endpage_scripts`), the four nested nav fragments
+(`mega_menu(menu)` → `nav_column(column)` → `nav_section(section)` → `nav_link(link)`,
+dispatching on the precomputed `${tab.hasDropdown}`/`${section.titleLinked}` booleans, with
+`th:attr` for the generated attributes — placement per class **B2b**), and the
+`layout(bodySlot)` fragment holding the full literal chrome with
+`<th:block th:replace="${bodySlot}"/>` at the body-slot position;
+`chrome-fragments.html` is the E22 chrome library (`alert_top`, `secondary_wholesale_menu`,
+`secondary_retail_menu`, `alert_below`, `assets_styles`, `custom_styles`, `head_scripts`,
+`body_scripts`, `assets_scripts`, `body_end_scripts` as literal-text fragments) inserted by
+`th:replace` at the chrome positions.
 
 ### Controlled — encoded suite
 

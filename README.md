@@ -111,16 +111,20 @@ compile numbers below compare identical work (see
 [benchmarks/README.md](benchmarks/README.md)). Heddle is the ratio
 baseline (`[Benchmark(Baseline = true)]`, `[MemoryDiagnoser]` enabled).
 
-**The measured workload.** The parity‑checked page is the static composition of
-`home.heddle` + `layout.heddle`: the layout's reusable‑section defaults, ~a dozen
-component/extension calls (`@assets_component`, `@head_scripts`, …), and a list loop over seven
-area‑menu fragments (≈55.5 KB raw output). Because `home.heddle` extends the layout via
-`@<<{{layout.heddle}}`, the current engine emits that **ordered fragment sequence** rather than the
-full HTML page skeleton (the `@body()` slot resolves to its empty default); the four twins
-reproduce exactly those bytes. This keeps the comparison honest — all five engines do the same
-work — at the cost of not exercising the literal page chrome. The `RenderRazor` row below renders
-the full `Views/home.cshtml` page (larger, different output) and is **not** under the parity
-assertion, so treat it as indicative rather than apples‑to‑apples.
+**The measured workload** *(as it stood for this 2026‑07‑11 run; the workload was redesigned
+on 2026‑08‑08 — see the cross‑stack section below)*. The parity‑checked page was the static
+composition of `home.heddle` + `layout.heddle`: the layout's reusable‑section defaults, ~a
+dozen component/extension calls, and a list loop over seven area‑menu fragments (≈55.5 KB raw
+output). Because `home.heddle` extended the layout via `@<<{{layout.heddle}}`, the engine
+emitted that **ordered fragment sequence** rather than the full HTML page skeleton; the four
+twins reproduced exactly those bytes. This kept the comparison honest — all five engines did
+the same work — at the cost of not exercising the literal page chrome. *(That cost is gone in
+the current suite: since the 2026‑08‑08 redesign, `composed-page` renders the **full HTML
+page** — layout with a live body slot, section defaults, literal chrome, and a structured nav
+through nested partials — in every engine.)* The `RenderRazor` row below rendered the full
+`Views/home.cshtml` page (larger, different output) and was **not** under the parity
+assertion, so treat it as indicative rather than apples‑to‑apples; the current suite's Razor
+twin is a full parity twin.
 
 ### Results — 2026‑07‑11 (commit `8341bb67`)
 

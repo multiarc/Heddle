@@ -34,7 +34,7 @@ discipline). Rules:
   `{{.PageTitle}}`; templ as `m.PageTitle`. Exported fields only (reflection needs them).
 - Numeric formatting is `strconv.Itoa`/`%d` only (all pinned numbers are ints; no floats exist
   in any model), so output is locale-independent by construction.
-- **Data, not display (ledger [E21](../records.md)):** the model tier carries no derived
+- **Data, not display (ledger [E21](../../records.md)):** the model tier carries no derived
   display strings — templates compose them as literal-plus-substitution. Zero-padded
   *identity* names (`item-{i:D2}`, `unit-{i:D3}`, `Product {i:D2}`) and the encoded-suite
   payloads stay model-side by design (`fmt.Sprintf` for these is sanctioned).
@@ -108,47 +108,55 @@ Normative action mapping (transcribing, per workload, the pinned template texts)
 
 Workload-by-workload notes (raw suite = text/template):
 
-### Workload 1 — composed-page — Amended (E20, E22)
+### Workload 1 — composed-page — Amended (E20, E22; landed form 2026-08-08)
 
-> **Amended (E20/E22, 2026-08-08):** the workload is now a genuine full-page layout with a
-> live body slot, template-owned chrome fragments, and a structured nav rendered through
-> loops and nested partials ([workloads.md workload 1](../phase-1-cross-stack-foundation/workloads.md#workload-1--composed-page-raw--amended-e20-e22)).
-> The model bullet below is current; the fragment-sequence template mapping that follows it
-> is **superseded** and will be rewritten by the per-engine template wave (Go's native
-> layout mechanism per the workloads.md native-layout mandate).
+A genuine full-page layout with a live body slot, built as a **three-parse associated set**
+(`composedChromeSrc` → `composedLayoutSrc` → `composedHomeSrc`, parsed into one template set
+in that order — `templates.go`):
 
 - Model (E20/E22): `type ComposedModel struct { Nav NavModel }` — nothing else; loaded once
   from `GoldenCorpus/fixtures/composed-page/nav.json` via `model.Composed()` (see
   [Model transcription](#model-transcription-shared-by-all-engines-and-tracks) above). All
   chrome text is template-tier property; no map of pre-rendered fragments exists anywhere
   in the Go tier.
-- Home template: `{{template "layout" .}}` (the include mapping of the twin table).
-- Layout template (one line, no whitespace between actions):
-  `{{define "layout"}}{{index .Section "meta"}}{{index .Section "social"}}{{index .Comp "assets_styles"}}{{index .Comp "custom_styles"}}{{index .Comp "head_scripts"}}{{index .Comp "body_scripts"}}{{range .AreaNames}}{{index $.Areas .}}{{end}}{{index .Comp "assets_scripts"}}{{index .Section "page_scripts"}}{{index .Section "endpage_scripts"}}{{index .Comp "body_end_scripts"}}{{end}}`
-- text/template performs no escaping, so the HTML fragments flow through raw — the same
-  non-encoding discipline as Fluid's no-encoder path and Handlebars triple-mustache.
+- **Chrome parse** (`composedChromeSrc`) — a **definition-only chrome library**: one
+  `{{define}}` per inert fragment (`alert_top`, `secondary_wholesale_menu`,
+  `secondary_retail_menu`, the empty `alert_below`, `assets_styles`, `assets_scripts`,
+  `custom_styles`, `head_scripts`, `body_scripts`, `body_end_scripts`), literal text
+  mirroring `chrome-fragments.heddle`; parsing it renders nothing.
+- **Layout parse** (`composedLayoutSrc`) — the section-default definitions (`meta`,
+  `socialmeta`, and the **empty** `page_scripts`/`endpage_scripts`), the four **nested nav
+  defines** (`mega_menu` → `nav_column` → `nav_section` → `nav_link`, invoking each other
+  with `{{template "…" .}}` and dispatching on the precomputed `.TitleLinked`/`.HasDropdown`
+  booleans), and `{{define "layout"}}` holding the full literal chrome with
+  `{{template "…"}}` calls at the chrome/section positions,
+  `{{range .Nav.Menus}}{{template "mega_menu" .}}{{end}}` /
+  `{{range .Nav.FooterColumns}}{{template "nav_column" .}}{{end}}` at the nav sites, and
+  **`{{block "body" .}}{{end}}`** at the body-slot position — an empty block default.
+- **Home parse** (`composedHomeSrc`) — `{{define "body"}}…slider markup…{{end}}{{template "layout" .}}`:
+  a **later non-empty `{{define "body"}}` in the associated set overrides the block's empty
+  default** (the stdlib's documented block-override mechanism), then invokes the layout.
+- text/template performs no escaping; every nav value is rule-4 clean and all chrome is
+  literal template text, so the raw path is byte-faithful by construction.
 
 ### Workload 2 — trivial-substitution
 
 Dense one-line `<article>` card, ten `{{.Member}}` substitutions in pinned order, including the
 two attribute positions (`href="{{.Url}}"`, `src="{{.ImageUrl}}"`).
 
-### Workload 3 — large-loop — Amended (E21)
+### Workload 3 — large-loop — Amended (E21; landed form)
 
-> **Amended (E21):** the row carries ONLY `Value = i` — `Name` is deleted from `LoopRow`;
-> the template composes the display name as the literal `row-` plus the value substitution
-> (`row-{{.Value}}`). The construct line below predates E21 and is updated by the engine
-> wave.
+The row carries ONLY `Value = i` (`Name` is deleted from `LoopRow`); the template composes
+the display name as the literal `row-` plus the value substitution:
 
-`{{range .Items}}<tr><td>{{.Name}}</td><td>{{.Value}}</td></tr>{{end}}` — `Value` is an int;
-text/template renders ints via `fmt` (`%v`), identical bytes to `strconv.Itoa`.
+`{{range .Items}}<tr><td>row-{{.Value}}</td><td>{{.Value}}</td></tr>{{end}}` — `Value` is an
+int; text/template renders ints via `fmt` (`%v`), identical bytes to `strconv.Itoa`.
 
-### Workload 4 — mixed-page — Amended (E21)
+### Workload 4 — mixed-page — Amended (E21; landed form)
 
-> **Amended (E21):** `MixedProduct` carries `SkuNumber = 1000 + i` and `Batch = i` (ints)
-> in place of the deleted `Sku`/`Blurb` strings; the templates compose the display SKU
-> `MX-{{.SkuNumber}}` and the blurb sentence around `{{.Batch}}` (normative texts in
-> workloads.md workload 4). Template updates are engine-wave scope.
+`MixedProduct` carries `SkuNumber = 1000 + i` and `Batch = i` (ints) in place of the deleted
+`Sku`/`Blurb` strings; the template composes the display SKU `MX-{{.SkuNumber}}` and the
+blurb sentence around `{{.Batch}}` (normative texts in workloads.md workload 4).
 
 Transcribe the pinned skeleton line-for-line (line breaks between sibling elements are
 N2/N3-erased; the `<style>` line and all text-bearing elements stay dense); page conditionals
@@ -156,32 +164,30 @@ N2/N3-erased; the `<style>` line and all text-bearing elements stay dense); page
 `{{if .OnSale}}<p class="sale">On sale</p>{{end}}`; footer
 `<p>{{.StoreName}} {{.Year}} {{.SupportEmail}}</p>` keeps its single literal spaces.
 
-### Workload 5 — conditional-heavy — Amended (E21)
+### Workload 5 — conditional-heavy — Amended (E21; landed form)
 
-> **Amended (E21):** `ConditionalRow` carries `Seq = i` (an int) in place of the deleted
-> `Note` string; the template composes the note text as the literal `note ` plus the
-> substitution (`<small>note {{.Seq}}</small>`). The construct line below predates E21 and
-> is updated by the engine wave.
+`ConditionalRow` carries `Seq = i` (an int) in place of the deleted `Note` string; the
+template composes the note text as the literal `note ` plus the substitution.
 
 The pinned single-line `<ul class="matrix">` body with the four-way chain per row (mapping table
-above) and the two toggles `{{if .HasNote}}<small>{{.Note}}</small>{{end}}{{if .IsActive}}<b>active</b>{{end}}`.
+above) and the two toggles `{{if .HasNote}}<small>note {{.Seq}}</small>{{end}}{{if .IsActive}}<b>active</b>{{end}}`.
 
-### Workload 6 — fragment-heavy — Amended (E20)
+### Workload 6 — fragment-heavy — Amended (E20; landed form)
 
-> **Amended (E20):** the single-tile shape is superseded — 48 rows of four dispatched
-> fragment kinds (12 each), one four-way dispatch per row on the precomputed
-> `IsTile/IsCard/IsMedia/IsStat` booleans (never on the `Kind` string), and one nesting
-> level (the card fragment renders badge + price sub-partials against `Promo`). The model
-> ([Model transcription](#model-transcription-shared-by-all-engines-and-tracks)) carries
-> data only — the media caption (`Caption for ` + name), image source
-> (`/img/` + name + `.jpg`) and display price (price + `.99`) are composed by the templates
-> (E21). The construct line below predates E20; the engine wave replaces it with the
-> six-partial dispatch chain per workloads.md workload 6.
+48 rows of four dispatched fragment kinds (12 each), one four-way dispatch per row on the
+precomputed `IsTile/IsCard/IsMedia/IsStat` booleans (never on the `Kind` string), one
+nesting level (card renders badge + price against `Promo`). The model carries data only —
+the media caption (`Caption for ` + name), image source (`/img/` + name + `.jpg`) and
+display price (price + `.99`) are composed by the templates (E21).
 
-`{{define "tile"}}<section class="tile"><h3>{{.Name}}</h3><p class="v">{{.Value}}</p><span class="badge">{{.Badge}}</span></section>{{end}}`
-+ main `<div class="panel">{{range .Items}}{{template "tile" .}}{{end}}</div>` — the
-associated-template mechanism is the stdlib's partial-with-current-row construct, mirroring the
-probe-E-verified twin constructs.
+Six `{{define}}`s in one associated set (`tile`, `badge`, `price`, `card` — which nests
+`{{template "badge" .Promo}}{{template "price" .Promo}}` — `media_row`, `stat`) + the main
+body with the boolean dispatch chain:
+
+`<div class="panel">{{range .Items}}{{if .IsTile}}{{template "tile" .}}{{else if .IsCard}}{{template "card" .}}{{else if .IsMedia}}{{template "media_row" .}}{{else}}{{template "stat" .}}{{end}}{{end}}</div>`
+
+— the associated-template mechanism is the stdlib's partial-with-current-row construct,
+mirroring the probe-E-verified twin constructs.
 
 ### Workload 7 — fortunes-encoded (html/template)
 
@@ -211,24 +217,37 @@ five-character effect on this alphabet), the other two in text context. Same N5 
 3. Control flow is templ's Go-statement syntax: `if m.ShowBanner { … }`,
    `if r.IsBronze { … } else if r.IsSilver { … } else if r.IsGold { … } else { … }`,
    `for _, r := range m.Rows { … }`.
-4. The tile partial is a templ component `templ tile(r model.FragmentRow)` called `@tile(item)`
-   in the loop (F6) — templ's partial-with-argument construct.
-5. composed-page: one `templ composedPage(m model.ComposedModel)` component issuing
-   `@templ.Raw(...)` per section/component fragment in twin order and
-   `for _, name := range m.AreaNames { @templ.Raw(m.Areas[name]) }` — the fragments are runtime
-   data, byte-exact through `templ.Raw` (F2); the inter-statement whitespace question is decided
-   by S1 probe P4 before this file is authored, and the authoring form (separate lines vs
-   adjacent) is whichever form P4 proved byte-clean.
-6. mixed-page's `<style>` block is authored as a literal `<style>` element (F4); if S1 probe P3
-   contradicts F4, the fallback authoring is `@templ.Raw(styleCSS)` around a Go constant holding
-   the pinned CSS text, disclosed in the report's methodology note (the CSS is template literal
-   text in every other engine; the accommodation is recorded, not silent). Both outcomes are
-   decided now; P3 selects. (A whitespace-only difference in the style content passes via N3b; only
-   a non-whitespace change to the CSS would need the fallback.)
+4. The fragment partials are templ components (`templ tile(r model.FragmentRow)` etc.) called
+   `@tile(item)` in the dispatch chain (F6) — templ's partial-with-argument construct; the
+   card component nests `@badge(r.Promo)` + `@price(r.Promo)`.
+5. **composed-page (E20/E22 landed form — children composition):** the chrome lives in
+   `templ layout(m model.ComposedModel)` with **`{ children... }`** at the body-slot position
+   (the `@out()` analogue), and the page component invokes **`@layout(m) { …slider markup… }`**
+   — the caller body splices at the slot (templ.guide template-composition, children). The
+   inert chrome fragments are **literal template text in per-fragment components** mirroring
+   `chrome-fragments.heddle` (no fragment text is model data); the structured nav renders
+   through nested components (`megaMenu → navColumn → navSection → navLink`) over
+   `model.ComposedModel`. One component-boundary note: `custom_styles` renders the whole
+   `<style>/* CSS Comment Test */</style>` element — a component call cannot appear **inside**
+   a `<style>` element (its content is CSS raw text, F4), so the fragment owns its `<style>`
+   wrapper; the emitted bytes are identical.
+6. mixed-page's `<style>` block is authored as a literal `<style>` element (F4 — P3 confirmed
+   byte-identical passthrough; the `@templ.Raw(styleCSS)` fallback was not needed).
 7. Raw workloads: model values are escape-free by authoring rule 4, so templ's always-on
-   escaping of `{ }` expressions emits identical bytes to the raw path — no bypass needed except
-   for composed-page's HTML fragments, where `@templ.Raw` **is** the engine's documented raw
-   mechanism (the analogue of Handlebars triple-mustache in the .NET twins).
+   escaping of `{ }` expressions emits identical bytes to the raw path — no bypass needed.
+   **E21 display composition is native text interpolation**: `row-{ r.Value }`,
+   `MX-{ p.SkuNumber }`, `note { r.Seq }`, `{ p.Price }.99`, and dynamic attribute values by
+   Go string concatenation (`src={ "/img/" + r.Name + ".jpg" }`).
+8. **Void-element accommodation (F7 — the doctype-accommodation mechanism):** templ's
+   generator normalizes self-closing void elements to the slashless form (`<img/>`/`<img />` →
+   `<img>`), a NON-whitespace divergence from the oracle. The oracle's nine composed-page
+   ` />` sites and fragment-heavy's media `<img … />` therefore emit their exact pinned bytes
+   via `@templ.Raw` over pinned literals (literal-plus-substitution where the value is
+   dynamic — the media row's ``@templ.Raw(`<img src="/img/` + r.Name + `.jpg" alt="` + r.Name + `" />`)``
+   — every spliced value rule-4 clean). Same class as the lowercased `<!DOCTYPE html>` accommodation; each site is
+   an accommodation over pinned template literal text, disclosed here, never over model data.
+   **Idiomatic templ authors void elements natively** (slashless — the verifier does not
+   check the slash).
 8. Render path: `component.Render(ctx, buf)` into a reused `bytes.Buffer` with a background
    `context.Context` created once; per the metrics protocol, construction of the component value
    (a cheap closure) is inside the measured render — it is templ's per-render entry point,
