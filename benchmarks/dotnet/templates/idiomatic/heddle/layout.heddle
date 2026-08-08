@@ -1,7 +1,24 @@
+@*
+    Idiomatic Heddle -- composed-page layout (phase 9; authoring standard D16).
+
+    Patterns followed, from Heddle's own documentation:
+      Language reference   docs/language-reference.md ("Composition without coupling" --
+                           the layout-as-definition idiom, Q1.7)
+      Architecture         docs/architecture.md
+
+    This file is DEFINITION-ONLY: importing it renders nothing. The full page chrome lives
+    inside the <layout> definition, a bare @out() marks the body slot, and a page composes by
+    `@<<{{layout.heddle}}` + `@layout(){{ ...body... }}` -- the documented equivalent of
+    Razor's Layout/@RenderBody, at zero render-time cost. Sections keep defaults a page may
+    override with the ordinary <name:name> mechanism. The two mega menus and the footer render
+    from the structured nav model through nested definitions; the four inert blob areas render
+    through @area_component. Checked by the functional verifier, not the byte gate.
+*@
+
 @using() {{Heddle.Benchmarks.Dotnet.Models}}
 @using() {{Heddle.Benchmarks.Dotnet.Engines.HeddleExtensions}}
 @%
-    <meta> 
+    <meta>
     {{
         <title>Title</title>
     }}
@@ -11,17 +28,47 @@
         <meta itemprop="image" content="/files/catalog/img.jpg"/>
         <link rel="image_src" href="/files/catalog/img.jpg"/>
     }}
-    <body>
-    {{
-    }}
     <page_scripts>
     {{
     }}
     <endpage_scripts>
     {{
     }}
-%@
-<!DOCTYPE html>
+    <nav_link>
+    {{
+        <li class="nav-link"><a href="@(Href)">@(Label)</a></li>
+    }}
+    <nav_section>
+    {{
+        <div class="nav-section">
+            @if(TitleLinked)
+            {{<span class="nav-title"><a href="@(Href)">@(Title)</a></span>}}
+            @else()
+            {{<span class="nav-title">@(Title)</span>}}
+            <ul>@list(Links){{@nav_link()}}</ul>
+        </div>
+    }}
+    <nav_column>
+    {{
+        <div class="nav-column">@list(Sections){{@nav_section()}}</div>
+    }}
+    <mega_menu>
+    {{
+        <div class="top-menu-wrapper">
+            <ul class="top-menu">
+                @list(Tabs)
+                {{
+                    <li class="@(Css)">
+                        <a href="@(Href)" class="drop">@(Label)</a>
+                        @if(HasDropdown)
+                        {{<div class="@(DropdownCss)">@list(Columns){{@nav_column()}}</div>}}
+                    </li>
+                }}
+            </ul>
+        </div>
+    }}
+    <layout>
+    {{<!DOCTYPE html>
 <!--[if lt IE 9]>
     <html class="no-js lt-ie9" lang="en">
 <![endif]-->
@@ -105,15 +152,14 @@
                 @area_component(@"Secondary Wholesale Menu")
                 @area_component(@"Secondary Retail Menu")
             </nav>
-            @area_component(@"Wholesale Top Mega Menu")
-            @area_component(@"Retail Top Mega Menu")
+            @list(Nav.Menus){{@mega_menu()}}
         </header>
         <div class="content">
             <div class="alert-banner">
                 @area_component(@"Alert Top Section Below Nav")
             </div>
             <div class="content-dynamic">
-                @body()
+                @out()
             </div>
             <div class="content-bottom">
             </div>
@@ -121,7 +167,7 @@
         <footer>
             <div class="footer-main">
                 <nav class="footer-nav">
-                    @area_component(@"Footer Links")
+                    @list(Nav.FooterColumns){{@nav_column()}}
                 </nav>
                 <div class="footer-market">
                     <div class="market-left">
@@ -147,4 +193,5 @@
     @endpage_scripts()
     @body_end_scripts()
 </body>
-</html>
+</html>}} :: ComposedModel
+%@

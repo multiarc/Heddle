@@ -140,26 +140,27 @@ namespace Heddle.Benchmarks.Dotnet.Gate
         }
 
         /// <summary>
-        /// Model-fidelity check for the composed-page fixtures, and the one that matters most:
-        /// <see cref="Models.AreaData"/> is a 56 KB dictionary, far too large to review by eye, and
-        /// an earlier copy of it had already silently drifted from the engine it was compared
-        /// against without anything failing.
+        /// Model-fidelity check for the composed-page fixtures. Under the E20 full-page shape the
+        /// golden is no longer a bare fragment concatenation — chrome literals surround everything —
+        /// so fidelity is proven in three independent pieces, all without a template in the loop:
         ///
-        /// The golden composed-page output IS the ordered concatenation of these 17 fragments — no
-        /// loop body, no branch, no chrome — so the fixtures can be proven byte-exact without a
-        /// template or an engine in the loop. If this passes, the port carried every one of those
-        /// 56 KB across intact.
+        ///   (1) each non-empty blob area (<see cref="Models.AreaData"/>) occurs exactly once in
+        ///       the golden, in <see cref="Models.TwinContent.AreaOrder"/> order;
+        ///   (2) an independent C# expansion of <see cref="Models.NavData"/> into the nav markup —
+        ///       a SECOND implementation of the fragment bodies the Heddle templates define —
+        ///       occurs verbatim (whitespace-stripped) in the golden, mega menus and footer both;
+        ///   (3) every NavLink's Label+Href pair occurs as a rendered link.
+        ///
+        /// If these pass, a port that carried AreaData and nav.json across intact reproduces the
+        /// same navigation bytes the oracle holds.
         /// </summary>
         private static int ComposedPageModelMatchesGolden(List<string> failures)
         {
-            var sections = Models.TwinContent.Sections();
-            var components = Models.TwinContent.Components();
+            var golden = Normalize.StripWhitespace(GoldenCorpus.Load("composed-page").Text);
             var areas = Models.TwinContent.Areas;
 
-            var sb = new StringBuilder();
-            sb.Append(sections["meta"]).Append(sections["social"]);
-            sb.Append(components["assets_styles"]).Append(components["custom_styles"]);
-            sb.Append(components["head_scripts"]).Append(components["body_scripts"]);
+            // (1) blob areas: present exactly once, in order.
+            var cursor = 0;
             foreach (var name in Models.TwinContent.AreaOrder)
             {
                 if (!areas.TryGetValue(name, out var fragment))
@@ -167,29 +168,103 @@ namespace Heddle.Benchmarks.Dotnet.Gate
                     failures.Add($"composed-page model: AreaOrder names \"{name}\" but AreaData has no such key");
                     continue;
                 }
-                sb.Append(fragment);
+                var stripped = Normalize.StripWhitespace(Models.TwinContent.Normalize(fragment));
+                if (stripped.Length == 0) continue; // "Alert Top Section Below Nav" is pinned empty
+                var count = Normalize.CountOccurrences(golden, stripped);
+                if (count != 1)
+                {
+                    failures.Add($"composed-page model: blob area \"{name}\" occurs {count} time(s) in the golden (expected 1)");
+                    continue;
+                }
+                var at = golden.IndexOf(stripped, StringComparison.Ordinal);
+                if (at < cursor)
+                    failures.Add($"composed-page model: blob area \"{name}\" appears out of AreaOrder order");
+                else
+                    cursor = at + stripped.Length;
             }
-            sb.Append(components["assets_scripts"]).Append(sections["page_scripts"]);
-            sb.Append(sections["endpage_scripts"]).Append(components["body_end_scripts"]);
 
-            var entry = GoldenCorpus.Load("composed-page");
-            var built = Normalize.StripWhitespace(Normalize.Apply(sb.ToString(), entry.Suite, "composed-page model"));
-            var oracle = Normalize.StripWhitespace(entry.Text);
-            if (!string.Equals(built, oracle, StringComparison.Ordinal))
+            // (2) the independent nav expansion. The two menus render adjacently (one @list over
+            // Nav.Menus), as do the four footer columns, so each group must occur as one block.
+            var nav = Models.NavData.Model();
+            var menus = new StringBuilder();
+            foreach (var menu in nav.Menus) AppendMenuExpansion(menus, menu);
+            if (!golden.Contains(Normalize.StripWhitespace(menus.ToString()), StringComparison.Ordinal))
+                failures.Add("composed-page model: the independent C# expansion of NavData's mega menus " +
+                             "does not occur in the golden");
+
+            var footer = new StringBuilder();
+            foreach (var column in nav.FooterColumns) AppendColumnExpansion(footer, column);
+            if (!golden.Contains(Normalize.StripWhitespace(footer.ToString()), StringComparison.Ordinal))
+                failures.Add("composed-page model: the independent C# expansion of NavData's footer columns " +
+                             "does not occur in the golden");
+
+            // (3) every link pair, as rendered.
+            var missing = 0;
+            string firstMissing = null;
+            void CheckLinks(Models.NavColumn column)
             {
-                var at = FirstDiff(built, oracle);
-                failures.Add($"composed-page model does not reproduce the golden: first diff at {at} " +
-                             $"(built {built.Length} chars, golden {oracle.Length}); " +
-                             $"built=...{Excerpt(built, at)}... golden=...{Excerpt(oracle, at)}...");
+                foreach (var s in column.Sections)
+                    foreach (var l in s.Links)
+                    {
+                        var needle = Normalize.StripWhitespace(
+                            $"<li class=\"nav-link\"><a href=\"{l.Href}\">{l.Label}</a></li>");
+                        if (!golden.Contains(needle, StringComparison.Ordinal))
+                        {
+                            missing++;
+                            firstMissing ??= $"{l.Label} -> {l.Href}";
+                        }
+                    }
             }
-            return 1;
+            foreach (var menu in nav.Menus)
+                foreach (var tab in menu.Tabs)
+                    foreach (var column in tab.Columns)
+                        CheckLinks(column);
+            foreach (var column in nav.FooterColumns) CheckLinks(column);
+            if (missing > 0)
+                failures.Add($"composed-page model: {missing} NavLink pair(s) missing from the golden " +
+                             $"(first: {firstMissing})");
+
+            return 3;
         }
 
-        private static string Excerpt(string s, int at)
+        /// <summary>The second implementation of the mega-menu fragment bodies (deliberately not
+        /// shared with the templates — agreement between independent implementations is the check).</summary>
+        private static void AppendMenuExpansion(StringBuilder sb, Models.MegaMenu menu)
         {
-            var from = Math.Max(0, at - 40);
-            var to = Math.Min(s.Length, at + 40);
-            return s.Substring(from, to - from);
+            sb.Append("<div class=\"top-menu-wrapper\"><ul class=\"top-menu\">");
+            foreach (var tab in menu.Tabs)
+            {
+                sb.Append("<li class=\"").Append(tab.Css).Append("\"><a href=\"").Append(tab.Href)
+                  .Append("\" class=\"drop\">").Append(tab.Label).Append("</a>");
+                if (tab.HasDropdown)
+                {
+                    sb.Append("<div class=\"").Append(tab.DropdownCss).Append("\">");
+                    foreach (var column in tab.Columns) AppendColumnExpansion(sb, column);
+                    sb.Append("</div>");
+                }
+                sb.Append("</li>");
+            }
+            sb.Append("</ul></div>");
+        }
+
+        private static void AppendColumnExpansion(StringBuilder sb, Models.NavColumn column)
+        {
+            sb.Append("<div class=\"nav-column\">");
+            foreach (var s in column.Sections)
+            {
+                sb.Append("<div class=\"nav-section\">");
+                if (s.TitleLinked)
+                    sb.Append("<span class=\"nav-title\"><a href=\"").Append(s.Href).Append("\">")
+                      .Append(s.Title).Append("</a></span>");
+                else
+                    sb.Append("<span class=\"nav-title\">").Append(s.Title).Append("</span>");
+                sb.Append("<ul>");
+                foreach (var l in s.Links)
+                    sb.Append("<li class=\"nav-link\"><a href=\"").Append(l.Href).Append("\">")
+                      .Append(l.Label).Append("</a></li>");
+                sb.Append("</ul></div>");
+            }
+            sb.Append("</div>");
         }
 
         /// <summary>
@@ -223,12 +298,15 @@ namespace Heddle.Benchmarks.Dotnet.Gate
         {
             var expected = new (string Id, int NonWhitespaceBytes)[]
             {
-                ("composed-page", 33546),
+                // composed-page and fragment-heavy were re-pinned at the E20 redesign export from
+                // this harness's own N3b over the regenerated corpus; they MUST be re-confirmed
+                // against the JS reference implementation when the Stage-3 ports land.
+                ("composed-page", 39481),
                 ("trivial-substitution", 319),
                 ("large-loop", 192780),
                 ("mixed-page", 8886),
                 ("conditional-heavy", 15248),
-                ("fragment-heavy", 4585),
+                ("fragment-heavy", 5840),
                 ("fortunes-encoded", 1055),
                 ("encoded-loop", 786685),
             };

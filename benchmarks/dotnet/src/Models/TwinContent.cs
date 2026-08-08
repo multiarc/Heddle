@@ -15,17 +15,18 @@ using System.Text.RegularExpressions;
 namespace Heddle.Benchmarks.Dotnet.Models
 {
     /// <summary>
-    /// Shared, engine-neutral source of truth for the composed-page twins.
+    /// Shared, engine-neutral source of truth for the composed-page twins' fixed fragments.
     ///
-    /// The page Heddle renders from <c>home.heddle</c> + <c>layout.heddle</c> is fully static — the
-    /// model is an empty <c>object</c> and every Heddle extension returns a fixed string — so its
-    /// output is the ordered concatenation of the layout's reusable-section defaults and its
-    /// component and area calls. A faithful twin only has to reproduce those bytes, so the fragments
-    /// live here once and every twin renders them through its own idiomatic constructs: sections, a
-    /// partial or include for the layout, function or lookup component calls, and a <c>for</c> /
-    /// <c>each</c> loop over the ordered area names.
+    /// Since the E20 redesign the page Heddle renders from <c>home.heddle</c> + <c>layout.heddle</c>
+    /// is a genuine FULL PAGE: the layout lives inside a definition (the documented
+    /// layout-as-definition idiom), the page body splices into a live <c>@out()</c> slot, the two
+    /// mega menus and the footer render from the structured <see cref="NavData"/> through loops and
+    /// nested partials, and only the four inert blob areas below still render as pre-built
+    /// fragments. A faithful twin therefore composes with its OWN native layout mechanism — layout +
+    /// body slot, nested loops, partials — and reads the fixed pieces from here: the section
+    /// defaults, the component fragments, and the ordered blob areas.
     ///
-    /// The area menus come straight from <see cref="AreaData.Areas"/> — the very dictionary Heddle
+    /// The blob areas come straight from <see cref="AreaData.Areas"/> — the very dictionary Heddle
     /// renders from — so a twin cannot silently drift from the oracle by transcription error. What
     /// remains is enforced by the gate, not by hand: <see cref="Normalize"/> is the parity
     /// normalization the corpus is stored under.
@@ -50,20 +51,17 @@ namespace Heddle.Benchmarks.Dotnet.Models
         public const string SectionEndPageScripts = "";
 
         /// <summary>
-        /// The area-component calls in the exact order layout.heddle issues them. Heddle renders the
-        /// six navigation areas, then the (empty) body section, then the footer area consecutively;
-        /// because the body is empty they collapse to this single ordered list, which every twin
-        /// walks with a real loop.
+        /// The inert blob areas in the exact order layout.heddle's chrome calls them. The mega
+        /// menus and footer links are no longer here — they render from <see cref="NavData"/>
+        /// through loops and nested partials (ledger E20). Each remaining name marks a fixed
+        /// position in the page chrome, which is why the order is data every twin shares.
         /// </summary>
         public static readonly string[] AreaOrder =
         {
             "Alert Top Section Above Nav",
             "Secondary Wholesale Menu",
             "Secondary Retail Menu",
-            "Wholesale Top Mega Menu",
-            "Retail Top Mega Menu",
-            "Alert Top Section Below Nav", // empty content
-            "Footer Links",
+            "Alert Top Section Below Nav", // empty content, pinned
         };
 
         /// <summary>Fixed no-argument component outputs, keyed by the name used in templates.</summary>

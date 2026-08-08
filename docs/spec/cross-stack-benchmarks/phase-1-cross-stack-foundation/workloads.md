@@ -10,12 +10,12 @@ cross-stack set: the three retained anchors and the five new workloads this phas
 
 | # | Workload id | Suite | Dimension it owns | Rows | Normalized output (approx.) |
 |---|---|---|---|---|---|
-| 1 | `composed-page` | raw | Layout/section/component composition machinery | — | 34,837 chars (exact, current) |
+| 1 | `composed-page` | raw | Layout/section/component composition machinery | — | re-pinned at export (41,111 B stored at the E20 redesign export) |
 | 2 | `trivial-substitution` | raw | Per-render fixed-overhead floor | — | ~338 chars |
 | 3 | `large-loop` | raw | Bulk iteration and output writing | 5,000 | ~193 KB |
 | 4 | `mixed-page` | raw | Realistic mixture: literals + substitutions + modest loop + conditionals | 36 | ~10–16 KB |
 | 5 | `conditional-heavy` | raw | Branch evaluation and control-flow dispatch | 200 | ~15 KB |
-| 6 | `fragment-heavy` | raw | Per-call composition overhead | 48 | ~8 KB |
+| 6 | `fragment-heavy` | raw | Per-row fragment dispatch + nested per-call composition | 48 | re-pinned at export (6,057 B stored at the E20 redesign export) |
 | 7 | `fortunes-encoded` | encoded | Escaping correctness and cost at micro scale | 12 | ~1.5 KB |
 | 8 | `encoded-loop` | encoded | Escaping throughput at scale | 5,000 | ~1 MB |
 
@@ -29,6 +29,13 @@ conditionals, partial/include, HTML escaping) — a workload using an engine-exc
 cannot be parity-gated (plan constraint, carried).
 
 ## Anchors (workloads 1–3) — retained byte-unchanged
+
+> **Amended (E20, 2026-08-08):** superseded **for `composed-page`** — that workload was
+> redesigned into a genuine full-page layout workload (see
+> [Workload 1 — composed-page](#workload-1--composed-page-raw--amended-e20) below); its
+> templates, model, golden and verifier all changed and its manifest row was re-recorded at the
+> regeneration export. The freeze below stands unchanged for `trivial-substitution` and
+> `large-loop`.
 
 The three existing workloads are **not modified in any way**: their templates
 ([home.heddle](../../../../benchmarks/dotnet/templates/controlled/heddle/home.heddle),
@@ -46,6 +53,8 @@ nothing else.
   into the corpus documentation (decision [D5](README.md#d5--the-composed-page-anchor-keeps-its-fragment-sequence-shape-q14),
   per Q1.4). Confirmed size: 55,456 raw / 34,837 normalized chars for every gated engine (Heddle plus the four
 twins on net8.0/net10.0; the Scriban twin is `#if !NET6_0`, so on net6.0 four engines are gated).
+  *(Amended (E20): superseded — the output IS a full HTML page now; the fidelity note and root
+  cause were deleted from that README and D5 is retired. Normative shape below.)*
 - **`trivial-substitution`** — one flat `<article>` card, ten scalar substitutions
   (`Title, Sku, Price, Brand, Category, Availability, Url, ImageUrl, Summary, Rating`), rendered
   raw (`OutputProfile.Text`, `ExpressionMode.Native`). Model values are plain ASCII
@@ -92,6 +101,126 @@ Whitespace inside the fenced blocks is part of the template; all differences tha
 normalization pipeline erases (line endings, inter-tag whitespace, every whitespace run removed to
 nothing per N3b, leading/trailing trim) are tolerated between the spec text and the
 checked-in file, nothing else is.
+
+---
+
+## Workload 1 — `composed-page` (raw) — Amended (E20)
+
+**Dimension owned:** layout/section/component composition machinery — now measured for real: a
+full HTML page assembled from a layout with a **live body slot**, overridable section defaults,
+component calls, four inert blob areas, and a structured navigation rendered through loops and
+**nested partials** (menu → column → section → link).
+
+### Model — hybrid (ledger E20)
+
+Two halves, deliberately:
+
+- **Inert blobs** (`AreaData.Areas`, unchanged mechanism): `Alert Top Section Above Nav`
+  (256 B), `Secondary Wholesale Menu` (~5.2 KB), `Secondary Retail Menu` (~4.3 KB),
+  `Alert Top Section Below Nav` (pinned empty). Pre-rendered HTML served through each engine's
+  component/lookup construct — the memcpy floor stays represented, it just stops being ~99% of
+  the page.
+- **Structured navigation** (`NavData`, new): the two mega menus and the footer links,
+  transcribed from the retired blobs into
+
+```csharp
+public sealed class NavModel   { List<MegaMenu> Menus; List<NavColumn> FooterColumns; }
+public sealed class MegaMenu   { List<MenuTab> Tabs; }
+public sealed class MenuTab    { string Label, Href, Css; bool HasDropdown; string DropdownCss; List<NavColumn> Columns; }
+public sealed class NavColumn  { List<NavSection> Sections; }
+public sealed class NavSection { string Title, Href; bool TitleLinked; List<NavLink> Links; }
+public sealed class NavLink    { string Label, Href; }
+```
+
+`TitleLinked` and `HasDropdown` are **precomputed booleans** (no engine evaluates a string
+test). `ComposedModel { NavModel Nav }` is the workload model; dictionary/Hash views nest under
+a `nav` key with `menus` / `footer_columns` and snake_case members (`has_dropdown`,
+`dropdown_css`, `title_linked`, `image_url`-style convention).
+
+**Rule-4 sanitization (blocking pre-decision for every port):** every nav text value is ASCII
+with none of `& < > " '` — `&`/`&amp;` became `and`, apostrophes/`™`/accents were dropped at
+transcription — so raw and would-be-escaped renderings coincide and no default-escaping engine
+can double-escape. `NavData`'s static constructor asserts the rule.
+
+**Fixture:** `export-corpus` writes the nav model to
+`GoldenCorpus/fixtures/composed-page/nav.json` (UTF-8, LF, two-space indent, snake_case keys,
+declaration property order), hash-recorded in the manifest's `fixtures` section — the single
+source of truth the five non-.NET ecosystems load from
+([golden-corpus.md](golden-corpus.md#manifest)).
+
+### Heddle templates — the layout-as-definition idiom (normative)
+
+**No engine change.** The shape is the documented composition idiom
+(docs/language-reference.md §"Composition without coupling"), proven at benchmark scale by
+`src/Heddle.Tests/LayoutDefinitionCompositionTests.cs`:
+
+- `layout.heddle` is **definition-only**: one `@% … %@` block holding the section defaults
+  (`meta`, `socialmeta`, `page_scripts`, `endpage_scripts`), the four nav fragment definitions
+  below, and `<layout>{{ …the full ~150-line chrome… }} :: ComposedModel` with a bare `@out()`
+  at the body-slot position. Importing the file renders nothing.
+- `home.heddle` is `@<<{{layout.heddle}}` + `@layout(){{ …slider markup… }}` — the call body
+  splices at `@out()`. Section overrides, when a page wants them, are the ordinary
+  `<name:name>` mechanism after the import line. **Both tracks carry the same slider body**
+  (the verifier's removed-segment calibration pin is the slider, so an empty body fails).
+
+The nav fragment definitions (normative bytes for the controlled oracle; the chrome literal is
+normative as committed in
+[layout.heddle](../../../../benchmarks/dotnet/templates/controlled/heddle/layout.heddle)):
+
+```heddle
+<nav_link>
+{{<li class="nav-link"><a href="@(Href)">@(Label)</a></li>}}
+<nav_section>
+{{<div class="nav-section">@if(TitleLinked){{<span class="nav-title"><a href="@(Href)">@(Title)</a></span>}}@else(){{<span class="nav-title">@(Title)</span>}}<ul>@list(Links){{@nav_link()}}</ul></div>}}
+<nav_column>
+{{<div class="nav-column">@list(Sections){{@nav_section()}}</div>}}
+<mega_menu>
+{{<div class="top-menu-wrapper"><ul class="top-menu">@list(Tabs){{<li class="@(Css)"><a href="@(Href)" class="drop">@(Label)</a>@if(HasDropdown){{<div class="@(DropdownCss)">@list(Columns){{@nav_column()}}</div>}}</li>}}</ul></div>}}
+```
+
+Call sites in the chrome: `@list(Nav.Menus){{@mega_menu()}}` where the two mega-menu blobs
+were, `@list(Nav.FooterColumns){{@nav_column()}}` where the footer-links blob was,
+`@area_component(@"…")` for the four remaining blobs, `@out()` where `@body()` was. The
+workload stays on `ExpressionMode.FullCSharp` and now binds the typed `ComposedModel`.
+
+**Chrome-authoring hazards (pinned by the Stage-1 tests, binding on every re-transcription):**
+an adjacent `}}` pair inside the definition body is the subtemplate CLOSE token (minified CSS
+`…}}` must be spaced or left unminified — the compile fails, it does not truncate), and a
+literal `@` in chrome (emails, CSS at-rules) must be escaped `@@`.
+
+### Native-layout mandate for twins and ports (normative)
+
+Every engine composes with its **own documented layout mechanism** and a **live body slot** —
+transcribing the chrome as one flat literal is a construct deviation, not a permissible
+simplification:
+
+| Engine | Layout mechanism (live body slot) | Nav rendering |
+|---|---|---|
+| Heddle | definition-only import + `@layout(){{ body }}` splicing at `@out()` | nested definitions (above) |
+| Razor | `Layout` + one mid-page `@RenderBody()` | nested `@foreach` + partials; `Html.Raw` for blobs |
+| Fluid / DotLiquid | capture-then-include: `{% capture body_content %}…{% endcapture %}{% include 'layout' %}`, layout emits the slot | nested `{% for %}` + `nav-column`-family partials (dialect-suffixed) |
+| Scriban | same capture-then-include shape in Scriban syntax | nested `{{ for }}` + partials |
+| Handlebars | partial block `{{#> layout}}…{{/layout}}` + `{{> @partial-block}}` (probe against Handlebars.Net 2.1.6 first; documented fallback: registered body partial) | `{{#each}}` + partials |
+| Rust (Askama / Tera) | `{% extends %}` + `{% block body %}` with a real child body | nav loops + nested `{% include %}` |
+| JVM (JTE) | layout with a `gg.jte.Content bodySlot` parameter | `@for` + `@template` calls |
+| JVM (Thymeleaf) | parameterized fragment `layout(~{:: body})` — re-run feasibility rungs first; exclusion-with-evidence is the accepted controlled-cell fallback | `th:each` + fragments |
+| JS (eta) | native `layout()` + `it.body` | loops + partials |
+| JS (handlebars) | partial-block layout | `{{#each}}` + partials |
+| Python (Jinja2) | `{% extends %}` + filled block | loops + `{% include %}` |
+| Python (Mako) | `<%inherit/>` + `${self.body()}` | loops + defs |
+| Go (stdlib) | `{{block "body"}}` + `{{define "body"}}` override in the associated set | `{{range}}` + `{{template}}` |
+| Go (templ) | `@layout(m) { children }` | nav components |
+
+### Expected output characteristics
+
+- One full page: doctype + IE-conditional html open, head (section defaults + component
+  fragments), header chrome with the alert blob and both secondary-menu blobs, **both mega
+  menus** from `Nav.Menus`, the spliced slider body, the four footer nav columns from
+  `Nav.FooterColumns`, footer chrome, closing scripts, `</html>`.
+- Exactly one `<li class="nav-link"><a href="…">…</a></li>` per `NavLink` and one
+  `<div class="nav-column">` per column — the verifier counts both from the model.
+- Size is re-pinned by the manifest at export (41,111 B stored at the E20 redesign export;
+  raw render 47,455 chars).
 
 ---
 
@@ -192,6 +321,11 @@ Scriban mirrors with `{{ if show_banner }} … {{ end }}`, `{{ for p in products
 - Normalized size in the 10–16 KB band — between the anchors' extremes (exact bytes pinned by
   the manifest at export).
 
+> **Added (E20):** the idiomatic mixed-page is **single-file** in every ecosystem. Layout
+> composition is composed-page's dimension; an idiomatic port that split mixed-page into a
+> layout + body was measuring the wrong thing on the wrong row, and divergent existing ports
+> are brought in line with this rule.
+
 ---
 
 ## Workload 5 — `conditional-heavy` (raw)
@@ -252,65 +386,99 @@ tier set, so no `HED3001` gap warning fires.)
 
 ---
 
-## Workload 6 — `fragment-heavy` (raw)
+## Workload 6 — `fragment-heavy` (raw) — Amended (E20)
 
-**Dimension owned:** per-call composition overhead — 48 invocations of one small partial with an
-argument (the current row), isolating call cost from the composed page's single ordered fragment
-sequence.
+**Dimension owned:** per-row fragment **dispatch** plus nested per-call composition — 48 rows of
+four distinct fragment kinds (12 each), one four-way branch per row selecting which partial to
+invoke, and one level of nesting (the card fragment renders two sub-partials against its
+`Promo`). *(The pre-E20 single-tile shape — one partial invoked 48 times — is superseded; it
+measured call overhead with no dispatch and no nesting.)*
 
-### Model — `FragmentContent` (new file `Runners/FragmentContent.cs`)
+### Model — `FragmentContent` (`benchmarks/dotnet/src/Models/FragmentContent.cs`)
 
 ```csharp
 public sealed class FragmentModel { public List<FragmentRow> Items { get; set; } }
 
 public sealed class FragmentRow
 {
-    public string Name { get; set; }  // $"tile-{i:D2}"
-    public int Value { get; set; }    // i * 11
-    public string Badge { get; set; } // new[] { "new", "hot", "sale", "std" }[i % 4]
+    public string Kind { get; set; }      // { "tile", "card", "media", "stat" }[i % 4] — informational
+    public bool IsTile { get; set; }      // Kind == "tile"   (precomputed; engines dispatch on these,
+    public bool IsCard { get; set; }      // Kind == "card"    never on the string — guaranteed
+    public bool IsMedia { get; set; }     // Kind == "media"   common-denominator dispatch)
+    public bool IsStat { get; set; }      // Kind == "stat"
+    public string Name { get; set; }      // $"item-{i:D2}"
+    public int Value { get; set; }        // i * 11
+    public string Badge { get; set; }     // { "new", "hot", "sale", "std" }[i % 4]
+    public string Caption { get; set; }   // media rows: $"Caption for item-{i:D2}"; else ""
+    public string ImageUrl { get; set; }  // media rows: $"/img/item-{i:D2}.jpg"; else ""
+    public int Delta { get; set; }        // i % 7 - 3
+    public FragmentPromo Promo { get; set; } // on EVERY row (no engine needs a null guard)
+}
+
+public sealed class FragmentPromo
+{
+    public string Label { get; set; }     // == Badge
+    public string Price { get; set; }     // $"{9 + i}.99"
 }
 ```
 
-48 rows, `i` in `[0, 47]`. Dictionary views expose `name, value, badge`.
+48 rows, `i` in `[0, 47]`. Dictionary views expose `kind, is_tile, is_card, is_media, is_stat,
+name, value, badge, caption, image_url, delta` and a nested `promo` (`label`, `price`). All
+values are rule-4 clean.
 
-### Heddle template — `TestTemplates/fragment-heavy.heddle`
+### Heddle template — `templates/{track}/heddle/fragment-heavy.heddle` (normative)
 
 ```heddle
 @%
 <tile>
 {{<section class="tile"><h3>@(Name)</h3><p class="v">@(Value)</p><span class="badge">@(Badge)</span></section>}}
+<badge>
+{{<span class="promo-badge">@(Label)</span>}}
+<price>
+{{<p class="price">@(Price)</p>}}
+<card>
+{{<article class="card"><h3>@(Name)</h3>@badge(Promo)@price(Promo)<p class="v">@(Value)</p></article>}}
+<media_row>
+{{<div class="media-row"><img src="@(ImageUrl)" alt="@(Name)" /><div class="media-body"><h4>@(Name)</h4><p>@(Caption)</p></div></div>}}
+<stat>
+{{<div class="stat"><span class="stat-name">@(Name)</span><span class="stat-value">@(Value)</span><span class="stat-delta">@(Delta)</span></div>}}
 %@
-<div class="panel">@list(Items){{@tile()}}</div>
+<div class="panel">@list(Items){{@if(IsTile){{@tile()}}@elif(IsCard){{@card()}}@elif(IsMedia){{@media_row()}}@else(){{@stat()}}}}</div>
 ```
 
-`@tile()` with an empty parameter forwards the current model — the `FragmentRow` the `@list`
-descent established — into the definition
-([language-reference — passing the current value into a call](../../../language-reference.md#passing-the-current-value-into-a-call)).
-*(Verify at implementation: if `CheckTypes` requires an explicit type on the definition to
-resolve `@(Name)` against the row, add the `:: <row type>` annotation per
-[language-reference — type annotation](../../../language-reference.md#type-annotation--type);
-this changes no output byte.)*
+`@badge(Promo)` passes the row's `Promo` member down
+([language-reference — passing the current value into a call](../../../language-reference.md#passing-the-current-value-into-a-call))
+— the one nesting level. There is no non-whitespace text between the branch blocks of the
+dispatch chain, so no `HED3001` gap warning fires.
 
-### Twin templates
+### Dispatch per family (normative)
 
-Each twin registers a `tile` partial whose body is
-`<section class="tile"><h3>{name}</h3><p class="v">{value}</p><span class="badge">{badge}</span></section>`
-in its own syntax, and invokes it 48 times from the loop. The invocation constructs below were
-**executed and verified** against the pinned package versions (probe E — recorded in the
-[README Assumed state](README.md#assumed-state)):
+Six partials per engine (`tile`, `card`, `badge`, `price`, `media-row`, `stat`; card invokes
+badge + price against the row's promo), dispatched per row:
 
-| Engine | Main template loop | Partial body references | Verified mechanism |
-|---|---|---|---|
-| Fluid | `{% for item in items %}{% include 'tile' with item %}{% endfor %}` | `{{ tile.name }}` etc. (`with` binds the row to a variable named after the partial) | in-memory `IFileProvider`, as `FluidTest` already does |
-| DotLiquid | `{% for item in items %}{% include 'tile' %}{% endfor %}` | `{{ item.name }}` etc. (include shares the enclosing scope; `include … with <hash>` must NOT be used — DotLiquid enumerates a Hash argument and renders once per key) | `Template.FileSystem` (`IFileSystem`), as `DotLiquidTest` already does |
-| Scriban | `{{ for item in items }}{{ include 'tile' }}{{ end }}` | `{{ item.name }}` etc. (include shares the enclosing scope; positional include arguments via `$0` do NOT bind against dictionary rows and must not be used) | `ITemplateLoader`, as `ScribanTest` already does |
-| Handlebars | `{{#each items}}{{> tile this}}{{/each}}` | `{{{name}}}` etc. | `RegisterTemplate("tile", …)` |
+| Family | Dispatch construct |
+|---|---|
+| Heddle | `@if(IsTile){{…}}@elif(IsCard){{…}}@elif(IsMedia){{…}}@else(){{…}}` (above) |
+| Fluid / DotLiquid (Liquid) | `{% case kind %}{% when 'tile' %}…{% endcase %}` or the boolean `{% if is_tile %}/{% elsif %}` chain, with the per-kind `{% include %}` inside each arm |
+| Scriban | `{{ case kind }}{{ when 'tile' }}…{{ end }}` (or boolean `if/else if` chain) + `{{ include }}` |
+| Handlebars | chained `{{#if is_tile}}{{> tile this}}{{else if is_card}}{{> card this}}…{{/if}}` (the probe-verified pattern from conditional-heavy) |
+| Razor | C# `switch` on `Kind` or an if-chain, invoking `Html.PartialAsync` per kind |
+| Rust (Askama / Tera) | `{% if item.is_tile %}…{% elif %}` chain; per-kind include/partial |
+| JVM (JTE / Thymeleaf) | JTE `@if/@elseif` chain; Thymeleaf `th:switch` over the boolean cases (conditional-heavy precedent) |
+| JS (eta / handlebars) | boolean chain + partials |
+| Python (Jinja2 / Mako) | `{% if %}/{% elif %}` include chains; Mako `args=` pass-through |
+| Go (stdlib / templ) | `{{if .IsTile}}{{template "tile" .}}{{else if}}` chain; templ `switch` |
 
-Main templates wrap the loop in `<div class="panel">…</div>`.
+Idiomatic tracks may use each engine's documented native switch form where one exists; the
+controlled track uses the constructs above. Main templates wrap the loop in
+`<div class="panel">…</div>`.
 
 ### Expected output characteristics
 
-- Exactly 48 `<section class="tile">` blocks in model order; normalized size ≈ 8 KB.
+- Exactly 12 each of `<section class="tile">`, `<article class="card">`,
+  `<div class="media-row">`, `<div class="stat">`, in model order; 12 `promo-badge` spans and
+  12 `price` paragraphs (proof the nesting ran). Size re-pinned by the manifest at export
+  (6,057 B stored at the E20 redesign export).
 
 ---
 

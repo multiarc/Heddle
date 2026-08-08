@@ -102,8 +102,29 @@ namespace Heddle.Benchmarks.Dotnet.Corpus
                 Console.WriteLine($"exported {fileName} ({bytes.Length} bytes, sha256:{hash}) + {id}.verify.json");
             }
 
+            manifest.Append("  ],\n");
+
+            // The fixtures section (ledger E20): model data exported for the non-.NET ports, hashed
+            // and recorded exactly like the goldens so a stale copy fails loudly rather than gating
+            // five ecosystems against drifted data. Today: composed-page's structured nav.
+            var fixtureDir = Path.Combine(dir, "fixtures", "composed-page");
+            System.IO.Directory.CreateDirectory(fixtureDir);
+            var navBytes = Utf8NoBom.GetBytes(NavFixtureJson());
+            File.WriteAllBytes(Path.Combine(fixtureDir, "nav.json"), navBytes);
+            var navHash = Sha256Hex(navBytes);
+
+            manifest.Append("  \"fixtures\": [\n");
+            manifest.Append("    {\n");
+            manifest.Append("      \"workload\": \"composed-page\",\n");
+            manifest.Append("      \"file\": \"fixtures/composed-page/nav.json\",\n");
+            manifest.Append($"      \"byteLength\": {navBytes.Length.ToString(CultureInfo.InvariantCulture)},\n");
+            manifest.Append($"      \"hash\": \"sha256:{navHash}\",\n");
+            manifest.Append($"      \"generatingCommit\": \"{generatingCommit}\",\n");
+            manifest.Append($"      \"generatedUtc\": \"{generatedUtc}\"\n");
+            manifest.Append("    }\n");
             manifest.Append("  ]\n");
             manifest.Append("}\n");
+            Console.WriteLine($"exported fixtures/composed-page/nav.json ({navBytes.Length} bytes, sha256:{navHash})");
             File.WriteAllBytes(Path.Combine(dir, "manifest.json"), Utf8NoBom.GetBytes(manifest.ToString()));
             Console.WriteLine($"exported manifest.json (generatingCommit {generatingCommit}) to {dir}");
             Engines.RazorEngine.Shutdown();
@@ -168,6 +189,52 @@ namespace Heddle.Benchmarks.Dotnet.Corpus
                 }
 
                 Console.WriteLine($"[PASS] {id} freshness ({storedBytes.Length} bytes, {hash})");
+            }
+
+            // 1b. Fixture freshness — the committed nav.json still equals a live serialization of
+            //     NavData, and the manifest's fixtures entry still describes the file on disk.
+            //     Same discipline as the goldens: five ecosystems read this file as model input.
+            {
+                var navPath = Path.Combine(dir, "fixtures", "composed-page", "nav.json");
+                var fixtureEntry = GoldenCorpus.LoadManifest().Fixtures
+                    .FirstOrDefault(f => string.Equals(f.Workload, "composed-page", StringComparison.Ordinal));
+                if (!File.Exists(navPath))
+                {
+                    Console.Error.WriteLine(
+                        "[FAIL] composed-page fixture: GoldenCorpus/fixtures/composed-page/nav.json is missing");
+                    all = false;
+                }
+                else if (fixtureEntry == null)
+                {
+                    Console.Error.WriteLine(
+                        "[FAIL] composed-page fixture: manifest.json has no fixtures entry for it");
+                    all = false;
+                }
+                else
+                {
+                    var storedNav = File.ReadAllBytes(navPath);
+                    var liveNav = Utf8NoBom.GetBytes(NavFixtureJson());
+                    var navHash = "sha256:" + Sha256Hex(storedNav);
+                    if (!liveNav.AsSpan().SequenceEqual(storedNav))
+                    {
+                        Console.Error.WriteLine("[FAIL] composed-page fixture: nav.json is stale — " +
+                            Describe(Utf8NoBom.GetString(storedNav), Utf8NoBom.GetString(liveNav)));
+                        all = false;
+                    }
+                    else if (!string.Equals(fixtureEntry.Hash, navHash, StringComparison.Ordinal)
+                             || fixtureEntry.ByteLength != storedNav.Length)
+                    {
+                        Console.Error.WriteLine(
+                            $"[FAIL] composed-page fixture: manifest says {fixtureEntry.Hash} " +
+                            $"({fixtureEntry.ByteLength} bytes), file is {navHash} ({storedNav.Length} bytes)");
+                        all = false;
+                    }
+                    else
+                    {
+                        Console.WriteLine(
+                            $"[PASS] composed-page fixture nav.json ({storedNav.Length} bytes, {navHash})");
+                    }
+                }
             }
 
             // 2. Calibration — accept the golden, reject each synthesized corruption with the check
@@ -244,6 +311,90 @@ namespace Heddle.Benchmarks.Dotnet.Corpus
 
             Console.WriteLine($"[PASS] {id} calibration: corruption '{corruption}' rejected ({expectedKind})");
             return true;
+        }
+
+        // ---- the nav.json fixture ---------------------------------------------------------------
+
+        /// <summary>
+        /// The composed-page nav fixture: a JSON serialization of <see cref="Models.NavData"/> —
+        /// UTF-8, LF, two-space indent, snake_case keys, properties in declaration order. The five
+        /// non-.NET ports load their nav models from this file, so the layout is part of the
+        /// committed artifact exactly like the verifier sidecars.
+        /// </summary>
+        internal static string NavFixtureJson()
+        {
+            var nav = Models.NavData.Model();
+            var sb = new StringBuilder(32 * 1024);
+
+            void Line(int indent, string text) => sb.Append(' ', indent * 2).Append(text).Append('\n');
+
+            string Str(string s)
+            {
+                // Rule-4 values contain no quote, backslash or control character (asserted by
+                // NavData's static constructor), so quoting is the whole escape.
+                return "\"" + s + "\"";
+            }
+
+            void Links(int indent, System.Collections.Generic.List<Models.NavLink> links)
+            {
+                if (links.Count == 0) { Line(indent, "\"links\": []"); return; }
+                Line(indent, "\"links\": [");
+                for (var i = 0; i < links.Count; i++)
+                    Line(indent + 1, "{ \"label\": " + Str(links[i].Label) + ", \"href\": " + Str(links[i].Href) + " }"
+                                     + (i < links.Count - 1 ? "," : ""));
+                Line(indent, "]");
+            }
+
+            void Column(int indent, Models.NavColumn column, bool last)
+            {
+                Line(indent, "{");
+                Line(indent + 1, "\"sections\": [");
+                for (var i = 0; i < column.Sections.Count; i++)
+                {
+                    var s = column.Sections[i];
+                    Line(indent + 2, "{");
+                    Line(indent + 3, "\"title\": " + Str(s.Title) + ",");
+                    Line(indent + 3, "\"href\": " + Str(s.Href) + ",");
+                    Line(indent + 3, "\"title_linked\": " + (s.TitleLinked ? "true" : "false") + ",");
+                    Links(indent + 3, s.Links);
+                    Line(indent + 2, "}" + (i < column.Sections.Count - 1 ? "," : ""));
+                }
+                Line(indent + 1, "]");
+                Line(indent, "}" + (last ? "" : ","));
+            }
+
+            sb.Append("{\n");
+            Line(1, "\"menus\": [");
+            for (var m = 0; m < nav.Menus.Count; m++)
+            {
+                var menu = nav.Menus[m];
+                Line(2, "{");
+                Line(3, "\"tabs\": [");
+                for (var t = 0; t < menu.Tabs.Count; t++)
+                {
+                    var tab = menu.Tabs[t];
+                    Line(4, "{");
+                    Line(5, "\"label\": " + Str(tab.Label) + ",");
+                    Line(5, "\"href\": " + Str(tab.Href) + ",");
+                    Line(5, "\"css\": " + Str(tab.Css) + ",");
+                    Line(5, "\"has_dropdown\": " + (tab.HasDropdown ? "true" : "false") + ",");
+                    Line(5, "\"dropdown_css\": " + Str(tab.DropdownCss) + ",");
+                    Line(5, "\"columns\": [");
+                    for (var c = 0; c < tab.Columns.Count; c++)
+                        Column(6, tab.Columns[c], c == tab.Columns.Count - 1);
+                    Line(5, "]");
+                    Line(4, "}" + (t < menu.Tabs.Count - 1 ? "," : ""));
+                }
+                Line(3, "]");
+                Line(2, "}" + (m < nav.Menus.Count - 1 ? "," : ""));
+            }
+            Line(1, "],");
+            Line(1, "\"footer_columns\": [");
+            for (var c = 0; c < nav.FooterColumns.Count; c++)
+                Column(2, nav.FooterColumns[c], c == nav.FooterColumns.Count - 1);
+            Line(1, "]");
+            sb.Append("}\n");
+            return sb.ToString();
         }
 
         // ---- corruption synthesis (golden-corpus.md §Verification) -----------------------------

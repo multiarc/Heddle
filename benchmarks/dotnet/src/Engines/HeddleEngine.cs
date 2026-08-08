@@ -31,7 +31,8 @@ namespace Heddle.Benchmarks.Dotnet.Engines
     /// materialised its output — the exact failure ledger E4 added MATERIALISATION-CHECK to prevent.</para>
     ///
     /// <para>The LOH observation survives as a reason the <i>utf8 technique row</i> is interesting on
-    /// composed-page (108,802 bytes as UTF-16 against 54,411 as UTF-8), not as the anchor's rationale.
+    /// composed-page (94,910 bytes as UTF-16 against 47,459 as UTF-8, re-measured at the E20
+    /// full-page redesign), not as the anchor's rationale.
     /// All three sinks are gated; utf8 and textwriter ride along as non-ranked technique rows in the
     /// same sweep and are compared exhaustively by <c>bench-techniques</c>.</para>
     /// </summary>
@@ -69,9 +70,10 @@ namespace Heddle.Benchmarks.Dotnet.Engines
         /// <summary>Per-workload compile settings: output profile, expression tier, model type.</summary>
         private static readonly (string Workload, OutputProfile Profile, ExpressionMode Mode, Type ModelType)[] Specs =
         {
-            // composed-page's model is an empty object and its expressions are extension calls, so
-            // it is the one workload on the FullCSharp tier with an untyped model.
-            ("composed-page", OutputProfile.Text, ExpressionMode.FullCSharp, null),
+            // composed-page stays on the FullCSharp tier (its chrome calls assembly extensions)
+            // and, since the E20 redesign, binds the typed ComposedModel: the layout definition
+            // renders the structured nav through @list(Nav.Menus) / @list(Nav.FooterColumns).
+            ("composed-page", OutputProfile.Text, ExpressionMode.FullCSharp, typeof(ComposedModel)),
             ("trivial-substitution", OutputProfile.Text, ExpressionMode.Native, typeof(SubstitutionContent.SubstitutionModel)),
             ("large-loop", OutputProfile.Text, ExpressionMode.Native, typeof(LoopContent.LoopModel)),
             ("mixed-page", OutputProfile.Text, ExpressionMode.Native, typeof(MixedContent.MixedModel)),
@@ -90,9 +92,7 @@ namespace Heddle.Benchmarks.Dotnet.Engines
         /// <summary>The model instance each workload renders from.</summary>
         public static object ModelFor(string workload) => workload switch
         {
-            // composed-page renders entirely from extensions and layout section defaults, so its
-            // model is genuinely empty rather than merely unused.
-            "composed-page" => EmptyModel,
+            "composed-page" => ComposedContent.Model(),
             "trivial-substitution" => SubstitutionContent.Model(),
             "large-loop" => LoopContent.Model(),
             "mixed-page" => MixedContent.Model(),
@@ -102,8 +102,6 @@ namespace Heddle.Benchmarks.Dotnet.Engines
             "encoded-loop" => EncodedLoopContent.Model(),
             _ => throw new ArgumentException($"unknown workload '{workload}'", nameof(workload)),
         };
-
-        private static readonly object EmptyModel = new object();
 
         /// <summary>The runtime-compiled template for one workload, compiled once.</summary>
         public static HeddleTemplate Template(string track, string workload)
