@@ -322,7 +322,8 @@ namespace Heddle.Generator.Emit
             }
 
             // Build the body tree (Body0 = document root; extension bodies become nested bodies).
-            var rootCtx = new BodyContext(isDynamic ? null : "(" + modelType + ")", _modelSymbol, isDynamic);
+            var rootCtx = new BodyContext(isDynamic ? null : "(" + modelType + ")", _modelSymbol, isDynamic,
+                root: _modelSymbol);
             var root = BuildBody(_cleanDocument, _parse, rootCtx, out var reason);
             if (root == null)
             {
@@ -479,7 +480,8 @@ namespace Heddle.Generator.Emit
         {
             public BodyContext(string modelCast, ITypeSymbol modelSymbol, bool isDynamic, PropLayoutInfo props = null,
                 ITypeSymbol slotType = null, Dictionary<string, DefinitionItem> fills = null,
-                PropLayoutInfo regionHostProps = null, ITypeSymbol dynamicBodyModel = null)
+                PropLayoutInfo regionHostProps = null, ITypeSymbol dynamicBodyModel = null,
+                ITypeSymbol root = null, ITypeSymbol chained = null)
             {
                 ModelCast = modelCast;
                 ModelSymbol = modelSymbol;
@@ -489,6 +491,8 @@ namespace Heddle.Generator.Emit
                 Fills = fills;
                 RegionHostProps = regionHostProps;
                 DynamicBodyModel = dynamicBodyModel;
+                Root = root;
+                Chained = chained;
             }
 
             public string ModelCast { get; }          // "(global::T)" or null for the dynamic tier
@@ -541,25 +545,40 @@ namespace Heddle.Generator.Emit
             /// decided.</para></summary>
             public ITypeSymbol DynamicBodyModel { get; }
 
+            /// <summary>The root model's type — what an embedded expression's <c>root</c> parameter is spelled as.
+            /// Constant at every depth (the engine's <c>RootScopeType</c> is set once and every <c>Scope</c>
+            /// transform passes <c>RootData</c> through verbatim), so every construction site seeds it with the
+            /// entry model and every derivation carries it. Null means the root has no pinned static type and the
+            /// parameter is spelled <c>dynamic</c>.</summary>
+            public ITypeSymbol Root { get; }
+
+            /// <summary>The chained value's compile-time type for an embedded expression — null today for every
+            /// reachable one, spelled <c>dynamic</c>: the engine types <c>chained</c> as
+            /// <c>returnTypeChainedPrevious ?? ExType.Dynamic</c> and only a mid-chain expression, which the
+            /// emitter refuses elsewhere, ever sees a previous item. Carried so the typing pass that threads a
+            /// chain's real type has a seam to fill.</summary>
+            public ITypeSymbol Chained { get; }
+
             public BodyContext WithProps(PropLayoutInfo props) =>
                 new BodyContext(ModelCast, ModelSymbol, IsDynamic, props, SlotType, Fills, RegionHostProps,
-                    DynamicBodyModel);
+                    DynamicBodyModel, Root, Chained);
 
             public BodyContext AsSlot(ITypeSymbol slotType) =>
                 new BodyContext(ModelCast, ModelSymbol, IsDynamic, Props, slotType, Fills, RegionHostProps,
-                    DynamicBodyModel);
+                    DynamicBodyModel, Root, Chained);
 
             /// <summary>The same body, now typed by the model the call site actually hands it.</summary>
             public BodyContext TypedAs(ITypeSymbol model) =>
                 new BodyContext("(" + SymbolTypeResolver.FullyQualified(model) + ")", model, false, Props, SlotType,
-                    Fills, RegionHostProps, model);
+                    Fills, RegionHostProps, model, Root, Chained);
 
             public BodyContext WithDynamicBodyModel(ITypeSymbol model) =>
-                new BodyContext(ModelCast, ModelSymbol, IsDynamic, Props, SlotType, Fills, RegionHostProps, model);
+                new BodyContext(ModelCast, ModelSymbol, IsDynamic, Props, SlotType, Fills, RegionHostProps, model,
+                    Root, Chained);
 
             public BodyContext WithFills(Dictionary<string, DefinitionItem> fills, PropLayoutInfo regionHostProps) =>
                 new BodyContext(ModelCast, ModelSymbol, IsDynamic, Props, SlotType, fills, regionHostProps,
-                    DynamicBodyModel);
+                    DynamicBodyModel, Root, Chained);
         }
 
         /// <summary>
@@ -600,10 +619,11 @@ namespace Heddle.Generator.Emit
             {
                 var elementCtx = elementModel == null || elementModel.TypeKind == TypeKind.Dynamic
                     ? new BodyContext(null, null, true, props: bctx.Props,
-                        fills: bctx.Fills, regionHostProps: bctx.RegionHostProps, dynamicBodyModel: elementModel)
+                        fills: bctx.Fills, regionHostProps: bctx.RegionHostProps, dynamicBodyModel: elementModel,
+                        root: bctx.Root, chained: bctx.Chained)
                     : new BodyContext("(" + SymbolTypeResolver.FullyQualified(elementModel) + ")", elementModel,
                         false, props: bctx.Props, fills: bctx.Fills, regionHostProps: bctx.RegionHostProps,
-                        dynamicBodyModel: elementModel);
+                        dynamicBodyModel: elementModel, root: bctx.Root, chained: bctx.Chained);
                 nested = bctx.InSlot ? elementCtx.AsSlot(bctx.SlotType) : elementCtx;
                 return true;
             }
@@ -618,7 +638,6 @@ namespace Heddle.Generator.Emit
             public string ExtensionField;
             public string ParamExpr;
             public bool UsesModelLocal;
-            public bool UsesCSharpModel;
             public int SpanStartLine, SpanStartCol, SpanEndLine, SpanEndCol;
         }
 
@@ -628,7 +647,6 @@ namespace Heddle.Generator.Emit
             public string ModelCast;
             public bool IsDynamic;
             public bool NeedsModelLocal;
-            public bool NeedsCSharpModel;   // FullCSharp verbatim: declare `var model = (T)scope.ModelData;`
             public bool HostsParticipant;
             public readonly List<object> Segments = new List<object>();
         }
@@ -727,12 +745,10 @@ namespace Heddle.Generator.Emit
                     if (seg is Call call)
                     {
                         if (call.UsesModelLocal) body.NeedsModelLocal = true;
-                        if (call.UsesCSharpModel) body.NeedsCSharpModel = true;
                     }
                     else if (seg is Partial partial)
                     {
                         if (partial.UsesModelLocal) body.NeedsModelLocal = true;
-                        if (partial.UsesCSharpModel) body.NeedsCSharpModel = true;
                     }
 
                     return true;
@@ -903,7 +919,6 @@ namespace Heddle.Generator.Emit
             public string ModelExpr;
             public string CallerModelTypeFq;   // fully-qualified caller model type for a dynamic-compiled child; null = dynamic tier
             public bool UsesModelLocal;
-            public bool UsesCSharpModel;
             public int SpanStartLine, SpanStartCol, SpanEndLine, SpanEndCol;
         }
 
@@ -931,10 +946,10 @@ namespace Heddle.Generator.Emit
                 }
 
                 WarnOnRedundantEncoding(cp);
-                if (!BuildParamExpr(cp, bctx, out var uParam, out var uUses, out var uCs, out reason, item.Position))
+                if (!BuildParamExpr(cp, bctx, out var uParam, out var uUses, out reason, item.Position))
                     return null;
                 var uField = AllocateEmptyExtension(item.Position);
-                return MakeCall(uField, uParam, uUses, item.Position, uCs);
+                return MakeCall(uField, uParam, uUses, item.Position);
             }
 
             // Definition-first precedence (matches HeddleCompiler.CompileItem) — definitions may shadow branches.
@@ -996,7 +1011,7 @@ namespace Heddle.Generator.Emit
                     return null;
                 }
 
-                if (!BuildParamExpr(cp, bctx, out var bParam, out var bUses, out var bCs, out reason, item.Position))
+                if (!BuildParamExpr(cp, bctx, out var bParam, out var bUses, out reason, item.Position))
                     return null;
 
                 BodyClass branchBody = null;
@@ -1011,7 +1026,7 @@ namespace Heddle.Generator.Emit
                 // Use binder's BareTypeName (handles nested types with +) and AssemblyName; don't parse display name.
                 var field = AllocateBodyExtension(name, branchInfo.GlobalName, branchInfo.BareTypeName,
                     branchBody?.Name, needsLocals, item.Position, branchInfo.AssemblyName);
-                var call = MakeCall(field, bParam, bUses, item.Position, bCs);
+                var call = MakeCall(field, bParam, bUses, item.Position);
                 return call;
             }
 
@@ -1040,7 +1055,7 @@ namespace Heddle.Generator.Emit
                     return null;
                 }
 
-                if (!BuildParamExpr(cp, bctx, out var lParam, out var lUses, out var lCs, out reason, item.Position))
+                if (!BuildParamExpr(cp, bctx, out var lParam, out var lUses, out reason, item.Position))
                     return null;
 
                 BodyClass itemBody = null;
@@ -1054,7 +1069,7 @@ namespace Heddle.Generator.Emit
                 bool listNeedsLocals = itemBody != null && itemBody.HostsParticipant;
                 var listField = AllocateBodyExtension("list", "global::Heddle.Extensions.ListExtension",
                     "Heddle.Extensions.ListExtension", itemBody?.Name, listNeedsLocals, item.Position);
-                return MakeCall(listField, lParam, lUses, item.Position, lCs);
+                return MakeCall(listField, lParam, lUses, item.Position);
             }
 
             if (name == "for")
@@ -1066,7 +1081,7 @@ namespace Heddle.Generator.Emit
                     return null;
                 }
 
-                if (!BuildParamExpr(cp, bctx, out var fParam, out var fUses, out var fCs, out reason, item.Position))
+                if (!BuildParamExpr(cp, bctx, out var fParam, out var fUses, out reason, item.Position))
                     return null;
 
                 BodyClass forBody = null;
@@ -1080,7 +1095,7 @@ namespace Heddle.Generator.Emit
                 bool forNeedsLocals = forBody != null && forBody.HostsParticipant;
                 var forField = AllocateBodyExtension("for", "global::Heddle.Extensions.ForIndexExtension",
                     "Heddle.Extensions.ForIndexExtension", forBody?.Name, forNeedsLocals, item.Position);
-                return MakeCall(forField, fParam, fUses, item.Position, fCs);
+                return MakeCall(forField, fParam, fUses, item.Position);
             }
 
             // Reached only when the shared classifier picked the function tier.
@@ -1191,20 +1206,20 @@ namespace Heddle.Generator.Emit
                         out reason))
                     return null;   // unknown/duplicate/missing/unreproducible → safe dynamic fallback
 
-                if (!BuildParamExpr(cp, bctx, out var extParamExpr, out var extUses, out var extCs, out reason, item.Position))
+                if (!BuildParamExpr(cp, bctx, out var extParamExpr, out var extUses, out reason, item.Position))
                     return null;
 
                 var namesRef = EmitParameterNamesField(extLayout);
                 var extField = AllocateParameterizedExtension(name, info, extPropsRef, extSettersRef, namesRef,
                     item.Position, extLayout);
-                return MakeCall(extField, extParamExpr, extUses, item.Position, extCs);
+                return MakeCall(extField, extParamExpr, extUses, item.Position);
             }
 
-            if (!BuildParamExpr(cp, bctx, out var paramExpr, out var uses, out var cs, out reason, item.Position))
+            if (!BuildParamExpr(cp, bctx, out var paramExpr, out var uses, out reason, item.Position))
                 return null;
 
             var field = AllocateCustomExtension(name, info, item.Position);
-            return MakeCall(field, paramExpr, uses, item.Position, cs);
+            return MakeCall(field, paramExpr, uses, item.Position);
         }
 
         private string AllocateCustomExtension(string name, ExtensionBinder.Info info, BlockPosition position)
@@ -1538,7 +1553,7 @@ namespace Heddle.Generator.Emit
             if (!DeclaredModelAcceptsCallSiteValue(def, cp, bctx, out reason))
                 return null;
 
-            if (!BuildParamExpr(cp, bctx, out var paramExpr, out var usesModel, out var usesCsModel, out reason, item.Position))
+            if (!BuildParamExpr(cp, bctx, out var paramExpr, out var usesModel, out reason, item.Position))
                 return null;
 
             // Caller content typed by :: T (or slot type in slot mode); ambient fill scope stays active (lexical).
@@ -1601,7 +1616,7 @@ namespace Heddle.Generator.Emit
             bool callerContentNeedsLocals = callerBody != null && callerBody.HostsParticipant;
             var field = AllocateDefinitionExtension(bodyInfo.Body.Name, callerBody?.Name, propsFieldRef,
                 dynamicSettersRef, bodyNeedsLocals, callerContentNeedsLocals, slotMode, item.Position);
-            return MakeCall(field, paramExpr, usesModel, item.Position, usesCsModel);
+            return MakeCall(field, paramExpr, usesModel, item.Position);
         }
 
         /// <summary>The bodiless caller-content splice. Non-slot: passes current model. Slot mode: value becomes projection model.</summary>
@@ -1619,10 +1634,10 @@ namespace Heddle.Generator.Emit
                 if (cp.PropArguments != null && cp.PropArguments.Count != 0) { reason = "@out prop arguments"; return null; }
                 if (!SlotValueAssignable(cp, bctx, out reason))
                     return null;
-                if (!BuildParamExpr(cp, bctx, out var vParam, out var vUses, out var vCs, out reason, item.Position))
+                if (!BuildParamExpr(cp, bctx, out var vParam, out var vUses, out reason, item.Position))
                     return null;
                 var slotField = AllocateOutExtension(slotMode: true, item.Position);
-                return MakeCall(slotField, vParam, vUses, item.Position, vCs);
+                return MakeCall(slotField, vParam, vUses, item.Position);
             }
 
             // Bodiless valueless @out inside slot definition is a SlotValueRequired error at runtime.
@@ -1699,7 +1714,8 @@ namespace Heddle.Generator.Emit
             // Asked only under FullCSharp: in any other mode the expression is not emitted at all.
             if (cp.CSharpExpression != null)
                 return _config.ExpressionMode == Heddle.Data.ExpressionMode.FullCSharp
-                    ? _csharpTyper.TypeOf(cp.CSharpExpression, model, _modelSymbol, _usings)
+                    ? _csharpTyper.TypeOf(cp.CSharpExpression, model, bctx.Root,
+                        model == null ? _usings : EmbeddedExpressionUsings(model))
                     : null;
 
             // A chain call-parameter's value is the chain's render type, not the producer's own type: the engine
@@ -2181,7 +2197,7 @@ namespace Heddle.Generator.Emit
                 return null;
             }
 
-            if (!BuildParamExpr(cp, bctx, out var modelExpr, out var usesModel, out var usesCs, out reason, item.Position))
+            if (!BuildParamExpr(cp, bctx, out var modelExpr, out var usesModel, out reason, item.Position))
                 return null;
 
             var field = "_partial" + _partialCounter++;
@@ -2198,7 +2214,7 @@ namespace Heddle.Generator.Emit
             return new Partial
             {
                 FieldName = field, Key = key, ModelExpr = modelExpr, CallerModelTypeFq = callerModelFq,
-                UsesModelLocal = usesModel, UsesCSharpModel = usesCs,
+                UsesModelLocal = usesModel,
                 SpanStartLine = sl, SpanStartCol = sc, SpanEndLine = el, SpanEndCol = ec
             };
         }
@@ -2516,7 +2532,7 @@ namespace Heddle.Generator.Emit
             reason = null;
             var modelTypeName = def.ModelType;
             if (DeclaresDynamicModel(def))
-                return new BodyContext(null, null, true);
+                return new BodyContext(null, null, true, root: _modelSymbol);
 
             var sym = _resolver.ResolveModelType(modelTypeName, _usings);
             if (sym == null)
@@ -2535,10 +2551,10 @@ namespace Heddle.Generator.Emit
             // `string`, and in slot mode an `@out(this)` looked like the identity `object → object` where the
             // engine saw the box it refuses.
             if (sym.SpecialType == SpecialType.System_Object)
-                return new BodyContext(null, null, true);
+                return new BodyContext(null, null, true, root: _modelSymbol);
 
             var fq = SymbolTypeResolver.FullyQualified(sym);
-            return new BodyContext("(" + fq + ")", sym, false);
+            return new BodyContext("(" + fq + ")", sym, false, root: _modelSymbol);
         }
 
         /// <summary>Whether the definition declares <c>dynamic</c>, as opposed to the <c>object</c> the engine also
@@ -3026,7 +3042,7 @@ namespace Heddle.Generator.Emit
             if (sym == null) { reason = "unresolved slot type '" + slotName + "'"; return default; }
             if (!CanWriteTypeName(sym, def.Position, out reason)) return default;
             var fq = SymbolTypeResolver.FullyQualified(sym);
-            return new BodyContext("(" + fq + ")", sym, false);
+            return new BodyContext("(" + fq + ")", sym, false, root: _modelSymbol);
         }
 
         private string AllocateOutExtension(bool slotMode, BlockPosition position)
@@ -3059,31 +3075,24 @@ namespace Heddle.Generator.Emit
             return new CallNode(name, args, position);
         }
 
-        private Call MakeCall(string field, string paramExpr, bool usesModel, BlockPosition position,
-            bool usesCSharpModel = false)
+        private Call MakeCall(string field, string paramExpr, bool usesModel, BlockPosition position)
         {
             var (sl, sc) = _map.Map(position.StartIndex);
             var (el, ec) = _map.Map(position.StartIndex + position.Length);
             return new Call
             {
                 ExtensionField = field, ParamExpr = paramExpr, UsesModelLocal = usesModel,
-                UsesCSharpModel = usesCSharpModel,
                 SpanStartLine = sl, SpanStartCol = sc, SpanEndLine = el, SpanEndCol = ec
             };
         }
 
-        private bool BuildParamExpr(CallParameter cp, BodyContext bctx, out string paramExpr, out bool usesModel,
-            out string reason, BlockPosition callPosition)
-            => BuildParamExpr(cp, bctx, out paramExpr, out usesModel, out _, out reason, callPosition);
-
         /// <param name="callPosition">The call this parameter belongs to — where the runtime positions a
         /// prop-shadowing warning raised off the same read.</param>
         private bool BuildParamExpr(CallParameter cp, BodyContext bctx, out string paramExpr, out bool usesModel,
-            out bool usesCSharpModel, out string reason, BlockPosition callPosition)
+            out string reason, BlockPosition callPosition)
         {
             reason = null;
             usesModel = false;
-            usesCSharpModel = false;
             paramExpr = null;
 
             if (cp.IsModelTypeParameter)
@@ -3211,7 +3220,7 @@ namespace Heddle.Generator.Emit
             }
 
             if (!string.IsNullOrEmpty(cp.CSharpExpression))
-                return BuildCSharpExpr(cp.CSharpExpression, bctx, out paramExpr, out usesCSharpModel, out reason);
+                return BuildCSharpExpr(cp.CSharpExpression, bctx, out paramExpr, out reason);
 
             // A single-item chain (@card((Cols)), @list(upper(Name))) reduces to its producer's expression — but not
             // to its producer's VALUE. The carrier the runtime wraps it in renders what it is given, so the value
@@ -3221,8 +3230,7 @@ namespace Heddle.Generator.Emit
             // invisible while the consumer printed it. See CarrierValue for what the two tiers disagreed on.
             if (cp.ChainParameter != null && cp.ChainParameter.Count == 1)
             {
-                if (!BuildChainItemExpr(cp.ChainParameter[0], bctx, out var chainExpr, out usesModel,
-                        out usesCSharpModel, out reason))
+                if (!BuildChainItemExpr(cp.ChainParameter[0], bctx, out var chainExpr, out usesModel, out reason))
                     return false;
                 paramExpr = "global::Heddle.Precompiled.PrecompiledRuntime.CarrierValue(" + chainExpr + ")";
                 return true;
@@ -3268,14 +3276,17 @@ namespace Heddle.Generator.Emit
             return true;
         }
 
-        /// <summary>FullCSharp tier: C# expression pasted verbatim with local <c>model</c> bound (same name as runtime).
-        /// Only under FullCSharp mode; requires typed model. Chained/root references degrade (not passed at the call site).</summary>
-        private bool BuildCSharpExpr(string csharp, BodyContext bctx, out string paramExpr, out bool usesCSharpModel,
-            out string reason)
+        /// <summary>FullCSharp tier: the expression becomes a compiled fragment — the engine's one-line method
+        /// shape (<c>CSharpClassTemplate.tcs</c>), written into this file's <c>namespace Heddle.Runtime</c> block
+        /// and compiled by the consumer's own compiler. A top-level static method has exactly the engine's three
+        /// parameter names in scope, so no emitter local (<c>m</c>, <c>scope</c>, <c>v0…</c>, <c>P0…</c>) can
+        /// capture an identifier the engine would fail to bind — and the model cast happens at the call, the way
+        /// <c>CompiledParameter</c> converts, so an <c>InvalidCastException</c> fires at the same render position,
+        /// after the preceding pieces are written.</summary>
+        private bool BuildCSharpExpr(string csharp, BodyContext bctx, out string paramExpr, out string reason)
         {
             reason = null;
             paramExpr = null;
-            usesCSharpModel = false;
 
             if (_config.ExpressionMode != Heddle.Data.ExpressionMode.FullCSharp)
             {
@@ -3284,21 +3295,17 @@ namespace Heddle.Generator.Emit
                 return false;
             }
 
-            if (bctx.IsDynamic || bctx.ModelSymbol == null)
+            // An untyped body is spelled `dynamic` — but only where the engine's own scope is dynamic on every
+            // compile, which an in-file @model (typed or `dynamic`) pins and nothing else does: with neither, the
+            // engine types this template by whatever context each host hands it, a value the build does not hold.
+            bool rootPinned = _modelSymbol != null || _modelDeclaredDynamic;
+            if (bctx.ModelSymbol == null && !rootPinned)
             {
                 reason = "embedded C# without a typed model";
                 return false;
             }
 
-            // References to the chained/root parameters need values the emitted call site does not pass — fall back
-            // rather than paste a reference that binds to nothing in the generated file. Which identifiers are
-            // those two parameters is the binder's answer, not a word search's: a lambda parameter of the same name
-            // shadows them, a member can be called either, and a string literal is not an identifier at all.
-            if (_csharpTyper.ReferencesChainedOrRoot(csharp, bctx.ModelSymbol, _modelSymbol, _usings))
-            {
-                reason = "embedded C# references chained/root";
-                return false;
-            }
+            var modelType = bctx.ModelSymbol ?? _compilation.DynamicType;
 
             // Every collected @using becomes a `using` directive of the code the ENGINE compiles for this
             // expression, so a body naming no namespace makes the engine refuse the whole template — and a body that
@@ -3313,41 +3320,82 @@ namespace Heddle.Generator.Emit
                 return false;
             }
 
+            var usings = EmbeddedExpressionUsings(modelType);
+
             // Does the expression compile at all? The engine asks Roslyn exactly this and refuses the template on
             // any error, and nothing here asked: a misspelt member, an unbalanced expression, a wrong argument
             // count, a `Where` with no `@using System.Linq` and an `[Obsolete(error: true)]` reference were all
             // pasted straight into the generated file, where they became the consumer's build errors against a
             // `.heddle` file with no Heddle diagnostic on them.
-            if (!_csharpTyper.Compiles(csharp, bctx.ModelSymbol, _modelSymbol, _usings))
+            if (!_csharpTyper.Compiles(csharp, modelType, bctx.Root, usings))
             {
-                reason = "embedded C# the engine's compiler rejects";
+                // A dynamic operation this compilation cannot compile at all is the consumer's wall, not the
+                // expression's: the emitted fragment would hit the same CS0656 in the consumer's own build.
+                reason = _csharpTyper.NeedsRuntimeBinder(csharp, modelType, bctx.Root, usings)
+                    ? "embedded C# needing a Microsoft.CSharp reference this compilation does not have"
+                    : "embedded C# the engine's compiler rejects";
                 return false;
             }
 
-            // Wrapped, for the same reason the native writer wraps: the engine compiles this very text into an
-            // assembly of its own with overflow checking off, unconditionally, while this copy is compiled by the
-            // consumer under whatever <CheckForOverflowUnderflow> that project happens to set. Pasted bare, the same
-            // template rendered a wrapped number in one project and threw OverflowException in the next, decided by
-            // an MSBuild property the template knows nothing about. The wrapper also settles the constant case,
-            // which no compilation option can: C# checks a constant expression whatever the compilation says, so
-            // only a syntactic unchecked makes the two tiers fold it the same way.
-            paramExpr = "(object)(unchecked(" + csharp + "))";
-            usesCSharpModel = true;
-            _wroteEmbeddedCSharp = true;
+            // An unpinned root is spelled `dynamic` only while the expression never reads it: read, its behaviour
+            // is the host's context type, which is the value the build does not hold. The binder answers, not a
+            // word search — a lambda parameter of the same name shadows the parameter and is no reference.
+            if (!rootPinned && _csharpTyper.BindsRoot(csharp, modelType, bctx.Root, usings))
+            {
+                reason = "embedded C# reads root where no @model pins the root type";
+                return false;
+            }
+
+            var method = "__cs" + _csharpFragments.Count;
+            _csharpFragments.Add(new Binding.EmbeddedCSharpFragment.Method(method,
+                Binding.EmbeddedCSharpFragment.TypeName(modelType),
+                Binding.EmbeddedCSharpFragment.TypeName(bctx.Root), csharp));
+
+            // The call passes the scope's three channels the way CompiledParameter.GetParameter does, casting at
+            // the call site; the fragment's own body carries the engine's syntactic unchecked, so the consumer's
+            // <CheckForOverflowUnderflow> cannot flip what the engine computes.
+            var modelArg = bctx.ModelSymbol == null
+                ? "scope.ModelData"
+                : "(" + SymbolTypeResolver.FullyQualified(bctx.ModelSymbol) + ")scope.ModelData";
+            var rootArg = bctx.Root == null
+                ? "global::Heddle.Precompiled.PrecompiledRuntime.RootModel(in scope)"
+                : "(" + SymbolTypeResolver.FullyQualified(bctx.Root) +
+                  ")global::Heddle.Precompiled.PrecompiledRuntime.RootModel(in scope)";
+            paramExpr = "global::Heddle.Runtime." + FragmentClassName + "." + method + "(" + modelArg +
+                        ", scope.ChainedData, " + rootArg + ")";
             return true;
         }
 
-        /// <summary>Whether any embedded C# text was pasted into this file, which is what decides whether the
-        /// model's namespaces are worth importing into it.</summary>
-        private bool _wroteEmbeddedCSharp;
+        /// <summary>The embedded-expression fragments of this file, in allocation order; rendered by
+        /// <see cref="RenderFile"/> into one <c>namespace Heddle.Runtime</c> block through the same builder the
+        /// probe compiles.</summary>
+        private readonly List<Binding.EmbeddedCSharpFragment.Method> _csharpFragments =
+            new List<Binding.EmbeddedCSharpFragment.Method>();
+
+        /// <summary>The namespaces the engine's <c>CSharpContext</c> accumulates across this template's embedded
+        /// expressions — model and chained namespaces plus one-level generic arguments, in first-import order.</summary>
+        private readonly List<string> _fragmentNamespaces = new List<string>();
+
+        private string FragmentClassName => "__CSharp_" + _sanitizedName;
+
+        /// <summary>The <c>using</c> set the engine compiles this expression under: every collected <c>@using</c>
+        /// body, then the namespace accumulation — which this call advances with <paramref name="modelType"/>'s
+        /// own namespaces first, the way <c>ParseAndGetResultType</c> imports before it compiles.</summary>
+        private IReadOnlyList<string> EmbeddedExpressionUsings(ITypeSymbol modelType)
+        {
+            Binding.EmbeddedCSharpFragment.AddExpressionNamespaces(modelType, _fragmentNamespaces);
+            var composed = new List<string>(_usings.Count + _fragmentNamespaces.Count);
+            composed.AddRange(_usings);
+            composed.AddRange(_fragmentNamespaces);
+            return composed;
+        }
 
         private bool BuildChainItemExpr(OutputItem inner, BodyContext bctx, out string paramExpr, out bool usesModel,
-            out bool usesCSharpModel, out string reason)
+            out string reason)
         {
             reason = null;
             paramExpr = null;
             usesModel = false;
-            usesCSharpModel = false;
 
             if (!string.IsNullOrEmpty(inner.ParameterTemplate))
             {
@@ -3357,8 +3405,8 @@ namespace Heddle.Generator.Emit
 
             var name = inner.ExtensionName;
             if (name.Length == 0)
-                return BuildParamExpr(inner.CallParameter, bctx, out paramExpr, out usesModel, out usesCSharpModel,
-                    out reason, inner.Position);
+                return BuildParamExpr(inner.CallParameter, bctx, out paramExpr, out usesModel, out reason,
+                    inner.Position);
 
             // Use same precedence as top-level dispatch (HeddleCompiler.CompileItem).
             var innerTarget = CallTargetRules.ResolveCallTarget(name, inner.CallParameter, null,
@@ -3745,26 +3793,6 @@ namespace Heddle.Generator.Emit
             // which a symbolizer/IDE/LSP can actually read, and duplicating it as prose would be two carriers
             // for one fact.
             w.Raw("#pragma warning disable");
-            // A collected @using is what makes a pasted-in embedded expression bind, so the directive is written out
-            // — but only where the name resolves here. To the engine a body naming nothing is never consulted at all
-            // unless an embedded expression sends it to the C# compiler, and a document with none renders whatever
-            // the body says; copied out as a directive the same body is CS0246, or, when it is not a name at all,
-            // stops the generated file from parsing. Omitting it costs nothing: everything else generated code writes
-            // is fully qualified, and a template that did need the namespace is turned down where the expression is
-            // built, because the engine's own compile of the same text is what fails.
-            foreach (var ns in _usings)
-                if (_resolver.UsingDirectiveCompiles(ns))
-                    w.Raw("using " + ns + ";");
-            // The engine imports the model's own namespace — and each type argument's, when it is generic — into the
-            // unit it compiles for an embedded expression. Pasted C# is the only thing here that reads a directive
-            // at all, so these are written only where some expression was pasted, and only alongside it.
-            if (_wroteEmbeddedCSharp && _modelSymbol != null)
-            {
-                foreach (var ns in Binding.CSharpExpressionTyper.ModelNamespaces(_modelSymbol))
-                    if (!_usings.Contains(ns))
-                        w.Raw("using " + ns + ";");
-            }
-
             w.Line();
             w.Line("namespace " + _namespace);
             w.Line("{");
@@ -3827,6 +3855,21 @@ namespace Heddle.Generator.Emit
             w.Line("}");
             w.Outdent();
             w.Line("}");
+
+            // The embedded expressions, compiled the engine's way: one method per expression in the engine's
+            // enclosing namespace, under the using set its CSharpContext collects, written by the same builder the
+            // typer's probe compiles — so the compilation the probe answered for is the one the consumer builds.
+            if (_csharpFragments.Count != 0)
+            {
+                w.Line();
+                var usings = new List<string>(_usings.Count + _fragmentNamespaces.Count);
+                usings.AddRange(_usings);
+                usings.AddRange(_fragmentNamespaces);
+                var block = Binding.EmbeddedCSharpFragment.Build(usings, _csharpFragments, FragmentClassName);
+                foreach (var line in block.TrimEnd('\n').Split('\n'))
+                    w.Raw(line);
+            }
+
             return w.ToString();
         }
 
@@ -3841,8 +3884,6 @@ namespace Heddle.Generator.Emit
             w.Indent();
             if (body.NeedsModelLocal)
                 w.Line($"var m = {body.ModelCast}scope.ModelData;");
-            if (body.NeedsCSharpModel)
-                w.Line($"var {EmbeddedCSharpNames.Model} = {body.ModelCast}scope.ModelData;");
             foreach (var seg in body.Segments)
             {
                 if (seg is Piece p)
@@ -3876,8 +3917,6 @@ namespace Heddle.Generator.Emit
             w.Indent();
             if (body.NeedsModelLocal)
                 w.Line($"var m = {body.ModelCast}scope.ModelData;");
-            if (body.NeedsCSharpModel)
-                w.Line($"var {EmbeddedCSharpNames.Model} = {body.ModelCast}scope.ModelData;");
             var concatParts = new List<string>();
             int vIndex = 0;
             foreach (var seg in body.Segments)

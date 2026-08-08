@@ -42,14 +42,17 @@ namespace Heddle.Generator.Tests
             Assert.NotNull(EmittedBody(run));
         }
 
-        /// <summary>The <c>@using</c> probe. The body names a namespace the consumer declares, so the directive is
-        /// written into the generated file — reaching the probe compilation is the whole point of the shape.</summary>
+        /// <summary>The <c>@using</c> probe. The body names a namespace the consumer declares and the template
+        /// carries an embedded expression, so the directive is written into the fragment block the expression
+        /// compiles under — reaching the probe compilation is the whole point of the shape.</summary>
         [Fact]
         public void AUsingDirectiveIsJudgedInAConsumerCompilationThatSetsParseOptions()
         {
             var run = GeneratorHarness.RunWithSources(
-                new[] { ("views/using-options.heddle", "@using(){{Probe.Models}}@\\\n@model(){{Article}}@\\\n[@(Title)]\n") },
+                new[] { ("views/using-options.heddle",
+                    "@using(){{Probe.Models}}@\\\n@model(){{Article}}@\\\n[@(Title)]@(@model.Title)\n") },
                 new[] { ModelSource },
+                FullCSharp,
                 parseOptions: ConsumerOptions);
 
             AssertPrecompiled(run);

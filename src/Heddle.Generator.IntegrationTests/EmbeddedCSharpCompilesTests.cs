@@ -177,19 +177,35 @@ namespace Heddle.Generator.IntegrationTests
             Assert.Equal(dyn, pre);
         }
 
-        /// <summary>The near neighbour that keeps the rule: an expression that really does read one of the two
-        /// parameters still degrades, because its runtime type is not reproducible here.</summary>
+        /// <summary>The refusal those two words used to draw is retired: the fragment declares the engine's own
+        /// three parameters — <c>chained</c> spelled <c>dynamic</c>, <c>root</c> as the entry model — and the call
+        /// site passes <c>scope.ChainedData</c> and the root read, so an expression reading either precompiles and
+        /// renders the engine's bytes instead of costing the whole template its tier.</summary>
         [Theory]
         [InlineData("chained")]
         [InlineData("root")]
-        [InlineData("chained.ToString()")]
-        public void AnExpressionThatReallyReadsChainedOrRootStillDegrades(string csharp)
+        [InlineData("root.Title")]
+        [InlineData("chained == null ? \"top\" : \"nested\"")]
+        public void AnExpressionReadingChainedOrRootPrecompilesByteIdentically(string csharp)
         {
             var key = "views/embedded-chained-" + csharp.GetHashCode() + ".heddle";
-            var gen = DifferentialHarness.Generate(new[] { (key, Template(csharp)) }, FullCSharpBuild);
+            var template = Template(csharp);
 
+            // The engine compiles over the assemblies LOADED in this process, and a dynamic operation on
+            // `chained` needs the runtime binder — an input a host rendering dynamic expressions has loaded.
+            // Made explicit the way the harness loads model assemblies (RememberExtraReferences).
+            System.Reflection.Assembly.Load("Microsoft.CSharp");
+
+            var engine = new HeddleTemplate(template, new CompileContext(Runtime, new ExType(typeof(Fixtures.Catalog))));
+            Assert.True(engine.CompileResult.Success, engine.CompileResult.ToString());
+
+            var gen = DifferentialHarness.Generate(new[] { (key, template) }, FullCSharpBuild);
             Assert.Empty(gen.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
-            DifferentialHarness.ExpectDegrade(gen, key);
+            DifferentialHarness.ExpectPrecompiled(gen, key);
+
+            var (pre, dyn) = DifferentialHarness.Render(key, template, typeof(Fixtures.Catalog), TwoProducts(),
+                FullCSharpBuild, Runtime);
+            Assert.Equal(dyn, pre);
         }
 
         /// <summary>

@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Text;
 using Heddle.Language.Expressions;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -14,14 +13,20 @@ namespace Heddle.Generator.Binding
     /// expression. So an embedded expression is the one call-site value the engine types most definitely of all —
     /// and the emitter had no answer for it at all, which every gate that consults a call-site value's type reads as
     /// permission. This asks the same question of the same compiler over the compilation's own references.</para>
+    /// <para>The wrapper is <see cref="EmbeddedCSharpFragment"/>'s — the same builder that writes the compiled
+    /// fragment into the generated file — so the probe's verdict is a verdict about the very text the consumer's
+    /// compiler will build.</para>
     /// </summary>
     internal sealed class CSharpExpressionTyper
     {
         private readonly Compilation _compilation;
         private readonly CSharpParseOptions _parseOptions;
 
-        private readonly Dictionary<(ITypeSymbol Model, ITypeSymbol Root, string Expression), Answer> _typed =
-            new Dictionary<(ITypeSymbol, ITypeSymbol, string), Answer>(KeyComparer.Instance);
+        // Keyed by the wrapper source itself, which is the engine's own memo key (PreparseCache stores by the
+        // generated code): the same expression under a since-grown namespace set is a different compilation with
+        // possibly a different answer, and the wrapper text is exactly the set of terms the answer depends on.
+        private readonly Dictionary<string, Answer> _typed =
+            new Dictionary<string, Answer>(System.StringComparer.Ordinal);
 
         internal CSharpExpressionTyper(Compilation compilation)
         {
@@ -32,11 +37,12 @@ namespace Heddle.Generator.Binding
         /// <summary>What this compilation can say about one embedded expression.</summary>
         private readonly struct Answer
         {
-            internal Answer(bool compiles, ITypeSymbol type, bool referencesChainedOrRoot)
+            internal Answer(bool compiles, ITypeSymbol type, bool bindsRoot, bool needsRuntimeBinder = false)
             {
                 Compiles = compiles;
                 Type = type;
-                ReferencesChainedOrRoot = referencesChainedOrRoot;
+                BindsRoot = bindsRoot;
+                NeedsRuntimeBinder = needsRuntimeBinder;
             }
 
             /// <summary>Whether the compilation unit the engine builds for this expression is free of errors.
@@ -45,9 +51,16 @@ namespace Heddle.Generator.Binding
 
             internal ITypeSymbol Type { get; }
 
-            /// <summary>Whether some identifier in the expression binds to the wrapper's <c>chained</c> or
-            /// <c>root</c> parameter — the two the emitted call site does not pass.</summary>
-            internal bool ReferencesChainedOrRoot { get; }
+            /// <summary>Whether some identifier in the expression binds to the wrapper's <c>root</c> parameter.
+            /// Read only where the root type is not pinned by the template — a template with no <c>@model</c> is
+            /// typed by whatever context the host hands the engine, which is a value the build does not hold.</summary>
+            internal bool BindsRoot { get; }
+
+            /// <summary>True when the compile failed for want of dynamic runtime binding (CS0656/CS1969) — the
+            /// consumer compilation carries no Microsoft.CSharp reference, so its own compiler would hit the same
+            /// wall on the emitted fragment. A legitimate degrade, distinguishable from an expression the engine
+            /// rejects.</summary>
+            internal bool NeedsRuntimeBinder { get; }
         }
 
         /// <summary>
@@ -73,34 +86,46 @@ namespace Heddle.Generator.Binding
             IReadOnlyList<string> usings) =>
             Ask(expression, modelType, rootType, usings).Compiles;
 
+        /// <summary>Whether a failed compile failed for want of dynamic runtime binding — see
+        /// <see cref="Answer.NeedsRuntimeBinder"/>.</summary>
+        internal bool NeedsRuntimeBinder(string expression, ITypeSymbol modelType, ITypeSymbol rootType,
+            IReadOnlyList<string> usings) =>
+            Ask(expression, modelType, rootType, usings).NeedsRuntimeBinder;
+
         /// <summary>
-        /// Whether the expression actually reads the engine's <c>chained</c> or <c>root</c> parameter, asked of the
-        /// binder rather than of the text. A word-boundary search over the raw characters called every other
-        /// occurrence of those two words a reference — a string literal, a lambda parameter, a member name, a
-        /// comment — and took templates the engine renders off the tier for them.
+        /// Whether the expression actually reads the engine's <c>root</c> parameter, asked of the binder rather
+        /// than of the text: a lambda parameter of the same name shadows it, a member can be called <c>root</c>,
+        /// and a string literal is not an identifier at all.
         /// </summary>
-        internal bool ReferencesChainedOrRoot(string expression, ITypeSymbol modelType, ITypeSymbol rootType,
+        internal bool BindsRoot(string expression, ITypeSymbol modelType, ITypeSymbol rootType,
             IReadOnlyList<string> usings)
-            => Ask(expression, modelType, rootType, usings).ReferencesChainedOrRoot;
+            => Ask(expression, modelType, rootType, usings).BindsRoot;
 
         private Answer Ask(string expression, ITypeSymbol modelType, ITypeSymbol rootType,
             IReadOnlyList<string> usings)
         {
             if (_compilation == null || modelType == null || string.IsNullOrEmpty(expression))
-                return new Answer(true, null, referencesChainedOrRoot: true);
+                return new Answer(true, null, bindsRoot: true);
 
-            var key = (modelType, rootType, expression);
-            if (_typed.TryGetValue(key, out var memoized))
+            var wrapper = EmbeddedCSharpFragment.Build(
+                usings ?? (IReadOnlyList<string>) new string[0],
+                new[]
+                {
+                    new EmbeddedCSharpFragment.Method(EmbeddedCSharpFragment.ProbeMethodName,
+                        EmbeddedCSharpFragment.TypeName(modelType), EmbeddedCSharpFragment.TypeName(rootType),
+                        expression)
+                },
+                EmbeddedCSharpFragment.ProbeClassName);
+            if (_typed.TryGetValue(wrapper, out var memoized))
                 return memoized;
-            var resolved = Resolve(expression, modelType, rootType, usings);
-            _typed[key] = resolved;
+            var resolved = Resolve(wrapper);
+            _typed[wrapper] = resolved;
             return resolved;
         }
 
-        private Answer Resolve(string expression, ITypeSymbol modelType, ITypeSymbol rootType,
-            IReadOnlyList<string> usings)
+        private Answer Resolve(string wrapper)
         {
-            var tree = CSharpSyntaxTree.ParseText(Wrapper(expression, modelType, rootType, usings), _parseOptions);
+            var tree = CSharpSyntaxTree.ParseText(wrapper, _parseOptions);
             // The consumer's own compilation, because the model type and everything the expression reaches through
             // it are declared in its source rather than in a reference. The engine compiles standalone against the
             // consumer's assembly as a reference, where its internals are not visible; that difference is not
@@ -118,51 +143,60 @@ namespace Heddle.Generator.Binding
             }
 
             if (wrapped == null)
-                return new Answer(true, null, referencesChainedOrRoot: true);
+                return new Answer(true, null, bindsRoot: true);
 
             var model = probe.GetSemanticModel(tree, false);
-            var touchesChainedOrRoot = TouchesChainedOrRoot(model, wrapped);
+            var bindsRoot = BindsRootParameter(model, wrapped);
+            bool failed = false, needsRuntimeBinder = false;
             foreach (var diagnostic in model.GetDiagnostics())
             {
-                if (diagnostic.Severity == DiagnosticSeverity.Error)
-                    return new Answer(false, null, touchesChainedOrRoot);
+                if (diagnostic.Severity != DiagnosticSeverity.Error)
+                    continue;
+                failed = true;
+                // CS0656 (missing Microsoft.CSharp.RuntimeBinder member) / CS1969 (no type for a dynamic
+                // expression): the consumer compilation cannot compile dynamic operations at all.
+                if (diagnostic.Id == "CS0656" || diagnostic.Id == "CS1969")
+                    needsRuntimeBinder = true;
             }
+
+            if (failed)
+                return new Answer(false, null, bindsRoot, needsRuntimeBinder);
 
             // The engine asks for the constant value first and types the expression by the value it gets back, not
             // by the semantic type: a constant null becomes `typeof(object)`, which is a different answer from the
             // `string` Roslyn gives `default(string)`, and the gates read it.
             var constant = model.GetConstantValue(wrapped);
             if (constant.HasValue)
-                return new Answer(true, ConstantType(constant.Value), touchesChainedOrRoot);
+                return new Answer(true, ConstantType(constant.Value), bindsRoot);
 
             var type = model.GetTypeInfo(wrapped).Type;
             if (type == null || type.TypeKind == TypeKind.Error)
-                return new Answer(true, null, touchesChainedOrRoot);
+                return new Answer(true, null, bindsRoot);
 
             // The engine's own two arms for a value with no name to bind against: it answers ExType.Dynamic for both
-            // rather than a type, and a dynamic value is one its gates then refuse.
+            // rather than a type, and a dynamic value is decided at render rather than checked at compile.
             if (type.IsAnonymousType || type.TypeKind == TypeKind.Dynamic)
-                return new Answer(true, _compilation.DynamicType, touchesChainedOrRoot);
+                return new Answer(true, _compilation.DynamicType, bindsRoot);
 
-            return new Answer(true, type, touchesChainedOrRoot);
+            return new Answer(true, type, bindsRoot);
         }
 
         /// <summary>Whether any identifier under <paramref name="wrapped"/> binds to the wrapper method's
-        /// <c>chained</c> or <c>root</c> parameter. A lambda parameter of the same name shadows it and binds to
-        /// itself, so it is not a reference — which is the whole difference from matching the word.</summary>
-        private static bool TouchesChainedOrRoot(SemanticModel model, ExpressionSyntax wrapped)
+        /// <c>root</c> parameter. A lambda parameter of the same name shadows it and binds to itself, so it is not
+        /// a reference — which is the whole difference from matching the word.</summary>
+        private static bool BindsRootParameter(SemanticModel model, ExpressionSyntax wrapped)
         {
             foreach (var node in wrapped.DescendantNodesAndSelf())
             {
                 if (!(node is IdentifierNameSyntax identifier))
                     continue;
-                var name = identifier.Identifier.ValueText;
-                if (!string.Equals(name, EmbeddedCSharpNames.Chained, System.StringComparison.Ordinal) &&
-                    !string.Equals(name, EmbeddedCSharpNames.Root, System.StringComparison.Ordinal))
+                if (!string.Equals(identifier.Identifier.ValueText, EmbeddedCSharpNames.Root,
+                        System.StringComparison.Ordinal))
                     continue;
                 if (model.GetSymbolInfo(identifier).Symbol is IParameterSymbol parameter &&
                     parameter.ContainingSymbol is IMethodSymbol method &&
-                    string.Equals(method.Name, "PreProcessData", System.StringComparison.Ordinal))
+                    string.Equals(method.Name, EmbeddedCSharpFragment.ProbeMethodName,
+                        System.StringComparison.Ordinal))
                     return true;
             }
 
@@ -193,94 +227,6 @@ namespace Heddle.Generator.Binding
                 case string _: return _compilation.GetSpecialType(SpecialType.System_String);
                 default: return _compilation.GetSpecialType(SpecialType.System_Object);
             }
-        }
-
-        /// <summary>
-        /// The compilation unit the engine compiles for this expression, reproduced: every collected namespace as a
-        /// <c>using</c>, then the wrapper method whose parameters are the identifiers an embedded expression may
-        /// bind. The enclosing namespace is the engine's, because it is part of how a name in the expression
-        /// resolves. <c>chained</c> is spelled <c>dynamic</c> — the engine writes <c>ExType.Dynamic</c>'s literal
-        /// spelling for every expression this probe can reach, and <c>object</c> is stricter, making member access
-        /// the engine compiles a CS1061 here. <c>root</c> is the entry model type: every entry point passes the
-        /// model as both root and model, so an untyped root is spelled <c>dynamic</c> exactly where the engine
-        /// spells it that way.
-        /// </summary>
-        private static string Wrapper(string expression, ITypeSymbol modelType, ITypeSymbol rootType,
-            IReadOnlyList<string> usings)
-        {
-            var source = new StringBuilder();
-            var written = new HashSet<string>(System.StringComparer.Ordinal);
-            if (usings != null)
-            {
-                foreach (var ns in usings)
-                {
-                    if (written.Add(ns))
-                        source.Append("using ").Append(ns).Append(";\n");
-                }
-            }
-
-            // The engine imports the model's own namespace and, when the model is generic, each type argument's —
-            // so an identifier in the expression resolves against them there and has to here. Left out, the same
-            // expression bound to nothing on this side and the emitter read that as permission.
-            foreach (var ns in ModelNamespaces(modelType))
-            {
-                if (written.Add(ns))
-                    source.Append("using ").Append(ns).Append(";\n");
-            }
-
-            source.Append("namespace Heddle.Runtime {\n")
-                .Append("public static class CSharpExpression {\n")
-                .Append("public static object PreProcessData(")
-                .Append(SymbolTypeResolver.FullyQualified(modelType)).Append(' ').Append(EmbeddedCSharpNames.Model)
-                .Append(", dynamic ").Append(EmbeddedCSharpNames.Chained)
-                .Append(", ").Append(rootType == null ? "dynamic" : SymbolTypeResolver.FullyQualified(rootType))
-                .Append(' ').Append(EmbeddedCSharpNames.Root).Append(")\n")
-                .Append("{\nreturn unchecked(").Append(expression).Append(");\n}\n}\n}\n");
-            return source.ToString();
-        }
-
-        /// <summary>The namespaces the engine imports off the model type itself: its own, and each of its generic
-        /// type arguments'. Nested generics are walked, because the reflection the engine reads them from flattens
-        /// a constructed type's arguments the same way one level at a time.</summary>
-        internal static IEnumerable<string> ModelNamespaces(ITypeSymbol modelType)
-        {
-            var ns = NamespaceOf(modelType);
-            if (ns != null)
-                yield return ns;
-
-            if (!(modelType is INamedTypeSymbol named) || !named.IsGenericType)
-                yield break;
-
-            foreach (var argument in named.TypeArguments)
-            {
-                var argumentNamespace = NamespaceOf(argument);
-                if (argumentNamespace != null)
-                    yield return argumentNamespace;
-            }
-        }
-
-        private static string NamespaceOf(ITypeSymbol type)
-        {
-            var containing = type?.ContainingNamespace;
-            if (containing == null || containing.IsGlobalNamespace)
-                return null;
-            return containing.ToDisplayString();
-        }
-
-        private sealed class KeyComparer : IEqualityComparer<(ITypeSymbol Model, ITypeSymbol Root, string Expression)>
-        {
-            internal static readonly KeyComparer Instance = new KeyComparer();
-
-            public bool Equals((ITypeSymbol Model, ITypeSymbol Root, string Expression) x,
-                (ITypeSymbol Model, ITypeSymbol Root, string Expression) y) =>
-                SymbolEqualityComparer.Default.Equals(x.Model, y.Model) &&
-                SymbolEqualityComparer.Default.Equals(x.Root, y.Root) &&
-                string.Equals(x.Expression, y.Expression, System.StringComparison.Ordinal);
-
-            public int GetHashCode((ITypeSymbol Model, ITypeSymbol Root, string Expression) key) =>
-                unchecked(((key.Model == null ? 0 : SymbolEqualityComparer.Default.GetHashCode(key.Model)) * 397 ^
-                           (key.Root == null ? 0 : SymbolEqualityComparer.Default.GetHashCode(key.Root))) * 397 ^
-                          key.Expression.GetHashCode());
         }
     }
 }
