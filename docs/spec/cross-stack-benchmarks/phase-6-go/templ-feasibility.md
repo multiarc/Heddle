@@ -56,9 +56,9 @@ removed by N3b from both sides and, being whitespace-only, passes by constructio
 Track: controlled. "Oracle shape" facts below are read from the pinned normative template texts
 and models in [workloads.md](../phase-1-cross-stack-foundation/workloads.md) and — for
 `composed-page` — from the live twin sources
-([TwinContent.cs](../../../../benchmarks/dotnet/src/Models/TwinContent.cs),
+(`TwinContent.cs`,
 [LiquidTemplates.cs](../../../../benchmarks/dotnet/templates/controlled/liquid/composed-page.liquid),
-[AreaComponent.cs](../../../../benchmarks/dotnet/src/Models/AreaData.cs),
+`AreaComponent.cs`,
 all read for this spec).
 
 | Workload | Text-node exposure in the pinned shape | templ verdict |

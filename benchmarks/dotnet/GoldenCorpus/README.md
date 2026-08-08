@@ -48,12 +48,15 @@ through Heddle's documented layout-as-definition idiom
   calls `@layout(){{ …slider markup… }}`, whose body splices at the slot (both tracks carry the
   same slider body — the verifier's removed-segment calibration pin is that slider, so an empty
   body FAILS);
-- the data model is **hybrid**: four inert blob areas stay in `AreaData` and render through
-  `@area_component(...)` (Alert Top, Secondary Wholesale Menu, Secondary Retail Menu, the
-  pinned-empty Alert Below), while the two mega menus and the footer links are **structured
-  data** in `NavData` rendered by `@list(Nav.Menus){{@mega_menu()}}` /
+- the model is **pure structured data** (ledger E22): `ComposedModel { Nav }` and nothing
+  else. The inert chrome fragments — the alert banner, both secondary menus, the pinned-empty
+  alert-below slot, and the fixed asset/script snippets — are named definitions in the
+  definition-only `chrome-fragments.heddle` library (imported by the layout via `@<<`) that
+  the chrome calls at its composition points; the two mega menus and the footer links are
+  **structured data** in `NavData` rendered by `@list(Nav.Menus){{@mega_menu()}}` /
   `@list(Nav.FooterColumns){{@nav_column()}}` over nested `mega_menu` → `nav_column` →
-  `nav_section` → `nav_link` definitions;
+  `nav_section` → `nav_link` definitions. No C# fixture serves text to any engine — the old
+  `AreaData`/`TwinContent` dictionaries and the Heddle extensions are deleted;
 - the structured nav is exported to `fixtures/composed-page/nav.json` (snake_case, LF,
   manifest-hashed) — the single source of truth the five non-.NET ports load their nav models
   from;

@@ -45,9 +45,9 @@ discipline). Rules:
   (row 11 = the XSS payload, row 12 = the Japanese string, row 1 = `4.33e67` with no `+`).
 - **composed-page fragments** are transcribed as Go string constants in
   `benchmarks/go/internal/model/composed.go`, copied verbatim from
-  [TwinContent.cs](../../../../benchmarks/dotnet/src/Models/TwinContent.cs) (the six component
+  `TwinContent.cs` (the six component
   constants, the four section values, `AreaOrder`) and
-  [AreaComponent.cs](../../../../benchmarks/dotnet/src/Models/AreaData.cs)
+  `AreaComponent.cs`
   (the seven area fragments, including their verbatim-string indentation — the `@"…"` literals'
   whitespace is part of the bytes). Transcription errors cannot ship: the byte gate compares the
   assembled output against the corpus entry, so any drift fails loudly before timing. *(Verify at

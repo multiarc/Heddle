@@ -105,23 +105,26 @@ checked-in file, nothing else is.
 
 ---
 
-## Workload 1 — `composed-page` (raw) — Amended (E20)
+## Workload 1 — `composed-page` (raw) — Amended (E20, E22)
 
 **Dimension owned:** layout/section/component composition machinery — now measured for real: a
 full HTML page assembled from a layout with a **live body slot**, overridable section defaults,
-component calls, four inert blob areas, and a structured navigation rendered through loops and
-**nested partials** (menu → column → section → link).
+named chrome-fragment definitions (the inert literal text), and a structured navigation
+rendered through loops and **nested partials** (menu → column → section → link).
 
-### Model — hybrid (ledger E20)
+### Model — pure structured data (ledger E20; E22 removed the text half)
 
-Two halves, deliberately:
+The model is `ComposedModel { NavModel Nav }` and NOTHING else — every fragment of literal page
+text lives in the templates (E22: "the model-preparation tier carries DATA only"):
 
-- **Inert blobs** (`AreaData.Areas`, unchanged mechanism): `Alert Top Section Above Nav`
-  (256 B), `Secondary Wholesale Menu` (~5.2 KB), `Secondary Retail Menu` (~4.3 KB),
-  `Alert Top Section Below Nav` (pinned empty). Pre-rendered HTML served through each engine's
-  component/lookup construct — the memcpy floor stays represented, it just stops being ~99% of
-  the page.
-- **Structured navigation** (`NavData`, new): the two mega menus and the footer links,
+- **Inert chrome fragments** (E22; formerly the `AreaData` blob dictionary, now deleted): the
+  alert banner, the two secondary menus, the pinned-empty alert-below slot, and the six fixed
+  asset/script snippets are **named definitions in a definition-only template library**
+  (`chrome-fragments.heddle`, imported by the layout via `@<<`) that the chrome calls at its
+  composition points — pre-rendered literal HTML, but owned by the template tier, overridable
+  per page with the ordinary `<name:name>` mechanism. The memcpy floor stays represented; no
+  C# fixture serves text to any engine.
+- **Structured navigation** (`NavData`): the two mega menus and the footer links,
   transcribed from the retired blobs into
 
 ```csharp
@@ -155,10 +158,17 @@ source of truth the five non-.NET ecosystems load from
 (docs/language-reference.md §"Composition without coupling"), proven at benchmark scale by
 `src/Heddle.Tests/LayoutDefinitionCompositionTests.cs`:
 
-- `layout.heddle` is **definition-only**: one `@% … %@` block holding the section defaults
-  (`meta`, `socialmeta`, `page_scripts`, `endpage_scripts`), the four nav fragment definitions
-  below, and `<layout>{{ …the full ~150-line chrome… }} :: ComposedModel` with a bare `@out()`
-  at the body-slot position. Importing the file renders nothing.
+- `chrome-fragments.heddle` (E22) is a **definition-only fragment library**: the alert banner
+  (`alert_top`), the two secondary menus (`secondary_wholesale_menu`,
+  `secondary_retail_menu`), the pinned-empty `alert_below`, and the fixed asset/script
+  snippets (`assets_styles`, `assets_scripts`, `custom_styles`, `head_scripts`,
+  `body_scripts`, `body_end_scripts`). Importing it renders nothing; any piece is overridable
+  with `<name:name>`.
+- `layout.heddle` is **definition-only**: `@<<{{chrome-fragments.heddle}}` (nested imports are
+  the documented mechanism — Stage-1 test (f)), then one `@% … %@` block holding the section
+  defaults (`meta`, `socialmeta`, `page_scripts`, `endpage_scripts`), the four nav fragment
+  definitions below, and `<layout>{{ …the full ~150-line chrome… }} :: ComposedModel` with a
+  bare `@out()` at the body-slot position. Importing the file renders nothing.
 - `home.heddle` is `@<<{{layout.heddle}}` + `@layout(){{ …slider markup… }}` — the call body
   splices at `@out()`. Section overrides, when a page wants them, are the ordinary
   `<name:name>` mechanism after the import line. **Both tracks carry the same slider body**
@@ -180,9 +190,12 @@ normative as committed in
 ```
 
 Call sites in the chrome: `@list(Nav.Menus){{@mega_menu()}}` where the two mega-menu blobs
-were, `@list(Nav.FooterColumns){{@nav_column()}}` where the footer-links blob was,
-`@area_component("…")` for the four remaining blobs (native string-literal arguments — the
-templates carry **no embedded C#**), `@out()` where `@body()` was. The workload runs
+were, `@list(Nav.FooterColumns){{@nav_column()}}` where the footer-links blob was, the
+chrome-fragment definition calls (`@alert_top()`, `@secondary_wholesale_menu()`,
+`@secondary_retail_menu()`, `@alert_below()`, `@assets_styles()`, `@custom_styles()`,
+`@head_scripts()`, `@body_scripts()`, `@assets_scripts()`, `@body_end_scripts()`) at their
+chrome positions (E22 — these replaced the deleted C# extensions; the templates carry **no
+embedded C#** and call **no extensions**), `@out()` where `@body()` was. The workload runs
 `ExpressionMode.Native` like every other workload and binds the typed `ComposedModel`.
 
 **Chrome-authoring hazards (pinned by the Stage-1 tests, binding on every re-transcription):**
@@ -199,7 +212,7 @@ simplification:
 | Engine | Layout mechanism (live body slot) | Nav rendering |
 |---|---|---|
 | Heddle | definition-only import + `@layout(){{ body }}` splicing at `@out()` | nested definitions (above) |
-| Razor | `Layout` + one mid-page `@RenderBody()` | nested `@foreach` + partials; `Html.Raw` for blobs |
+| Razor | `Layout` + one mid-page `@RenderBody()` | nested `@foreach` + partials; chrome fragments as literal HTML in the layout view (Razor-native — no workaround needed) |
 | Fluid / DotLiquid | capture-then-include: `{% capture body_content %}…{% endcapture %}{% include 'layout' %}`, layout emits the slot | nested `{% for %}` + `nav-column`-family partials (dialect-suffixed) |
 | Scriban | same capture-then-include shape in Scriban syntax | nested `{{ for }}` + partials |
 | Handlebars | partial block `{{#> layout}}…{{/layout}}` + `{{> @partial-block}}` (probe against Handlebars.Net 2.1.6 first; documented fallback: registered body partial) | `{{#each}}` + partials |
@@ -213,10 +226,18 @@ simplification:
 | Go (stdlib) | `{{block "body"}}` + `{{define "body"}}` override in the associated set | `{{range}}` + `{{template}}` |
 | Go (templ) | `@layout(m) { children }` | nav components |
 
+> **Added (E22):** the inert chrome fragments are **literal template text in every engine** —
+> transcribed from the Heddle templates/golden and policed by the byte gate (controlled) and
+> the verifier (idiomatic). No engine loads blob text from a data file or a C# fixture any
+> more; the per-ecosystem blob fixture files (e.g. Rust's `data/composed-page/*.html`, the JVM
+> `resources/composed-page/` blob files, and their hash-freshness tests) are **deleted** when
+> each port lands. `fixtures/composed-page/nav.json` remains the only composed-page data
+> fixture.
+
 ### Expected output characteristics
 
-- One full page: doctype + IE-conditional html open, head (section defaults + component
-  fragments), header chrome with the alert blob and both secondary-menu blobs, **both mega
+- One full page: doctype + IE-conditional html open, head (section defaults + asset/script
+  fragments), header chrome with the alert and secondary-menu fragments, **both mega
   menus** from `Nav.Menus`, the spliced slider body, the four footer nav columns from
   `Nav.FooterColumns`, footer chrome, closing scripts, `</html>`.
 - Exactly one `<li class="nav-link"><a href="…">…</a></li>` per `NavLink` and one

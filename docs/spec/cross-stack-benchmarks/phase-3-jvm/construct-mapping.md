@@ -57,7 +57,7 @@ generators' output.
 
 **Composed-page fragment resources.** The multi-KB section/component/area fragments are model
 data in the intra-.NET twins (from
-[`TwinContent.cs`](../../../../benchmarks/dotnet/src/Models/TwinContent.cs) /
+`TwinContent.cs` /
 `AreaComponent.Areas`), never template literals. The JVM harness stores each fragment as one
 UTF-8 (no BOM) resource file under `benchmarks/jvm/src/main/resources/composed-page/`
 (`section.<key>.txt`, `comp.<key>.txt`, `area.<index>.<slug>.txt`, plus `area-order.txt`, one

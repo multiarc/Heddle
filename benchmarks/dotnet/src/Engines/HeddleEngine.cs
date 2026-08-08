@@ -88,7 +88,7 @@ namespace Heddle.Benchmarks.Dotnet.Engines
         private static readonly Dictionary<string, HeddleTemplate> Compiled =
             new Dictionary<string, HeddleTemplate>(StringComparer.Ordinal);
 
-        private static bool _extensionsConfigured;
+        private static bool _assemblyRegistered;
 
         /// <summary>The model instance each workload renders from.</summary>
         public static object ModelFor(string workload) => workload switch
@@ -110,15 +110,18 @@ namespace Heddle.Benchmarks.Dotnet.Engines
             var key = track + "/" + workload;
             if (Compiled.TryGetValue(key, out var cached)) return cached;
 
-            if (!_extensionsConfigured)
+            if (!_assemblyRegistered)
             {
-                // Registers this assembly's [ExportExtensions] set (area_component and friends).
-                // HeddleTemplate.Configure is the public entry point, and the public one is all
-                // this harness will use: a benchmark that needs private access to the thing it
-                // measures is measuring something no caller can reach. The engine grants this
-                // assembly no InternalsVisibleTo, deliberately.
+                // Registers this assembly so the templates' type spellings (`:: ComposedModel`
+                // and friends) resolve through its namespaces. No extensions ride along any more:
+                // since E22 the benchmark templates are pure composition — every fragment of
+                // display text lives in a template, none in C#. HeddleTemplate.Configure is the
+                // public entry point, and the public one is all this harness will use: a benchmark
+                // that needs private access to the thing it measures is measuring something no
+                // caller can reach. The engine grants this assembly no InternalsVisibleTo,
+                // deliberately.
                 HeddleTemplate.Configure(typeof(HeddleEngine).Assembly);
-                _extensionsConfigured = true;
+                _assemblyRegistered = true;
             }
 
             var spec = Array.Find(Specs, s => s.Workload == workload);

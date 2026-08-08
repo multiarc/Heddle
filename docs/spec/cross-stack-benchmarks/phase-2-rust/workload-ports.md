@@ -57,8 +57,8 @@ pins the counts and distinctive values ([README testing plan](README.md#testing-
 ### Composed-page fragment data files (`data/composed-page/`)
 
 The composed-page model data is Heddle's own fragment set, exactly as the .NET twins consume it
-from [`TwinContent.cs`](../../../../benchmarks/dotnet/src/Models/TwinContent.cs) and
-[`AreaComponent.cs`](../../../../benchmarks/dotnet/src/Models/AreaData.cs)
+from `TwinContent.cs` and
+`AreaComponent.cs`
 (`AreaComponent.Areas` — the very dictionary Heddle renders from). The Rust port cannot
 reference C# statics, so the fragments are committed as data files consumed via `include_str!`:
 

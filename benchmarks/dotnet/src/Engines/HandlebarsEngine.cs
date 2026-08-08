@@ -25,21 +25,13 @@ namespace Heddle.Benchmarks.Dotnet.Engines
         {
             string Src(string file) => Templates.Load(track, "handlebars", file);
 
-            // ---- composed-page: layout partial + an `area` helper
+            // ---- composed-page: layout partial. E22: the model carries structured nav DATA
+            // only — all literal chrome and fragment text now lives in the templates (Stage 3
+            // rewrites this twin's; the old `area` helper served C# blob text and is gone).
             var composedEnv = Handlebars.Create();
-            composedEnv.RegisterHelper("area", (output, context, arguments) =>
-            {
-                var name = arguments[0]?.ToString() ?? string.Empty;
-                output.WriteSafeString(TwinContent.Areas.TryGetValue(name, out var v) ? v : string.Empty);
-            });
             composedEnv.RegisterTemplate("layout", Src("layout.hbs"));
             var composed = composedEnv.Compile(Src("composed-page.hbs"));
-            var composedModel = new Dictionary<string, object>
-            {
-                ["section"] = TwinContent.Sections(),
-                ["comp"] = TwinContent.Components(),
-                ["area_names"] = TwinContent.AreaOrder,
-            };
+            var composedModel = ComposedContent.HandlebarsModel();
             yield return new Cell
             {
                 Engine = Name, Track = track, Workload = "composed-page", InCrossStack = true,

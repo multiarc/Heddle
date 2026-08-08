@@ -44,10 +44,9 @@ namespace Heddle.Benchmarks.Dotnet.Engines
                 Render = () =>
                 {
                     var ctx = new TemplateContext(composedOptions);
-                    ctx.SetValue("section", ToObjectDict(TwinContent.Sections()));
-                    ctx.SetValue("comp", ToObjectDict(TwinContent.Components()));
-                    ctx.SetValue("areas", ToObjectDict(TwinContent.Areas));
-                    ctx.SetValue("area_names", TwinContent.AreaOrder);
+                    // E22: the model carries structured nav DATA only — all literal chrome and
+                    // fragment text now lives in the templates (Stage 3 rewrites this twin's).
+                    ctx.SetValue("nav", ComposedContent.LiquidModel()["nav"]);
                     return composed.Render(ctx);
                 },
             };

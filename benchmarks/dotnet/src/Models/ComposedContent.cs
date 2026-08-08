@@ -25,10 +25,11 @@ namespace Heddle.Benchmarks.Dotnet.Models
 
     /// <summary>
     /// Shared, engine-neutral model for the composed-page workload (cross-stack phase 1 WI1,
-    /// redesigned under ledger E20): a genuine full page. The four inert area blobs stay in
-    /// <see cref="AreaData"/> and render through each engine's component/lookup mechanism; the
-    /// structured navigation here renders through loops and nested partials. Every per-engine view
-    /// is materialized once (static).
+    /// redesigned under ledger E20; text tier removed under E22): a genuine full page whose model
+    /// is PURE DATA — the structured navigation, nothing else. Every fragment of literal page
+    /// text (chrome, alert banner, secondary menus, asset/script snippets) lives in the templates;
+    /// the nav renders through loops and nested partials. Every per-engine view is materialized
+    /// once (static).
     /// </summary>
     public static class ComposedContent
     {

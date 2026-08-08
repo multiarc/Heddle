@@ -89,11 +89,12 @@
       MSBuild contract, so it is disclosed rather than worked around.
 
       All six raw workloads are emitted, home.heddle included: the benchmark templates carry no
-      embedded C# at all — the extension arguments are native string literals
-      (@area_component("...")), so the compilation-wide Native HeddleExpressionMode covers every
-      template, and the redesigned page splices its body through the documented @out() slot (the
-      old <body:body> full-override refusal no longer applies either). The redesigned
-      fragment-heavy.heddle (four dispatched kinds, nested badge/price calls) is likewise emitted.
+      embedded C# and, since E22, call no extensions at all — every fragment of literal page text
+      is template text (chrome-fragments.heddle definitions), so the compilation-wide Native
+      HeddleExpressionMode covers every template, and the redesigned page splices its body through
+      the documented @out() slot (the old <body:body> full-override refusal no longer applies
+      either). The redesigned fragment-heavy.heddle (four dispatched kinds, nested badge/price
+      calls) is likewise emitted.
       The harness DETECTS coverage from the manifest at runtime instead of assuming it. A fallback
       measured and labelled "precompiled" would be reporting the runtime backend under the wrong
       name.
