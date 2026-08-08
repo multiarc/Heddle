@@ -103,7 +103,7 @@
       contract is real; the second compilation is the answer to it. The harness registers both
       assemblies' manifests and discovers 8/8 coverage from them.
 
-      All six raw workloads are emitted, home.heddle included: the benchmark templates carry no
+      All six raw workloads are emitted, composed-page.heddle included: the benchmark templates carry no
       embedded C# and, since E22, call no extensions at all — every fragment of literal page text
       is template text (shared/chrome-fragments.heddle definitions), so the compilation-wide Native
       HeddleExpressionMode covers every template, and the redesigned page splices its body through

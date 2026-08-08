@@ -59,7 +59,7 @@ namespace Heddle.Benchmarks.Dotnet.Gate
             {
                 var reference = Engines.HeddleEngine.Render("controlled", workload, Engines.HeddleEngine.Sink.String);
                 var precompiledCovered = Engines.Precompiled.Entries()
-                    .ContainsKey((workload == "composed-page" ? "home" : workload) + ".heddle");
+                    .ContainsKey(workload + ".heddle");
 
                 foreach (var sink in sinks)
                 {

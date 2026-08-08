@@ -131,7 +131,7 @@ the .NET side) in both the runtime-compile and precompile/`template` paths. Entr
 
 ```handlebars
 {{#> layout}}
-…the slider markup, transcribed from home.heddle…
+…the slider markup, transcribed from composed-page.heddle…
 {{/layout}}
 ```
 
@@ -313,7 +313,7 @@ are **multi-line** — every such line break is N3b-erased, so the byte gate is 
 Eta's **native `layout()` mechanism, in BOTH tracks**. `composed-page.eta`:
 
 ```eta
-<% layout("@shell", it) %>…the slider markup, transcribed from home.heddle…
+<% layout("@shell", it) %>…the slider markup, transcribed from composed-page.heddle…
 ```
 
 `shell.layout.eta` (registered as `@shell`, ~125 lines): the full literal chrome with

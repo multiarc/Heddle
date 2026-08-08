@@ -91,7 +91,7 @@ Jinja2 `composed-page.jinja` — genuine inheritance with a **live block**:
 
 ```jinja
 {% extends "shared/layout.jinja" %}
-{% block content %}…the slider markup, transcribed from home.heddle…{% endblock %}
+{% block content %}…the slider markup, transcribed from composed-page.heddle…{% endblock %}
 ```
 
 Jinja2 `shared/layout.jinja` (~128 lines): the full literal chrome, with the overridable

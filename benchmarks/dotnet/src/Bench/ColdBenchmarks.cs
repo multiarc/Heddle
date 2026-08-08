@@ -40,7 +40,7 @@ namespace Heddle.Benchmarks.Dotnet.Bench
         // composed-page is the cold subject for every engine: it is the only workload that composes
         // two sources (a layout and the page that extends it), so it exercises import resolution as
         // well as parsing. Its sources are read once here; file I/O is not what this measures.
-        private string _heddleHome;
+        private string _heddleComposed;
         private string _heddleLayout;
         private string _heddleRoot;
         private string _fluid;
@@ -52,7 +52,7 @@ namespace Heddle.Benchmarks.Dotnet.Bench
         public void Setup()
         {
             _heddleRoot = System.IO.Path.Combine(Templates.Root(), "controlled", "heddle");
-            _heddleHome = Templates.Load("controlled", "heddle", "home.heddle");
+            _heddleComposed = Templates.Load("controlled", "heddle", "composed-page.heddle");
             _heddleLayout = Templates.Load("controlled", "heddle", "shared/layout.heddle");
             _fluid = Templates.Load("controlled", "liquid", "composed-page.fluid.liquid");
             _scriban = Templates.Load("controlled", "scriban", "composed-page.scriban");
@@ -66,7 +66,7 @@ namespace Heddle.Benchmarks.Dotnet.Bench
         public void ParseHeddle()
         {
             var options = new TemplateOptions { RootPath = _heddleRoot };
-            DocumentParser.Parse(_heddleHome, new CompileContext(options), out _);
+            DocumentParser.Parse(_heddleComposed, new CompileContext(options), out _);
             DocumentParser.Parse(_heddleLayout, new CompileContext(options), out _);
         }
 
@@ -75,7 +75,7 @@ namespace Heddle.Benchmarks.Dotnet.Bench
         [Benchmark]
         public bool CompileHeddle()
         {
-            var options = new TemplateOptions("home")
+            var options = new TemplateOptions("composed-page")
             {
                 FileNamePostfix = ".heddle",
                 RootPath = _heddleRoot,

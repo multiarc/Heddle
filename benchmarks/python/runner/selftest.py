@@ -258,7 +258,7 @@ _ENCODED_LOOP_ROW_0 = (
     "<td>&#39;q&#39; &amp; &lt;angle&gt; &quot;d&quot; こんにちは 0</td></tr>"
 )
 
-# composed-page (E20): the removed segment is the slider fragment home.heddle splices into
+# composed-page (E20): the removed segment is the slider fragment composed-page.heddle splices into
 # the layout's live body slot -- an idiomatic page with an EMPTY body must fail; the swap
 # exchanges the wholesale-only and retail-only mega-menu anchors (the menus are
 # near-identical; these hrefs are the unique rows). Both mirror VerifierDefinitions.cs.

@@ -235,7 +235,7 @@ mod tests {
         [
             Pins {
                 // E20 pins (VerifierDefinitions.ComposedPage): the removed segment is the
-                // slider fragment home.heddle splices into the layout's body slot — an
+                // slider fragment composed-page.heddle splices into the layout's body slot — an
                 // idiomatic page with an EMPTY body must fail; the swap crosses the
                 // wholesale-only and retail-only mega-menu anchors.
                 workload: "composed-page",

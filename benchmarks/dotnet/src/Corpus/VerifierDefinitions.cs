@@ -103,7 +103,7 @@ namespace Heddle.Benchmarks.Dotnet.Corpus
             // The layout's <meta> section default, as the template spells it.
             const string sectionMeta = "<title>Title</title>";
 
-            // The slider fragment home.heddle splices into the layout's @out() slot. Pinned as the
+            // The slider fragment composed-page.heddle splices into the layout's @out() slot. Pinned as the
             // removed-row corruption so an idiomatic page with an EMPTY body fails the verifier.
             const string sliderSegment =
                 "<img src=\"/files/homepage/homebtmbanners/gluten-hp.jpg\" width=\"984\" border=\"0\" />";

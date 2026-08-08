@@ -44,7 +44,7 @@ through Heddle's documented layout-as-definition idiom
 - `shared/layout.heddle` is **definition-only** — the whole ~150-line chrome (doctype, IE
   conditionals, head, header, footer) lives *inside* a `<layout>{{ … }} :: ComposedModel`
   definition, so importing the file renders nothing;
-- a bare `@out()` marks the **live body slot**; `home.heddle` does `@<<{{shared/layout.heddle}}` and
+- a bare `@out()` marks the **live body slot**; `composed-page.heddle` does `@<<{{shared/layout.heddle}}` and
   calls `@layout(){{ …slider markup… }}`, whose body splices at the slot (both tracks carry the
   same slider body — the verifier's removed-segment calibration pin is that slider, so an empty
   body FAILS);
