@@ -20,8 +20,8 @@ namespace Heddle.Generator.Binding
         private readonly Compilation _compilation;
         private readonly CSharpParseOptions _parseOptions;
 
-        private readonly Dictionary<(ITypeSymbol Model, string Expression), Answer> _typed =
-            new Dictionary<(ITypeSymbol, string), Answer>(KeyComparer.Instance);
+        private readonly Dictionary<(ITypeSymbol Model, ITypeSymbol Root, string Expression), Answer> _typed =
+            new Dictionary<(ITypeSymbol, ITypeSymbol, string), Answer>(KeyComparer.Instance);
 
         internal CSharpExpressionTyper(Compilation compilation)
         {
@@ -46,7 +46,7 @@ namespace Heddle.Generator.Binding
             internal ITypeSymbol Type { get; }
 
             /// <summary>Whether some identifier in the expression binds to the wrapper's <c>chained</c> or
-            /// <c>root</c> parameter — the two whose runtime types the emitter cannot reproduce.</summary>
+            /// <c>root</c> parameter — the two the emitted call site does not pass.</summary>
             internal bool ReferencesChainedOrRoot { get; }
         }
 
@@ -56,8 +56,9 @@ namespace Heddle.Generator.Binding
         /// the definite no-static-type answer, and the engine gives it for the same two cases it does (an anonymous
         /// type and <c>dynamic</c> itself).
         /// </summary>
-        internal ITypeSymbol TypeOf(string expression, ITypeSymbol modelType, IReadOnlyList<string> usings) =>
-            Ask(expression, modelType, usings).Type;
+        internal ITypeSymbol TypeOf(string expression, ITypeSymbol modelType, ITypeSymbol rootType,
+            IReadOnlyList<string> usings) =>
+            Ask(expression, modelType, rootType, usings).Type;
 
         /// <summary>
         /// Whether the compilation the <b>engine</b> builds for this expression compiles. The engine hands the text
@@ -68,8 +69,9 @@ namespace Heddle.Generator.Binding
         /// <para>True where no compilation is available to ask: this gate may only take a template off the
         /// precompiled tier on evidence.</para>
         /// </summary>
-        internal bool Compiles(string expression, ITypeSymbol modelType, IReadOnlyList<string> usings) =>
-            Ask(expression, modelType, usings).Compiles;
+        internal bool Compiles(string expression, ITypeSymbol modelType, ITypeSymbol rootType,
+            IReadOnlyList<string> usings) =>
+            Ask(expression, modelType, rootType, usings).Compiles;
 
         /// <summary>
         /// Whether the expression actually reads the engine's <c>chained</c> or <c>root</c> parameter, asked of the
@@ -77,25 +79,28 @@ namespace Heddle.Generator.Binding
         /// occurrence of those two words a reference — a string literal, a lambda parameter, a member name, a
         /// comment — and took templates the engine renders off the tier for them.
         /// </summary>
-        internal bool ReferencesChainedOrRoot(string expression, ITypeSymbol modelType, IReadOnlyList<string> usings)
-            => Ask(expression, modelType, usings).ReferencesChainedOrRoot;
+        internal bool ReferencesChainedOrRoot(string expression, ITypeSymbol modelType, ITypeSymbol rootType,
+            IReadOnlyList<string> usings)
+            => Ask(expression, modelType, rootType, usings).ReferencesChainedOrRoot;
 
-        private Answer Ask(string expression, ITypeSymbol modelType, IReadOnlyList<string> usings)
+        private Answer Ask(string expression, ITypeSymbol modelType, ITypeSymbol rootType,
+            IReadOnlyList<string> usings)
         {
             if (_compilation == null || modelType == null || string.IsNullOrEmpty(expression))
                 return new Answer(true, null, referencesChainedOrRoot: true);
 
-            var key = (modelType, expression);
+            var key = (modelType, rootType, expression);
             if (_typed.TryGetValue(key, out var memoized))
                 return memoized;
-            var resolved = Resolve(expression, modelType, usings);
+            var resolved = Resolve(expression, modelType, rootType, usings);
             _typed[key] = resolved;
             return resolved;
         }
 
-        private Answer Resolve(string expression, ITypeSymbol modelType, IReadOnlyList<string> usings)
+        private Answer Resolve(string expression, ITypeSymbol modelType, ITypeSymbol rootType,
+            IReadOnlyList<string> usings)
         {
-            var tree = CSharpSyntaxTree.ParseText(Wrapper(expression, modelType, usings), _parseOptions);
+            var tree = CSharpSyntaxTree.ParseText(Wrapper(expression, modelType, rootType, usings), _parseOptions);
             // The consumer's own compilation, because the model type and everything the expression reaches through
             // it are declared in its source rather than in a reference. The engine compiles standalone against the
             // consumer's assembly as a reference, where its internals are not visible; that difference is not
@@ -194,10 +199,14 @@ namespace Heddle.Generator.Binding
         /// The compilation unit the engine compiles for this expression, reproduced: every collected namespace as a
         /// <c>using</c>, then the wrapper method whose parameters are the identifiers an embedded expression may
         /// bind. The enclosing namespace is the engine's, because it is part of how a name in the expression
-        /// resolves. <c>chained</c> and <c>root</c> stand as <c>object</c> — their runtime types are not reproducible
-        /// here, which is why the emitter refuses an expression that mentions either.
+        /// resolves. <c>chained</c> is spelled <c>dynamic</c> — the engine writes <c>ExType.Dynamic</c>'s literal
+        /// spelling for every expression this probe can reach, and <c>object</c> is stricter, making member access
+        /// the engine compiles a CS1061 here. <c>root</c> is the entry model type: every entry point passes the
+        /// model as both root and model, so an untyped root is spelled <c>dynamic</c> exactly where the engine
+        /// spells it that way.
         /// </summary>
-        private static string Wrapper(string expression, ITypeSymbol modelType, IReadOnlyList<string> usings)
+        private static string Wrapper(string expression, ITypeSymbol modelType, ITypeSymbol rootType,
+            IReadOnlyList<string> usings)
         {
             var source = new StringBuilder();
             var written = new HashSet<string>(System.StringComparer.Ordinal);
@@ -223,8 +232,9 @@ namespace Heddle.Generator.Binding
                 .Append("public static class CSharpExpression {\n")
                 .Append("public static object PreProcessData(")
                 .Append(SymbolTypeResolver.FullyQualified(modelType)).Append(' ').Append(EmbeddedCSharpNames.Model)
-                .Append(", object ").Append(EmbeddedCSharpNames.Chained)
-                .Append(", object ").Append(EmbeddedCSharpNames.Root).Append(")\n")
+                .Append(", dynamic ").Append(EmbeddedCSharpNames.Chained)
+                .Append(", ").Append(rootType == null ? "dynamic" : SymbolTypeResolver.FullyQualified(rootType))
+                .Append(' ').Append(EmbeddedCSharpNames.Root).Append(")\n")
                 .Append("{\nreturn unchecked(").Append(expression).Append(");\n}\n}\n}\n");
             return source.ToString();
         }
@@ -257,16 +267,19 @@ namespace Heddle.Generator.Binding
             return containing.ToDisplayString();
         }
 
-        private sealed class KeyComparer : IEqualityComparer<(ITypeSymbol Model, string Expression)>
+        private sealed class KeyComparer : IEqualityComparer<(ITypeSymbol Model, ITypeSymbol Root, string Expression)>
         {
             internal static readonly KeyComparer Instance = new KeyComparer();
 
-            public bool Equals((ITypeSymbol Model, string Expression) x, (ITypeSymbol Model, string Expression) y) =>
+            public bool Equals((ITypeSymbol Model, ITypeSymbol Root, string Expression) x,
+                (ITypeSymbol Model, ITypeSymbol Root, string Expression) y) =>
                 SymbolEqualityComparer.Default.Equals(x.Model, y.Model) &&
+                SymbolEqualityComparer.Default.Equals(x.Root, y.Root) &&
                 string.Equals(x.Expression, y.Expression, System.StringComparison.Ordinal);
 
-            public int GetHashCode((ITypeSymbol Model, string Expression) key) =>
-                unchecked((key.Model == null ? 0 : SymbolEqualityComparer.Default.GetHashCode(key.Model)) * 397 ^
+            public int GetHashCode((ITypeSymbol Model, ITypeSymbol Root, string Expression) key) =>
+                unchecked(((key.Model == null ? 0 : SymbolEqualityComparer.Default.GetHashCode(key.Model)) * 397 ^
+                           (key.Root == null ? 0 : SymbolEqualityComparer.Default.GetHashCode(key.Root))) * 397 ^
                           key.Expression.GetHashCode());
         }
     }
