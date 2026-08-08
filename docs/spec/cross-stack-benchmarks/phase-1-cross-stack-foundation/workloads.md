@@ -407,11 +407,9 @@ public sealed class FragmentRow
     public bool IsCard { get; set; }      // Kind == "card"    never on the string — guaranteed
     public bool IsMedia { get; set; }     // Kind == "media"   common-denominator dispatch)
     public bool IsStat { get; set; }      // Kind == "stat"
-    public string Name { get; set; }      // $"item-{i:D2}"
+    public string Name { get; set; }      // $"item-{i:D2}" (identity data — the one padded value)
     public int Value { get; set; }        // i * 11
     public string Badge { get; set; }     // { "new", "hot", "sale", "std" }[i % 4]
-    public string Caption { get; set; }   // media rows: $"Caption for item-{i:D2}"; else ""
-    public string ImageUrl { get; set; }  // media rows: $"/img/item-{i:D2}.jpg"; else ""
     public int Delta { get; set; }        // i % 7 - 3
     public FragmentPromo Promo { get; set; } // on EVERY row (no engine needs a null guard)
 }
@@ -419,13 +417,19 @@ public sealed class FragmentRow
 public sealed class FragmentPromo
 {
     public string Label { get; set; }     // == Badge
-    public string Price { get; set; }     // $"{9 + i}.99"
+    public int Price { get; set; }        // 9 + i (whole-currency units — an int, not a string)
 }
 ```
 
 48 rows, `i` in `[0, 47]`. Dictionary views expose `kind, is_tile, is_card, is_media, is_stat,
-name, value, badge, caption, image_url, delta` and a nested `promo` (`label`, `price`). All
-values are rule-4 clean.
+name, value, badge, delta` and a nested `promo` (`label`, `price`). All values are rule-4 clean.
+
+**The model carries data, never display strings.** Derived text is composed by the TEMPLATES
+(that is the work being measured): the media caption is the literal `Caption for ` + `name`, the
+media image source is `/img/` + `name` + `.jpg`, and the display price is `price` + the literal
+`.99` — plain literal-plus-substitution composition, portable to every engine with no arithmetic
+or formatting helpers. Model-side pre-formatting of any of these is a port defect: it moves
+rendering work out of the engine under test.
 
 ### Heddle template — `templates/{track}/heddle/fragment-heavy.heddle` (normative)
 
@@ -436,11 +440,11 @@ values are rule-4 clean.
 <badge>
 {{<span class="promo-badge">@(Label)</span>}}
 <price>
-{{<p class="price">@(Price)</p>}}
+{{<p class="price">@(Price).99</p>}}
 <card>
 {{<article class="card"><h3>@(Name)</h3>@badge(Promo)@price(Promo)<p class="v">@(Value)</p></article>}}
 <media_row>
-{{<div class="media-row"><img src="@(ImageUrl)" alt="@(Name)" /><div class="media-body"><h4>@(Name)</h4><p>@(Caption)</p></div></div>}}
+{{<div class="media-row"><img src="/img/@(Name).jpg" alt="@(Name)" /><div class="media-body"><h4>@(Name)</h4><p>Caption for @(Name)</p></div></div>}}
 <stat>
 {{<div class="stat"><span class="stat-name">@(Name)</span><span class="stat-value">@(Value)</span><span class="stat-delta">@(Delta)</span></div>}}
 %@
