@@ -18,7 +18,7 @@ namespace Heddle.Benchmarks.Dotnet.Engines
     /// the layout partial emits the live body slot with <c>{{&gt; @partial-block}}</c> — the exact
     /// analogue of Heddle's definition-only layout with <c>@out()</c>. The layout carries the full
     /// literal chrome; the inert chrome fragments and the section defaults are per-fragment
-    /// partials mirroring <c>chrome-fragments.heddle</c> (E22 — no C# tier text), and the nav
+    /// partials mirroring <c>shared/chrome-fragments.heddle</c> (E22 — no C# tier text), and the nav
     /// renders through nested partials (<c>mega_menu → nav_column → nav_section → nav_link</c>).
     ///
     /// fragment-heavy dispatches per row over the precomputed booleans with the probe-verified
@@ -39,16 +39,16 @@ namespace Heddle.Benchmarks.Dotnet.Engines
 
             // ---- composed-page: partial-block layout. E22: the model carries structured nav
             // DATA only — every fragment of literal chrome text is a registered partial
-            // (mirroring chrome-fragments.heddle), and the layout partial holds the full chrome
+            // (mirroring shared/chrome-fragments.heddle), and the layout partial holds the full chrome
             // with {{> @partial-block}} at the body slot.
             var composedEnv = Handlebars.Create();
             composedEnv.RegisterTemplate("layout", Src("layout.hbs"));
-            // Section defaults (Heddle layout.heddle's @% block).
+            // Section defaults (Heddle shared/layout.heddle's @% block).
             composedEnv.RegisterTemplate("meta", Src("meta.hbs"));
             composedEnv.RegisterTemplate("socialmeta", Src("socialmeta.hbs"));
             composedEnv.RegisterTemplate("page_scripts", Src("page-scripts.hbs"));
             composedEnv.RegisterTemplate("endpage_scripts", Src("endpage-scripts.hbs"));
-            // Chrome fragments (chrome-fragments.heddle, E22).
+            // Chrome fragments (shared/chrome-fragments.heddle, E22).
             composedEnv.RegisterTemplate("alert_top", Src("alert-top.hbs"));
             composedEnv.RegisterTemplate("alert_below", Src("alert-below.hbs"));
             composedEnv.RegisterTemplate("secondary_wholesale_menu", Src("secondary-wholesale-menu.hbs"));

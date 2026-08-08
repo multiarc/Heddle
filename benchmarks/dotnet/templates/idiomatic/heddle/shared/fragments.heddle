@@ -1,0 +1,59 @@
+@*
+    Idiomatic Heddle -- fragment-heavy fragment library (phase 9; authoring standard D16).
+
+    Patterns followed, from Heddle's own documentation:
+      Language reference   docs/language-reference.md ("Composition without coupling" --
+                           definition libraries imported via @<<, Q1.7)
+      Architecture         docs/architecture.md
+
+    Definition-only library: the six fragment kinds (tile, badge, price, card, media_row,
+    stat) as named definitions the fragment-heavy entry dispatches over per row; the card
+    fragment nests @badge/@price against the row's Promo, passing the member down exactly
+    as the reference's "passing the current value into a call" teaches. Importing it
+    renders nothing. Checked by the functional verifier, not the byte gate.
+*@
+@%
+<tile>
+{{
+    <section class="tile">
+        <h3>@(Name)</h3>
+        <p class="v">@(Value)</p>
+        <span class="badge">@(Badge)</span>
+    </section>
+}}
+<badge>
+{{
+    <span class="promo-badge">@(Label)</span>
+}}
+<price>
+{{
+    <p class="price">@(Price).99</p>
+}}
+<card>
+{{
+    <article class="card">
+        <h3>@(Name)</h3>
+        @badge(Promo)
+        @price(Promo)
+        <p class="v">@(Value)</p>
+    </article>
+}}
+<media_row>
+{{
+    <div class="media-row">
+        <img src="/img/@(Name).jpg" alt="@(Name)" />
+        <div class="media-body">
+            <h4>@(Name)</h4>
+            <p>Caption for @(Name)</p>
+        </div>
+    </div>
+}}
+<stat>
+{{
+    <div class="stat">
+        <span class="stat-name">@(Name)</span>
+        <span class="stat-value">@(Value)</span>
+        <span class="stat-delta">@(Delta)</span>
+    </div>
+}}
+%@

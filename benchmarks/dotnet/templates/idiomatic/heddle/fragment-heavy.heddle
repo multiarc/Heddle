@@ -2,62 +2,18 @@
     Idiomatic Heddle -- fragment-heavy (phase 9; authoring standard D16).
 
     Patterns followed, from Heddle's own documentation:
-      Language reference   docs/language-reference.md
+      Language reference   docs/language-reference.md ("Composition without coupling" --
+                           definition libraries imported via @<<, Q1.7)
       Architecture         docs/architecture.md
 
-    Authored the way the reference teaches -- readable block layout, definitions declared in the
-    @%...%@ header, and `@list`/`@if`/`@elif`/`@else` for control flow -- rather than collapsed onto
-    one line to match the oracle byte-for-byte. Four fragment kinds dispatch per row on the
-    precomputed booleans; the card fragment nests @badge/@price against the row's Promo, passing
-    the member down exactly as the reference's "passing the current value into a call" teaches.
+    Authored the way the reference teaches -- readable block layout, definitions imported
+    from the shared/fragments.heddle library via `@<<`, and `@list`/`@if`/`@elif`/`@else`
+    for control flow -- rather than collapsed onto one line to match the oracle
+    byte-for-byte. Four fragment kinds dispatch per row on the precomputed booleans.
     Checked by the functional verifier, not the byte gate.
 *@
 
-@%
-<tile>
-{{
-    <section class="tile">
-        <h3>@(Name)</h3>
-        <p class="v">@(Value)</p>
-        <span class="badge">@(Badge)</span>
-    </section>
-}}
-<badge>
-{{
-    <span class="promo-badge">@(Label)</span>
-}}
-<price>
-{{
-    <p class="price">@(Price).99</p>
-}}
-<card>
-{{
-    <article class="card">
-        <h3>@(Name)</h3>
-        @badge(Promo)
-        @price(Promo)
-        <p class="v">@(Value)</p>
-    </article>
-}}
-<media_row>
-{{
-    <div class="media-row">
-        <img src="/img/@(Name).jpg" alt="@(Name)" />
-        <div class="media-body">
-            <h4>@(Name)</h4>
-            <p>Caption for @(Name)</p>
-        </div>
-    </div>
-}}
-<stat>
-{{
-    <div class="stat">
-        <span class="stat-name">@(Name)</span>
-        <span class="stat-value">@(Value)</span>
-        <span class="stat-delta">@(Delta)</span>
-    </div>
-}}
-%@
+@<<{{shared/fragments.heddle}}
 <div class="panel">
 @list(Items){{@if(IsTile){{@tile()}}@elif(IsCard){{@card()}}@elif(IsMedia){{@media_row()}}@else(){{@stat()}}}}
 </div>

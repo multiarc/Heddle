@@ -12,7 +12,7 @@
     empty body, deliberately. Checked by the functional verifier, not the byte gate.
 *@
 
-@<<{{layout.heddle}}
+@<<{{shared/layout.heddle}}
 @layout()
 {{
         <div class="slider-wrapper theme-default">

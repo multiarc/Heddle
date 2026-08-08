@@ -1,24 +1,5 @@
-@*
-    Idiomatic Heddle -- composed-page layout (phase 9; authoring standard D16).
-
-    Patterns followed, from Heddle's own documentation:
-      Language reference   docs/language-reference.md ("Composition without coupling" --
-                           the layout-as-definition idiom, Q1.7)
-      Architecture         docs/architecture.md
-
-    This file is DEFINITION-ONLY: importing it renders nothing. The full page chrome lives
-    inside the <layout> definition, a bare @out() marks the body slot, and a page composes by
-    `@<<{{layout.heddle}}` + `@layout(){{ ...body... }}` -- the documented equivalent of
-    Razor's Layout/@RenderBody, at zero render-time cost. Sections keep defaults a page may
-    override with the ordinary <name:name> mechanism. The two mega menus and the footer render
-    from the structured nav model through nested definitions; the inert chrome fragments
-    (alert banner, secondary menus, asset/script snippets) are definitions imported from
-    chrome-fragments.heddle -- all display text lives in templates (ledger E22). Checked by
-    the functional verifier, not the byte gate.
-*@
-
 @using() {{Heddle.Benchmarks.Dotnet.Models}}
-@<<{{chrome-fragments.heddle}}
+@<<{{shared/chrome-fragments.heddle}}
 @%
     <meta>
     {{
@@ -37,38 +18,13 @@
     {{
     }}
     <nav_link>
-    {{
-        <li class="nav-link"><a href="@(Href)">@(Label)</a></li>
-    }}
+    {{<li class="nav-link"><a href="@(Href)">@(Label)</a></li>}}
     <nav_section>
-    {{
-        <div class="nav-section">
-            @if(TitleLinked)
-            {{<span class="nav-title"><a href="@(Href)">@(Title)</a></span>}}
-            @else()
-            {{<span class="nav-title">@(Title)</span>}}
-            <ul>@list(Links){{@nav_link()}}</ul>
-        </div>
-    }}
+    {{<div class="nav-section">@if(TitleLinked){{<span class="nav-title"><a href="@(Href)">@(Title)</a></span>}}@else(){{<span class="nav-title">@(Title)</span>}}<ul>@list(Links){{@nav_link()}}</ul></div>}}
     <nav_column>
-    {{
-        <div class="nav-column">@list(Sections){{@nav_section()}}</div>
-    }}
+    {{<div class="nav-column">@list(Sections){{@nav_section()}}</div>}}
     <mega_menu>
-    {{
-        <div class="top-menu-wrapper">
-            <ul class="top-menu">
-                @list(Tabs)
-                {{
-                    <li class="@(Css)">
-                        <a href="@(Href)" class="drop">@(Label)</a>
-                        @if(HasDropdown)
-                        {{<div class="@(DropdownCss)">@list(Columns){{@nav_column()}}</div>}}
-                    </li>
-                }}
-            </ul>
-        </div>
-    }}
+    {{<div class="top-menu-wrapper"><ul class="top-menu">@list(Tabs){{<li class="@(Css)"><a href="@(Href)" class="drop">@(Label)</a>@if(HasDropdown){{<div class="@(DropdownCss)">@list(Columns){{@nav_column()}}</div>}}</li>}}</ul></div>}}
     <layout>
     {{<!DOCTYPE html>
 <!--[if lt IE 9]>

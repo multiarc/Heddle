@@ -39,14 +39,14 @@ cannot be parity-gated (plan constraint, carried).
 
 The three existing workloads are **not modified in any way**: their templates
 ([home.heddle](../../../../benchmarks/dotnet/templates/controlled/heddle/home.heddle),
-[layout.heddle](../../../../benchmarks/dotnet/templates/controlled/heddle/layout.heddle),
+[layout.heddle](../../../../benchmarks/dotnet/templates/controlled/heddle/shared/layout.heddle),
 [trivial-substitution.heddle](../../../../benchmarks/dotnet/templates/controlled/heddle/trivial-substitution.heddle),
 [large-loop.heddle](../../../../benchmarks/dotnet/templates/controlled/heddle/large-loop.heddle)), their
 runner classes, their models, and their benchmark classes stay untouched, so historical numbers
 remain comparable run-to-run. This spec adds a corpus export and verifier definition for each —
 nothing else.
 
-- **`composed-page`** — `home.heddle` extends `layout.heddle` via `@<<{{layout.heddle}}`; the
+- **`composed-page`** — `home.heddle` extends `layout.heddle` via `@<<{{shared/layout.heddle}}`; the
   output is the documented ordered fragment sequence (not a full HTML page). The fidelity note
   and `@<<` root cause in the
   [Runners README](../../../../benchmarks/dotnet/GoldenCorpus/README.md) are carried **verbatim**
@@ -120,7 +120,7 @@ text lives in the templates (E22: "the model-preparation tier carries DATA only"
 - **Inert chrome fragments** (E22; formerly the `AreaData` blob dictionary, now deleted): the
   alert banner, the two secondary menus, the pinned-empty alert-below slot, and the six fixed
   asset/script snippets are **named definitions in a definition-only template library**
-  (`chrome-fragments.heddle`, imported by the layout via `@<<`) that the chrome calls at its
+  (`shared/chrome-fragments.heddle`, imported by the layout via `@<<`) that the chrome calls at its
   composition points — pre-rendered literal HTML, but owned by the template tier, overridable
   per page with the ordinary `<name:name>` mechanism. The memcpy floor stays represented; no
   C# fixture serves text to any engine.
@@ -158,25 +158,25 @@ source of truth the five non-.NET ecosystems load from
 (docs/language-reference.md §"Composition without coupling"), proven at benchmark scale by
 `src/Heddle.Tests/LayoutDefinitionCompositionTests.cs`:
 
-- `chrome-fragments.heddle` (E22) is a **definition-only fragment library**: the alert banner
+- `shared/chrome-fragments.heddle` (E22) is a **definition-only fragment library**: the alert banner
   (`alert_top`), the two secondary menus (`secondary_wholesale_menu`,
   `secondary_retail_menu`), the pinned-empty `alert_below`, and the fixed asset/script
   snippets (`assets_styles`, `assets_scripts`, `custom_styles`, `head_scripts`,
   `body_scripts`, `body_end_scripts`). Importing it renders nothing; any piece is overridable
   with `<name:name>`.
-- `layout.heddle` is **definition-only**: `@<<{{chrome-fragments.heddle}}` (nested imports are
+- `layout.heddle` is **definition-only**: `@<<{{shared/chrome-fragments.heddle}}` (nested imports are
   the documented mechanism — Stage-1 test (f)), then one `@% … %@` block holding the section
   defaults (`meta`, `socialmeta`, `page_scripts`, `endpage_scripts`), the four nav fragment
   definitions below, and `<layout>{{ …the full ~150-line chrome… }} :: ComposedModel` with a
   bare `@out()` at the body-slot position. Importing the file renders nothing.
-- `home.heddle` is `@<<{{layout.heddle}}` + `@layout(){{ …slider markup… }}` — the call body
+- `home.heddle` is `@<<{{shared/layout.heddle}}` + `@layout(){{ …slider markup… }}` — the call body
   splices at `@out()`. Section overrides, when a page wants them, are the ordinary
   `<name:name>` mechanism after the import line. **Both tracks carry the same slider body**
   (the verifier's removed-segment calibration pin is the slider, so an empty body fails).
 
 The nav fragment definitions (normative bytes for the controlled oracle; the chrome literal is
 normative as committed in
-[layout.heddle](../../../../benchmarks/dotnet/templates/controlled/heddle/layout.heddle)):
+[layout.heddle](../../../../benchmarks/dotnet/templates/controlled/heddle/shared/layout.heddle)):
 
 ```heddle
 <nav_link>
