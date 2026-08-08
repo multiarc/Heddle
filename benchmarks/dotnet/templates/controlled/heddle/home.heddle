@@ -1,7 +1,6 @@
 @<<{{layout.heddle}}
-@%
-    <body:body>
-    {{
+@layout()
+{{
         <div class="slider-wrapper theme-default">
             <div id="slider" class="nivoSlider">
             </div>
@@ -13,5 +12,4 @@
                 </div>
             </div>
         </div>
-    }}
-%@
+}}

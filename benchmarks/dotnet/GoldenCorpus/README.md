@@ -2,9 +2,11 @@
 
 The committed parity reference for the cross-stack benchmark program (phases 2–6): one
 `<workload>.golden.html` per workload containing **Heddle's rendered output in the stored
-normalized form**, plus `manifest.json` (byte length, SHA-256, generating commit per entry) and
+normalized form**, plus `manifest.json` (byte length, SHA-256, generating commit per entry),
 one `<workload>.verify.json` per workload (the idiomatic-verifier definition, exported from
-`../src/Corpus/VerifierDefinitions.cs`).
+`../src/Corpus/VerifierDefinitions.cs`), and `fixtures/` (exported model data the non-.NET
+ports load — today `fixtures/composed-page/nav.json`, the structured navigation — recorded in
+the manifest's `fixtures` section with the same hash discipline as the goldens).
 
 ## Contract summary
 
@@ -33,43 +35,32 @@ Normative definitions: [golden-corpus.md](../../../docs/spec/cross-stack-benchma
 [workloads.md](../../../docs/spec/cross-stack-benchmarks/phase-1-cross-stack-foundation/workloads.md)
 (the eight workload shapes).
 
-## Fidelity note — what the composed page actually contains
+## Full-page composition — what the composed page contains (ledger E20)
 
-(The `composed-page` corpus entry is exported exactly as Heddle renders it today — spec D5.)
+Since the E20 redesign the `composed-page` entry is a genuine **full HTML page**, rendered
+through Heddle's documented layout-as-definition idiom
+(docs/language-reference.md §"Composition without coupling" — **no engine change**):
 
-The rendered page is fully static: the model is an empty `object` and every Heddle extension returns
-a fixed string. Under the current engine, rendering `home.heddle` (which extends `layout.heddle`)
-emits the reusable-section defaults and the component/area calls **in order**, but not the layout's
-literal HTML skeleton, the account-link block, or the overridden `<body:body>` slider (the
-`@body()` call resolves to the empty default). The twins therefore reproduce exactly that ordered
-fragment sequence:
+- `layout.heddle` is **definition-only** — the whole ~150-line chrome (doctype, IE
+  conditionals, head, header, footer) lives *inside* a `<layout>{{ … }} :: ComposedModel`
+  definition, so importing the file renders nothing;
+- a bare `@out()` marks the **live body slot**; `home.heddle` does `@<<{{layout.heddle}}` and
+  calls `@layout(){{ …slider markup… }}`, whose body splices at the slot (both tracks carry the
+  same slider body — the verifier's removed-segment calibration pin is that slider, so an empty
+  body FAILS);
+- the data model is **hybrid**: four inert blob areas stay in `AreaData` and render through
+  `@area_component(...)` (Alert Top, Secondary Wholesale Menu, Secondary Retail Menu, the
+  pinned-empty Alert Below), while the two mega menus and the footer links are **structured
+  data** in `NavData` rendered by `@list(Nav.Menus){{@mega_menu()}}` /
+  `@list(Nav.FooterColumns){{@nav_column()}}` over nested `mega_menu` → `nav_column` →
+  `nav_section` → `nav_link` definitions;
+- the structured nav is exported to `fixtures/composed-page/nav.json` (snake_case, LF,
+  manifest-hashed) — the single source of truth the five non-.NET ports load their nav models
+  from;
+- every nav text value is sanitized to workloads.md rule 4 (ASCII, none of `& < > " '`), so
+  default-escaping engines cannot double-escape; `NavData`'s static constructor asserts the rule.
 
-```
-section.meta → section.social
-→ assets_styles → custom_styles → head_scripts → body_scripts
-→ [loop] Alert-Above, Secondary-Wholesale, Secondary-Retail, Wholesale-Mega,
-         Retail-Mega, Alert-Below (empty), Footer-Links
-→ assets_scripts → page_scripts (empty) → endpage_scripts (empty) → body_end_scripts
-```
-
-This keeps the parity comparison honest (all six engines render byte-identical output). As of
-2026-07-25 that includes `RazorTest`: it renders `Views/twin-home.cshtml` + `twin-layout.cshtml`
-from the shared `TwinContent` fixtures and is asserted like the other four twins
-([ledger E5](../../../docs/spec/records.md#cross-spec-amendments-ledger)). It previously rendered
-the full `Views/layout.cshtml` page and sat outside every gate.
-
-### Root cause (investigated for D2 — no engine change)
-
-The omission is **specific to the `@<<` layout-extend path when the extending document is the
-compile entry point**, not to the templates or the harness wiring. Confirmed empirically: compiling
-`layout.heddle` *directly* as the entry point (`TemplateOptions("layout")`) renders the full ~60 KB
-composed page — `<!DOCTYPE html>`, the header/account-link chrome, `@body()`, and the footer all
-present. Compiling `home.heddle` (which does `@<<{{layout.heddle}}`) as the entry point instead
-emits only the section defaults + component/area calls (output begins at `<title>Title</title>`,
-not `<!DOCTYPE html>`), and `@body()` resolves to its empty default so the `<body:body>` slider is
-absent. Making `home` render the composed page therefore requires an engine change to the `@<<`
-composition semantics, which is out of scope for the D benchmark workstream. Swapping the entry to
-`layout` would render more chrome but drops the `<body:body>` override and would force every twin to
-embed the layout's literal HTML verbatim (parity-drift risk) — so the workload is left as the
-parity-asserted fragment sequence and documented precisely here and in the published numbers. The
-non-negotiable property (all five engines do identical, parity-checked work) holds regardless.
+Every twin composes with its **own native layout mechanism** (Razor `Layout`/`@RenderBody`,
+Liquid capture-then-include, Handlebars partial blocks, …) — the normative per-engine table is
+in
+[workloads.md — workload 1](../../../docs/spec/cross-stack-benchmarks/phase-1-cross-stack-foundation/workloads.md).

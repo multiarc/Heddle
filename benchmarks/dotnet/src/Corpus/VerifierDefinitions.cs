@@ -73,42 +73,86 @@ namespace Heddle.Benchmarks.Dotnet.Corpus
 
         private static Authored ComposedPage()
         {
-            // Needles computed from the members the engines render from — TwinContent and AreaData —
-            // rather than transcribed: SectionMeta whole, the first 60 characters of the normalized
-            // "Footer Links" area, and one distinctive >= 20-character anchor per ordered fragment.
+            // Since the E20 full-page redesign the needles come from THREE sources, all computed
+            // rather than transcribed where the spec allows: the fixed fragments (TwinContent), the
+            // remaining blob areas (AreaData, via PinArea), and the structured nav (NavData) whose
+            // counts are walked from the very model every engine renders from.
+            var nav = NavData.Model();
+
+            var totalLinks = 0;
+            var totalColumns = 0;
+            void CountColumn(NavColumn column)
+            {
+                totalColumns++;
+                foreach (var s in column.Sections) totalLinks += s.Links.Count;
+            }
+            foreach (var menu in nav.Menus)
+                foreach (var tab in menu.Tabs)
+                    foreach (var column in tab.Columns)
+                        CountColumn(column);
+            foreach (var column in nav.FooterColumns) CountColumn(column);
+
+            // A unique deep link, resolved from the model so the needle cannot drift from it.
+            var privacy = nav.FooterColumns
+                .SelectMany(c => c.Sections).SelectMany(s => s.Links)
+                .Single(l => string.Equals(l.Href, "/content/privacy-policy", StringComparison.Ordinal));
+            var privacyNeedle =
+                $"<li class=\"nav-link\"><a href=\"{privacy.Href}\">{privacy.Label}</a></li>";
+
             var sectionMeta = TwinContent.Normalize(TwinContent.SectionMeta);
-            var footer60 = TwinContent.Normalize(TwinContent.Areas["Footer Links"]).Substring(0, 60);
+
+            // The slider fragment home.heddle splices into the layout's @out() slot. Pinned as the
+            // removed-row corruption so an idiomatic page with an EMPTY body fails the verifier.
+            const string sliderSegment =
+                "<img src=\"/files/homepage/homebtmbanners/gluten-hp.jpg\" width=\"984\" border=\"0\" />";
+
+            // One anchor unique to each mega menu (the menus are near-identical; these hrefs are
+            // the wholesale-only and retail-only rows). Swapped as the reordered corruption.
+            const string wholesaleAnchor = "/product/coming-soon-paleo-pork";
+            const string retailAnchor = "/products/paleo-friendly-pork";
 
             var markers = new[]
             {
+                // Full-page shape, in document order: doctype, head, alert blob, header chrome,
+                // secondary-menu blobs, the two mega menus, the spliced body, footer chrome,
+                // closing script, closing tag.
+                "<!DOCTYPE html>",
                 Pin(sectionMeta, sectionMeta),
-                Pin(TwinContent.Normalize(TwinContent.SectionSocial),
-                    "<meta property=\"og:image\" content=\"/files/catalog/img.jpg\">"),
-                Pin(TwinContent.Normalize(TwinContent.CompAssetsStyles),
-                    "<link rel=\"stylesheet\" href=\"/main.css\" />"),
-                // Each non-empty AreaOrder area, in order ("Alert Top Section Below Nav" is empty
-                // and is therefore skipped rather than pinned to nothing).
                 PinArea("Alert Top Section Above Nav", "xmas-shipping-alert-1.jpg"),
+                "id=\"search-area-form\"",
                 PinArea("Secondary Wholesale Menu", "/content/wholesale-promotions"),
                 PinArea("Secondary Retail Menu", "/content/request-catalog\">Catalog</a>"),
-                PinArea("Wholesale Top Mega Menu", "/product/coming-soon-paleo-pork"),
-                PinArea("Retail Top Mega Menu", "/products/paleo-friendly-pork"),
-                PinArea("Footer Links", "<div class=\"footer-links-column\">"),
+                ">Shop All Products</a>",
+                wholesaleAnchor,
+                retailAnchor,
+                "homebtmbanners/gluten-hp.jpg",
+                "/Assets/images/seeourcatalog.jpg",
                 Pin(TwinContent.Normalize(TwinContent.CompBodyEndScripts),
                     "<script src=\"/bodyend.js\"></script>"),
+                "</html>",
             };
 
             return new Authored
             {
                 Definition = Def("composed-page", "raw",
-                    values: new[] { V(sectionMeta, 1), V(footer60, 1) },
+                    values: new[]
+                    {
+                        V(sectionMeta, 1),
+                        // Every nav link renders exactly one of these (mega menus + footer).
+                        V("<li class=\"nav-link\"><a href=\"", totalLinks),
+                        // Every nav column (mega menus + the four footer columns).
+                        V("<div class=\"nav-column\">", totalColumns),
+                        // The first footer column's title — proves the footer rendered.
+                        V("<span class=\"nav-title\">Need Help?</span>", 1),
+                        V(privacyNeedle, 1),
+                    },
                     markers: markers),
-                // Delete the SectionSocial fragment; swap the leading SectionMeta and SectionSocial
-                // fragments. Both trip the ordered-markers check.
-                RemovedSegment = markers[1],
+                // Delete the spliced slider body (an empty idiomatic body must FAIL); swap the
+                // wholesale-only and retail-only mega anchors. Both trip the ordered-markers check.
+                RemovedSegment = sliderSegment,
                 RemovedKind = "marker",
-                SwapA = markers[0],
-                SwapB = markers[1],
+                SwapA = wholesaleAnchor,
+                SwapB = retailAnchor,
             };
         }
 
@@ -189,22 +233,40 @@ namespace Heddle.Benchmarks.Dotnet.Corpus
             SwapB = "unit-100",
         };
 
-        private static Authored FragmentHeavy() => new Authored
+        private static Authored FragmentHeavy()
         {
-            Definition = Def("fragment-heavy", "raw",
-                values: new[]
-                {
-                    V("<section class=\"tile\">", 48),
-                    V("tile-00", 1),
-                    V("tile-47", 1),
-                    V("<span class=\"badge\">new</span>", 12),
-                },
-                markers: new[] { "<div class=\"panel\">", "tile-00", "tile-24", "tile-47", "</div>" }),
-            RemovedSegment = "tile-00",
-            RemovedKind = "value",
-            SwapA = "tile-00",
-            SwapB = "tile-24",
-        };
+            // The first row is a tile; its whole fragment is the removed-row corruption, computed
+            // from the model so the pin cannot drift. Rows 0 and 24 are both tiles (i % 4 == 0),
+            // row 47 a stat — the three name markers cover the dispatch cycle end to end.
+            var row0 = FragmentContent.Model().Items[0];
+            var firstTile = "<section class=\"tile\"><h3>" + row0.Name + "</h3><p class=\"v\">"
+                + row0.Value.ToString(CultureInfo.InvariantCulture)
+                + "</p><span class=\"badge\">" + row0.Badge + "</span></section>";
+
+            return new Authored
+            {
+                Definition = Def("fragment-heavy", "raw",
+                    values: new[]
+                    {
+                        // 12 of each fragment kind (48 rows, i % 4 dispatch)...
+                        V("<section class=\"tile\">", 12),
+                        V("<article class=\"card\">", 12),
+                        V("<div class=\"media-row\">", 12),
+                        V("<div class=\"stat\">", 12),
+                        // ...and the nested badge/price partials once per card — proves the
+                        // nesting level actually ran.
+                        V("<span class=\"promo-badge\">", 12),
+                        V("<p class=\"price\">", 12),
+                        V("item-00", 1),
+                        V("item-47", 1),
+                    },
+                    markers: new[] { "<div class=\"panel\">", "item-00", "item-24", "item-47", "</div>" }),
+                RemovedSegment = firstTile,
+                RemovedKind = "value",
+                SwapA = "item-00",
+                SwapB = "item-24",
+            };
+        }
 
         private static Authored FortunesEncoded()
         {

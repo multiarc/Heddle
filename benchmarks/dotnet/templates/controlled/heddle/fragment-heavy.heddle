@@ -1,5 +1,15 @@
 @%
 <tile>
 {{<section class="tile"><h3>@(Name)</h3><p class="v">@(Value)</p><span class="badge">@(Badge)</span></section>}}
+<badge>
+{{<span class="promo-badge">@(Label)</span>}}
+<price>
+{{<p class="price">@(Price)</p>}}
+<card>
+{{<article class="card"><h3>@(Name)</h3>@badge(Promo)@price(Promo)<p class="v">@(Value)</p></article>}}
+<media_row>
+{{<div class="media-row"><img src="@(ImageUrl)" alt="@(Name)" /><div class="media-body"><h4>@(Name)</h4><p>@(Caption)</p></div></div>}}
+<stat>
+{{<div class="stat"><span class="stat-name">@(Name)</span><span class="stat-value">@(Value)</span><span class="stat-delta">@(Delta)</span></div>}}
 %@
-<div class="panel">@list(Items){{@tile()}}</div>
+<div class="panel">@list(Items){{@if(IsTile){{@tile()}}@elif(IsCard){{@card()}}@elif(IsMedia){{@media_row()}}@else(){{@stat()}}}}</div>

@@ -33,6 +33,8 @@ src/Heddle.Demo.Wasm/contract-fixtures/**         text eol=lf
 benchmarks/dotnet/GoldenCorpus/*.golden.html -text
 benchmarks/dotnet/GoldenCorpus/*.verify.json text eol=lf
 benchmarks/dotnet/GoldenCorpus/manifest.json text eol=lf
+# Exported model fixtures (ledger E20) are hash-recorded in the manifest like the goldens; LF text.
+benchmarks/dotnet/GoldenCorpus/fixtures/**   text eol=lf
 
 # Rust benchmark harness: composed-page fragment data must round-trip byte-exact (-text); template
 # files are ordinary LF text (the harness erases their line endings, but LF keeps diffs clean).

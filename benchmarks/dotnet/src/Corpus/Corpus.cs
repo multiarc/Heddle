@@ -66,6 +66,10 @@ namespace Heddle.Benchmarks.Dotnet.Corpus
         {
             public string Generator { get; set; }
             public List<ManifestEntry> Entries { get; set; } = new List<ManifestEntry>();
+
+            /// <summary>The exported model fixtures (ledger E20) — hash-recorded like the goldens.
+            /// Defaults to empty so a manifest predating the section still loads.</summary>
+            public List<ManifestEntry> Fixtures { get; set; } = new List<ManifestEntry>();
         }
 
         /// <summary>

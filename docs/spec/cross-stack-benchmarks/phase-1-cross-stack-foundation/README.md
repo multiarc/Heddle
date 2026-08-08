@@ -141,6 +141,15 @@ mechanisms and close the spec-territory details the plan delegated.)
 - **Grounding.** Spike B §(b)/(c) (executed); spike C §(b); golang/go#42506.
 
 ### D5 — The composed-page anchor keeps its fragment-sequence shape (Q1.4)
+
+> **Amended 2026-08-08 ([E20](../../records.md#cross-spec-amendments-ledger)): superseded.**
+> `composed-page` is now a genuine full-page layout workload built on the documented
+> layout-as-definition idiom — **no engine change was required**; the premise that one was is
+> what E20 retires. The fidelity note and root-cause text were deleted from
+> `GoldenCorpus/README.md` and replaced by the full-page composition note; the normative shape
+> lives in [workloads.md — workload 1](workloads.md#workload-1--composed-page-raw--amended-e20).
+> The text below stands as ratified history.
+
 - **Decision.** `composed-page` is exported to the corpus exactly as it renders today; the
   Runners README fidelity note and `@<<` root-cause text are copied **verbatim** into
   `GoldenCorpus/README.md`. The mid-size mixed page carries realistic-full-page duty.

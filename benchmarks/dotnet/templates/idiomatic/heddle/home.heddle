@@ -2,19 +2,28 @@
     Idiomatic Heddle -- composed-page (phase 9; authoring standard D16).
 
     Patterns followed, from Heddle's own documentation:
-      Language reference   docs/language-reference.md
+      Language reference   docs/language-reference.md ("Composition without coupling" --
+                           the layout-as-definition idiom, Q1.7)
       Architecture         docs/architecture.md
 
-    Authored the way the reference teaches -- readable block layout, definitions declared in the
-    @%...%@ header, and `@list`/`@if`/`@elif`/`@else` for control flow -- rather than collapsed onto
-    one line to match the oracle byte-for-byte. Checked by the functional verifier, not the byte
-    gate. The encoded workloads rely on OutputProfile.Html, where `@(...)` encodes by default and
-    `@attr(...)` applies attribute-context encoding; nothing here opts out.
+    The page imports the definition-only layout and calls @layout() with the slider body; the
+    body splices at the layout's @out() slot. The slider content is the SAME as the controlled
+    track's -- the verifier's calibration pin (RemovedSegment = the slider fragment) fails an
+    empty body, deliberately. Checked by the functional verifier, not the byte gate.
 *@
 
 @<<{{layout.heddle}}
-@%
-    <body:body>
-    {{
-    }}
-%@
+@layout()
+{{
+        <div class="slider-wrapper theme-default">
+            <div id="slider" class="nivoSlider">
+            </div>
+            <div class="home-content">
+                <div>
+                    <a href="/products/gluten-free">
+                        <img src="/files/homepage/homebtmbanners/gluten-hp.jpg" width="984" border="0" />
+                    </a>
+                </div>
+            </div>
+        </div>
+}}

@@ -24,6 +24,10 @@ benchmarks/dotnet/GoldenCorpus/
   encoded-loop.golden.html
   composed-page.verify.json      ← idiomatic-verifier definition (one per workload)
   … (.verify.json for all eight)
+  fixtures/
+    composed-page/
+      nav.json                   ← structured nav model (ledger E20) — the single source the
+                                   non-.NET ports load; hash-recorded in the manifest
 ```
 
 Rationale for the location: the corpus is produced by and re-verified against the code that
@@ -99,6 +103,17 @@ Field semantics (all required):
 
 Entries are ordered by workload number (1–8). The manifest is regenerated whole on every export.
 
+> **Added (E20, 2026-08-08) — the `fixtures` section.** The manifest gains a second array,
+> `fixtures`, recording every exported model fixture with the same fields as a golden entry
+> (`workload`, `file` — relative to `GoldenCorpus/`, e.g. `fixtures/composed-page/nav.json` —
+> `byteLength`, `hash`, `generatingCommit`, `generatedUtc`; no `suite`). Today it carries one
+> entry: composed-page's structured navigation, serialized from `NavData` as UTF-8/LF,
+> two-space-indented JSON with snake_case keys in declaration order (`menus` → `tabs` →
+> `label`, `href`, `css`, `has_dropdown`, `dropdown_css`, `columns` → `sections` → `title`,
+> `href`, `title_linked`, `links` → `label`, `href`; then `footer_columns`). Loaders that
+> predate the section tolerate its presence (unknown-member-tolerant JSON parsing); the .NET
+> loader models it explicitly and defaults it to empty for older manifests.
+
 ## Export tool
 
 Net-new code in `src/Heddle.Performance` (spike A §7 confirmed nothing exists to reuse there;
@@ -118,6 +133,9 @@ the `Heddle.Tests` golden-file pattern is a precedent, not a shared mechanism).
   comparison ([contract — N3b](parity-contract-v2.md#normalization-pipeline)). Also writes every `<id>.verify.json` from the check definitions in
   `Runners/IdiomaticChecks.cs` (single source of truth in C#; the JSON is the exported,
   cross-language-consumable form).
+- **Added (E20):** the export additionally serializes the composed-page nav model to
+  `fixtures/composed-page/nav.json` and records it in the manifest's `fixtures` section (see
+  [Manifest](#manifest)); regeneration and review treat it exactly like a golden.
 - **Commit stamping:** the tool runs `git rev-parse HEAD` and `git status --porcelain`
   (`System.Diagnostics.Process`, working directory = repo root). A non-empty status output means
   a dirty tree: the tool **refuses to export** and exits 1 with
@@ -141,7 +159,10 @@ new verb, exit 0 iff all checks pass:
    (N1–N5, `TwinContent.Normalize` + N5; N3b is not a stored-form step), UTF-8-encode, compare
    byte-for-byte with the committed corpus file; also recompute SHA-256 and compare with
    the manifest. Prints `[PASS]`/`[FAIL] <workload> …` lines in the `ParityCheck.Report` style
-   (first-diff index + excerpt on failure).
+   (first-diff index + excerpt on failure). **Added (E20):** the same discipline covers the
+   `fixtures` section — each fixture file is re-serialized live from its model source
+   (`nav.json` from `NavData`), compared byte-for-byte with the committed file, and its
+   hash/length re-checked against the manifest entry.
 2. **Verifier calibration** — for each workload: run the idiomatic verifier
    (`IdiomaticChecks`) against the corpus entry (must accept), then against its applicable
    synthesized corruptions — two per raw workload, three per encoded workload — each of which
@@ -150,11 +171,16 @@ new verb, exit 0 iff all checks pass:
      (per-workload substring pinned in `IdiomaticChecks`, e.g. the full first `<tr>…</tr>` of
      `large-loop`). The two rowless raw anchors pin a whole segment instead: **composed-page**
      deletes its `SectionSocial` marker fragment (trips the ordered-`markers` check for the
-     missing fragment); **trivial-substitution** deletes its `HB-2001` sku value (trips the
+     missing fragment) *(amended (E20): composed-page now deletes the SLIDER fragment the page
+     body splices at the layout's `@out()` slot — so an idiomatic implementation with an empty
+     body fails — and fragment-heavy deletes the full first `tile` section, computed from the
+     model)*; **trivial-substitution** deletes its `HB-2001` sku value (trips the
      `values` check, `HB-2001` → 1 dropping to 0);
    - *reordered section* — swap the first two ordered row/section segments. For the two rowless
      raw anchors the pinned pair is: **composed-page** — swap the leading `SectionMeta` and
-     `SectionSocial` marker fragments; **trivial-substitution** — swap the `class="sku"` and
+     `SectionSocial` marker fragments *(amended (E20): swap the wholesale-only and retail-only
+     mega-menu anchors — `/product/coming-soon-paleo-pork` / `/products/paleo-friendly-pork`)*;
+     **trivial-substitution** — swap the `class="sku"` and
      `class="rating"` marker segments. Either swap trips the markers-in-order check;
    - *unescaped payload* (encoded workloads only) — replace the first `&lt;script&gt;alert(`
      with `<script>alert(`.
@@ -192,12 +218,12 @@ check contents (normative; `IdiomaticChecks.cs` transcribes them):
 
 | Workload | `values` (text → exact count) | `markers` (in order) | `forbidden` / `required` |
 |---|---|---|---|
-| composed-page | the whole `TwinContent.SectionMeta` literal (normalized) → 1; the first 60 characters of the `AreaComponent.Areas["Footer Links"]` entry (normalized) → 1 *(needle strings are computed in `IdiomaticChecks.cs` from those members — `SectionMeta` is a short const, the area fragments are multi-KB literals; the exported `.verify.json` contains the resolved literal needles)* | one distinctive ≥ 20-char substring from each of, in order: `SectionMeta`, `SectionSocial`, the `CompAssetsStyles` styles fragment, each non-empty `AreaOrder` area fragment (`"Alert Top Section Below Nav"` is empty and skipped), and the `CompBodyEndScripts` fragment — substrings chosen in `IdiomaticChecks.cs`, resolved into the exported JSON | — |
+| composed-page *(amended E20 — full-page shape)* | the whole `TwinContent.SectionMeta` literal (normalized) → 1; `<li class="nav-link"><a href="` → the total `NavLink` count walked from `NavData`; `<div class="nav-column">` → the total column count (mega menus + footer); `<span class="nav-title">Need Help?</span>` → 1 (the first footer column's title); the full rendered link for the `/content/privacy-policy` NavLink → 1 *(nav needles and counts are computed in `VerifierDefinitions.cs` from `NavData` — the very model every engine renders from — and resolved into the exported JSON)* | in document order: `<!DOCTYPE html>`, `SectionMeta`, the Alert-Top blob anchor (`xmas-shipping-alert-1.jpg`), the header-chrome anchor `id="search-area-form"`, the two secondary-menu blob anchors, `>Shop All Products</a>` (first mega-tab label), the wholesale-only anchor `/product/coming-soon-paleo-pork`, the retail-only anchor `/products/paleo-friendly-pork`, the slider anchor `homebtmbanners/gluten-hp.jpg` (the spliced body), the footer-chrome anchor `/Assets/images/seeourcatalog.jpg`, the `CompBodyEndScripts` fragment, `</html>` | — |
 | trivial-substitution | `Heddle Handbook` → 1; `HB-2001` → 1; `A concise field guide to the engine.` → 1; `4.8` → 1 | `<article>`, `<h1>`, `class="sku"`, `class="rating"`, `</article>` | — |
 | large-loop | `<tr><td>row-0</td><td>0</td></tr>` → 1; `<tr><td>row-4999</td><td>4999</td></tr>` → 1; `<tr><td>row-` → 5000 | `row-0`, `row-2500`, `row-4999` | — |
 | mixed-page | `Mercantile - Catalog` → 1; `Autumn hardware sale` → 1; `Product 01` → 1; `Product 36` → 1; `MX-1036` → 1; `<article class="card">` → 36; `<p class="sale">On sale</p>` → 12; `Free shipping on orders over 60.` → 1 | `<!DOCTYPE html>`, `<header>`, `class="hero"`, `class="grid"`, `<footer>`, `</html>` | — |
 | conditional-heavy | `unit-000` → 1; `unit-199` → 1; `<li>` → 200; `<span class="t0">bronze</span>` → 50; `<span class="t3">platinum</span>` → 50; `<small>` → 100; `<b>active</b>` → 160 | `<ul class="matrix">`, `unit-000`, `unit-100`, `unit-199`, `</ul>` | — |
-| fragment-heavy | `<section class="tile">` → 48; `tile-00` → 1; `tile-47` → 1; `<span class="badge">new</span>` → 12 | `<div class="panel">`, `tile-00`, `tile-24`, `tile-47`, `</div>` | — |
+| fragment-heavy *(amended E20 — four dispatched kinds)* | `<section class="tile">` → 12; `<article class="card">` → 12; `<div class="media-row">` → 12; `<div class="stat">` → 12; `<span class="promo-badge">` → 12 and `<p class="price">` → 12 (proof the card's nested badge/price partials ran); `item-00` → 1; `item-47` → 1 | `<div class="panel">`, `item-00`, `item-24`, `item-47`, `</div>` | — |
 | fortunes-encoded | each of the 12 escaped messages → 1 (escaped form of each pinned string; ten are identical to their raw form) **except** rows 3 and 11, whose text-context quote entities are weakened to quote-agnostic substrings (see the amendment below): row 3 → `A computer scientist is someone who fixes things that aren` → 1; row 11 → `&lt;script&gt;alert(` → 1 and `);&lt;/script&gt;` → 1; `<tr><td>` → 12 (the header row uses `<th>` and is not counted) | `<!DOCTYPE html>`, `<table>`, `<tr><th>id</th><th>message</th></tr>`, `フレームワークのベンチマーク`, `</table>` | forbidden: `<script>alert(`; required: `&lt;script&gt;alert(` → minCount 1 and `);&lt;/script&gt;` → minCount 1 |
 | encoded-loop | `tag-0&amp;&#39;0&#39;` → 1; `item &lt;4999&gt; &amp;` → 1 (text-context quote entity weakened — see the amendment below); `<tr><td data-tag="` → 5000; `こんにちは` → 5000 | first row's `data-tag` value, row 2500's `item &lt;2500&gt;`, last row's comment tail `こんにちは 4999` | forbidden: `<script>alert(`, `<angle>` *(raw form of the comment's angle text — it must always be escaped)*; required: `&lt;angle&gt;` → minCount 5000 |
 
