@@ -6,7 +6,7 @@ paths:
 
 # Performance (render path is hot)
 
-Details: [coding-standards.md § performance](../docs/spec/common/coding-standards.md#performance-rules-the-render-path-is-hot).
+Details: [coding-standards.md § performance](../../docs/spec/common/coding-standards.md#performance-rules-the-render-path-is-hot).
 
 - No new per-render allocations. `Scope` stays a `readonly struct` passed by `in`; optional per-render state is lazily created.
 - Reflection at compile time only; render time executes pre-compiled delegates and direct calls.
