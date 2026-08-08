@@ -1,97 +1,95 @@
 package model
 
 import (
-	"embed"
-	"path"
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"sync"
+
+	"heddle.dev/benchmarks/go/internal/corpus"
 )
 
-// composed-page fragments — RUNTIME DATA in every engine (the .NET twins read them from
-// TwinContent/AreaComponent, never transcribe them into template text; port-mapping.md
-// §Model transcription). The files under data/composed-page/ are byte-exact copies of the
-// C# verbatim literals (identical to the byte-verified copies at
-// benchmarks/rust/data/composed-page/*, pinned -text in benchmarks/go/.gitattributes) and
-// are embedded so their whitespace — part of the bytes — cannot be smudged. Transcription
-// errors cannot ship: the controlled byte gate compares the assembled output against the
-// corpus entry, so any drift fails loudly before timing.
+// composed-page model — pure structured data (ledger E20; E22 removed the text half).
+// The model is ComposedModel{Nav} and NOTHING else: every fragment of literal page text
+// (the former embedded blob areas and asset/script snippets) lives in the templates, owned
+// by the per-engine template tier ("the model-preparation tier carries DATA only"). The
+// structured navigation — two mega menus plus the footer link columns — is loaded once,
+// on first use, from the corpus fixture `fixtures/composed-page/nav.json` (snake_case
+// keys, exported by the Phase 1 export-corpus tool and hash-recorded in the manifest's
+// `fixtures` section), resolved through the same corpus-dir resolution the gate uses
+// (corpus.Dir(); go:embed cannot reach ../../dotnet, so this is a runtime file read).
+// Transcription errors cannot ship: the controlled byte gate compares the rendered page
+// against the corpus entry, so any fixture drift fails loudly before timing.
 
-//go:embed data/composed-page
-var composedData embed.FS
-
-func fragment(name string) string {
-	raw, err := composedData.ReadFile(path.Join("data/composed-page", name))
-	if err != nil {
-		panic("model: missing embedded composed-page fragment " + name + ": " + err.Error())
-	}
-	return string(raw)
+// NavLink is one navigation link.
+type NavLink struct {
+	Label string `json:"label"`
+	Href  string `json:"href"`
 }
 
-// AreaOrder lists the seven area names in the exact order layout.heddle issues them
-// (TwinContent.AreaOrder); "Alert Top Section Below Nav" is the pinned empty entry.
-var AreaOrder = [7]string{
-	"Alert Top Section Above Nav",
-	"Secondary Wholesale Menu",
-	"Secondary Retail Menu",
-	"Wholesale Top Mega Menu",
-	"Retail Top Mega Menu",
-	"Alert Top Section Below Nav", // empty content
-	"Footer Links",
+// NavSection is one titled link group; TitleLinked is a precomputed boolean (no engine
+// evaluates a string test — workloads.md workload 1).
+type NavSection struct {
+	Title       string    `json:"title"`
+	Href        string    `json:"href"`
+	TitleLinked bool      `json:"title_linked"`
+	Links       []NavLink `json:"links"`
 }
 
-// ComposedModel is the composed-page model (port-mapping.md §Workload 1): section and
-// component fragments keyed by the twin keys, plus the ordered area names and their
-// fragments.
+// NavColumn is one column of sections (dropdown column or footer column).
+type NavColumn struct {
+	Sections []NavSection `json:"sections"`
+}
+
+// MenuTab is one top-level menu tab; HasDropdown is precomputed.
+type MenuTab struct {
+	Label       string      `json:"label"`
+	Href        string      `json:"href"`
+	Css         string      `json:"css"`
+	HasDropdown bool        `json:"has_dropdown"`
+	DropdownCss string      `json:"dropdown_css"`
+	Columns     []NavColumn `json:"columns"`
+}
+
+// MegaMenu is one mega menu (wholesale / retail).
+type MegaMenu struct {
+	Tabs []MenuTab `json:"tabs"`
+}
+
+// NavModel is the structured navigation root (nav.json's document shape).
+type NavModel struct {
+	Menus         []MegaMenu  `json:"menus"`
+	FooterColumns []NavColumn `json:"footer_columns"`
+}
+
+// ComposedModel is the composed-page workload model: the nav, and nothing else (E22).
 type ComposedModel struct {
-	Section   map[string]string
-	Comp      map[string]string
-	AreaNames []string
-	Areas     map[string]string
+	Nav NavModel
 }
 
-// Composed is the pinned composed-page model, materialized once from the embedded
-// fragments. Keys mirror the twin keys (LiquidTemplates.LayoutTemplate): Section — meta,
-// social, page_scripts, endpage_scripts; Comp — assets_styles, custom_styles, head_scripts,
-// body_scripts, assets_scripts, body_end_scripts.
-var Composed = func() ComposedModel {
-	areaFiles := [7]string{
-		"area-1.html", "area-2.html", "area-3.html", "area-4.html",
-		"area-5.html", "area-6.html", "area-7.html",
-	}
-	areas := make(map[string]string, len(AreaOrder))
-	for i, name := range AreaOrder {
-		areas[name] = fragment(areaFiles[i])
-	}
-	return ComposedModel{
-		Section: map[string]string{
-			"meta":            fragment("section-meta.html"),
-			"social":          fragment("section-social.html"),
-			"page_scripts":    "",
-			"endpage_scripts": "",
-		},
-		Comp: map[string]string{
-			"assets_styles":    fragment("comp-assets-styles.html"),
-			"custom_styles":    fragment("comp-custom-styles.html"),
-			"head_scripts":     fragment("comp-head-scripts.html"),
-			"body_scripts":     fragment("comp-body-scripts.html"),
-			"assets_scripts":   fragment("comp-assets-scripts.html"),
-			"body_end_scripts": fragment("comp-body-end-scripts.html"),
-		},
-		AreaNames: AreaOrder[:],
-		Areas:     areas,
-	}
-}()
+var (
+	composedOnce  sync.Once
+	composedModel ComposedModel
+)
 
-// ComposedAssembled concatenates the fragments in twin order with zero separator bytes —
-// the oracle's documented shape (LiquidTemplates.LayoutTemplate chains its output actions
-// with no whitespace). Used by tests to byte-check the transcription against the corpus;
-// engines render through their own composition machinery, never through this helper.
-func ComposedAssembled() string {
-	m := Composed
-	out := m.Section["meta"] + m.Section["social"] +
-		m.Comp["assets_styles"] + m.Comp["custom_styles"] +
-		m.Comp["head_scripts"] + m.Comp["body_scripts"]
-	for _, name := range m.AreaNames {
-		out += m.Areas[name]
-	}
-	return out + m.Comp["assets_scripts"] + m.Section["page_scripts"] +
-		m.Section["endpage_scripts"] + m.Comp["body_end_scripts"]
+// Composed returns the pinned composed-page model, loading nav.json exactly once. A
+// missing or malformed fixture panics with the export-corpus regeneration hint — the
+// benchmark cannot run meaningfully without the fixture, and a silent zero model would
+// fail the byte gate with a far less actionable diff.
+func Composed() ComposedModel {
+	composedOnce.Do(func() {
+		path := filepath.Join(corpus.Dir(), "fixtures", "composed-page", "nav.json")
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			panic("model: cannot read composed-page nav fixture " + path +
+				": " + err.Error() +
+				" (regenerate via the Phase 1 export-corpus tool: dotnet run -c Release --project benchmarks/dotnet -- export-corpus)")
+		}
+		var nav NavModel
+		if err := json.Unmarshal(raw, &nav); err != nil {
+			panic("model: cannot parse composed-page nav fixture " + path + ": " + err.Error())
+		}
+		composedModel = ComposedModel{Nav: nav}
+	})
+	return composedModel
 }

@@ -1,10 +1,10 @@
 package model_test
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
-	"heddle.dev/benchmarks/go/internal/corpus"
 	"heddle.dev/benchmarks/go/internal/model"
 )
 
@@ -24,8 +24,8 @@ func TestLargeLoopHas5000RowsWithPinnedEdges(t *testing.T) {
 	if len(rows) != 5000 {
 		t.Fatalf("got %d rows", len(rows))
 	}
-	if rows[0].Name != "row-0" || rows[0].Value != 0 ||
-		rows[4999].Name != "row-4999" || rows[4999].Value != 4999 {
+	// E21: the row carries ONLY Value — the display name `row-{i}` is template-composed.
+	if rows[0].Value != 0 || rows[4999].Value != 4999 {
 		t.Errorf("edge rows drifted: %+v %+v", rows[0], rows[4999])
 	}
 }
@@ -44,9 +44,11 @@ func TestMixedHas36ProductsWith12OnSale(t *testing.T) {
 	if onSale != 12 {
 		t.Errorf("got %d on-sale products, want 12", onSale)
 	}
-	if m.Products[0].Name != "Product 01" || m.Products[0].Sku != "MX-1001" ||
-		m.Products[35].Name != "Product 36" || m.Products[35].Sku != "MX-1036" ||
-		m.Products[35].Price != 950+36*7 {
+	// E21: SkuNumber/Batch are ints — templates compose `MX-@(SkuNumber)` and the blurb.
+	if m.Products[0].Name != "Product 01" || m.Products[0].SkuNumber != 1001 ||
+		m.Products[0].Batch != 1 ||
+		m.Products[35].Name != "Product 36" || m.Products[35].SkuNumber != 1036 ||
+		m.Products[35].Batch != 36 || m.Products[35].Price != 950+36*7 {
 		t.Errorf("product pins drifted: %+v %+v", m.Products[0], m.Products[35])
 	}
 	if !m.ShowBanner || m.ShowDebugPanel || m.Year != 2026 ||
@@ -82,28 +84,46 @@ func TestConditionalHas200RowsWithPinnedDistributions(t *testing.T) {
 	if bronze != 50 || silver != 50 || gold != 50 || platinum != 50 || note != 100 || active != 160 {
 		t.Errorf("distributions drifted: %d/%d/%d/%d note %d active %d", bronze, silver, gold, platinum, note, active)
 	}
-	if rows[0].Name != "unit-000" || rows[199].Name != "unit-199" || rows[7].Note != "note 7" {
+	// E21: Seq is an int — the template composes `note @(Seq)`.
+	if rows[0].Name != "unit-000" || rows[199].Name != "unit-199" || rows[7].Seq != 7 {
 		t.Errorf("row pins drifted")
 	}
 }
 
-func TestFragmentHas48RowsWithPinnedBadges(t *testing.T) {
+func TestFragmentHas48RowsWithPinnedKindsAndPromos(t *testing.T) {
 	items := model.Fragment.Items
 	if len(items) != 48 {
 		t.Fatalf("got %d items", len(items))
 	}
-	if items[0].Name != "tile-00" || items[47].Name != "tile-47" || items[47].Value != 47*11 ||
-		items[1].Badge != "hot" {
-		t.Errorf("tile pins drifted")
+	// E20 pins: item-{i:D2} identity names, Value = i*11, Delta = i%7-3, Promo on every row.
+	if items[0].Name != "item-00" || items[47].Name != "item-47" || items[47].Value != 47*11 ||
+		items[1].Badge != "hot" || items[0].Delta != -3 || items[6].Delta != 3 ||
+		items[47].Delta != 47%7-3 {
+		t.Errorf("row pins drifted: %+v %+v", items[0], items[47])
 	}
-	newBadges := 0
-	for _, it := range items {
-		if it.Badge == "new" {
-			newBadges++
+	kindCounts := map[string]int{}
+	for i, it := range items {
+		kindCounts[it.Kind]++
+		// Exactly one dispatch boolean fires, and it matches Kind.
+		set := 0
+		for _, b := range []bool{it.IsTile, it.IsCard, it.IsMedia, it.IsStat} {
+			if b {
+				set++
+			}
+		}
+		want := map[string]bool{"tile": it.IsTile, "card": it.IsCard, "media": it.IsMedia, "stat": it.IsStat}
+		if set != 1 || !want[it.Kind] {
+			t.Errorf("row %d dispatch booleans inconsistent with Kind %q: %+v", i, it.Kind, it)
+		}
+		// Promo is on EVERY row: Label == Badge, Price = 9 + i (an int).
+		if it.Promo.Label != it.Badge || it.Promo.Price != 9+i {
+			t.Errorf("row %d promo drifted: %+v", i, it.Promo)
 		}
 	}
-	if newBadges != 12 {
-		t.Errorf("got %d new badges, want 12", newBadges)
+	for _, kind := range []string{"tile", "card", "media", "stat"} {
+		if kindCounts[kind] != 12 {
+			t.Errorf("got %d %q rows, want 12", kindCounts[kind], kind)
+		}
 	}
 }
 
@@ -144,53 +164,90 @@ func TestEncodedLoopHas5000RowsWithPinnedRow0(t *testing.T) {
 	}
 }
 
-// ---- composed-page fragments -----------------------------------------------------------------
+// ---- composed-page nav model (E20 structured nav; E22 no text blobs) -------------------------
 
-func TestComposedFragmentsAreNonemptyExceptArea6(t *testing.T) {
-	m := model.Composed
-	if len(m.AreaNames) != 7 || len(m.Areas) != 7 {
-		t.Fatalf("area shape drifted")
+func TestComposedNavHasThePinnedShape(t *testing.T) {
+	m := model.Composed()
+	nav := m.Nav
+	if len(nav.Menus) != 2 {
+		t.Fatalf("got %d menus, want 2 (wholesale + retail)", len(nav.Menus))
 	}
-	for _, name := range m.AreaNames {
-		if name == "Alert Top Section Below Nav" {
-			if m.Areas[name] != "" {
-				t.Errorf("%q must be the empty entry", name)
-			}
-		} else if m.Areas[name] == "" {
-			t.Errorf("%q must be non-empty", name)
+	for i, menu := range nav.Menus {
+		if len(menu.Tabs) != 6 {
+			t.Errorf("menu %d has %d tabs, want 6", i, len(menu.Tabs))
 		}
 	}
-	if m.Section["meta"] != "<title>Title</title>" {
-		t.Errorf("section meta drifted: %q", m.Section["meta"])
+	if len(nav.FooterColumns) != 4 {
+		t.Errorf("got %d footer columns, want 4", len(nav.FooterColumns))
 	}
-	if !strings.HasPrefix(m.Section["social"], `<meta property="og:image"`) {
-		t.Errorf("section social drifted")
+	// Spot pins against the fixture's declaration order (nav.json, snake_case keys).
+	tab := nav.Menus[0].Tabs[0]
+	if tab.Label != "Shop All Products" || tab.Href != "#" || tab.Css != "shop-all-products" ||
+		!tab.HasDropdown || tab.DropdownCss != "dropdown_2columns" {
+		t.Errorf("menu 0 tab 0 drifted: %+v", tab)
 	}
-	if m.Section["page_scripts"] != "" || m.Section["endpage_scripts"] != "" {
-		t.Errorf("page_scripts/endpage_scripts must be empty")
+	if len(tab.Columns) == 0 || len(tab.Columns[0].Sections) == 0 {
+		t.Fatalf("menu 0 tab 0 columns drifted")
 	}
-	if m.Comp["custom_styles"] != "/* CSS Comment Test */" {
-		t.Errorf("custom_styles drifted: %q", m.Comp["custom_styles"])
+	sec := tab.Columns[0].Sections[0]
+	if sec.Title != "FISH" || sec.TitleLinked || len(sec.Links) == 0 ||
+		sec.Links[0].Label != "Salmon" || sec.Links[0].Href != "/products/wild-salmon" {
+		t.Errorf("menu 0 tab 0 section 0 drifted: %+v", sec)
+	}
+	fsec := nav.FooterColumns[0].Sections[0]
+	if fsec.Title != "Need Help?" || fsec.TitleLinked ||
+		fsec.Links[0].Label != "Customer Service" ||
+		fsec.Links[0].Href != "/content/contact-customer-service" {
+		t.Errorf("footer column 0 section 0 drifted: %+v", fsec)
 	}
 }
 
-// The transcription byte-check: the fragments assembled in twin order with zero separator
-// bytes, run through the stored-form pipeline (N2–N4), must be byte-identical to the
-// committed composed-page oracle — proving the embedded copies match the C# literals at the
-// corpus's generating commit.
-func TestComposedAssemblyMatchesTheCorpusOracle(t *testing.T) {
-	golden, err := corpus.LoadGolden("composed-page")
-	if err != nil {
-		t.Fatal(err)
+// The fixture loads exactly once (sync.Once): repeated calls return views over the same
+// backing arrays, never a re-read.
+func TestComposedNavLoadsOnce(t *testing.T) {
+	a, b := model.Composed(), model.Composed()
+	if len(a.Nav.Menus) == 0 || &a.Nav.Menus[0] != &b.Nav.Menus[0] {
+		t.Errorf("Composed() must return the once-loaded model")
 	}
-	assembled := corpus.NormalizeRaw(model.ComposedAssembled())
-	if assembled != golden {
-		at := 0
-		n := min(len(assembled), len(golden))
-		for at < n && assembled[at] == golden[at] {
-			at++
+}
+
+// Rule-4 sanitization (workloads.md workload 1, blocking pre-decision for every port):
+// every nav text value is printable ASCII with none of & < > " ' — raw and would-be-escaped
+// renderings coincide, so no default-escaping engine can double-escape.
+func TestComposedNavValuesAreRule4Clean(t *testing.T) {
+	checkRule4 := func(where, value string) {
+		t.Helper()
+		for _, r := range value {
+			if r < 0x20 || r > 0x7E || strings.ContainsRune(`&<>"'`, r) {
+				t.Errorf("%s violates rule 4: %q U+%04X in %q", where, r, r, value)
+				return
+			}
 		}
-		t.Fatalf("assembled fragments diverge from the oracle: first diff at %d (exp %d/act %d bytes)",
-			at, len(golden), len(assembled))
 	}
+	var checkColumns func(where string, cols []model.NavColumn)
+	checkColumns = func(where string, cols []model.NavColumn) {
+		for ci, col := range cols {
+			for si, sec := range col.Sections {
+				at := fmt.Sprintf("%s.columns[%d].sections[%d]", where, ci, si)
+				checkRule4(at+".title", sec.Title)
+				checkRule4(at+".href", sec.Href)
+				for li, link := range sec.Links {
+					checkRule4(fmt.Sprintf("%s.links[%d].label", at, li), link.Label)
+					checkRule4(fmt.Sprintf("%s.links[%d].href", at, li), link.Href)
+				}
+			}
+		}
+	}
+	nav := model.Composed().Nav
+	for mi, menu := range nav.Menus {
+		for ti, tab := range menu.Tabs {
+			at := fmt.Sprintf("menus[%d].tabs[%d]", mi, ti)
+			checkRule4(at+".label", tab.Label)
+			checkRule4(at+".href", tab.Href)
+			checkRule4(at+".css", tab.Css)
+			checkRule4(at+".dropdown_css", tab.DropdownCss)
+			checkColumns(at, tab.Columns)
+		}
+	}
+	checkColumns("footer_columns", nav.FooterColumns)
 }

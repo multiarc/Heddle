@@ -37,14 +37,22 @@ identical for both engines and both tracks:
 
 | Workload | Context |
 |---|---|
-| composed-page | `section` (dict: `meta, social, page_scripts, endpage_scripts`), `comp` (dict: `assets_styles, custom_styles, head_scripts, body_scripts, assets_scripts, body_end_scripts`), `areas` (dict keyed by area name), `area_names` (the seven-entry ordered list) — values transcribed from `TwinContent.cs` and `AreaComponent.Areas` |
+| composed-page | `nav` and NOTHING else (ledger [E20/E22](../../records.md#cross-spec-amendments-ledger)) — the structured navigation model, loaded by `runner/data.py` **once at import** from the corpus fixture `GoldenCorpus/fixtures/composed-page/nav.json` (strict UTF-8, `json.load`) via the gate's corpus-dir resolution (`gates.CORPUS_DIR`). Schema (snake_case): `{menus: [{tabs: [{label, href, css, has_dropdown, dropdown_css, columns: [{sections: [{title, href, title_linked, links: [{label, href}]}]}]}]}], footer_columns: [<column shape>]}`. The former `section`/`comp`/`areas`/`area_names` blob dicts are DELETED (E22: no text blobs in the model tier — ALL chrome/fragment text lives in the templates); `TwinContent.cs`/`AreaData.cs`, which they transcribed, no longer exist |
 | trivial-substitution | top-level scalars `title, sku, price, brand, category, availability, url, image_url, summary, rating` — values from [SubstitutionContent.cs](../../../../benchmarks/dotnet/src/Models/SubstitutionContent.cs) |
-| large-loop | `items` — 5,000 dicts `{name: "row-"+i, value: i}` |
-| mixed-page | `page_title, store_name, hero_heading, hero_tagline, show_banner, banner_text, show_debug_panel, footer_note, year, support_email, products` (36 product dicts `{name, sku, price, on_sale, blurb}`) |
-| conditional-heavy | `rows` — 200 dicts `{name, note, is_bronze, is_silver, is_gold, has_note, is_active}` |
-| fragment-heavy | `items` — 48 dicts `{name, value, badge}` |
+| large-loop | `items` — 5,000 dicts `{value: i}` (E21: the display name is template-composed as `row-` + the value substitution; the model carries no `name`) |
+| mixed-page | `page_title, store_name, hero_heading, hero_tagline, show_banner, banner_text, show_debug_panel, footer_note, year, support_email, products` (36 product dicts `{name, sku_number: 1000+i, price, on_sale, batch: i}` — E21: `sku_number` and `batch` are ints; templates compose the display SKU `MX-`+`sku_number` and the blurb sentence around `batch`; the former `sku`/`blurb` strings are deleted) |
+| conditional-heavy | `rows` — 200 dicts `{name, seq: i, is_bronze, is_silver, is_gold, has_note, is_active}` (E21: `seq` is an int replacing the former `note` string; templates compose `note `+`seq`) |
+| fragment-heavy | `items` — 48 dicts `{kind, is_tile, is_card, is_media, is_stat, name: "item-"+i (i:02d), value: i*11, badge, delta: i%7-3, promo: {label, price: 9+i}}` (E20: `kind` = `{tile,card,media,stat}[i%4]`, dispatch on the precomputed booleans; E21: `delta` and `promo.price` are ints — templates compose the media caption `Caption for `+`name`, image src `/img/`+`name`+`.jpg`, and display price `price`+`.99`; no caption/image-url/price-string field exists model-side) |
 | fortunes-encoded | `rows` — the 12 pinned dicts `{id, message}` |
 | encoded-loop | `items` — 5,000 dicts `{tag, name, comment}` |
+
+Per E21/E22 (the data-not-display rule, [records.md](../../records.md#cross-spec-amendments-ledger)),
+the model tier carries DATA only: no derived display string and no literal page text is served
+from `runner/data.py` — pre-formatting either model-side moves rendering work out of the engine
+under test and is a port defect. Zero-padded identity names (`item-{i:02d}`, `unit-{i:03d}`,
+`Product {i:02d}`) and the encoded-suite payloads stay model-side by design. `nav.json` is the
+one composed-page data fixture (hash-recorded in the manifest's `fixtures` section and
+freshness-verified by `verify-corpus`); no per-ecosystem blob fixture files exist.
 
 Jinja2 accesses row members with dotted attribute syntax (`p.name` — Jinja2's documented
 attribute-then-item lookup resolves it against dicts; verified in probes F–H). Mako uses

@@ -30,35 +30,52 @@ object (deep-frozen at module load). Rules:
    boolean.
 3. **Generation formulas are transcribed, not their outputs** — e.g. mixed-page products are
    built by a loop `for (let i = 1; i <= 36; i++)` applying the exact workloads.md formulas
-   (`Product ${String(i).padStart(2, "0")}`, `MX-${1000 + i}`, `950 + i * 7`, `i % 3 === 0`,
-   the pinned blurb sentence with `${i}`), and likewise for conditional-heavy (200 rows,
-   `unit-${String(i).padStart(3, "0")}`, `i % 4` tier booleans, `i % 2 === 0`, `i % 5 !== 0`),
-   fragment-heavy (48 rows, `tile-${String(i).padStart(2, "0")}`, `i * 11`,
-   `["new","hot","sale","std"][i % 4]`), large-loop (5,000 rows, `row-${i}`, `i`), and
-   encoded-loop (5,000 rows, `` `tag-${i}&'${i % 7}'` ``, `` `item <${i}> & "co"` ``,
+   (`Product ${String(i).padStart(2, "0")}`, `sku_number: 1000 + i`, `950 + i * 7`,
+   `i % 3 === 0`, `batch: i`), and likewise for conditional-heavy (200 rows,
+   `unit-${String(i).padStart(3, "0")}`, `seq: i`, `i % 4` tier booleans, `i % 2 === 0`,
+   `i % 5 !== 0`), fragment-heavy (48 rows, `kind: ["tile","card","media","stat"][i % 4]` with
+   the four precomputed `is_tile`/`is_card`/`is_media`/`is_stat` dispatch booleans — E20,
+   `item-${String(i).padStart(2, "0")}`, `i * 11`, `["new","hot","sale","std"][i % 4]`,
+   `delta: (i % 7) - 3`, and a nested `promo: { label: badge, price: 9 + i }` on every row),
+   large-loop (5,000 rows, `{ value: i }` and nothing else), and encoded-loop (5,000 rows,
+   `` `tag-${i}&'${i % 7}'` ``, `` `item <${i}> & "co"` ``,
    `` `'q' & <angle> "d" こんにちは ${i}` ``).
+
+   **The models carry DATA only — no derived display strings (ledger E21).** `sku_number`,
+   `batch`, `seq`, `delta` and `promo.price` are JS **numbers**; the display forms
+   (`MX-` + sku_number, the blurb sentence around batch, `note ` + seq, `row-` + value, the
+   media caption/image src, the `.99` display price) are composed by the TEMPLATES as
+   literal-plus-substitution — that composition is the work being measured, and pre-formatting
+   it model-side is a port defect. Large-loop rows carry ONLY `value` (no `name`);
+   fragment-heavy rows carry no `caption`/`image_url`/price string. The zero-padded identity
+   names (`item-{i:D2}`, `unit-{i:D3}`, `Product {i:D2}`) stay model-side by design — row
+   identity, not display text.
 4. **Pinned literal sets are transcribed verbatim:** the 12 fortunes rows (ids 1–12, messages
    byte-for-byte from workloads.md, including the XSS payload row 11 and Japanese row 12); the
    trivial-substitution scalar values (from
    [SubstitutionContent.cs](../../../../benchmarks/dotnet/src/Models/SubstitutionContent.cs)
    — `Heddle Handbook`, `HB-2001`, `4.8`, etc.); the mixed-page page scalars (workloads.md).
-5. **Composed-page** transcribes the fragment literals from
-   `TwinContent.cs` and
-   `AreaComponent.Areas` into:
+5. **Composed-page is pure structured data — `{ nav }` and NOTHING else (ledger E20, E22).**
+   The model module loads the nav model once at module init from the Phase 1 corpus fixture
+   `benchmarks/dotnet/GoldenCorpus/fixtures/composed-page/nav.json` — the single source of
+   truth every non-.NET ecosystem loads from — resolving the corpus directory the same way the
+   gate's corpus loader does (`corpusDir` from `src/gate/corpus.mjs`), verifying the bytes
+   against the manifest's `fixtures` section (SHA-256 + byte length, the same
+   corrupted-checkout guard as the golden loader) before `JSON.parse`, then deep-freezing:
 
    ```js
-   export const model = deepFreeze({
-     section: { meta, social, page_scripts, endpage_scripts },   // SectionMeta, SectionSocial, SectionPageScripts (""), SectionEndPageScripts ("")
-     comp: { assets_styles, custom_styles, head_scripts, body_scripts,
-             assets_scripts, body_end_scripts },                 // the six Comp* consts
-     area_names: [...TwinContent.AreaOrder],                     // same strings, same order
-     areas: { ... }                                              // AreaComponent.Areas entries, keys verbatim
-   });
+   const nav = JSON.parse(…verified nav.json bytes…);   // { menus, footer_columns }, snake_case
+   export const model = deepFreeze({ nav });
    ```
 
-   The multi-KB area fragments are transcribed exactly (copy from the C# source, unescaping C#
-   string syntax only). *(Verify at implementation: transcription exactness is proven by the
-   byte gate — a single wrong byte fails `npm run gate` with a first-diff excerpt.)*
+   `nav.menus[].tabs[]` carry `label, href, css, has_dropdown, dropdown_css, columns`;
+   columns → `sections[]` (`title, href, title_linked, links[]`) → `links[]`
+   (`label, href`); `nav.footer_columns` are the same column shape. `has_dropdown` and
+   `title_linked` are precomputed booleans. The pre-E20 blob transcription (`section`, `comp`,
+   `area_names`, `areas` — ~1,100 lines of literal HTML) is **deleted, not relocated**: every
+   literal chrome fragment lives in the template tier (E22 — templates hold ALL text; the
+   model-preparation tier carries DATA only), so the JS templates transcribe the chrome as
+   literal template text policed by the byte gate (controlled) and verifier (idiomatic).
 6. **Fortunes/encoded-loop values must satisfy the untrusted-data alphabet** by construction —
    they are the Phase 1 pinned values, which already do; the transcription adds or removes
    nothing.

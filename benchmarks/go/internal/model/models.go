@@ -42,33 +42,35 @@ var Substitution = SubstitutionModel{
 
 // ---- large-loop ------------------------------------------------------------------------------
 
-// LoopRow is one large-loop table row.
+// LoopRow is one large-loop table row: ONLY the value (E21 — the display name `row-{i}` is
+// composed by the template as `row-` + the value substitution, never pre-formatted here).
 type LoopRow struct {
-	Name  string
 	Value int
 }
 
 // LoopModel is the large-loop model root.
 type LoopModel struct{ Items []LoopRow }
 
-// LargeLoop holds the 5,000 pinned rows (Name = "row-" + i, Value = i).
+// LargeLoop holds the 5,000 pinned rows (Value = i).
 var LargeLoop = func() LoopModel {
 	items := make([]LoopRow, 5000)
 	for i := range items {
-		items[i] = LoopRow{Name: fmt.Sprintf("row-%d", i), Value: i}
+		items[i] = LoopRow{Value: i}
 	}
 	return LoopModel{Items: items}
 }()
 
 // ---- mixed-page ------------------------------------------------------------------------------
 
-// MixedProduct is one mixed-page catalog card.
+// MixedProduct is one mixed-page catalog card. SkuNumber and Batch are ints (E21): the
+// templates compose the display SKU `MX-@(SkuNumber)` and the blurb sentence around
+// @(Batch) — the model never pre-formats display text.
 type MixedProduct struct {
-	Name   string
-	Sku    string
-	Price  int
-	OnSale bool
-	Blurb  string
+	Name      string
+	SkuNumber int
+	Price     int
+	OnSale    bool
+	Batch     int
 }
 
 // MixedModel is the mixed-page model (MixedContent.cs).
@@ -92,11 +94,11 @@ var Mixed = func() MixedModel {
 	for n := range products {
 		i := n + 1
 		products[n] = MixedProduct{
-			Name:   fmt.Sprintf("Product %02d", i),
-			Sku:    fmt.Sprintf("MX-%d", 1000+i),
-			Price:  950 + i*7,
-			OnSale: i%3 == 0,
-			Blurb:  fmt.Sprintf("A dependable workshop staple from batch %d, checked for daily use and backed by our lifetime guarantee.", i),
+			Name:      fmt.Sprintf("Product %02d", i),
+			SkuNumber: 1000 + i,
+			Price:     950 + i*7,
+			OnSale:    i%3 == 0,
+			Batch:     i,
 		}
 	}
 	return MixedModel{
@@ -116,10 +118,11 @@ var Mixed = func() MixedModel {
 
 // ---- conditional-heavy -----------------------------------------------------------------------
 
-// ConditionalRow is one conditional-heavy matrix row.
+// ConditionalRow is one conditional-heavy matrix row. Seq is an int (E21): the template
+// composes the note text `note @(Seq)`.
 type ConditionalRow struct {
 	Name     string
-	Note     string
+	Seq      int
 	IsBronze bool
 	IsSilver bool
 	IsGold   bool
@@ -136,7 +139,7 @@ var Conditional = func() ConditionalModel {
 	for i := range rows {
 		rows[i] = ConditionalRow{
 			Name:     fmt.Sprintf("unit-%03d", i),
-			Note:     fmt.Sprintf("note %d", i),
+			Seq:      i,
 			IsBronze: i%4 == 0,
 			IsSilver: i%4 == 1,
 			IsGold:   i%4 == 2,
@@ -149,25 +152,55 @@ var Conditional = func() ConditionalModel {
 
 // ---- fragment-heavy --------------------------------------------------------------------------
 
-// FragmentRow is one fragment-heavy tile.
+// FragmentRow is one fragment-heavy row (E20 redesign: four dispatched fragment kinds).
+// The IsTile/IsCard/IsMedia/IsStat booleans are precomputed — engines dispatch on these,
+// never on the Kind string (guaranteed common-denominator dispatch). The model carries
+// DATA only (E21): derived display text (the media caption `Caption for ` + name, the
+// image source `/img/` + name + `.jpg`, the display price + `.99`) is composed by the
+// templates as literal-plus-substitution. Name is zero-padded identity data — sanctioned
+// model-side per E21 (not composable within the common-denominator ceiling).
 type FragmentRow struct {
-	Name  string
-	Value int
-	Badge string
+	Kind    string
+	IsTile  bool
+	IsCard  bool
+	IsMedia bool
+	IsStat  bool
+	Name    string
+	Value   int
+	Badge   string
+	Delta   int
+	Promo   FragmentPromo
+}
+
+// FragmentPromo is the per-row promo (on EVERY row — no engine needs a null guard);
+// Price is whole-currency units, an int, not a string.
+type FragmentPromo struct {
+	Label string
+	Price int
 }
 
 // FragmentModel is the fragment-heavy model root.
 type FragmentModel struct{ Items []FragmentRow }
 
-// Fragment holds the 48 pinned tiles, i in [0, 47].
+// Fragment holds the 48 pinned rows, i in [0, 47]: 12 rows of each kind.
 var Fragment = func() FragmentModel {
+	kinds := [4]string{"tile", "card", "media", "stat"}
 	badges := [4]string{"new", "hot", "sale", "std"}
 	items := make([]FragmentRow, 48)
 	for i := range items {
+		kind := kinds[i%4]
+		badge := badges[i%4]
 		items[i] = FragmentRow{
-			Name:  fmt.Sprintf("tile-%02d", i),
-			Value: i * 11,
-			Badge: badges[i%4],
+			Kind:    kind,
+			IsTile:  kind == "tile",
+			IsCard:  kind == "card",
+			IsMedia: kind == "media",
+			IsStat:  kind == "stat",
+			Name:    fmt.Sprintf("item-%02d", i),
+			Value:   i * 11,
+			Badge:   badge,
+			Delta:   i%7 - 3,
+			Promo:   FragmentPromo{Label: badge, Price: 9 + i},
 		}
 	}
 	return FragmentModel{Items: items}

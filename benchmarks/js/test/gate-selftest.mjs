@@ -250,15 +250,23 @@ check("models: pinned cardinalities 36/200/48/12/5000/5000", () => {
 
 check("models: spot values byte-exact", () => {
   assertEqual(models["mixed-page"].products[0].name, "Product 01");
-  assertEqual(models["mixed-page"].products[35].sku, "MX-1036");
+  assertEqual(models["mixed-page"].products[35].sku_number, 1036, "product 36 sku_number (E21: a number)");
+  assertEqual(models["mixed-page"].products[35].batch, 36, "product 36 batch (E21: a number)");
   assertEqual(models["mixed-page"].products[2].on_sale, true, "product 03 on_sale");
   assertEqual(models["conditional-heavy"].rows[199].name, "unit-199");
+  assertEqual(models["conditional-heavy"].rows[198].seq, 198, "row 198 seq (E21: a number)");
   assertEqual(models["conditional-heavy"].rows[0].is_bronze, true);
   assertEqual(models["conditional-heavy"].rows[0].is_active, false, "row 0 is_active (0 % 5 === 0)");
-  assertEqual(models["fragment-heavy"].items[47].name, "tile-47");
+  assertEqual(models["fragment-heavy"].items[47].name, "item-47");
   assertEqual(models["fragment-heavy"].items[1].value, 11);
+  assertEqual(models["fragment-heavy"].items[1].kind, "card");
+  assertEqual(models["fragment-heavy"].items[1].is_card, true, "item 01 is_card (E20 dispatch boolean)");
+  assertEqual(models["fragment-heavy"].items[1].is_tile, false, "item 01 is_tile");
   assertEqual(models["fragment-heavy"].items[2].badge, "sale");
-  assertEqual(models["large-loop"].items[4999].name, "row-4999");
+  assertEqual(models["fragment-heavy"].items[47].delta, 2, "item 47 delta (47 % 7 - 3)");
+  assertEqual(models["fragment-heavy"].items[1].promo.label, "hot", "item 01 promo.label === badge");
+  assertEqual(models["fragment-heavy"].items[47].promo.price, 56, "item 47 promo.price (E21: a number)");
+  assertEqual(models["large-loop"].items[4999].value, 4999, "large-loop rows carry only value (E21)");
   assertEqual(
     models["fortunes-encoded"].rows[10].message,
     '<script>alert("This should not be displayed in a browser alert box.");</script>',
@@ -269,9 +277,36 @@ check("models: spot values byte-exact", () => {
   assertEqual(models["encoded-loop"].items[4999].comment, `'q' & <angle> "d" こんにちは 4999`);
   assertEqual(models["trivial-substitution"].sku, "HB-2001");
   assertEqual(models["trivial-substitution"].price, 4200);
-  assertEqual(models["composed-page"].area_names.length, 7, "area_names");
-  assertEqual(models["composed-page"].areas["Alert Top Section Below Nav"], "");
-  assertEqual(models["composed-page"].section.meta, "<title>Title</title>");
+  assertEqual(models["composed-page"].nav.menus.length, 2, "nav menus");
+  assertEqual(models["composed-page"].nav.menus[0].tabs.length, 6, "menu 0 tabs");
+  assertEqual(models["composed-page"].nav.footer_columns.length, 4, "footer columns");
+  assertEqual(models["composed-page"].nav.menus[0].tabs[0].has_dropdown, true, "tab 0 has_dropdown");
+  const firstLink = models["composed-page"].nav.menus[0].tabs[0].columns[0].sections[0].links[0];
+  assertEqual(firstLink.label, "Salmon", "first nav link label");
+  assertEqual(firstLink.href, "/products/wild-salmon", "first nav link href");
+  assertEqual(models["composed-page"].nav.footer_columns[0].sections[0].title, "Need Help?");
+  assertEqual(models["composed-page"].nav.footer_columns[0].sections[0].title_linked, false);
+});
+
+check("models: E20/E21/E22 removed display fields are gone (models carry data only)", () => {
+  const has = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
+  if (has(models["large-loop"].items[0], "name")) throw new Error("large-loop rows still carry name (E21)");
+  if (has(models["conditional-heavy"].rows[0], "note")) throw new Error("conditional-heavy rows still carry note (E21)");
+  if (has(models["mixed-page"].products[0], "sku")) throw new Error("mixed-page products still carry sku (E21)");
+  if (has(models["mixed-page"].products[0], "blurb")) throw new Error("mixed-page products still carry blurb (E21)");
+  for (const key of ["caption", "image_url"]) {
+    if (has(models["fragment-heavy"].items[2], key)) {
+      throw new Error(`fragment-heavy rows still carry ${key} (E21: templates compose display text)`);
+    }
+  }
+  if (typeof models["fragment-heavy"].items[0].promo.price !== "number") {
+    throw new Error("fragment-heavy promo.price is not a number (E21)");
+  }
+  for (const key of ["section", "comp", "area_names", "areas"]) {
+    if (has(models["composed-page"], key)) {
+      throw new Error(`composed-page still carries ${key} (E22: no text blobs in the model tier)`);
+    }
+  }
 });
 
 check("models: deep-frozen at module load", () => {
@@ -279,27 +314,35 @@ check("models: deep-frozen at module load", () => {
     if (!Object.isFrozen(models[id])) throw new Error(`${id} model is not frozen`);
   }
   if (!Object.isFrozen(models["mixed-page"].products[0])) throw new Error("nested row not frozen");
-  if (!Object.isFrozen(models["composed-page"].areas)) throw new Error("areas not frozen");
+  if (!Object.isFrozen(models["composed-page"].nav)) throw new Error("nav not frozen");
+  if (!Object.isFrozen(models["composed-page"].nav.menus[0].tabs[0].columns[0].sections[0].links[0])) {
+    throw new Error("nested nav link not frozen");
+  }
 });
 
-check("models: composed-page transcription matches the golden (whitespace-stripped)", () => {
-  // The golden composed-page output is the ordered fragment concatenation; comparing the
-  // N3b-stripped projections proves the multi-KB area transcription byte-exact on every
-  // non-whitespace byte — the same projection the WI4/WI5 byte gate uses.
-  const m = models["composed-page"];
-  const concatenated =
-    m.section.meta +
-    m.section.social +
-    m.comp.assets_styles +
-    m.comp.custom_styles +
-    m.comp.head_scripts +
-    m.comp.body_scripts +
-    m.area_names.map((n) => m.areas[n] ?? "").join("") +
-    m.comp.assets_scripts +
-    m.section.page_scripts +
-    m.section.endpage_scripts +
-    m.comp.body_end_scripts;
-  assertControlledCell({ engine: "selftest", workload: "composed-page", output: concatenated });
+check("models: composed-page nav expansion matches the verifier pins and the golden bytes", () => {
+  // E20/E22 replaced the blob transcription (and its concatenation check — the chrome text now
+  // lives in the templates, whose presence/order the verifier's ordered markers prove) with the
+  // structured nav fixture. The model side is re-expressed as an independent expansion: count
+  // columns and links from the loaded nav.json against the verifier definition's pinned counts,
+  // then require every link's rendered form in the golden byte-for-byte (per-link check).
+  const { nav } = models["composed-page"];
+  const def = loadVerifyDefinition("composed-page");
+  const columns = [
+    ...nav.menus.flatMap((m) => m.tabs.flatMap((t) => t.columns)),
+    ...nav.footer_columns,
+  ];
+  const links = columns.flatMap((c) => c.sections.flatMap((s) => s.links));
+  const linkPin = def.values.find((v) => v.text === '<li class="nav-link"><a href="');
+  const columnPin = def.values.find((v) => v.text === '<div class="nav-column">');
+  if (!linkPin || !columnPin) throw new Error("verifier definition lacks the nav count pins");
+  assertEqual(links.length, linkPin.count, "nav link count (model expansion vs verifier pin)");
+  assertEqual(columns.length, columnPin.count, "nav column count (model expansion vs verifier pin)");
+  const golden = loadCorpusEntry("composed-page").text;
+  for (const link of links) {
+    const rendered = `<li class="nav-link"><a href="${link.href}">${link.label}</a></li>`;
+    if (!golden.includes(rendered)) throw new Error(`golden lacks nav link ${rendered}`);
+  }
 });
 
 // ---- 5. Verifier calibration re-run -----------------------------------------------------------
@@ -369,10 +412,10 @@ const calibrationPins = {
     swapB: "unit-100",
   }),
   "fragment-heavy": () => ({
-    removedSegment: "tile-00",
+    removedSegment: "item-00",
     removedKind: "value",
-    swapA: "tile-00",
-    swapB: "tile-24",
+    swapA: "item-00",
+    swapB: "item-24",
   }),
   "fortunes-encoded": () => ({
     removedSegment: fortunesFirstRow,

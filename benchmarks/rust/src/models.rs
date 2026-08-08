@@ -2,86 +2,79 @@
 //! `docs/spec/cross-stack-benchmarks/phase-2-rust/workload-ports.md` §Model construction
 //! (which mirrors Phase 1 `workloads.md`). One module builds every model exactly once
 //! (`OnceLock`), mirroring the .NET `Shared`-instance discipline. All numeric formatting is
-//! `i32` `Display` (no locale, matching C# invariant `int` formatting).
+//! integer `Display` (no locale, matching C# invariant `int` formatting). Per ledger E21/E22
+//! the model tier carries DATA only — no derived display strings and no literal page text.
 
-use std::collections::HashMap;
 use std::sync::OnceLock;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 // ---- composed-page ---------------------------------------------------------------------------
 
-/// Fragment data files, copied byte-exactly from `TwinContent.cs` / `AreaComponent.cs`
-/// (`data/composed-page/*`, pinned `-text` in `.gitattributes`).
-pub const SECTION_META: &str = include_str!("../data/composed-page/section-meta.html");
-pub const SECTION_SOCIAL: &str = include_str!("../data/composed-page/section-social.html");
-pub const COMP_ASSETS_STYLES: &str = include_str!("../data/composed-page/comp-assets-styles.html");
-pub const COMP_CUSTOM_STYLES: &str = include_str!("../data/composed-page/comp-custom-styles.html");
-pub const COMP_HEAD_SCRIPTS: &str = include_str!("../data/composed-page/comp-head-scripts.html");
-pub const COMP_BODY_SCRIPTS: &str = include_str!("../data/composed-page/comp-body-scripts.html");
-pub const COMP_ASSETS_SCRIPTS: &str =
-    include_str!("../data/composed-page/comp-assets-scripts.html");
-pub const COMP_BODY_END_SCRIPTS: &str =
-    include_str!("../data/composed-page/comp-body-end-scripts.html");
+/// The structured navigation model (ledger E20; E22 removed the text half). The model is
+/// `ComposedModel { nav }` and NOTHING else — every fragment of literal page text (chrome,
+/// alert/secondary-menu blobs, asset/script snippets) lives in the TEMPLATES. The nav data is
+/// loaded once at init from the corpus fixture
+/// `benchmarks/dotnet/GoldenCorpus/fixtures/composed-page/nav.json` (snake_case keys, the
+/// single source of truth every non-.NET ecosystem loads from; hash-recorded in the manifest's
+/// `fixtures` section).
+#[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct NavModel {
+    pub menus: Vec<MegaMenu>,
+    pub footer_columns: Vec<NavColumn>,
+}
 
-/// The seven area fragments in `TwinContent.AreaOrder` order
-/// (`area-6.html` — "Alert Top Section Below Nav" — is the pinned empty entry).
-const AREA_FRAGMENTS: [&str; 7] = [
-    include_str!("../data/composed-page/area-1.html"),
-    include_str!("../data/composed-page/area-2.html"),
-    include_str!("../data/composed-page/area-3.html"),
-    include_str!("../data/composed-page/area-4.html"),
-    include_str!("../data/composed-page/area-5.html"),
-    include_str!("../data/composed-page/area-6.html"),
-    include_str!("../data/composed-page/area-7.html"),
-];
+#[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MegaMenu {
+    pub tabs: Vec<MenuTab>,
+}
 
-/// The area names in the exact order `layout.heddle` issues them (`TwinContent.AreaOrder`).
-pub const AREA_ORDER: [&str; 7] = [
-    "Alert Top Section Above Nav",
-    "Secondary Wholesale Menu",
-    "Secondary Retail Menu",
-    "Wholesale Top Mega Menu",
-    "Retail Top Mega Menu",
-    "Alert Top Section Below Nav", // empty content
-    "Footer Links",
-];
+#[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MenuTab {
+    pub label: String,
+    pub href: String,
+    pub css: String,
+    pub has_dropdown: bool,
+    pub dropdown_css: String,
+    pub columns: Vec<NavColumn>,
+}
 
+#[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct NavColumn {
+    pub sections: Vec<NavSection>,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct NavSection {
+    pub title: String,
+    pub href: String,
+    pub title_linked: bool,
+    pub links: Vec<NavLink>,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct NavLink {
+    pub label: String,
+    pub href: String,
+}
+
+/// The composed-page workload model — dictionary/Hash views nest under a `nav` key
+/// (workloads.md workload 1, E20/E22).
 #[derive(Serialize)]
 pub struct ComposedModel {
-    pub section_meta: &'static str,
-    pub section_social: &'static str,
-    pub section_page_scripts: &'static str,
-    pub section_endpage_scripts: &'static str,
-    pub comp_assets_styles: &'static str,
-    pub comp_custom_styles: &'static str,
-    pub comp_head_scripts: &'static str,
-    pub comp_body_scripts: &'static str,
-    pub comp_assets_scripts: &'static str,
-    pub comp_body_end_scripts: &'static str,
-    pub area_names: Vec<String>,
-    pub areas: HashMap<String, String>,
+    pub nav: NavModel,
 }
 
 pub fn composed() -> &'static ComposedModel {
     static MODEL: OnceLock<ComposedModel> = OnceLock::new();
     MODEL.get_or_init(|| ComposedModel {
-        section_meta: SECTION_META,
-        section_social: SECTION_SOCIAL,
-        section_page_scripts: "",
-        section_endpage_scripts: "",
-        comp_assets_styles: COMP_ASSETS_STYLES,
-        comp_custom_styles: COMP_CUSTOM_STYLES,
-        comp_head_scripts: COMP_HEAD_SCRIPTS,
-        comp_body_scripts: COMP_BODY_SCRIPTS,
-        comp_assets_scripts: COMP_ASSETS_SCRIPTS,
-        comp_body_end_scripts: COMP_BODY_END_SCRIPTS,
-        area_names: AREA_ORDER.iter().map(|n| n.to_string()).collect(),
-        areas: AREA_ORDER
-            .iter()
-            .zip(AREA_FRAGMENTS.iter())
-            .map(|(name, fragment)| (name.to_string(), fragment.to_string()))
-            .collect(),
+        nav: crate::corpus::load_nav().unwrap_or_else(|e| panic!("{e}")),
     })
 }
 
@@ -119,22 +112,16 @@ pub fn substitution() -> &'static SubstitutionModel {
 
 // ---- large-loop ------------------------------------------------------------------------------
 
+/// Rows carry ONLY the value (E21): the display name `row-{i}` is composed by the templates
+/// as the literal `row-` + the value substitution.
 #[derive(Serialize)]
 pub struct LoopRow {
-    pub name: String,
     pub value: i32,
 }
 
 pub fn large_loop() -> &'static Vec<LoopRow> {
     static MODEL: OnceLock<Vec<LoopRow>> = OnceLock::new();
-    MODEL.get_or_init(|| {
-        (0..5000)
-            .map(|i: i32| LoopRow {
-                name: format!("row-{i}"),
-                value: i,
-            })
-            .collect()
-    })
+    MODEL.get_or_init(|| (0..5000).map(|i: i32| LoopRow { value: i }).collect())
 }
 
 // ---- mixed-page ------------------------------------------------------------------------------
@@ -154,13 +141,15 @@ pub struct MixedModel {
     pub products: Vec<MixedProduct>,
 }
 
+/// E21: `sku_number`/`batch` are ints — the templates compose the display SKU
+/// (`MX-` + sku_number) and the blurb sentence (around the batch substitution).
 #[derive(Serialize)]
 pub struct MixedProduct {
     pub name: String,
-    pub sku: String,
+    pub sku_number: i32,
     pub price: i32,
     pub on_sale: bool,
-    pub blurb: String,
+    pub batch: i32,
 }
 
 pub fn mixed() -> &'static MixedModel {
@@ -179,12 +168,10 @@ pub fn mixed() -> &'static MixedModel {
         products: (1..=36)
             .map(|i: i32| MixedProduct {
                 name: format!("Product {i:02}"),
-                sku: format!("MX-{}", 1000 + i),
+                sku_number: 1000 + i,
                 price: 950 + i * 7,
                 on_sale: i % 3 == 0,
-                blurb: format!(
-                    "A dependable workshop staple from batch {i}, checked for daily use and backed by our lifetime guarantee."
-                ),
+                batch: i,
             })
             .collect(),
     })
@@ -192,10 +179,12 @@ pub fn mixed() -> &'static MixedModel {
 
 // ---- conditional-heavy -----------------------------------------------------------------------
 
+/// E21: the int `seq` replaces the note string — the templates compose the note text as the
+/// literal `note ` + the seq substitution.
 #[derive(Serialize)]
 pub struct ConditionalRow {
     pub name: String,
-    pub note: String,
+    pub seq: i32,
     pub is_bronze: bool,
     pub is_silver: bool,
     pub is_gold: bool,
@@ -209,7 +198,7 @@ pub fn conditional() -> &'static Vec<ConditionalRow> {
         (0..200)
             .map(|i: i32| ConditionalRow {
                 name: format!("unit-{i:03}"),
-                note: format!("note {i}"),
+                seq: i,
                 is_bronze: i % 4 == 0,
                 is_silver: i % 4 == 1,
                 is_gold: i % 4 == 2,
@@ -222,21 +211,60 @@ pub fn conditional() -> &'static Vec<ConditionalRow> {
 
 // ---- fragment-heavy --------------------------------------------------------------------------
 
+/// E20: 48 rows of four dispatched fragment kinds (12 each) with one level of nesting (the
+/// card fragment renders badge + price against `promo`). The model carries DATA only (E21):
+/// derived display text — the media caption (`Caption for ` + name), the image source
+/// (`/img/` + name + `.jpg`) and the display price (price + `.99`) — is composed by the
+/// TEMPLATES as literal-plus-substitution.
 #[derive(Serialize)]
 pub struct FragmentRow {
+    /// `{ "tile", "card", "media", "stat" }[i % 4]` — informational; engines dispatch on the
+    /// precomputed booleans, never on this string (common-denominator dispatch).
+    pub kind: &'static str,
+    pub is_tile: bool,
+    pub is_card: bool,
+    pub is_media: bool,
+    pub is_stat: bool,
+    /// `item-{i:02}` — identity data, the one padded value.
     pub name: String,
     pub value: i32,
     pub badge: &'static str,
+    pub delta: i64,
+    /// On EVERY row — no engine needs a null guard.
+    pub promo: FragmentPromo,
+}
+
+#[derive(Serialize)]
+pub struct FragmentPromo {
+    /// == the row's badge.
+    pub label: &'static str,
+    /// `9 + i`, whole-currency units — an int, not a string (the display price is the
+    /// template-composed `@(Price).99`).
+    pub price: i32,
 }
 
 pub fn fragment() -> &'static Vec<FragmentRow> {
     static MODEL: OnceLock<Vec<FragmentRow>> = OnceLock::new();
     MODEL.get_or_init(|| {
         (0..48)
-            .map(|i: i32| FragmentRow {
-                name: format!("tile-{i:02}"),
-                value: i * 11,
-                badge: ["new", "hot", "sale", "std"][(i % 4) as usize],
+            .map(|i: i32| {
+                let kind = ["tile", "card", "media", "stat"][(i % 4) as usize];
+                let badge = ["new", "hot", "sale", "std"][(i % 4) as usize];
+                FragmentRow {
+                    kind,
+                    is_tile: kind == "tile",
+                    is_card: kind == "card",
+                    is_media: kind == "media",
+                    is_stat: kind == "stat",
+                    name: format!("item-{i:02}"),
+                    value: i * 11,
+                    badge,
+                    delta: (i % 7) as i64 - 3,
+                    promo: FragmentPromo {
+                        label: badge,
+                        price: 9 + i,
+                    },
+                }
             })
             .collect()
     })
@@ -314,9 +342,9 @@ mod tests {
     fn large_loop_has_5000_rows_with_pinned_edges() {
         let rows = large_loop();
         assert_eq!(rows.len(), 5000);
-        assert_eq!(rows[0].name, "row-0");
+        // E21: value only — the display name `row-{i}` is template-composed.
         assert_eq!(rows[0].value, 0);
-        assert_eq!(rows[4999].name, "row-4999");
+        assert_eq!(rows[2500].value, 2500);
         assert_eq!(rows[4999].value, 4999);
     }
 
@@ -337,18 +365,46 @@ mod tests {
         assert_eq!(rows.iter().filter(|r| r.is_active).count(), 160);
         assert_eq!(rows[0].name, "unit-000");
         assert_eq!(rows[199].name, "unit-199");
-        assert_eq!(rows[7].note, "note 7");
+        // E21: the int seq replaces the note string (`note {i}` is template-composed).
+        assert_eq!(rows[7].seq, 7);
+        assert_eq!(rows[199].seq, 199);
     }
 
     #[test]
-    fn fragment_has_48_rows_with_pinned_badges() {
+    fn fragment_has_48_rows_with_pinned_dispatch_and_nesting() {
         let rows = fragment();
         assert_eq!(rows.len(), 48);
-        assert_eq!(rows[0].name, "tile-00");
-        assert_eq!(rows[47].name, "tile-47");
+        // E20 identity/value pins.
+        assert_eq!(rows[0].name, "item-00");
+        assert_eq!(rows[47].name, "item-47");
         assert_eq!(rows[47].value, 47 * 11);
         assert_eq!(rows.iter().filter(|r| r.badge == "new").count(), 12);
         assert_eq!(rows[1].badge, "hot");
+        // Dispatch cycle: 12 of each kind, booleans precomputed and consistent with `kind`.
+        for k in ["tile", "card", "media", "stat"] {
+            assert_eq!(rows.iter().filter(|r| r.kind == k).count(), 12);
+        }
+        assert!(rows[0].is_tile && rows[1].is_card && rows[2].is_media && rows[3].is_stat);
+        for r in rows {
+            let flags = [r.is_tile, r.is_card, r.is_media, r.is_stat]
+                .iter()
+                .filter(|&&b| b)
+                .count();
+            assert_eq!(flags, 1, "{}: exactly one kind boolean", r.name);
+            let expected =
+                [r.is_tile, r.is_card, r.is_media, r.is_stat][["tile", "card", "media", "stat"]
+                    .iter()
+                    .position(|k| *k == r.kind)
+                    .unwrap()];
+            assert!(expected, "{}: kind/boolean mismatch", r.name);
+            // The one nesting level: promo on EVERY row, label == badge, price = 9 + i.
+            assert_eq!(r.promo.label, r.badge);
+        }
+        // Delta and promo-price pins: i = 0 → -3 / 9; i = 47 → 47 % 7 - 3 = 2 / 56.
+        assert_eq!(rows[0].delta, -3);
+        assert_eq!(rows[0].promo.price, 9);
+        assert_eq!(rows[47].delta, 2);
+        assert_eq!(rows[47].promo.price, 56);
     }
 
     #[test]
@@ -362,9 +418,13 @@ mod tests {
         assert!(!model.show_debug_panel);
         assert_eq!(model.year, 2026);
         assert_eq!(model.products[0].name, "Product 01");
-        assert_eq!(model.products[0].sku, "MX-1001");
+        // E21: ints replace the sku/blurb strings (`MX-{n}` / the blurb sentence are
+        // template-composed).
+        assert_eq!(model.products[0].sku_number, 1001);
+        assert_eq!(model.products[0].batch, 1);
         assert_eq!(model.products[35].name, "Product 36");
-        assert_eq!(model.products[35].sku, "MX-1036");
+        assert_eq!(model.products[35].sku_number, 1036);
+        assert_eq!(model.products[35].batch, 36);
         assert_eq!(model.products[35].price, 950 + 36 * 7);
     }
 
@@ -408,26 +468,92 @@ mod tests {
     }
 
     #[test]
-    fn composed_fragments_are_nonempty_except_area_6() {
-        let model = composed();
-        assert_eq!(model.area_names.len(), 7);
-        assert_eq!(model.areas.len(), 7);
-        for (i, name) in AREA_ORDER.iter().enumerate() {
-            let fragment = &model.areas[*name];
-            if *name == "Alert Top Section Below Nav" {
-                assert!(fragment.is_empty(), "area-6 must be the empty entry");
-            } else {
-                assert!(!fragment.is_empty(), "area-{} must be non-empty", i + 1);
+    fn composed_nav_loads_from_the_corpus_fixture_with_pinned_counts() {
+        let nav = &composed().nav;
+        // Two mega menus of six tabs each; four footer columns (E20).
+        assert_eq!(nav.menus.len(), 2);
+        for menu in &nav.menus {
+            assert_eq!(menu.tabs.len(), 6);
+        }
+        assert_eq!(nav.footer_columns.len(), 4);
+        // 12 dropdown tabs; 32 menu columns + 4 footer columns = 36; 220 + 25 = 245 links —
+        // the counts the verifier derives from this same model.
+        assert_eq!(
+            nav.menus
+                .iter()
+                .flat_map(|m| &m.tabs)
+                .filter(|t| t.has_dropdown)
+                .count(),
+            12
+        );
+        let menu_columns: usize = nav
+            .menus
+            .iter()
+            .flat_map(|m| &m.tabs)
+            .map(|t| t.columns.len())
+            .sum();
+        assert_eq!(menu_columns + nav.footer_columns.len(), 36);
+        let menu_links: usize = nav
+            .menus
+            .iter()
+            .flat_map(|m| &m.tabs)
+            .flat_map(|t| &t.columns)
+            .flat_map(|c| &c.sections)
+            .map(|s| s.links.len())
+            .sum();
+        let footer_links: usize = nav
+            .footer_columns
+            .iter()
+            .flat_map(|c| &c.sections)
+            .map(|s| s.links.len())
+            .sum();
+        assert_eq!(menu_links + footer_links, 245);
+        // Pinned entries: the first tab and the footer's unique privacy deep link.
+        let tab0 = &nav.menus[0].tabs[0];
+        assert_eq!(tab0.label, "Shop All Products");
+        assert_eq!(tab0.css, "shop-all-products");
+        assert!(tab0.has_dropdown);
+        assert_eq!(tab0.dropdown_css, "dropdown_2columns");
+        assert_eq!(nav.footer_columns[0].sections[0].title, "Need Help?");
+        let privacy: Vec<&NavLink> = nav
+            .footer_columns
+            .iter()
+            .flat_map(|c| &c.sections)
+            .flat_map(|s| &s.links)
+            .filter(|l| l.href == "/content/privacy-policy")
+            .collect();
+        assert_eq!(privacy.len(), 1);
+        assert_eq!(privacy[0].label, "Privacy Policy");
+    }
+
+    #[test]
+    fn composed_nav_values_are_rule_4_clean() {
+        // workloads.md rule 4 / E20 sanitization: every nav text value is ASCII with none of
+        // `& < > " '` — raw and would-be-escaped renderings coincide on every engine.
+        fn assert_clean(context: &str, s: &str) {
+            assert!(
+                s.is_ascii() && !s.contains(['&', '<', '>', '"', '\'']),
+                "rule-4 violation in {context}: {s:?}"
+            );
+        }
+        fn check_column(col: &NavColumn) {
+            for s in &col.sections {
+                assert_clean("section title", &s.title);
+                assert_clean("section href", &s.href);
+                for l in &s.links {
+                    assert_clean("link label", &l.label);
+                    assert_clean("link href", &l.href);
+                }
             }
         }
-        assert_eq!(model.section_meta, "<title>Title</title>");
-        assert!(
-            model
-                .section_social
-                .starts_with("<meta property=\"og:image\"")
-        );
-        assert!(model.section_page_scripts.is_empty());
-        assert!(model.section_endpage_scripts.is_empty());
-        assert_eq!(model.comp_custom_styles, "/* CSS Comment Test */");
+        let nav = &composed().nav;
+        for tab in nav.menus.iter().flat_map(|m| &m.tabs) {
+            assert_clean("tab label", &tab.label);
+            assert_clean("tab href", &tab.href);
+            assert_clean("tab css", &tab.css);
+            assert_clean("tab dropdown_css", &tab.dropdown_css);
+            tab.columns.iter().for_each(check_column);
+        }
+        nav.footer_columns.iter().for_each(check_column);
     }
 }

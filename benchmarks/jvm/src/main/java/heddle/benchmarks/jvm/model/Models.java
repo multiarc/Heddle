@@ -1,15 +1,16 @@
 package heddle.benchmarks.jvm.model;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import heddle.benchmarks.jvm.gate.Corpus;
+
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.UncheckedIOException;
-import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 
 /**
  * All pinned workload models (Phase 3 spec, construct-mapping.md &sect;Java models).
@@ -19,6 +20,14 @@ import java.util.Map;
  * {@code String.format(Locale.ROOT, ...)} or plain ASCII/int concatenation - no locale,
  * time, or randomness anywhere. Pinned data must match Phase 1 byte-for-byte
  * (docs/spec/cross-stack-benchmarks/phase-1-cross-stack-foundation/workloads.md).
+ *
+ * The E21 rule governs every shape here: the model tier carries DATA only - derived
+ * display strings ({@code row-<i>}, {@code MX-<sku>}, {@code note <i>}, blurb sentences,
+ * media captions, display prices) are composed by the TEMPLATES as
+ * literal-plus-substitution, never pre-formatted model-side. Zero-padded identity names
+ * ({@code unit-%03d}, {@code item-%02d}, {@code Product %02d}) and the encoded-suite
+ * payloads stay model-side by design (row identity / untrusted input).
+ *
  * This source file is saved UTF-8 without BOM (rows 4/8 carry em dash U+2014; row 12 and
  * the encoded-loop comments carry Japanese text).
  */
@@ -75,16 +84,17 @@ public final class Models {
 
     // ---- workload 3: large-loop --------------------------------------------------------
 
+    /**
+     * E21: the row carries ONLY the ordinal - the display name {@code row-<i>} is composed
+     * by the templates as {@code row-} + the value substitution.
+     */
     public static final class LoopRow {
-        private final String name;
         private final int value;
 
-        public LoopRow(String name, int value) {
-            this.name = name;
+        public LoopRow(int value) {
             this.value = value;
         }
 
-        public String getName() { return name; }
         public int getValue() { return value; }
     }
 
@@ -93,7 +103,7 @@ public final class Models {
     private static List<LoopRow> buildLoopRows() {
         List<LoopRow> rows = new ArrayList<>(5000);
         for (int i = 0; i <= 4999; i++) {
-            rows.add(new LoopRow("row-" + i, i));
+            rows.add(new LoopRow(i));
         }
         return Collections.unmodifiableList(rows);
     }
@@ -102,24 +112,26 @@ public final class Models {
 
     public static final class MixedProduct {
         private final String name;
-        private final String sku;
+        private final int skuNumber;
         private final int price;
         private final boolean onSale;
-        private final String blurb;
+        private final int batch;
 
-        public MixedProduct(String name, String sku, int price, boolean onSale, String blurb) {
+        public MixedProduct(String name, int skuNumber, int price, boolean onSale, int batch) {
             this.name = name;
-            this.sku = sku;
+            this.skuNumber = skuNumber;
             this.price = price;
             this.onSale = onSale;
-            this.blurb = blurb;
+            this.batch = batch;
         }
 
         public String getName() { return name; }
-        public String getSku() { return sku; }
+        /** E21: numeric SKU - the templates compose the display SKU {@code MX-<skuNumber>}. */
+        public int getSkuNumber() { return skuNumber; }
         public int getPrice() { return price; }
         public boolean isOnSale() { return onSale; }
-        public String getBlurb() { return blurb; }
+        /** E21: batch ordinal - the templates compose the blurb sentence around it. */
+        public int getBatch() { return batch; }
     }
 
     public static final class MixedModel {
@@ -172,11 +184,10 @@ public final class Models {
         for (int i = 1; i <= 36; i++) {
             products.add(new MixedProduct(
                     String.format(Locale.ROOT, "Product %02d", i),
-                    "MX-" + (1000 + i),
+                    1000 + i,
                     950 + i * 7,
                     i % 3 == 0,
-                    "A dependable workshop staple from batch " + i
-                            + ", checked for daily use and backed by our lifetime guarantee."));
+                    i));
         }
         return new MixedModel(
                 "Mercantile - Catalog", "Mercantile", "Autumn hardware sale",
@@ -191,17 +202,17 @@ public final class Models {
 
     public static final class ConditionalRow {
         private final String name;
-        private final String note;
+        private final int seq;
         private final boolean bronze;
         private final boolean silver;
         private final boolean gold;
         private final boolean hasNote;
         private final boolean active;
 
-        public ConditionalRow(String name, String note, boolean bronze, boolean silver,
+        public ConditionalRow(String name, int seq, boolean bronze, boolean silver,
                               boolean gold, boolean hasNote, boolean active) {
             this.name = name;
-            this.note = note;
+            this.seq = seq;
             this.bronze = bronze;
             this.silver = silver;
             this.gold = gold;
@@ -210,7 +221,8 @@ public final class Models {
         }
 
         public String getName() { return name; }
-        public String getNote() { return note; }
+        /** E21: row ordinal - the templates compose the note text {@code note <seq>}. */
+        public int getSeq() { return seq; }
         public boolean isBronze() { return bronze; }
         public boolean isSilver() { return silver; }
         public boolean isGold() { return gold; }
@@ -225,7 +237,7 @@ public final class Models {
         for (int i = 0; i <= 199; i++) {
             rows.add(new ConditionalRow(
                     String.format(Locale.ROOT, "unit-%03d", i),
-                    "note " + i,
+                    i,
                     i % 4 == 0, i % 4 == 1, i % 4 == 2,
                     i % 2 == 0, i % 5 != 0));
         }
@@ -234,30 +246,89 @@ public final class Models {
 
     // ---- workload 6: fragment-heavy ----------------------------------------------------
 
+    /**
+     * E20 redesign: 48 rows of four dispatched fragment kinds (12 each) with one level of
+     * nesting (the card fragment renders badge + price from {@link FragmentPromo}). The
+     * model carries DATA only - the media caption ({@code Caption for } + name), image src
+     * ({@code /img/} + name + {@code .jpg}) and display price (price + {@code .99}) are
+     * composed by the templates (E21).
+     */
     public static final class FragmentRow {
+        private final String kind;
+        private final boolean tile;
+        private final boolean card;
+        private final boolean media;
+        private final boolean stat;
         private final String name;
         private final int value;
         private final String badge;
+        private final int delta;
+        private final FragmentPromo promo;
 
-        public FragmentRow(String name, int value, String badge) {
+        public FragmentRow(String kind, boolean tile, boolean card, boolean media,
+                           boolean stat, String name, int value, String badge, int delta,
+                           FragmentPromo promo) {
+            this.kind = kind;
+            this.tile = tile;
+            this.card = card;
+            this.media = media;
+            this.stat = stat;
             this.name = name;
             this.value = value;
             this.badge = badge;
+            this.delta = delta;
+            this.promo = promo;
         }
 
+        /** Informational; engines dispatch on the booleans below, never on this string. */
+        public String getKind() { return kind; }
+        public boolean isTile() { return tile; }
+        public boolean isCard() { return card; }
+        public boolean isMedia() { return media; }
+        public boolean isStat() { return stat; }
         public String getName() { return name; }
         public int getValue() { return value; }
         public String getBadge() { return badge; }
+        /** Stat rows render it. */
+        public int getDelta() { return delta; }
+        /** The nesting level: the card fragment renders badge + price from it. Present on
+         * every row so no engine needs a null guard. */
+        public FragmentPromo getPromo() { return promo; }
+    }
+
+    public static final class FragmentPromo {
+        private final String label;
+        private final int price;
+
+        public FragmentPromo(String label, int price) {
+            this.label = label;
+            this.price = price;
+        }
+
+        public String getLabel() { return label; }
+        /** Whole-currency units only; the templates compose the display price
+         * ({@code <price>.99}) - formatting is rendering work, not model work (E21). */
+        public int getPrice() { return price; }
     }
 
     public static final List<FragmentRow> FRAGMENT_ROWS = buildFragmentRows();
 
     private static List<FragmentRow> buildFragmentRows() {
+        String[] kinds = {"tile", "card", "media", "stat"};
         String[] badges = {"new", "hot", "sale", "std"};
         List<FragmentRow> rows = new ArrayList<>(48);
         for (int i = 0; i <= 47; i++) {
+            String kind = kinds[i % 4];
+            String badge = badges[i % 4];
             rows.add(new FragmentRow(
-                    String.format(Locale.ROOT, "tile-%02d", i), i * 11, badges[i % 4]));
+                    kind,
+                    "tile".equals(kind), "card".equals(kind),
+                    "media".equals(kind), "stat".equals(kind),
+                    String.format(Locale.ROOT, "item-%02d", i),
+                    i * 11,
+                    badge,
+                    i % 7 - 3,
+                    new FragmentPromo(badge, 9 + i)));
         }
         return Collections.unmodifiableList(rows);
     }
@@ -330,98 +401,254 @@ public final class Models {
     // ---- workload 1: composed-page -----------------------------------------------------
 
     /**
-     * Composed-page model, loaded once (lazily) from the fragment resource files under
-     * {@code composed-page/} on the classpath (construct-mapping.md &sect;Composed-page
-     * fragment resources). The resources are a WI2 deliverable; until they exist,
-     * {@link #composed()} throws with a clear missing-resource message so WI1's
-     * template-independent verbs (probe, calibrate) are unaffected.
+     * Composed-page model (ledger E20; E22 removed the text half): pure structured
+     * navigation and NOTHING else - every fragment of literal page text lives in the
+     * templates. {@code ComposedModel} stays exactly {@code { nav }} (E22), mirroring the
+     * Phase 1 shape.
      */
     public static final class ComposedModel {
-        private final Map<String, String> sections;
-        private final Map<String, String> comps;
-        private final Map<String, String> areas;
-        private final List<String> areaNames;
+        private final NavModel nav;
 
-        public ComposedModel(Map<String, String> sections, Map<String, String> comps,
-                             Map<String, String> areas, List<String> areaNames) {
-            this.sections = sections;
-            this.comps = comps;
-            this.areas = areas;
-            this.areaNames = areaNames;
+        public ComposedModel(NavModel nav) {
+            this.nav = nav;
         }
 
-        public Map<String, String> getSections() { return sections; }
-        public Map<String, String> getComps() { return comps; }
-        public Map<String, String> getAreas() { return areas; }
-        public List<String> getAreaNames() { return areaNames; }
+        public NavModel getNav() { return nav; }
     }
 
-    private static volatile ComposedModel composed;
+    /** Two mega menus (wholesale, retail) and four footer columns (E20). */
+    public static final class NavModel {
+        private final List<MegaMenu> menus;
+        private final List<NavColumn> footerColumns;
 
-    public static ComposedModel composed() {
-        ComposedModel model = composed;
-        if (model == null) {
-            synchronized (Models.class) {
-                model = composed;
-                if (model == null) {
-                    composed = model = loadComposed();
-                }
-            }
+        public NavModel(List<MegaMenu> menus, List<NavColumn> footerColumns) {
+            this.menus = menus;
+            this.footerColumns = footerColumns;
         }
-        return model;
+
+        public List<MegaMenu> getMenus() { return menus; }
+        public List<NavColumn> getFooterColumns() { return footerColumns; }
+    }
+
+    public static final class MegaMenu {
+        private final List<MenuTab> tabs;
+
+        public MegaMenu(List<MenuTab> tabs) {
+            this.tabs = tabs;
+        }
+
+        public List<MenuTab> getTabs() { return tabs; }
+    }
+
+    public static final class MenuTab {
+        private final String label;
+        private final String href;
+        private final String css;
+        private final boolean hasDropdown;
+        private final String dropdownCss;
+        private final List<NavColumn> columns;
+
+        public MenuTab(String label, String href, String css, boolean hasDropdown,
+                       String dropdownCss, List<NavColumn> columns) {
+            this.label = label;
+            this.href = href;
+            this.css = css;
+            this.hasDropdown = hasDropdown;
+            this.dropdownCss = dropdownCss;
+            this.columns = columns;
+        }
+
+        public String getLabel() { return label; }
+        public String getHref() { return href; }
+        public String getCss() { return css; }
+        /** Precomputed boolean - no engine evaluates a collection test (E20). */
+        public boolean isHasDropdown() { return hasDropdown; }
+        public String getDropdownCss() { return dropdownCss; }
+        public List<NavColumn> getColumns() { return columns; }
+    }
+
+    public static final class NavColumn {
+        private final List<NavSection> sections;
+
+        public NavColumn(List<NavSection> sections) {
+            this.sections = sections;
+        }
+
+        public List<NavSection> getSections() { return sections; }
+    }
+
+    public static final class NavSection {
+        private final String title;
+        private final String href;
+        private final boolean titleLinked;
+        private final List<NavLink> links;
+
+        public NavSection(String title, String href, boolean titleLinked, List<NavLink> links) {
+            this.title = title;
+            this.href = href;
+            this.titleLinked = titleLinked;
+            this.links = links;
+        }
+
+        public String getTitle() { return title; }
+        public String getHref() { return href; }
+        /** Precomputed: the title renders as a link exactly when the fixture linked it. */
+        public boolean isTitleLinked() { return titleLinked; }
+        public List<NavLink> getLinks() { return links; }
+    }
+
+    public static final class NavLink {
+        private final String label;
+        private final String href;
+
+        public NavLink(String label, String href) {
+            this.label = label;
+            this.href = href;
+        }
+
+        public String getLabel() { return label; }
+        public String getHref() { return href; }
+    }
+
+    /**
+     * Loaded once at class initialization (lazy holder = static init on first touch) from
+     * {@code GoldenCorpus/fixtures/composed-page/nav.json} - the single source of truth
+     * every non-.NET ecosystem loads from (E20) - resolved through the SAME corpus-dir
+     * resolution the gate uses ({@link Corpus#resolveRoot()}, honoring
+     * {@code -Dheddle.corpus}). Parsed with the already-pinned Jackson dependency (the
+     * manifest reader's mapper); a load or schema failure fails fast.
+     */
+    public static ComposedModel composed() {
+        return ComposedHolder.MODEL;
+    }
+
+    private static final class ComposedHolder {
+        static final ComposedModel MODEL = loadComposed();
     }
 
     private static ComposedModel loadComposed() {
-        List<String> areaNames = new ArrayList<>();
-        for (String line : resource("composed-page/area-order.txt").split("\n", -1)) {
-            String name = line.endsWith("\r") ? line.substring(0, line.length() - 1) : line;
-            if (!name.isEmpty()) {
-                areaNames.add(name);
-            }
+        Path path = Corpus.resolveRoot()
+                .resolve("fixtures").resolve("composed-page").resolve("nav.json");
+        JsonNode root;
+        try {
+            root = new ObjectMapper().readTree(Files.readAllBytes(path));
+        } catch (IOException e) {
+            throw new Corpus.CorpusException(
+                    "Cannot read composed-page nav fixture " + path
+                            + " (set -Dheddle.corpus=...)", e);
         }
-        Map<String, String> sections = new LinkedHashMap<>();
-        Map<String, String> comps = new LinkedHashMap<>();
-        Map<String, String> areas = new LinkedHashMap<>();
-        // Key sets mirror TwinContent.Sections()/Components()/Areas exactly; the concrete
-        // file set is transcribed by WI2. Each fragment file is one UTF-8 (no BOM) resource
-        // named section.<key>.txt / comp.<key>.txt / area.<index>.<slug>.txt; a manifest-free
-        // convention: WI2 ships an index file listing them.
-        for (String entry : resource("composed-page/fragments.txt").split("\n", -1)) {
-            String line = entry.endsWith("\r") ? entry.substring(0, entry.length() - 1) : entry;
-            if (line.isEmpty()) {
-                continue;
+        List<MegaMenu> menus = new ArrayList<>();
+        for (JsonNode menu : array(root, "menus")) {
+            List<MenuTab> tabs = new ArrayList<>();
+            for (JsonNode tab : array(menu, "tabs")) {
+                tabs.add(new MenuTab(
+                        text(tab, "label"),
+                        text(tab, "href"),
+                        text(tab, "css"),
+                        bool(tab, "has_dropdown"),
+                        text(tab, "dropdown_css"),
+                        columns(array(tab, "columns"))));
             }
-            // Format per line: <kind>\t<key>\t<file>
-            String[] parts = line.split("\t", 3);
-            if (parts.length != 3) {
-                throw new IllegalStateException(
-                        "composed-page/fragments.txt: malformed line \"" + line + "\"");
-            }
-            String content = resource("composed-page/" + parts[2]);
-            switch (parts[0]) {
-                case "section" -> sections.put(parts[1], content);
-                case "comp" -> comps.put(parts[1], content);
-                case "area" -> areas.put(parts[1], content);
-                default -> throw new IllegalStateException(
-                        "composed-page/fragments.txt: unknown kind \"" + parts[0] + "\"");
-            }
+            menus.add(new MegaMenu(Collections.unmodifiableList(tabs)));
         }
-        return new ComposedModel(
-                Collections.unmodifiableMap(sections),
-                Collections.unmodifiableMap(comps),
-                Collections.unmodifiableMap(areas),
-                Collections.unmodifiableList(areaNames));
+        NavModel nav = new NavModel(
+                Collections.unmodifiableList(menus),
+                columns(array(root, "footer_columns")));
+        assertRule4(nav);
+        return new ComposedModel(nav);
     }
 
-    private static String resource(String name) {
-        try (InputStream in = Models.class.getClassLoader().getResourceAsStream(name)) {
-            if (in == null) {
-                throw new IllegalStateException("Missing classpath resource '" + name
-                        + "' (composed-page fragment resources are a WI2 deliverable)");
+    private static List<NavColumn> columns(JsonNode columnsNode) {
+        List<NavColumn> columns = new ArrayList<>();
+        for (JsonNode column : columnsNode) {
+            List<NavSection> sections = new ArrayList<>();
+            for (JsonNode section : array(column, "sections")) {
+                List<NavLink> links = new ArrayList<>();
+                for (JsonNode link : array(section, "links")) {
+                    links.add(new NavLink(text(link, "label"), text(link, "href")));
+                }
+                sections.add(new NavSection(
+                        text(section, "title"),
+                        text(section, "href"),
+                        bool(section, "title_linked"),
+                        Collections.unmodifiableList(links)));
             }
-            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            throw new UncheckedIOException("Failed reading classpath resource '" + name + "'", e);
+            columns.add(new NavColumn(Collections.unmodifiableList(sections)));
+        }
+        return Collections.unmodifiableList(columns);
+    }
+
+    private static JsonNode field(JsonNode node, String name) {
+        JsonNode value = node.get(name);
+        if (value == null || value.isNull()) {
+            throw new IllegalStateException("nav.json: missing field '" + name + "'");
+        }
+        return value;
+    }
+
+    private static JsonNode array(JsonNode node, String name) {
+        JsonNode value = field(node, name);
+        if (!value.isArray()) {
+            throw new IllegalStateException("nav.json: field '" + name + "' is not an array");
+        }
+        return value;
+    }
+
+    private static String text(JsonNode node, String name) {
+        JsonNode value = field(node, name);
+        if (!value.isTextual()) {
+            throw new IllegalStateException("nav.json: field '" + name + "' is not a string");
+        }
+        return value.asText();
+    }
+
+    private static boolean bool(JsonNode node, String name) {
+        JsonNode value = field(node, name);
+        if (!value.isBoolean()) {
+            throw new IllegalStateException("nav.json: field '" + name + "' is not a boolean");
+        }
+        return value.asBoolean();
+    }
+
+    /**
+     * Workloads.md rule 4, asserted the way {@code NavData}'s static constructor asserts it
+     * (E20): every nav text value is printable ASCII with none of {@code & < > " '}, so raw
+     * and would-be-escaped renderings coincide and no default-escaping engine can
+     * double-escape.
+     */
+    private static void assertRule4(NavModel nav) {
+        for (MegaMenu menu : nav.getMenus()) {
+            for (MenuTab tab : menu.getTabs()) {
+                rule4(tab.getLabel());
+                rule4(tab.getHref());
+                rule4(tab.getCss());
+                rule4(tab.getDropdownCss());
+                rule4Columns(tab.getColumns());
+            }
+        }
+        rule4Columns(nav.getFooterColumns());
+    }
+
+    private static void rule4Columns(List<NavColumn> columns) {
+        for (NavColumn column : columns) {
+            for (NavSection section : column.getSections()) {
+                rule4(section.getTitle());
+                rule4(section.getHref());
+                for (NavLink link : section.getLinks()) {
+                    rule4(link.getLabel());
+                    rule4(link.getHref());
+                }
+            }
+        }
+    }
+
+    private static void rule4(String value) {
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            if (c < 0x20 || c > 0x7E || c == '&' || c == '<' || c == '>' || c == '"' || c == '\'') {
+                throw new IllegalStateException("nav.json: value violates workloads.md rule 4"
+                        + " (printable ASCII, none of &<>\"'): \"" + value + "\"");
+            }
         }
     }
 }

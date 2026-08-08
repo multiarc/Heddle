@@ -83,13 +83,9 @@ public final class ThymeleafEngines {
         }
         ctx = new Context();
         switch (workload) {
-            case "composed-page" -> {
-                Models.ComposedModel m = Models.composed();
-                ctx.setVariable("sections", m.getSections());
-                ctx.setVariable("comps", m.getComps());
-                ctx.setVariable("areas", m.getAreas());
-                ctx.setVariable("areaNames", m.getAreaNames());
-            }
+            // E22: the engine module passes only the nav model view - all literal page
+            // text lives in the templates.
+            case "composed-page" -> ctx.setVariable("nav", Models.composed().getNav());
             case "trivial-substitution" -> ctx.setVariable("m", Models.SUBSTITUTION);
             case "large-loop" -> ctx.setVariable("items", Models.LOOP_ROWS);
             case "mixed-page" -> ctx.setVariable("m", Models.MIXED);

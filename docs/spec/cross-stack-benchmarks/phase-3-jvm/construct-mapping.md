@@ -46,26 +46,30 @@ generators' output.
 | Class | Fields (getter-implied) | Pinned data (must match Phase 1 byte-for-byte) |
 |---|---|---|
 | `SubstitutionModel` | `title, sku, price (int), brand, category, availability, url, imageUrl, summary, rating` | `"Heddle Handbook"`, `"HB-2001"`, `4200`, `"Heddle Press"`, `"Reference"`, `"In stock"`, `"/catalog/handbook"`, `"/img/handbook.png"`, `"A concise field guide to the engine."`, `"4.8"` |
-| `LoopRow` | `name, value (int)` | 5,000 rows, `i` in `[0,4999]`: `"row-" + i`, `i` |
+| `LoopRow` | `value (int)` | 5,000 rows, `i` in `[0,4999]`: `i` — the row carries ONLY the ordinal; the display name `row-<i>` is composed by the templates as `row-` + the value substitution ([E21](../../records.md#cross-spec-amendments-ledger)) |
 | `MixedModel` | `pageTitle, storeName, heroHeading, heroTagline, showBanner (boolean), bannerText, showDebugPanel (boolean), footerNote, year (int), supportEmail, products (List<MixedProduct>)` | exactly the Phase 1 values: `"Mercantile - Catalog"`, `"Mercantile"`, `"Autumn hardware sale"`, `"Hand-picked tools, fair prices, shipped tomorrow."`, `true`, `"Free shipping on orders over 60."`, `false`, `"Prices include VAT where applicable."`, `2026`, `"support at mercantile.example"` |
-| `MixedProduct` | `name, sku, price (int), onSale (boolean), blurb` | 36 rows, `i` in `[1,36]`: `String.format(Locale.ROOT, "Product %02d", i)`, `"MX-" + (1000 + i)`, `950 + i * 7`, `i % 3 == 0`, `"A dependable workshop staple from batch " + i + ", checked for daily use and backed by our lifetime guarantee."` |
-| `ConditionalRow` | `name, note, bronze, silver, gold, hasNote, active (booleans)` | 200 rows, `i` in `[0,199]`: `String.format(Locale.ROOT, "unit-%03d", i)`, `"note " + i`, `i % 4 == 0`, `i % 4 == 1`, `i % 4 == 2`, `i % 2 == 0`, `i % 5 != 0` |
-| `FragmentRow` | `name, value (int), badge` | 48 rows, `i` in `[0,47]`: `String.format(Locale.ROOT, "tile-%02d", i)`, `i * 11`, `new String[]{"new","hot","sale","std"}[i % 4]` |
+| `MixedProduct` | `name, skuNumber (int), price (int), onSale (boolean), batch (int)` | 36 rows, `i` in `[1,36]`: `String.format(Locale.ROOT, "Product %02d", i)`, `1000 + i`, `950 + i * 7`, `i % 3 == 0`, `i` — the templates compose the display SKU (`MX-` + `skuNumber`) and the blurb sentence around `batch` ([E21](../../records.md#cross-spec-amendments-ledger)) |
+| `ConditionalRow` | `name, seq (int), bronze, silver, gold, hasNote, active (booleans)` | 200 rows, `i` in `[0,199]`: `String.format(Locale.ROOT, "unit-%03d", i)`, `i`, `i % 4 == 0`, `i % 4 == 1`, `i % 4 == 2`, `i % 2 == 0`, `i % 5 != 0` — the templates compose the note text (`note ` + `seq`) ([E21](../../records.md#cross-spec-amendments-ledger)); the zero-padded identity name stays model-side by design |
+| `FragmentRow` | `kind, tile/card/media/stat (booleans, getters `isTile()` …), name, value (int), badge, delta (int), promo (FragmentPromo)` | 48 rows, `i` in `[0,47]` ([E20](../../records.md#cross-spec-amendments-ledger) redesign): `kind = {"tile","card","media","stat"}[i % 4]` (informational — engines dispatch on the precomputed booleans, never the string), `String.format(Locale.ROOT, "item-%02d", i)`, `i * 11`, `{"new","hot","sale","std"}[i % 4]`, `i % 7 - 3`, promo on EVERY row (no null guard). Derived display text (media caption `Caption for ` + name, image src `/img/` + name + `.jpg`, display price + `.99`) is composed by the TEMPLATES (E21) |
+| `FragmentPromo` | `label, price (int)` | `label == badge`, `price = 9 + i` — whole-currency int; the templates compose the display price |
 | `FortuneRow` | `id (int), message` | the 12 pinned rows of [workloads.md workload 7](../phase-1-cross-stack-foundation/workloads.md#workload-7--fortunes-encoded-encoded), transcribed byte-for-byte (row 1 `4.33e67` — no `+`; rows 4/8 em dash U+2014; row 11 the exact XSS payload; row 12 `フレームワークのベンチマーク`); source files saved UTF-8 without BOM |
 | `EncodedLoopRow` | `tag, name, comment` | 5,000 rows, `i` in `[0,4999]`: `"tag-" + i + "&'" + (i % 7) + "'"`, `"item <" + i + "> & \"co\""`, `"'q' & <angle> \"d\" こんにちは " + i` |
-| `ComposedModel` | `sections (Map<String,String>), comps (Map<String,String>), areas (Map<String,String>), areaNames (List<String>)` | loaded once from the fragment resource files below; key sets and `areaNames` order mirror `TwinContent.Sections()`/`Components()`/`Areas`/`AreaOrder` exactly |
+| `ComposedModel` | `nav (NavModel)` — and NOTHING else ([E20](../../records.md#cross-spec-amendments-ledger) structured nav; [E22](../../records.md#cross-spec-amendments-ledger) removed the text half) | loaded once at static init (lazy holder) from `GoldenCorpus/fixtures/composed-page/nav.json` via the gate's corpus-dir resolution (`Corpus.resolveRoot()`, honoring `-Dheddle.corpus`) |
+| `NavModel` → `MegaMenu` → `MenuTab` → `NavColumn` → `NavSection` → `NavLink` | `NavModel { menus, footerColumns }`; `MegaMenu { tabs }`; `MenuTab { label, href, css, hasDropdown, dropdownCss, columns }`; `NavColumn { sections }`; `NavSection { title, href, titleLinked, links }`; `NavLink { label, href }` | parsed from the fixture's snake_case keys (`has_dropdown`, `dropdown_css`, `title_linked`, `footer_columns`); `hasDropdown`/`titleLinked` are precomputed booleans (no engine evaluates a string or collection test); every text value is asserted against workloads.md rule 4 at load, the way `NavData`'s static constructor asserts it |
 
-**Composed-page fragment resources.** The multi-KB section/component/area fragments are model
-data in the intra-.NET twins (from
-`TwinContent.cs` /
-`AreaComponent.Areas`), never template literals. The JVM harness stores each fragment as one
-UTF-8 (no BOM) resource file under `benchmarks/jvm/src/main/resources/composed-page/`
-(`section.<key>.txt`, `comp.<key>.txt`, `area.<index>.<slug>.txt`, plus `area-order.txt`, one
-name per line), transcribed byte-for-byte from the C# sources at implementation time.
-Transcription errors cannot slip through: the controlled byte gate compares the composed
-output against the corpus entry before any timing, so a single wrong byte fails loudly
-(the same self-verification Phase 1 relies on). Both engines' composed-page models read these
-same files — the fragments exist exactly once in the harness.
+**Composed-page model source (E20/E22).** The pre-E20 blob resource files under
+`src/main/resources/composed-page/` and their loading code are deleted: the model tier carries
+DATA only — every fragment of literal page text (chrome, alert banners, secondary menus,
+asset/script snippets) lives in the templates, and the ONLY composed-page data fixture is
+`GoldenCorpus/fixtures/composed-page/nav.json` (UTF-8, LF, snake_case — the single source of
+truth every non-.NET ecosystem loads from, hash-recorded in the manifest's `fixtures` section).
+The harness parses it with the already-pinned Jackson dependency (the same mapper the corpus
+manifest reader uses — no new dependency). Transcription errors cannot slip through: the
+controlled byte gate compares the composed output against the corpus entry before any timing,
+so a single wrong byte fails loudly (the same self-verification Phase 1 relies on). Both
+engines render from this one loaded model; JTE takes the typed `ComposedModel` param, the
+Thymeleaf context passes only the nav view (`nav` variable — E22: no text fixture is served to
+any engine).
 
 ## JTE templates
 
@@ -198,8 +202,8 @@ Controlled templates follow the
 strictly; `th:*` attributes on output tags appear **only** where an attribute value is
 substituted (`th:attr` — trivial-substitution's `href`/`src`, encoded-loop's `data-tag`),
 because inlining operates in tag bodies, not attribute values. Context variables are set once
-per workload: `m` (page models), `rows`/`items` (lists), plus `sections`/`comps`/`areas`/`areaNames`
-for composed-page.
+per workload: `m` (page models), `rows`/`items` (lists), plus `nav` (the `NavModel` view —
+E20/E22) for composed-page.
 
 ### Controlled — raw suite
 

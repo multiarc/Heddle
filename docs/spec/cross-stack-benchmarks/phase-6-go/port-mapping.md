@@ -34,24 +34,45 @@ discipline). Rules:
   `{{.PageTitle}}`; templ as `m.PageTitle`. Exported fields only (reflection needs them).
 - Numeric formatting is `strconv.Itoa`/`%d` only (all pinned numbers are ints; no floats exist
   in any model), so output is locale-independent by construction.
-- Formula fidelity examples (normative): mixed-page `Name = fmt.Sprintf("Product %02d", i)`,
-  `Sku = fmt.Sprintf("MX-%d", 1000+i)`, `Price = 950 + i*7`, `OnSale = i%3 == 0`, `i` in
-  `[1, 36]`; conditional-heavy `IsBronze = i%4 == 0` … `IsActive = i%5 != 0`, `i` in `[0, 199]`;
-  fragment-heavy `Badge = []string{"new", "hot", "sale", "std"}[i%4]`; large-loop
-  `Name = "row-" + strconv.Itoa(i)`, 5,000 rows; encoded-loop
+- **Data, not display (ledger [E21](../records.md)):** the model tier carries no derived
+  display strings — templates compose them as literal-plus-substitution. Zero-padded
+  *identity* names (`item-{i:D2}`, `unit-{i:D3}`, `Product {i:D2}`) and the encoded-suite
+  payloads stay model-side by design (`fmt.Sprintf` for these is sanctioned).
+- Formula fidelity examples (normative, per E20/E21): mixed-page
+  `Name = fmt.Sprintf("Product %02d", i)`, `SkuNumber = 1000 + i` (an int — the template
+  composes `MX-{{.SkuNumber}}`), `Price = 950 + i*7`, `OnSale = i%3 == 0`, `Batch = i` (the
+  blurb sentence lives in the template), `i` in `[1, 36]`; conditional-heavy
+  `Seq = i` (the template composes `note {{.Seq}}`), `IsBronze = i%4 == 0` …
+  `IsActive = i%5 != 0`, `i` in `[0, 199]`; fragment-heavy (E20 four-kind redesign)
+  `Kind = []string{"tile", "card", "media", "stat"}[i%4]` with precomputed
+  `IsTile/IsCard/IsMedia/IsStat` booleans, `Name = fmt.Sprintf("item-%02d", i)`,
+  `Value = i*11`, `Badge = []string{"new", "hot", "sale", "std"}[i%4]`, `Delta = i%7 - 3`,
+  `Promo = FragmentPromo{Label: Badge, Price: 9 + i}` on every row; large-loop rows carry
+  ONLY `Value = i` (the display name `row-{i}` is template-composed — E21); encoded-loop
   `Tag = fmt.Sprintf("tag-%d&'%d'", i, i%7)`, `Name = fmt.Sprintf("item <%d> & \"co\"", i)`,
   `Comment = fmt.Sprintf("'q' & <angle> \"d\" こんにちは %d", i)`, `i` in `[0, 4999]`.
 - The 12 fortunes rows are string literals copied byte-for-byte from the pinned table
   (row 11 = the XSS payload, row 12 = the Japanese string, row 1 = `4.33e67` with no `+`).
-- **composed-page fragments** are transcribed as Go string constants in
-  `benchmarks/go/internal/model/composed.go`, copied verbatim from
-  `TwinContent.cs` (the six component
-  constants, the four section values, `AreaOrder`) and
-  `AreaComponent.cs`
-  (the seven area fragments, including their verbatim-string indentation — the `@"…"` literals'
-  whitespace is part of the bytes). Transcription errors cannot ship: the byte gate compares the
-  assembled output against the corpus entry, so any drift fails loudly before timing. *(Verify at
-  implementation: copy from the C# source files at the corpus's recorded `generatingCommit`.)*
+- **composed-page model (amended — E20 structured nav, E22 no text blobs):** the model is
+  `ComposedModel { Nav NavModel }` and nothing else — the former embedded blob fragments
+  (`internal/model/data/composed-page/`, their go:embed loading, `AreaOrder`, the
+  `Section`/`Comp`/`Areas` maps, and the blob-vs-corpus assembly test) are **deleted**;
+  every fragment of literal chrome text is template-tier property, transcribed by the
+  per-engine template files and policed by the byte gate. The structured navigation is
+  loaded **once, at first use** (`sync.Once`, `model.Composed()`), from the corpus fixture
+  `GoldenCorpus/fixtures/composed-page/nav.json` — resolved through the same corpus-dir
+  resolution the gate uses (`corpus.Dir()`; `go:embed` cannot reach `../../dotnet`, so a
+  runtime file read is the mechanism, and a missing/malformed fixture panics with the
+  export-corpus regeneration hint). The Go structs mirror the pinned shape with snake_case
+  `encoding/json` tags matching the fixture keys:
+  `NavModel { Menus []MegaMenu "menus"; FooterColumns []NavColumn "footer_columns" }` →
+  `MegaMenu { Tabs }` → `MenuTab { Label, Href, Css, HasDropdown "has_dropdown",
+  DropdownCss "dropdown_css", Columns }` → `NavColumn { Sections }` →
+  `NavSection { Title, Href, TitleLinked "title_linked", Links }` → `NavLink { Label, Href }`
+  (`HasDropdown`/`TitleLinked` are precomputed booleans — no engine evaluates a string
+  test). The model tests re-assert workloads.md rule-4 sanitization on every nav text value
+  (printable ASCII, none of `& < > " '`). Fixture drift cannot ship: the byte gate compares
+  the rendered page against the corpus entry, so any drift fails loudly before timing.
 
 **Untrusted-data alphabet compliance (verified while authoring this spec):** every pinned
 encoded-suite value in workloads.md was checked character-by-character against the
@@ -87,16 +108,20 @@ Normative action mapping (transcribing, per workload, the pinned template texts)
 
 Workload-by-workload notes (raw suite = text/template):
 
-### Workload 1 — composed-page
+### Workload 1 — composed-page — Amended (E20, E22)
 
-Mirrors the .NET twin structure exactly (one layout template + data-driven fragments +
-a real loop), transcribed from `LiquidTemplates.LayoutTemplate` (read for this spec — the twins
-emit the fragments **with zero separator bytes**, and today's parity pass proves the oracle has
-none either):
+> **Amended (E20/E22, 2026-08-08):** the workload is now a genuine full-page layout with a
+> live body slot, template-owned chrome fragments, and a structured nav rendered through
+> loops and nested partials ([workloads.md workload 1](../phase-1-cross-stack-foundation/workloads.md#workload-1--composed-page-raw--amended-e20-e22)).
+> The model bullet below is current; the fragment-sequence template mapping that follows it
+> is **superseded** and will be rewritten by the per-engine template wave (Go's native
+> layout mechanism per the workloads.md native-layout mandate).
 
-- Model: `type ComposedModel struct { Section map[string]string; Comp map[string]string; AreaNames []string; Areas map[string]string }`
-  filled from the transcribed constants (keys mirror the twin keys: `meta`, `social`,
-  `page_scripts`, `endpage_scripts`; `assets_styles` … `body_end_scripts`).
+- Model (E20/E22): `type ComposedModel struct { Nav NavModel }` — nothing else; loaded once
+  from `GoldenCorpus/fixtures/composed-page/nav.json` via `model.Composed()` (see
+  [Model transcription](#model-transcription-shared-by-all-engines-and-tracks) above). All
+  chrome text is template-tier property; no map of pre-rendered fragments exists anywhere
+  in the Go tier.
 - Home template: `{{template "layout" .}}` (the include mapping of the twin table).
 - Layout template (one line, no whitespace between actions):
   `{{define "layout"}}{{index .Section "meta"}}{{index .Section "social"}}{{index .Comp "assets_styles"}}{{index .Comp "custom_styles"}}{{index .Comp "head_scripts"}}{{index .Comp "body_scripts"}}{{range .AreaNames}}{{index $.Areas .}}{{end}}{{index .Comp "assets_scripts"}}{{index .Section "page_scripts"}}{{index .Section "endpage_scripts"}}{{index .Comp "body_end_scripts"}}{{end}}`
@@ -108,12 +133,22 @@ none either):
 Dense one-line `<article>` card, ten `{{.Member}}` substitutions in pinned order, including the
 two attribute positions (`href="{{.Url}}"`, `src="{{.ImageUrl}}"`).
 
-### Workload 3 — large-loop
+### Workload 3 — large-loop — Amended (E21)
+
+> **Amended (E21):** the row carries ONLY `Value = i` — `Name` is deleted from `LoopRow`;
+> the template composes the display name as the literal `row-` plus the value substitution
+> (`row-{{.Value}}`). The construct line below predates E21 and is updated by the engine
+> wave.
 
 `{{range .Items}}<tr><td>{{.Name}}</td><td>{{.Value}}</td></tr>{{end}}` — `Value` is an int;
 text/template renders ints via `fmt` (`%v`), identical bytes to `strconv.Itoa`.
 
-### Workload 4 — mixed-page
+### Workload 4 — mixed-page — Amended (E21)
+
+> **Amended (E21):** `MixedProduct` carries `SkuNumber = 1000 + i` and `Batch = i` (ints)
+> in place of the deleted `Sku`/`Blurb` strings; the templates compose the display SKU
+> `MX-{{.SkuNumber}}` and the blurb sentence around `{{.Batch}}` (normative texts in
+> workloads.md workload 4). Template updates are engine-wave scope.
 
 Transcribe the pinned skeleton line-for-line (line breaks between sibling elements are
 N2/N3-erased; the `<style>` line and all text-bearing elements stay dense); page conditionals
@@ -121,12 +156,27 @@ N2/N3-erased; the `<style>` line and all text-bearing elements stay dense); page
 `{{if .OnSale}}<p class="sale">On sale</p>{{end}}`; footer
 `<p>{{.StoreName}} {{.Year}} {{.SupportEmail}}</p>` keeps its single literal spaces.
 
-### Workload 5 — conditional-heavy
+### Workload 5 — conditional-heavy — Amended (E21)
+
+> **Amended (E21):** `ConditionalRow` carries `Seq = i` (an int) in place of the deleted
+> `Note` string; the template composes the note text as the literal `note ` plus the
+> substitution (`<small>note {{.Seq}}</small>`). The construct line below predates E21 and
+> is updated by the engine wave.
 
 The pinned single-line `<ul class="matrix">` body with the four-way chain per row (mapping table
 above) and the two toggles `{{if .HasNote}}<small>{{.Note}}</small>{{end}}{{if .IsActive}}<b>active</b>{{end}}`.
 
-### Workload 6 — fragment-heavy
+### Workload 6 — fragment-heavy — Amended (E20)
+
+> **Amended (E20):** the single-tile shape is superseded — 48 rows of four dispatched
+> fragment kinds (12 each), one four-way dispatch per row on the precomputed
+> `IsTile/IsCard/IsMedia/IsStat` booleans (never on the `Kind` string), and one nesting
+> level (the card fragment renders badge + price sub-partials against `Promo`). The model
+> ([Model transcription](#model-transcription-shared-by-all-engines-and-tracks)) carries
+> data only — the media caption (`Caption for ` + name), image source
+> (`/img/` + name + `.jpg`) and display price (price + `.99`) are composed by the templates
+> (E21). The construct line below predates E20; the engine wave replaces it with the
+> six-partial dispatch chain per workloads.md workload 6.
 
 `{{define "tile"}}<section class="tile"><h3>{{.Name}}</h3><p class="v">{{.Value}}</p><span class="badge">{{.Badge}}</span></section>{{end}}`
 + main `<div class="panel">{{range .Items}}{{template "tile" .}}{{end}}</div>` — the
