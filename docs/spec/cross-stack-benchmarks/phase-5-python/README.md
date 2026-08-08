@@ -230,9 +230,9 @@ template texts are normative in [templates.md](templates.md); harness mechanics 
   transcription from the existing C# sources
   ([SubstitutionContent.cs](../../../../benchmarks/dotnet/src/Models/SubstitutionContent.cs),
   [LoopContent.cs](../../../../benchmarks/dotnet/src/Models/LoopContent.cs),
-  [TwinContent.cs](../../../../benchmarks/dotnet/src/Models/TwinContent.cs) +
+  `TwinContent.cs` +
   `AreaComponent.Areas` in
-  [AreaComponent.cs](../../../../benchmarks/dotnet/src/Models/AreaData.cs)).
+  `AreaComponent.cs`).
   Composed-page fragments (sections, components, the seven ordered area fragments) are
   transcribed as Python string constants. No numeric formatting is needed for any model value:
   the numeric fields (e.g. `Price`) are ints and render via `str(int)` (invariant by

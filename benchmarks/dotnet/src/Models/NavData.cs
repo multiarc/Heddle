@@ -1,5 +1,6 @@
 // The composed-page structured navigation fixtures (ledger E20; supersedes the mega-menu and
-// footer-link blobs that lived in AreaData until the composed-page redesign).
+// footer-link blobs of the since-deleted AreaData dictionary — under E22 this file is the ONLY
+// composed-page model source, and every fragment of literal page text lives in the templates).
 //
 // Transcribed faithfully from the retired "Wholesale Top Mega Menu", "Retail Top Mega Menu" and
 // "Footer Links" HTML blobs: every tab, column, section and link the blobs carried is here, in

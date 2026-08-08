@@ -87,7 +87,7 @@ whitespace step introduced after N3, so every existing "N3" reference across the
 valid and unchanged, and the range notations (`N2–N4`, `N1–N4`, `N1–N5`) transparently include N3b.
 
 Steps N2–N4 (excluding N3b) are v1's three steps carried forward verbatim
-(`TwinContent.Normalize`, [TwinContent.cs](../../../../benchmarks/dotnet/src/Models/TwinContent.cs));
+(`TwinContent.Normalize`, `TwinContent.cs`);
 N1 (defined output encoding), N3b (the 2026-07-20 whitespace comparison step), and N5 are the v2
 extensions. Raw-suite comparisons remain v1-compatible for every existing golden by construction:
 N1 adds only the encoding definition cross-language use demands, N3b changes no stored bytes (it is

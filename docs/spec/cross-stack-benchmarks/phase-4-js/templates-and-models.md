@@ -43,7 +43,7 @@ object (deep-frozen at module load). Rules:
    [SubstitutionContent.cs](../../../../benchmarks/dotnet/src/Models/SubstitutionContent.cs)
    — `Heddle Handbook`, `HB-2001`, `4.8`, etc.); the mixed-page page scalars (workloads.md).
 5. **Composed-page** transcribes the fragment literals from
-   [TwinContent.cs](../../../../benchmarks/dotnet/src/Models/TwinContent.cs) and
+   `TwinContent.cs` and
    `AreaComponent.Areas` into:
 
    ```js

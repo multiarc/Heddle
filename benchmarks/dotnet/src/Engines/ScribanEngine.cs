@@ -34,12 +34,10 @@ namespace Heddle.Benchmarks.Dotnet.Engines
                 Engine = Name, Track = track, Workload = "composed-page", InCrossStack = true,
                 Render = () =>
                 {
+                    // E22: the model carries structured nav DATA only — all literal chrome and
+                    // fragment text now lives in the templates (Stage 3 rewrites this twin's).
                     var globals = new ScriptObject();
-                    globals.Import("area", new Func<string, string>(name =>
-                        TwinContent.Areas.TryGetValue(name, out var v) ? v : string.Empty));
-                    globals["section"] = ToScriptObject(TwinContent.Sections());
-                    globals["comp"] = ToScriptObject(TwinContent.Components());
-                    globals["area_names"] = TwinContent.AreaOrder;
+                    globals["nav"] = ComposedContent.LiquidModel()["nav"];
                     var ctx = new TemplateContext { TemplateLoader = composedLoader };
                     ctx.PushGlobal(globals);
                     return composed.Render(ctx);

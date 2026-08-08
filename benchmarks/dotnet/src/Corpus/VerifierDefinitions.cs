@@ -73,10 +73,11 @@ namespace Heddle.Benchmarks.Dotnet.Corpus
 
         private static Authored ComposedPage()
         {
-            // Since the E20 full-page redesign the needles come from THREE sources, all computed
-            // rather than transcribed where the spec allows: the fixed fragments (TwinContent), the
-            // remaining blob areas (AreaData, via PinArea), and the structured nav (NavData) whose
-            // counts are walked from the very model every engine renders from.
+            // Since the E20 full-page redesign the nav needles and counts are COMPUTED — walked
+            // from the very NavData model every engine renders from. The chrome and fragment
+            // anchors are literal needles (E22): all of that text now lives in the templates, so
+            // there is no C# fixture left to compute them from; the byte gate and verify-corpus
+            // freshness police the template text itself.
             var nav = NavData.Model();
 
             var totalLinks = 0;
@@ -99,7 +100,8 @@ namespace Heddle.Benchmarks.Dotnet.Corpus
             var privacyNeedle =
                 $"<li class=\"nav-link\"><a href=\"{privacy.Href}\">{privacy.Label}</a></li>";
 
-            var sectionMeta = TwinContent.Normalize(TwinContent.SectionMeta);
+            // The layout's <meta> section default, as the template spells it.
+            const string sectionMeta = "<title>Title</title>";
 
             // The slider fragment home.heddle splices into the layout's @out() slot. Pinned as the
             // removed-row corruption so an idiomatic page with an EMPTY body fails the verifier.
@@ -117,18 +119,17 @@ namespace Heddle.Benchmarks.Dotnet.Corpus
                 // secondary-menu blobs, the two mega menus, the spliced body, footer chrome,
                 // closing script, closing tag.
                 "<!DOCTYPE html>",
-                Pin(sectionMeta, sectionMeta),
-                PinArea("Alert Top Section Above Nav", "xmas-shipping-alert-1.jpg"),
+                sectionMeta,
+                "xmas-shipping-alert-1.jpg",           // the alert_top fragment
                 "id=\"search-area-form\"",
-                PinArea("Secondary Wholesale Menu", "/content/wholesale-promotions"),
-                PinArea("Secondary Retail Menu", "/content/request-catalog\">Catalog</a>"),
+                "/content/wholesale-promotions",       // secondary_wholesale_menu fragment
+                "/content/request-catalog\">Catalog</a>", // secondary_retail_menu fragment
                 ">Shop All Products</a>",
                 wholesaleAnchor,
                 retailAnchor,
                 "homebtmbanners/gluten-hp.jpg",
                 "/Assets/images/seeourcatalog.jpg",
-                Pin(TwinContent.Normalize(TwinContent.CompBodyEndScripts),
-                    "<script src=\"/bodyend.js\"></script>"),
+                "<script src=\"/bodyend.js\"></script>", // the body_end_scripts fragment
                 "</html>",
             };
 
@@ -416,23 +417,6 @@ namespace Heddle.Benchmarks.Dotnet.Corpus
 
         private static Verifier.RequiredCheck R(string text, int minCount)
             => new Verifier.RequiredCheck { Text = text, MinCount = minCount };
-
-        /// <summary>
-        /// Asserts the chosen anchor really is a substring of the member it stands for, and is long
-        /// enough to be distinctive. A marker that silently stopped matching its own fragment would
-        /// make the verifier weaker without failing anything.
-        /// </summary>
-        private static string Pin(string normalizedFragment, string anchor)
-        {
-            if (anchor.Length < 20)
-                throw new CorpusException($"marker anchor is shorter than 20 characters: \"{anchor}\"");
-            if (normalizedFragment.IndexOf(anchor, StringComparison.Ordinal) < 0)
-                throw new CorpusException($"marker anchor does not occur in its source fragment: \"{anchor}\"");
-            return anchor;
-        }
-
-        private static string PinArea(string areaName, string anchor)
-            => Pin(TwinContent.Normalize(TwinContent.Areas[areaName]), anchor);
 
         private static string JsonString(string s)
         {

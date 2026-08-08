@@ -84,18 +84,10 @@ namespace Heddle.Benchmarks.Dotnet.Engines
 
         private static Hash ComposedModel(string track)
         {
-            var section = new Hash();
-            foreach (var kv in TwinContent.Sections()) section[kv.Key] = kv.Value;
-            var comp = new Hash();
-            foreach (var kv in TwinContent.Components()) comp[kv.Key] = kv.Value;
-            var areas = new Hash();
-            foreach (var kv in TwinContent.Areas) areas[kv.Key] = kv.Value;
-
+            // E22: the model carries structured nav DATA only — all literal chrome and fragment
+            // text now lives in the templates (Stage 3 rewrites this twin's).
             var root = new Hash();
-            root["section"] = section;
-            root["comp"] = comp;
-            root["areas"] = areas;
-            root["area_names"] = new List<string>(TwinContent.AreaOrder);
+            foreach (var kv in Models.ComposedContent.DotLiquidModel()) root[kv.Key] = kv.Value;
             root[TrackKey] = track;
             return root;
         }

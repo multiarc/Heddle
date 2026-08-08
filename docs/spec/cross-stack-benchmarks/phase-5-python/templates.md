@@ -37,7 +37,7 @@ identical for both engines and both tracks:
 
 | Workload | Context |
 |---|---|
-| composed-page | `section` (dict: `meta, social, page_scripts, endpage_scripts`), `comp` (dict: `assets_styles, custom_styles, head_scripts, body_scripts, assets_scripts, body_end_scripts`), `areas` (dict keyed by area name), `area_names` (the seven-entry ordered list) — values transcribed from [TwinContent.cs](../../../../benchmarks/dotnet/src/Models/TwinContent.cs) and `AreaComponent.Areas` |
+| composed-page | `section` (dict: `meta, social, page_scripts, endpage_scripts`), `comp` (dict: `assets_styles, custom_styles, head_scripts, body_scripts, assets_scripts, body_end_scripts`), `areas` (dict keyed by area name), `area_names` (the seven-entry ordered list) — values transcribed from `TwinContent.cs` and `AreaComponent.Areas` |
 | trivial-substitution | top-level scalars `title, sku, price, brand, category, availability, url, image_url, summary, rating` — values from [SubstitutionContent.cs](../../../../benchmarks/dotnet/src/Models/SubstitutionContent.cs) |
 | large-loop | `items` — 5,000 dicts `{name: "row-"+i, value: i}` |
 | mixed-page | `page_title, store_name, hero_heading, hero_tagline, show_banner, banner_text, show_debug_panel, footer_note, year, support_email, products` (36 product dicts `{name, sku, price, on_sale, blurb}`) |
