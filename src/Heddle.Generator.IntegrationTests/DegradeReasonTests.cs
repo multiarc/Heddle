@@ -30,22 +30,33 @@ namespace Heddle.Generator.IntegrationTests
             DifferentialHarness.ExpectDegrade(gen, "template.heddle", "embedded C# outside FullCSharp mode");
         }
 
-        /// <summary>An embedded expression that reads the engine's <c>chained</c> parameter: the emitter cannot
-        /// reproduce its runtime type today, so the binder-answered chained/root refusal fires — the specific
-        /// refusal the compiled-fragment work retires, pinned here so its retirement is an observable row move
-        /// rather than a silent reroute to some other reason.</summary>
+        /// <summary>The positive form of the retired "embedded C# references chained/root" refusal: the fragment
+        /// declares the engine's <c>dynamic chained</c> parameter and the call site passes
+        /// <c>scope.ChainedData</c>, so an expression reading the live chained value — the <c>@for</c> index here —
+        /// precompiles, with the tier pinned, and renders the engine's bytes through the same DLR call sites the
+        /// engine's generated assembly emits.</summary>
         [Fact]
-        public void EmbeddedCSharpReadingChainedDegradesForTheChainedRootRefusal()
+        public void EmbeddedCSharpReadingChainedPrecompilesByteIdentically()
         {
             const string key = "views/degrade-reason-chained.heddle";
             const string template =
-                "@model(){{Heddle.Generator.IntegrationTests.Fixtures.Order}}@(@chained.ToString())";
+                "@model(){{Heddle.Generator.IntegrationTests.Fixtures.Order}}@\\\n" +
+                "@for(3){{[@(@chained * 2 + 1)]}}\n";
+
+            // The engine compiles over the assemblies LOADED in this process, and `chained * 2` needs the
+            // runtime binder — an input a host rendering dynamic expressions has loaded.
+            System.Reflection.Assembly.Load("Microsoft.CSharp");
 
             var gen = DifferentialHarness.Generate(new[] { (key, template) }, FullCSharpBuild);
             Assert.False(gen.Diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error),
                 "Unexpected generator error: " + string.Join("; ", gen.Diagnostics.Select(d => d.ToString())));
+            DifferentialHarness.ExpectPrecompiled(gen, key);
 
-            DifferentialHarness.ExpectDegrade(gen, key, "embedded C# references chained/root");
+            var (pre, dyn) = DifferentialHarness.Render(key, template,
+                typeof(Fixtures.Order), new Fixtures.Order(), FullCSharpBuild,
+                new Heddle.Data.TemplateOptions { ExpressionMode = Heddle.Data.ExpressionMode.FullCSharp });
+            Assert.Equal("[1][3][5]\n", dyn);
+            Assert.Equal(dyn, pre);
         }
     }
 }

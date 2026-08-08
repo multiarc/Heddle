@@ -201,27 +201,28 @@ namespace Heddle.Generator.IntegrationTests
         /// <summary>
         /// Bodies whose C# meaning the guard has to get right, in both directions. A body ending in a <c>//</c>
         /// comment parses as a name with trailing trivia — the guard that measured the parsed span including trivia
-        /// waved it through, and the comment then swallowed the semicolon of the emitted directive and stopped the
-        /// consumer's build. A <c>using static</c> and a using-alias are legal directives the engine compiles, and
+        /// waved it through. A <c>using static</c> and a using-alias are legal directives the engine compiles, and
         /// the same guard refused both, taking the template off the tier for nothing.
-        /// <para>Every row renders the same bytes on both tiers; what the parameter says is whether the build tier
-        /// keeps the template.</para>
+        /// <para>Every row renders the same bytes on both tiers and precompiles — and with no embedded expression
+        /// anywhere, no row writes a directive into the generated file at all: generated code is fully qualified,
+        /// and a collected <c>@using</c> is written only into the fragment block a pasted expression compiles
+        /// under. The rows that once distinguished "written" from "dropped" keep their teeth in
+        /// <see cref="AUsingBodyWithEmbeddedCSharpFollowsTheEnginesVerdict"/>, where the directive decides the
+        /// engine's verdict.</para>
         /// </summary>
         [Theory]
-        [InlineData("System.Linq //c", false)]
-        // The near neighbour of the row above: a block comment does not run to end of line, so the semicolon
-        // survives and the directive is written. The rule is the directive's, not the comment's.
-        [InlineData("System.Linq /*c*/", true)]
-        [InlineData("Zork.Nope", false)]
-        [InlineData("1 + 2", false)]
-        // A body carrying its own semicolon parses as a directive followed by a declaration, and copying it out
+        [InlineData("System.Linq //c")]
+        [InlineData("System.Linq /*c*/")]
+        [InlineData("Zork.Nope")]
+        [InlineData("1 + 2")]
+        // A body carrying its own semicolon parses as a directive followed by a declaration; copied out it
         // would put a type of the template author's choosing into the consumer's assembly.
-        [InlineData("System.Linq; delegate void Injected()", false)]
-        [InlineData("static System.Math", true)]
-        [InlineData("X = System.Linq", true)]
-        [InlineData("Alias = global::System.Linq", true)]
-        [InlineData("System.Linq", true)]
-        public void AUsingBodyIsJudgedByWhetherItsDirectiveCompiles(string import, bool writesTheDirective)
+        [InlineData("System.Linq; delegate void Injected()")]
+        [InlineData("static System.Math")]
+        [InlineData("X = System.Linq")]
+        [InlineData("Alias = global::System.Linq")]
+        [InlineData("System.Linq")]
+        public void AUsingBodyIsJudgedByWhetherItsDirectiveCompiles(string import)
         {
             var key = "views/using-shape-" + import.GetHashCode() + ".heddle";
             var template = "@using(){{" + import + "}}@\\\nhello\n";
@@ -229,8 +230,7 @@ namespace Heddle.Generator.IntegrationTests
             var gen = DifferentialHarness.Generate(new[] { (key, template) });
             Assert.Empty(gen.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
             DifferentialHarness.ExpectPrecompiled(gen, key);
-            Assert.Equal(writesTheDirective,
-                gen.TemplateSources.Values.Any(s => s.Contains("using " + import + ";")));
+            Assert.DoesNotContain(gen.TemplateSources.Values, s => s.Contains("using " + import + ";"));
 
             var (precompiled, dyn) = DifferentialHarness.Render(key, template, null, null);
             Assert.Equal("hello\n", dyn);
@@ -259,7 +259,12 @@ namespace Heddle.Generator.IntegrationTests
             var gen = DifferentialHarness.Generate(new[] { (key, template) }, FullCSharpBuild);
             Assert.Empty(gen.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
             if (bothCompile)
+            {
                 DifferentialHarness.ExpectPrecompiled(gen, key);
+                // The collected body is a term of the fragment's compilation unit, written where the expression
+                // is compiled — inside the namespace block — not at the file's scope.
+                Assert.Contains(gen.TemplateSources.Values, s => s.Contains("    using " + import + ";"));
+            }
             else
                 DifferentialHarness.ExpectDegrade(gen, key);
         }
