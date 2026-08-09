@@ -45,7 +45,7 @@ namespace Heddle.Generator.IntegrationTests
         /// this one too.</summary>
         public static IEnumerable<object[]> Renderable() =>
             CorpusIntent.Rows
-                .Where(r => r.Tier == CorpusTier.Precompiles && r.Render != CorpusRender.ResolveOnly)
+                .Where(r => r.Bound && r.Render != CorpusRender.ResolveOnly)
                 .Select(r => r.Name)
                 .OrderBy(n => n, StringComparer.Ordinal)
                 .Select(n => new object[] { n });

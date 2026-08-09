@@ -41,7 +41,7 @@ namespace Heddle.Generator.IntegrationTests
         /// <summary>Entries declared as Standalone (model-less, both backends render) and precompile.</summary>
         private static IReadOnlyList<string> StandaloneRenderable() =>
             CorpusIntent.Rows
-                .Where(r => r.Tier == CorpusTier.Precompiles && r.Render == CorpusRender.Standalone)
+                .Where(r => r.Bound && r.Render == CorpusRender.Standalone)
                 .Select(r => r.Name)
                 .OrderBy(n => n, StringComparer.Ordinal)
                 .ToList();
@@ -129,7 +129,7 @@ namespace Heddle.Generator.IntegrationTests
                 .Select(t => t.key)
                 .ToList();
 
-            var declared = CorpusIntent.NamesWithTier(CorpusTier.Precompiles);
+            var declared = CorpusIntent.BoundNames();
             var observed = precompiledKeys.Select(Path.GetFileName).ToList();
             Assert.True(new HashSet<string>(observed, StringComparer.Ordinal).SetEquals(declared),
                 CorpusIntent.Describe("The precompiled set", declared, observed));

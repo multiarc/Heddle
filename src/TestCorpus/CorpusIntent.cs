@@ -12,6 +12,19 @@ namespace Heddle.TestCorpus
         /// <summary>A manifest entry with a bound (non-null) strategy and a generated entry class.</summary>
         Precompiles,
 
+        /// <summary>Everything <see cref="Precompiles"/> is — a bound strategy and a generated entry class —
+        /// <b>and</b> at least one recorded per-call-site fallback: a <c>PrecompiledRuntime.SiteFallback</c> field in
+        /// the generated source, which is the build saying "this one call renders by compiling its own text at first
+        /// render, and the rest of the template is emitted". Its populations are an extension declaring
+        /// <c>[PrecompileUnsupported]</c> (<c>HED7033</c>) and a body the build had to emit type-agnostically that
+        /// then reached one of the three shapes no type-agnostic emission reproduces.
+        /// <para>Its own tier rather than a flavour of <see cref="Precompiles"/> because the difference is the
+        /// headline capability of the binding seam: a template that gives up one call site and a template that gives
+        /// up nothing classify identically in the manifest, so without this member the corpus would report the two as
+        /// the same fact. Both tiers carry a bound entry class, so both are swept, rendered and byte-compared —
+        /// <see cref="CorpusIntentRow.Bound"/> is what those gates read.</para></summary>
+        PrecompilesWithSiteFallback,
+
         /// <summary>A HED7014 fallback-marker entry: present in the manifest with <c>strategy: null</c>, which is
         /// a different degrade from <see cref="FallsBackSafely"/> — the entry exists and routes to the dynamic
         /// path, rather than not existing at all.</summary>
@@ -64,6 +77,12 @@ namespace Heddle.TestCorpus
         public string Name { get; }
 
         public CorpusTier Tier { get; }
+
+        /// <summary>True for the two tiers that produce a bound entry class. Every gate that asks "does this
+        /// template precompile" reads this rather than comparing against one member, so splitting the precompiling
+        /// population by call-site fallback did not quietly narrow the render, sweep and observation gates to the
+        /// rows that happen to give up nothing.</summary>
+        public bool Bound => Tier == CorpusTier.Precompiles || Tier == CorpusTier.PrecompilesWithSiteFallback;
 
         public CorpusRender Render { get; }
 
@@ -209,6 +228,9 @@ namespace Heddle.TestCorpus
                 "A bodied call to a REFERENCED third-party extension whose InitStart has the step-back shape — the case the whole binding seam exists for, and the one the build could not serve at all. It is no longer a question the build answers: the extension's own InitStart runs inside the consumer's assembly at static-init, the body is emitted with no model cast, and the hook chooses that body's typing. Nothing opts in, no name is listed, and the HED7015 warning it used to carry is simply not true of this build any more."),
             new CorpusIntentRow("ext-bodied-unemittable.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
                 "The boundary beside it, moved by the same change: a bodied call to a referenced extension whose hook types the body by the call VALUE. That was a role the emitter had no emission for, and a role is no longer what decides — the body carries no model cast to be wrong, so there is nothing left for the build to be unable to emit. Its bytes are pinned against the dynamic tier by the sweep like every other row here."),
+            new CorpusIntentRow("ext-site-fallback.heddle", CorpusTier.PrecompilesWithSiteFallback,
+                CorpusRender.Standalone,
+                "The corpus's member of the per-call-site fallback tier, and the only row that makes that tier a gate rather than a declaration. @scanner declares [PrecompileUnsupported] because its InitStart walks the enclosing document through InitContext.ParseContext, which no call site can carry — so the build writes a PrecompiledRuntime.SiteFallback for that one call, reports HED7033 quoting the extension author's own sentence, and emits the rest of the document as an ordinary precompiled entry class. Model-less and standalone, so the sweep byte-compares both tiers every run: what the substitute renders by compiling its own text is what the dynamic tier renders."),
             new CorpusIntentRow("dynamic-recursion.heddle", CorpusTier.FallsBackSafely, CorpusRender.WithModel,
                 "Its embedded C# now compiles as fragments — under a FullCSharp build the whole document precompiles byte-identically (EmbeddedCSharpFragmentTests) — but this sweep builds with the default Native mode, where 'embedded C# outside FullCSharp mode' degrades it, exactly as the engine refuses the same template without FullCSharp options.",
                 bom: true),
@@ -309,6 +331,12 @@ namespace Heddle.TestCorpus
         /// equality.</summary>
         public static IReadOnlyList<string> NamesWithTier(CorpusTier tier) =>
             Rows.Where(r => r.Tier == tier).Select(r => r.Name).OrderBy(n => n, StringComparer.Ordinal).ToList();
+
+        /// <summary>Every declared file name that produces a bound entry class, in either precompiling tier,
+        /// ordinal-sorted. The right-hand side of the gates that ask about the manifest alone, which cannot see
+        /// which of the two a row is.</summary>
+        public static IReadOnlyList<string> BoundNames() =>
+            Rows.Where(r => r.Bound).Select(r => r.Name).OrderBy(n => n, StringComparer.Ordinal).ToList();
 
         /// <summary>Every declared file name with one render disposition, ordinal-sorted.</summary>
         public static IReadOnlyList<string> NamesWithRender(CorpusRender render) =>

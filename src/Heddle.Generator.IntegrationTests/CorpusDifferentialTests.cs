@@ -41,6 +41,7 @@ namespace Heddle.Generator.IntegrationTests
             Assert.NotNull(cleanGen.Assembly);   // Generate throws if the generated .g.cs fails to compile.
 
             var precompiled = new SortedSet<string>(StringComparer.Ordinal);
+            var withSiteFallback = new SortedSet<string>(StringComparer.Ordinal);
             var markers = new SortedSet<string>(StringComparer.Ordinal);
             var fallbacks = new SortedSet<string>(StringComparer.Ordinal);
             foreach (var (key, _) in clean)
@@ -48,7 +49,14 @@ namespace Heddle.Generator.IntegrationTests
                 var name = Path.GetFileName(key);
                 switch (DifferentialHarness.ClassifyInManifest(cleanGen.ManifestSource ?? string.Empty, key))
                 {
-                    case DifferentialHarness.ManifestState.Precompiled: precompiled.Add(name); break;
+                    case DifferentialHarness.ManifestState.Precompiled:
+                        // The manifest cannot tell the two precompiling tiers apart — both carry a bound strategy —
+                        // so the generated source is read for the build's own record of a per-call-site fallback.
+                        if (DifferentialHarness.SiteFallbackCount(cleanGen, key) != 0)
+                            withSiteFallback.Add(name);
+                        else
+                            precompiled.Add(name);
+                        break;
                     case DifferentialHarness.ManifestState.Marker: markers.Add(name); break;
                     default: fallbacks.Add(name); break;
                 }
@@ -57,6 +65,14 @@ namespace Heddle.Generator.IntegrationTests
             var declaredPrecompiled = CorpusIntent.NamesWithTier(CorpusTier.Precompiles);
             Assert.True(precompiled.SetEquals(declaredPrecompiled),
                 CorpusIntent.Describe("The precompiled set", declaredPrecompiled, precompiled));
+
+            var declaredSiteFallback = CorpusIntent.NamesWithTier(CorpusTier.PrecompilesWithSiteFallback);
+            Assert.True(withSiteFallback.SetEquals(declaredSiteFallback),
+                CorpusIntent.Describe("The precompiled-with-site-fallback set", declaredSiteFallback,
+                    withSiteFallback)
+                + "\n  A row belongs here when the template emits a bound entry class AND at least one "
+                + "PrecompiledRuntime.SiteFallback field: one call renders by compiling its own text at first "
+                + "render while the rest of the template stays precompiled.");
 
             var declaredMarkers = CorpusIntent.NamesWithTier(CorpusTier.DegradesToMarker);
             Assert.True(markers.SetEquals(declaredMarkers),
