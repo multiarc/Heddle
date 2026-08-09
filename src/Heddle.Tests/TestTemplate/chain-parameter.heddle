@@ -1,0 +1,3 @@
+@% <shout>{{HI}} <emphasis>{{<em>@out()</em>}} %@
+<p>@raw(emphasis():shout())</p>
+<p>@(emphasis():shout())</p>

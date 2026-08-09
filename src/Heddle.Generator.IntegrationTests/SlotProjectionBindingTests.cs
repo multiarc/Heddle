@@ -135,26 +135,28 @@ namespace Heddle.Generator.IntegrationTests
 
         /// <summary>
         /// A projection composed after a chained call — the arm that arms <c>OutExtension</c>'s composed guard,
-        /// which is a render-time throw rather than a compile error. The build precompiles no multi-item chain at
-        /// all, so the template is a build-tier degrade and the throw the reader gets is the engine's own.
-        /// <para>Pinned because the guard is the one piece of the projection's state a call site could not carry:
-        /// <c>PrecompiledInitSite.IsChainedConsumer</c> exists and the emitter never writes it, which is sound only
-        /// for as long as no chain reaches this tier.</para>
+        /// which is a render-time throw rather than a compile error. This used to be a build-tier degrade for the
+        /// blunt reason that the build precompiled no multi-item chain at all, and the guard was the one piece of
+        /// the projection's state a call site could not carry.
+        /// <para>It carries it now: a chain's non-leading items write
+        /// <c>PrecompiledInitSite.IsChainedConsumer</c>, the hook reads it off the witness source item, and the
+        /// throw is the same sentence from both tiers — which is the only way the flag can be shown to have
+        /// arrived, since what it decides is a message rather than a byte.</para>
         /// </summary>
         [Fact]
-        public void AProjectionComposedAfterAChainedCallStaysOnTheDynamicTierAndThrowsTheEnginesGuard()
+        public void AProjectionComposedAfterAChainedCallThrowsTheEnginesGuardOnBothTiers()
         {
             const string key = "views/projection-composed.heddle";
             var template = "@model(){{" + MenuType + "}}@%\n<wrap>{{(@out())}}\n<frame(out:: " + MenuType +
                            ")>{{[@wrap():out(this)]}} :: " + MenuType + "\n%@\n@frame(this){{[q]}}\n";
 
-            DifferentialHarness.ExpectDegrade(DifferentialHarness.Generate(new[] { (key, template) }), key);
+            var (precompiled, dynamic) = DifferentialHarness.DeferredWithOptions(key, template, typeof(Menu),
+                OneOption(), new TemplateOptions());
 
-            var dynamicTemplate = new HeddleTemplate(template,
-                new CompileContext(new TemplateOptions(), typeof(Menu)));
-            Assert.True(dynamicTemplate.CompileResult.Success, dynamicTemplate.CompileResult.ToString());
-            var thrown = Assert.Throws<TemplateProcessingException>(() => dynamicTemplate.Generate(OneOption()));
-            Assert.Contains("chained call", thrown.Message, StringComparison.Ordinal);
+            var fromBuild = Assert.Throws<TemplateProcessingException>(() => precompiled());
+            var fromEngine = Assert.Throws<TemplateProcessingException>(() => dynamic());
+            Assert.Contains("chained call", fromEngine.Message, StringComparison.Ordinal);
+            Assert.Equal(fromEngine.Message, fromBuild.Message);
         }
 
         /// <summary>

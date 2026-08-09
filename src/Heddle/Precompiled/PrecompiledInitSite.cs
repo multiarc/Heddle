@@ -117,6 +117,25 @@ namespace Heddle.Precompiled
         /// take its content from the chained channel.</summary>
         public bool HasProducerToRight { get; set; }
 
+        /// <summary>The site of the call one step to this one's <b>right</b> in the same chain — the producer whose
+        /// output this call consumes. The engine threads <c>returnTypeChainedPrevious</c> right to left, so the
+        /// <c>chainedType</c> this call is initialized with is whatever that producer's own <c>InitStart</c>
+        /// returned; a build cannot name it without predicting a hook, so it names the producer instead and
+        /// <see cref="PrecompiledRuntime.Init"/> reads the answer off it. The producer's field initializer precedes
+        /// this one's, so the answer is already there. <c>null</c> for every call that is not a chain consumer, and
+        /// for one whose producer never ran a hook — a <c>Bind</c>ed carrier, whose return the build spells in
+        /// <see cref="ChainedType"/> instead.</summary>
+        public PrecompiledInitSite ChainProducer { get; set; }
+
+        /// <summary>What this site's own <c>InitStart</c> returned, for the consumer to its left to read as its
+        /// <c>chainedType</c>. Not part of the carriage a generated initializer writes: it exists only between one
+        /// call's hook running and the next one's, which is inside a single type initializer.</summary>
+        internal ExType ResolvedReturnType { get; set; }
+
+        /// <summary>Whether <see cref="ResolvedReturnType"/> is an answer at all. A hook that never ran — a faulted
+        /// site — leaves it unset, and the consumer keeps the type its own carriage declares.</summary>
+        internal bool ReturnTypePublished { get; set; }
+
         /// <summary>Whether the call sits inside a definition body (<c>ParseContext.InDefintionContext</c>), which
         /// selects which of <c>@out</c>'s two "value without a slot" sentences the engine writes.</summary>
         public bool InsideDefinition { get; set; }

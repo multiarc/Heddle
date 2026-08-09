@@ -120,6 +120,30 @@ namespace Heddle.Generator.Emit
 
         private readonly StringBuilder _fieldDecls = new StringBuilder();
 
+        /// <summary>Where in its chain the call currently being built sits. Ambient rather than threaded, because
+        /// every route from <see cref="BuildCall"/> down to <see cref="TryPlanSite"/> would otherwise carry four
+        /// more parameters it never reads. Saved and restored around each chain walk; a lone call leaves it at its
+        /// default, which is the shape every non-chained call has always had.</summary>
+        private ChainSlot _chainSlot;
+
+        private struct ChainSlot
+        {
+            public bool HasProducerToRight;
+            public bool IsChainedConsumer;
+
+            /// <summary>The producer's site field, or <c>null</c> when the producer runs no hook.</summary>
+            public string ProducerSite;
+
+            /// <summary>The chained type to declare when there is no producer site to read it off: the base
+            /// <c>InitStart</c>'s <c>typeof(string)</c> for a <c>Bind</c>ed carrier, and <c>"null"</c> otherwise.</summary>
+            public string ChainedTypeExpr;
+
+            /// <summary>The item's own source text, reconstructed as a one-call document so a faulted site's
+            /// substitute compiles this item rather than the whole chain. <c>null</c> outside a multi-item chain,
+            /// where the chain block's own text is already exactly this call.</summary>
+            public string ItemSourceText;
+        }
+
         /// <summary>The <c>Init</c> calls that must run <b>after</b> an enclosing one: a call site inside a
         /// type-agnostic body takes its <c>dataType</c> from the model that body's own hook answers with, and a
         /// static field initializer runs in textual order, so one tier per level of type-agnostic nesting is what
@@ -558,6 +582,30 @@ namespace Heddle.Generator.Emit
             public string ParamExpr;
             public bool UsesModelLocal;
             public int SpanStartLine, SpanStartCol, SpanEndLine, SpanEndCol;
+
+            /// <summary>The <c>PrecompiledInitSite</c> field this call wrote, or <c>null</c> for a call bound
+            /// without one — a <c>Bind</c>ed carrier. The item to this one's left in a chain names it as its
+            /// producer, which is how the engine's right-to-left typing threads through generated code.</summary>
+            public string SiteField;
+        }
+
+        /// <summary>A whole multi-item chain as one segment, its items in the order
+        /// <c>TemplateChain</c> executes them: <b>rightmost source item first</b>. Each item is emitted as its own
+        /// static helper taking the chained scope, so the item's own call parameter is evaluated against that scope
+        /// rather than the ambient one — which is what <c>TemplateItem.ProcessData</c> does.</summary>
+        private sealed class ChainCall
+        {
+            public string Local;
+            public readonly List<ChainStep> Steps = new List<ChainStep>();
+        }
+
+        /// <summary>One item of a chain: the <c>ProcessData</c> helper every item has, and the <c>RenderData</c>
+        /// helper only the last executed item — the leftmost in source — also has.</summary>
+        private sealed class ChainStep
+        {
+            public string ProcessMethod;
+            public string RenderMethod;
+            public int SpanStartLine, SpanStartCol, SpanEndLine, SpanEndCol;
         }
 
         private sealed class BodyClass
@@ -612,6 +660,12 @@ namespace Heddle.Generator.Emit
         private bool PopulateBody(BodyClass body, string doc, ParseContext ctx, BodyContext bctx, out Refusal reason)
         {
             reason = null;
+            // A body is its own document: nothing in it is an item of the chain the call sits in. Cleared for the
+            // whole walk and restored after, so a call inside the body of a chained item is not itself read as a
+            // chained consumer — which would arm @out's composed guard on an @out that composes nothing — and does
+            // not take its chained type from the enclosing chain's producer.
+            var savedSlot = _chainSlot;
+            _chainSlot = default(ChainSlot);
             // The body's own profile lineage: it inherits the profile active where its parent element sits, and its
             // internal @profile flips must not leak back to the parent (save/restore around the whole body walk).
             var savedProfile = _profileHtml;
@@ -680,6 +734,7 @@ namespace Heddle.Generator.Emit
             reason = firstReason ?? localReason;
             _profileHtml = savedProfile;
             _currentDoc = savedDoc;
+            _chainSlot = savedSlot;
             return completed && !refused;
         }
 
@@ -836,14 +891,152 @@ namespace Heddle.Generator.Emit
 
         private object BuildCall(OutputChain chain, ParseContext ctx, BodyContext bctx, out Refusal reason)
         {
+            if (chain.Chain.Count == 1)
+                return BuildItemCall(chain, chain.Chain[0], ctx, bctx, out reason);
+
+            return BuildChain(chain, ctx, bctx, out reason);
+        }
+
+        /// <summary>
+        /// A chain of calls, emitted as <c>TemplateChain.RenderData</c> runs it. Its items are built <b>right to
+        /// left</b>, which is the order the engine executes them in and the order its typing threads in: each item
+        /// takes the one to its right as its producer, and the leftmost is the one that renders.
+        /// <para>Nothing here decides what a chained type is. The producer's own hook answers that at registration
+        /// and the consumer's site reads the answer off it, exactly as <c>returnTypeChainedPrevious</c> carries it
+        /// through <c>CompileBody</c> — except for a carrier the build <c>Bind</c>s, which runs no hook because
+        /// <c>Bind</c> already stands in for the base one, whose answer is <c>string</c>.</para>
+        /// </summary>
+        private ChainCall BuildChain(OutputChain chain, ParseContext ctx, BodyContext bctx, out Refusal reason)
+        {
             reason = null;
-            if (chain.Chain.Count != 1)
+            var saved = _chainSlot;
+            var result = new ChainCall { Local = "__c" + _chainLocalCounter++ };
+            try
             {
-                reason = new Refusal(RefusalCategory.ChainCarrier, "chained call", chain.Chain[0].Position);
-                return null;
+                string producerSite = null;
+                string producedType = "null";
+                bool hasProducerToRight = false;
+                for (int i = chain.Chain.Count - 1; i >= 0; i--)
+                {
+                    var item = chain.Chain[i];
+                    _chainSlot = new ChainSlot
+                    {
+                        HasProducerToRight = hasProducerToRight,
+                        IsChainedConsumer = i != 0,
+                        ProducerSite = producerSite,
+                        ChainedTypeExpr = producedType,
+                        ItemSourceText = ChainItemSourceText(chain, item)
+                    };
+
+                    var built = BuildItemCall(chain, item, ctx, bctx, out reason) as Call;
+                    if (built == null)
+                    {
+                        reason ??= new Refusal(RefusalCategory.ChainCarrier, "chain item", item.Position);
+                        return null;
+                    }
+
+                    result.Steps.Add(NewStep(built, bctx.ModelCast, last: i == 0));
+                    producerSite = built.SiteField;
+                    producedType = built.SiteField == null ? "typeof(string)" : "null";
+                    hasProducerToRight = true;
+                }
+            }
+            finally
+            {
+                _chainSlot = saved;
             }
 
-            var item = chain.Chain[0];
+            return result;
+        }
+
+        /// <summary>Writes one chain item's helpers and returns the step that calls them. The helper takes the
+        /// <b>chained</b> scope, so the item's call parameter is spelled against it — <c>TemplateItem.ProcessData</c>
+        /// reads its parameter off the scope it is handed, and for a chain item that scope is
+        /// <c>scope.Chain(result)</c>.</summary>
+        private ChainStep NewStep(Call call, string modelCast, bool last)
+        {
+            var step = new ChainStep
+            {
+                SpanStartLine = call.SpanStartLine, SpanStartCol = call.SpanStartCol,
+                SpanEndLine = call.SpanEndLine, SpanEndCol = call.SpanEndCol,
+                ProcessMethod = "CH" + _chainMethodCounter++
+            };
+            EmitChainHelper(step.ProcessMethod, call, modelCast, render: false);
+            if (last)
+            {
+                step.RenderMethod = "CH" + _chainMethodCounter++;
+                EmitChainHelper(step.RenderMethod, call, modelCast, render: true);
+            }
+
+            return step;
+        }
+
+        private void EmitChainHelper(string method, Call call, string modelCast, bool render)
+        {
+            _methodDecls.Append("        private static ").Append(render ? "void " : "object ").Append(method)
+                .Append("(in global::Heddle.Data.Scope scope)\n        {\n");
+            if (call.UsesModelLocal)
+                _methodDecls.Append("            var m = ").Append(modelCast).Append("scope.ModelData;\n");
+            _methodDecls.Append("            ").Append(render ? string.Empty : "return ")
+                .Append(call.ExtensionField).Append(render ? ".RenderData(scope.Model(" : ".ProcessData(scope.Model(")
+                .Append(call.ParamExpr).Append("));\n        }\n");
+        }
+
+        /// <summary>The one-call document one chain item's own source text is. A lone call's text is the chain
+        /// block itself, but a chain item's span covers only <c>name(param)</c> — no <c>@</c>, no body — and a
+        /// faulted site's substitute compiles what it is given: handed the whole chain it would run the producers a
+        /// second time, so the item is written back out on its own.
+        /// <para>Sliced out of the block rather than out of the document, because the two coordinate systems are
+        /// different — an item's position indexes the parsed document and the block's indexes the shaped one. What
+        /// carries across is the item's offset <i>inside</i> the chain, which shaping never rewrites.</para></summary>
+        private string ChainItemSourceText(OutputChain chain, OutputItem item)
+        {
+            if (chain?.Chain == null || chain.Chain.Count == 0)
+                return null;
+            var block = SourceTextAt(chain.BlockPosition);
+            if (block == null || block.Length == 0 || block[0] != '@')
+                return null;
+            var offset = item.Position.StartIndex - chain.Chain[0].Position.StartIndex + 1;
+            if (offset < 1 || item.Position.Length < 0 || offset + item.Position.Length > block.Length)
+                return null;
+            var call = block.Substring(offset, item.Position.Length);
+            if (string.IsNullOrEmpty(item.ParameterTemplate))
+                return "@" + call;
+            return "@" + call + "{{" + item.ParameterTemplate + "}}";
+        }
+
+        private int _chainLocalCounter;
+        private int _chainMethodCounter;
+
+        /// <summary>The chain and parse context of the call being built, for the one place that needs them and
+        /// cannot be handed them: a chain <b>parameter</b> item, which is reached through
+        /// <see cref="BuildParamExpr"/> — a value-tier signature that carries neither.</summary>
+        private OutputChain _itemChain;
+
+        private ParseContext _itemCtx;
+
+        private object BuildItemCall(OutputChain chain, OutputItem item, ParseContext ctx, BodyContext bctx,
+            out Refusal reason)
+        {
+            var savedChain = _itemChain;
+            var savedCtx = _itemCtx;
+            _itemChain = chain;
+            _itemCtx = ctx;
+            try
+            {
+                return BuildItemCallCore(chain, item, ctx, bctx, out reason);
+            }
+            finally
+            {
+                _itemChain = savedChain;
+                _itemCtx = savedCtx;
+            }
+        }
+
+        private object BuildItemCallCore(OutputChain chain, OutputItem item, ParseContext ctx, BodyContext bctx,
+            out Refusal reason)
+        {
+            reason = null;
             var cp = item.CallParameter;
             var name = item.ExtensionName;
 
@@ -1104,8 +1297,9 @@ namespace Heddle.Generator.Emit
                     var fallbackDetail = "The body of <" + name + "> cannot be emitted without knowing the model " +
                                          "its hook chooses: " + reason.Detail + ".";
                     reason = null;
-                    var fallbackField = AllocateSiteFallback(EmitInitSite(plan), fallbackDetail);
-                    return MakeCall(fallbackField, "scope.ModelData", false, item.Position);
+                    var fallbackSite = EmitInitSite(plan);
+                    var fallbackField = AllocateSiteFallback(fallbackSite, fallbackDetail);
+                    return MakeCall(fallbackField, "scope.ModelData", false, item.Position, fallbackSite);
                 }
 
                 plan.BodyShaped = body?.ShapedDocument;
@@ -1117,7 +1311,7 @@ namespace Heddle.Generator.Emit
                 ? AllocateInitExtension(name, info, siteField, body?.Name)
                 : AllocateParameterizedExtension(name, info, siteField, propsRef, settersRef, namesRef,
                     body?.Name, layout);
-            return MakeCall(field, paramExpr, uses, item.Position);
+            return MakeCall(field, paramExpr, uses, item.Position, siteField);
         }
 
         /// <summary>
@@ -1140,9 +1334,10 @@ namespace Heddle.Generator.Emit
                 _diagnostics.Add(new EmitDiagnostic(GeneratorDiagnostics.ExtensionPrecompileUnsupported,
                     item.Position, name, info.AqnSansVersion, stated));
 
-            var field = AllocateSiteFallback(EmitInitSite(plan),
+            var unsupportedSite = EmitInitSite(plan);
+            var field = AllocateSiteFallback(unsupportedSite,
                 "<" + name + "> declares [PrecompileUnsupported]: " + stated + ".");
-            return MakeCall(field, "scope.ModelData", false, item.Position);
+            return MakeCall(field, "scope.ModelData", false, item.Position, unsupportedSite);
         }
 
         /// <summary>Extensions whose <c>[PrecompileUnsupported]</c> declaration has already been reported for this
@@ -1395,6 +1590,17 @@ namespace Heddle.Generator.Emit
             public bool RootReference;
             public bool InsideDefinition;
 
+            /// <summary>This call is a non-leading item of its chain (<c>OutputItem.IsChainedConsumer</c>).</summary>
+            public bool IsChainedConsumer;
+
+            /// <summary>The chain carries a producer to this call's right (the compiler's
+            /// <c>hasProducerToRight</c>).</summary>
+            public bool HasProducerToRight;
+
+            /// <summary>The site field of that producer, when the producer runs a hook of its own; the runtime
+            /// reads the type it returned off it rather than taking one this build predicted.</summary>
+            public string ChainProducerSite;
+
             /// <summary>The extension bound here declares <c>[ChildTemplateHost]</c>; the runtime arms its child
             /// supply for this site's drain and gives the synthesized scope the option the hook reads to stamp
             /// its child's errors with an import origin.</summary>
@@ -1503,7 +1709,8 @@ namespace Heddle.Generator.Emit
                 // coordinate — it indexes the shaped working document, which is where the call's source text has
                 // to be sliced from and nowhere a hook or a diagnostic should ever be pointed.
                 Position = item.Position,
-                SourceText = SourceTextAt(chain != null ? chain.BlockPosition : item.Position),
+                SourceText = _chainSlot.ItemSourceText ??
+                             SourceTextAt(chain != null ? chain.BlockPosition : item.Position),
                 BodyRaw = item.ParameterTemplate,
                 DataTypeExpr = dataExpr,
                 ParentTypeExpr = modelExpr,
@@ -1513,7 +1720,11 @@ namespace Heddle.Generator.Emit
                 Shape = shape,
                 HasPropArguments = cp != null && cp.PropArguments != null && cp.PropArguments.Count != 0,
                 RootReference = cp != null && cp.RootReference,
-                InsideDefinition = bctx.Props != null || bctx.InSlot
+                InsideDefinition = bctx.Props != null || bctx.InSlot,
+                IsChainedConsumer = _chainSlot.IsChainedConsumer,
+                HasProducerToRight = _chainSlot.HasProducerToRight,
+                ChainProducerSite = _chainSlot.ProducerSite,
+                ChainedTypeExpr = _chainSlot.ChainedTypeExpr ?? "null"
             };
             return true;
         }
@@ -1580,6 +1791,12 @@ namespace Heddle.Generator.Emit
                 .Append(", HasPropArguments = ").Append(plan.HasPropArguments ? "true" : "false").Append(",\n");
             w.Append("            RootReference = ").Append(plan.RootReference ? "true" : "false")
                 .Append(", InsideDefinition = ").Append(plan.InsideDefinition ? "true" : "false");
+            if (plan.IsChainedConsumer)
+                w.Append(",\n            IsChainedConsumer = true");
+            if (plan.HasProducerToRight)
+                w.Append(",\n            HasProducerToRight = true");
+            if (plan.ChainProducerSite != null)
+                w.Append(",\n            ChainProducer = ").Append(plan.ChainProducerSite);
             if (plan.HostsChildTemplate)
                 w.Append(",\n            HostsChildTemplate = true");
             if (plan.Late != null && plan.Late.Accessors.Count != 0)
@@ -2051,9 +2268,10 @@ namespace Heddle.Generator.Emit
                 plan.AssumedDataTypeExpr = outerAssumed;
             }
 
-            var field = AllocateInitDefinition(EmitInitSite(plan), bodyInfo.Body.Name, callerBody?.Name,
+            var definitionSite = EmitInitSite(plan);
+            var field = AllocateInitDefinition(definitionSite, bodyInfo.Body.Name, callerBody?.Name,
                 propsFieldRef, dynamicSettersRef);
-            return MakeCall(field, paramExpr, usesModel, item.Position);
+            return MakeCall(field, paramExpr, usesModel, item.Position, definitionSite);
         }
 
         /// <summary>The static type of the value a call site passes, or null where the emitter has none. Null is
@@ -3412,14 +3630,16 @@ namespace Heddle.Generator.Emit
             return new CallNode(name, args, position);
         }
 
-        private Call MakeCall(string field, string paramExpr, bool usesModel, BlockPosition position)
+        private Call MakeCall(string field, string paramExpr, bool usesModel, BlockPosition position,
+            string siteField = null)
         {
             var (sl, sc) = _map.Map(position.StartIndex);
             var (el, ec) = _map.Map(position.StartIndex + position.Length);
             return new Call
             {
                 ExtensionField = field, ParamExpr = paramExpr, UsesModelLocal = usesModel,
-                SpanStartLine = sl, SpanStartCol = sc, SpanEndLine = el, SpanEndCol = ec
+                SpanStartLine = sl, SpanStartCol = sc, SpanEndLine = el, SpanEndCol = ec,
+                SiteField = siteField
             };
         }
 
@@ -3653,14 +3873,83 @@ namespace Heddle.Generator.Emit
             // invisible while the consumer printed it. See CarrierValue for what the two tiers disagreed on.
             if (cp.ChainParameter != null && cp.ChainParameter.Count == 1)
             {
-                if (!BuildChainItemExpr(cp.ChainParameter[0], bctx, out var chainExpr, out usesModel, out reason))
+                if (!BuildChainItemExpr(cp.ChainParameter[0], bctx, out var chainExpr, out usesModel, out _,
+                        out reason))
                     return false;
-                paramExpr = "global::Heddle.Precompiled.PrecompiledRuntime.CarrierValue(" + chainExpr + ")";
+                paramExpr = chainExpr;
                 return true;
             }
 
-            reason = new Refusal(RefusalCategory.ChainCarrier, "C#/chain parameter", callPosition);
+            // A chain of them threads the same way an output chain does — `ChainedParameter` is
+            // `TemplateChain.ProcessData`, which seeds from the chained channel and hands each item
+            // `scope.Chain(running)` — except that every item processes and the LAST result is the value.
+            if (cp.ChainParameter != null && cp.ChainParameter.Count > 1)
+                return BuildChainParameterExpr(cp.ChainParameter, bctx, out paramExpr, out usesModel, out reason);
+
+            reason = new Refusal(RefusalCategory.ChainCarrier, "call parameter with no producer", callPosition);
             return false;
+        }
+
+        /// <summary>A multi-item chain in call-parameter position (<c>@a(b():c())</c>), written as the engine runs
+        /// it: one helper per item taking the chained scope — so an item's own parameter is read off that scope and
+        /// not the ambient one — and one driver threading the running value through them left of right.</summary>
+        private bool BuildChainParameterExpr(IReadOnlyList<OutputItem> items, BodyContext bctx, out string paramExpr,
+            out bool usesModel, out Refusal reason)
+        {
+            paramExpr = null;
+            usesModel = false;
+            reason = null;
+            var saved = _chainSlot;
+            var steps = new List<string>();
+            try
+            {
+                string producerSite = null;
+                string producedType = "null";
+                bool hasProducerToRight = false;
+                for (int i = items.Count - 1; i >= 0; i--)
+                {
+                    var item = items[i];
+                    _chainSlot = new ChainSlot
+                    {
+                        HasProducerToRight = hasProducerToRight,
+                        IsChainedConsumer = i != 0,
+                        ProducerSite = producerSite,
+                        ChainedTypeExpr = producedType,
+                        ItemSourceText = ChainItemSourceText(_itemChain, item)
+                    };
+
+                    if (!BuildChainItemExpr(item, bctx, out var itemExpr, out var itemUses, out var itemSite,
+                            out reason))
+                        return false;
+
+                    var method = "CH" + _chainMethodCounter++;
+                    _methodDecls.Append("        private static object ").Append(method)
+                        .Append("(in global::Heddle.Data.Scope scope)\n        {\n");
+                    if (itemUses)
+                        _methodDecls.Append("            var m = ").Append(bctx.ModelCast)
+                            .Append("scope.ModelData;\n");
+                    _methodDecls.Append("            return ").Append(itemExpr).Append(";\n        }\n");
+                    steps.Add(method);
+
+                    producerSite = itemSite;
+                    producedType = itemSite == null ? "typeof(string)" : "null";
+                    hasProducerToRight = true;
+                }
+            }
+            finally
+            {
+                _chainSlot = saved;
+            }
+
+            var driver = "CH" + _chainMethodCounter++;
+            _methodDecls.Append("        private static object ").Append(driver)
+                .Append("(in global::Heddle.Data.Scope scope)\n        {\n");
+            _methodDecls.Append("            object r = scope.ChainedData;\n");
+            foreach (var step in steps)
+                _methodDecls.Append("            r = ").Append(step).Append("(scope.Chain(r));\n");
+            _methodDecls.Append("            return r;\n        }\n");
+            paramExpr = driver + "(in scope)";
+            return true;
         }
 
         /// <summary>Plan selection for a member-path value, from (resolution, sink) — ordered so
@@ -3950,13 +4239,24 @@ namespace Heddle.Generator.Emit
             return composed;
         }
 
+        /// <summary>One item of a chain in call-parameter position, as the value the engine's
+        /// <c>TemplateItem.ProcessData</c> yields for it.
+        /// <para>The carrier arms — an unnamed item, a function, a late-bound name — are the engine's
+        /// <c>EmptyExtension</c>, whose <c>ProcessData</c> stringifies the value it is given, so they carry
+        /// <c>CarrierValue</c>. A named extension or definition is not a carrier: its own <c>ProcessData</c> is the
+        /// value, boxed as it comes. Note the carrier here is the <b>unencoded</b> one whatever the profile — the
+        /// engine's <c>chainParameter</c> arm takes the item's own name rather than resolving the profile's.</para>
+        /// </summary>
         private bool BuildChainItemExpr(OutputItem inner, BodyContext bctx, out string paramExpr, out bool usesModel,
-            out Refusal reason)
+            out string siteField, out Refusal reason)
         {
             reason = null;
             paramExpr = null;
             usesModel = false;
+            siteField = null;
 
+            // A floor, not a live refusal: the grammar gives a `call` no subtemplate, and the one place a body is
+            // attached to a chain item is the outblock's own first item — never a parameter chain's.
             if (!string.IsNullOrEmpty(inner.ParameterTemplate))
             {
                 reason = new Refusal(RefusalCategory.ChainCarrier, "bodied chain item", inner.Position);
@@ -3965,14 +4265,33 @@ namespace Heddle.Generator.Emit
 
             var name = inner.ExtensionName;
             if (name.Length == 0)
-                return BuildParamExpr(inner.CallParameter, bctx, RefStructUse.Model, out paramExpr, out usesModel, out reason,
-                    inner.Position);
+            {
+                if (!BuildParamExpr(inner.CallParameter, bctx, RefStructUse.Model, out var carried, out usesModel,
+                        out reason, inner.Position))
+                    return false;
+                paramExpr = "global::Heddle.Precompiled.PrecompiledRuntime.CarrierValue(" + carried + ")";
+                return true;
+            }
 
             // Use same precedence as top-level dispatch (HeddleCompiler.CompileItem).
             var innerTarget = CallTargetRules.ResolveCallTarget(name, inner.CallParameter, null,
                 _parse.DefenitionExists,
                 n => _extensionBinder.TryResolve(n, out _),
                 n => NativeExpressionWriter.IsDefaultFunction(n) || _exports.TryGet(n, out _));
+
+            // A definition or a bound extension named here is compiled by the very same CompileItem the output
+            // tier's items go through, so it takes the very same route — which is what makes a chain parameter's
+            // items as capable as an output chain's rather than a second, poorer dispatch.
+            if (innerTarget == CallTargetKind.Definition || innerTarget == CallTargetKind.Extension ||
+                innerTarget == CallTargetKind.Fill)
+            {
+                if (!(BuildItemCall(_itemChain, inner, _itemCtx, bctx, out reason) is Call call))
+                    return false;
+                paramExpr = call.ExtensionField + ".ProcessData(scope.Model(" + call.ParamExpr + "))";
+                usesModel = call.UsesModelLocal;
+                siteField = call.SiteField;
+                return true;
+            }
 
             if (innerTarget == CallTargetKind.Function)
             {
@@ -3992,7 +4311,7 @@ namespace Heddle.Generator.Emit
                 }
 
                 RecordFunctionUses(writer);
-                paramExpr = "(object)(" + expr + ")";
+                paramExpr = "global::Heddle.Precompiled.PrecompiledRuntime.CarrierValue((object)(" + expr + "))";
                 usesModel = writer.UsedModel;
                 return true;
             }
@@ -4014,13 +4333,14 @@ namespace Heddle.Generator.Emit
                 if (lateExpr != null)
                 {
                     RecordFunctionUses(lateWriter);
-                    paramExpr = "(object)(" + lateExpr + ")";
+                    paramExpr = "global::Heddle.Precompiled.PrecompiledRuntime.CarrierValue((object)(" +
+                                lateExpr + "))";
                     usesModel = lateWriter.UsedModel;
                     return true;
                 }
             }
 
-            reason = new Refusal(RefusalCategory.ChainCarrier, "chain item extension '" + name + "'",
+            reason = new Refusal(RefusalCategory.ChainCarrier, "chain item name '" + name + "'",
                 inner.Position);
             return false;
         }
@@ -4555,6 +4875,10 @@ namespace Heddle.Generator.Emit
                     else
                         w.Line($"scope.Renderer.Render(P{p.Index});");
                 }
+                else if (seg is ChainCall chain)
+                {
+                    EmitChainSteps(w, chain, render: true);
+                }
                 else
                 {
                     var c = (Call) seg;
@@ -4580,6 +4904,14 @@ namespace Heddle.Generator.Emit
                 {
                     concatParts.Add("P" + p.Index);
                 }
+                else if (seg is ChainCall chain)
+                {
+                    EmitChainSteps(w, chain, render: false);
+                    var cv = "v" + vIndex++;
+                    w.Raw("#line hidden");
+                    w.Line($"var {cv} = {chain.Local} as string ?? string.Empty;");
+                    concatParts.Add(cv);
+                }
                 else
                 {
                     var c = (Call) seg;
@@ -4603,6 +4935,27 @@ namespace Heddle.Generator.Emit
 
             w.Outdent();
             w.Line("}");
+        }
+
+        /// <summary>
+        /// A chain, statement for statement as <c>TemplateChain</c> runs it: the chained channel seeds the running
+        /// value, every item is handed <c>scope.Chain(running)</c>, and the last one — the leftmost in source —
+        /// renders where the others process. The rendering arm is <c>RenderData</c>'s; the processing arm is
+        /// <c>ProcessData</c>'s, which runs every item through <c>ProcessData</c> and keeps the last result.
+        /// </summary>
+        private void EmitChainSteps(CodeWriter w, ChainCall chain, bool render)
+        {
+            w.Raw("#line hidden");
+            w.Line($"object {chain.Local} = scope.ChainedData;");
+            for (int i = 0; i < chain.Steps.Count; i++)
+            {
+                var step = chain.Steps[i];
+                EmitLineSpanRaw(w, step.SpanStartLine, step.SpanStartCol, step.SpanEndLine, step.SpanEndCol);
+                if (render && i == chain.Steps.Count - 1)
+                    w.Line($"{step.RenderMethod}(scope.Chain({chain.Local}));");
+                else
+                    w.Line($"{chain.Local} = {step.ProcessMethod}(scope.Chain({chain.Local}));");
+            }
         }
 
         /// <summary>The line terminators C# recognises, which end a <c>#line</c> file name early, together with the

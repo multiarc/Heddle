@@ -897,6 +897,7 @@ TYPE Heddle.Precompiled.PrecompiledInitSite
   PROP Heddle.Precompiled.PrecompiledInitBody Body {get;set;}
   PROP Heddle.Precompiled.PrecompiledInitBody DefinitionBody {get;set;}
   PROP Heddle.Precompiled.PrecompiledInitFault Fault {get;set;}
+  PROP Heddle.Precompiled.PrecompiledInitSite ChainProducer {get;set;}
   PROP Heddle.Precompiled.PrecompiledInitSite[] Dependents {get;set;}
   PROP Heddle.Precompiled.PrecompiledLateAccessor[] BodyAccessors {get;set;}
   PROP System.Boolean HasProducerToRight {get;set;}

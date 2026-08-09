@@ -285,6 +285,13 @@ namespace Heddle.TestCorpus
                 "Import-origin attribution fixture: the deliberately broken origin."),
             new CorpusIntentRow("import-origin-c.heddle", CorpusTier.FrontEndError, CorpusRender.ResolveOnly,
                 "Import-origin attribution fixture, third hop of the chain."),
+
+            // Chains. The corpus carried none at all while the build refused them, so these are the shared home
+            // for the shape rather than an adaptation of one.
+            new CorpusIntentRow("chain-output.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
+                "Multi-item output chains — two definitions around a definition producer, and a definition around a registered function — model-less, so both tiers render them and the bytes are compared."),
+            new CorpusIntentRow("chain-parameter.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
+                "Multi-item chains in call-parameter position (@a(b():c())), the grammar's third call alternative; model-less and byte-compared like its output-position sibling."),
         };
 
         private static Dictionary<string, CorpusIntentRow> ByName
