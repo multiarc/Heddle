@@ -90,6 +90,7 @@ their defaults.
 | `HeddleTemplateRoot` | dir, default `$(MSBuildProjectDirectory)` | Root the template key is made relative to. |
 | `HeddleGeneratedNamespace` | default `Heddle.Generated` | Namespace of the generated entry classes. |
 | `HeddleEmitUtf8Pieces` | `false` (default) \| `true` | Emit pre‑encoded `"…"u8` static pieces for the byte sink. |
+| `HeddleNodeFallback` | `true` (default) \| `false` | Per‑node fallback: a member path the engine resolves but generated C# cannot name (e.g. a referenced assembly's `internal` member without `[InternalsVisibleTo]`) is computed by the engine's own accessor instead of degrading the whole template. Never changes rendered bytes, so it is not part of the options fingerprint; `false` restores the whole‑template degrade. |
 
 ---
 

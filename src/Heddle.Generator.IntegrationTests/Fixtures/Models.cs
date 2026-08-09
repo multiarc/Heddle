@@ -375,6 +375,46 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
         private string Hidden => "no";
     }
 
+    /// <summary>A public model whose <b>internal</b> member leads to a further public hop — the unnameable-mid-chain
+    /// shape: the referencing compilation can name neither <see cref="Link"/> nor its type, while the engine walks
+    /// both reflectively. The chain's tail is ordinary, so only a per-node escape that never spells the middle can
+    /// serve it.</summary>
+    public sealed class ChainThroughInternalModel
+    {
+        internal InternalChainLink Link => new InternalChainLink();
+    }
+
+    /// <summary>The internal middle of <see cref="ChainThroughInternalModel"/>'s chain; its own member is public.</summary>
+    internal sealed class InternalChainLink
+    {
+        public string Deep => "deep";
+    }
+
+    /// <summary>An internal member whose value needs output encoding — the fixture that proves an escaped value
+    /// re-enters the rendered-value path (encode-vs-raw, null handling) exactly where a direct one would.</summary>
+    public sealed class InternalMarkupModel
+    {
+        internal string Markup => "<b>&\"q\"</b>";
+    }
+
+    /// <summary>A public root whose member carries an <see cref="InternalMemberModel"/> — the prop-value shape:
+    /// the prop arg is an ordinary nameable path, and only the hop taken off the prop inside the body is
+    /// hidden.</summary>
+    public sealed class AccessorPropRootModel
+    {
+        public InternalMemberModel Inner => new InternalMemberModel();
+    }
+
+    /// <summary>The allocation twin pair: a public and an internal member returning the SAME string, so a render
+    /// through the direct plan and a render through the engine accessor produce identical output and identical
+    /// baseline allocations — any delta isolates the escape's own per-render cost, which must be zero.</summary>
+    public sealed class AccessorAllocationModel
+    {
+        public string Direct => "steady";
+
+        internal string Hidden => "steady";
+    }
+
     /// <summary>A model whose one member fails on demand — the ordinary kind of failure a definition body has to be
     /// able to survive, since the carrier that ran it is cached for the life of the process.</summary>
     public sealed class ExplodingModel

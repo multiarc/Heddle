@@ -1,3 +1,4 @@
+extern alias generator;
 using System.Collections.Generic;
 using System.Linq;
 using Heddle.Data;
@@ -35,22 +36,45 @@ namespace Heddle.Generator.IntegrationTests
         /// <summary>
         /// An <c>internal</c> member on a public model type from a referenced assembly. Roslyn imports from metadata
         /// only what the importing assembly could legally name, so the emitter's symbol model shows the member as
-        /// absent — indistinguishable from a typo, which is why the build used to fail the consumer with HED7008 at
-        /// <b>error</b> severity over a template the engine renders.
+        /// absent — but the engine's own walk (asked over the full-metadata view) resolves it, so the node escapes
+        /// to the engine's accessor and the template precompiles byte-identically instead of degrading. No HED7030
+        /// fires: there is nothing left to remedy.
         /// </summary>
         [Fact]
-        public void AnInternalMemberOnAReferencedModelDegradesWithAWarningRatherThanFailingTheBuild()
+        public void AnInternalMemberOnAReferencedModelPrecompilesThroughTheEngineAccessor()
         {
             const string key = "views/internal-member.heddle";
             var template = "@model(){{" + InternalMember + "}}@\\\n@(Secret)\n";
             var gen = DifferentialHarness.Generate(new[] { (key, template) });
 
             Assert.Empty(gen.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
+            Assert.DoesNotContain(gen.Diagnostics, d => d.Id == "HED7030");
+            DifferentialHarness.ExpectPrecompiled(gen, key);
+
+            var (precompiled, dyn) = DifferentialHarness.Render(key, template,
+                typeof(InternalMemberModel), new InternalMemberModel());
+            Assert.Equal("s3cret\n", dyn);
+            Assert.Equal(dyn, precompiled);
+        }
+
+        /// <summary>The opt-out. With <c>HeddleNodeFallback=false</c> the per-node escape is off and the
+        /// pre-fallback contract returns whole: the template degrades with the <c>MemberAccess</c> category and
+        /// the HED7030 warning naming the member and its remedy.</summary>
+        [Fact]
+        public void WithNodeFallbackOffAnInternalMemberDegradesWithAWarningAsBefore()
+        {
+            const string key = "views/internal-member-optout.heddle";
+            var template = "@model(){{" + InternalMember + "}}@\\\n@(Secret)\n";
+            var gen = DifferentialHarness.Generate(new[] { (key, template) },
+                new Dictionary<string, string> { ["build_property.HeddleNodeFallback"] = "false" });
+
+            Assert.Empty(gen.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
             var hed7030 = Assert.Single(gen.Diagnostics.Where(d => d.Id == "HED7030"));
             Assert.Equal(DiagnosticSeverity.Warning, hed7030.Severity);
             Assert.Contains("InternalMemberModel.Secret", hed7030.GetMessage());
             Assert.Contains(key, hed7030.Location.GetLineSpan().Path);
-            DifferentialHarness.ExpectDegrade(gen, key);
+            DifferentialHarness.ExpectDegrade(gen, key,
+                generator::Heddle.Generator.Emit.RefusalCategory.MemberAccess, "member path (Failed)");
 
             Assert.Equal("s3cret\n", Dynamic(template, typeof(InternalMemberModel), new InternalMemberModel()));
         }
@@ -225,13 +249,14 @@ namespace Workspace.Models
         /// <summary>
         /// The same internal member, reached through a <b>project</b> reference rather than a compiled file. Roslyn
         /// gives a project-to-project reference a <c>CompilationReference</c>, and a compilation shows every member
-        /// of its own types — so the member is present in the symbol model, accessible to nobody, and the walk that
-        /// decided "hidden" by the member being <i>absent</i> never fired. The path resolved, the emitter wrote it,
-        /// and the consumer's build died on CS0122 in generated code. Every solution-level build in a workspace is
-        /// this shape; the file reference the other tests use is the exception, not the rule.
+        /// of its own types — so the member is present in the symbol model but accessible to nobody, the
+        /// <c>Inaccessible</c> shape rather than the absent one. The engine's walk accepts it without needing the
+        /// full-metadata probe, so this precompiles through the accessor too, with no CS0122 and no warning. Every
+        /// solution-level build in a workspace is this shape; the file reference the other tests use is the
+        /// exception, not the rule.
         /// </summary>
         [Fact]
-        public void AnInternalMemberOnAProjectReferencedModelDegradesRatherThanEmittingACS0122()
+        public void AnInternalMemberOnAProjectReferencedModelPrecompilesThroughTheEngineAccessor()
         {
             const string key = "views/project-ref-member.heddle";
             const string template = "@model(){{Workspace.Models.ProjectReferencedModel}}@\\\n@(Secret)\n";
@@ -239,10 +264,28 @@ namespace Workspace.Models
                 extraReferences: ProjectReference());
 
             Assert.Empty(gen.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
+            Assert.DoesNotContain(gen.Diagnostics, d => d.Id == "HED7030");
+            Assert.Equal(DifferentialHarness.ManifestState.Precompiled,
+                DifferentialHarness.ClassifyInManifest(gen.ManifestSource, key));
+        }
+
+        /// <summary>The opt-out for the project-reference shape: the <c>Inaccessible</c> resolution degrades again,
+        /// warned as before.</summary>
+        [Fact]
+        public void WithNodeFallbackOffAProjectReferencedInternalMemberDegradesAsBefore()
+        {
+            const string key = "views/project-ref-member-optout.heddle";
+            const string template = "@model(){{Workspace.Models.ProjectReferencedModel}}@\\\n@(Secret)\n";
+            var gen = DifferentialHarness.Generate(new[] { (key, template) },
+                new Dictionary<string, string> { ["build_property.HeddleNodeFallback"] = "false" },
+                extraReferences: ProjectReference());
+
+            Assert.Empty(gen.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
             var hed7030 = Assert.Single(gen.Diagnostics.Where(d => d.Id == "HED7030"));
             Assert.Equal(DiagnosticSeverity.Warning, hed7030.Severity);
             Assert.Contains("ProjectReferencedModel.Secret", hed7030.GetMessage());
-            DifferentialHarness.ExpectDegrade(gen, key);
+            DifferentialHarness.ExpectDegrade(gen, key,
+                generator::Heddle.Generator.Emit.RefusalCategory.MemberAccess, "member path (Inaccessible)");
         }
 
         /// <summary>The public member of the same project-referenced model still pre-compiles — the new refusal is

@@ -3110,18 +3110,20 @@ namespace Heddle.Generator.Emit
                     var rest = new string[segments.Length - 1];
                     System.Array.Copy(segments, 1, rest, 0, rest.Length);
                     var res = _resolver.ResolvePath(slot.Type, rest);
-                    if (res.Kind != SymbolTypeResolver.PathKind.Resolved)
-                    {
-                        reason = new Refusal(RefusalCategory.MemberAccess, "prop multi-hop (" + res.Kind + ")",
-                            callPosition);
-                        return false;
-                    }
-
-                    var plan = SelectValuePlan(res, use, "prop multi-hop", callPosition);
+                    var plan = SelectValuePlan(slot.Type, rest, res, use, "prop multi-hop", callPosition);
                     if (plan.Kind == EmissionPlanKind.Refuse)
                     {
                         reason = plan.Refusal;
                         return false;
+                    }
+
+                    if (plan.Kind == EmissionPlanKind.EngineAccessor)
+                    {
+                        // The accessor converts the boxed prop value to the slot type itself, the engine's own
+                        // first-hop conversion, so no cast is spelled here.
+                        paramExpr = ExecuteValuePlan(plan,
+                            AllocateMemberAccessor(slot.Type, rest) + "(" + propRead + ")");
+                        return true;
                     }
 
                     var root = "((" + slot.TypeFq + ")" + propRead + ")";
@@ -3150,22 +3152,25 @@ namespace Heddle.Generator.Emit
                 }
 
                 var resolution = _resolver.ResolvePath(bctx.ModelSymbol, segments);
-                if (resolution.Kind != SymbolTypeResolver.PathKind.Resolved)
+                var pathPlan = SelectValuePlan(bctx.ModelSymbol, segments, resolution, use, "member path",
+                    callPosition);
+                if (pathPlan.Kind == EmissionPlanKind.Refuse)
                 {
                     // HED7008: property-not-found on typed model (same as runtime HED0001).
                     if (resolution.Kind == SymbolTypeResolver.PathKind.Failed ||
                         resolution.Kind == SymbolTypeResolver.PathKind.Inaccessible)
                         RecordMemberFailure(bctx.ModelSymbol, segments, resolution);
-                    reason = new Refusal(RefusalCategory.MemberAccess, "member path (" + resolution.Kind + ")",
-                        callPosition);
+                    reason = pathPlan.Refusal;
                     return false;
                 }
 
-                var pathPlan = SelectValuePlan(resolution, use, "member path", callPosition);
-                if (pathPlan.Kind == EmissionPlanKind.Refuse)
+                if (pathPlan.Kind == EmissionPlanKind.EngineAccessor)
                 {
-                    reason = pathPlan.Refusal;
-                    return false;
+                    // Reads the scope channel directly — the engine's ModelParameter shape — so the model local
+                    // stays unclaimed and the model cast happens inside the delegate, at the call.
+                    paramExpr = ExecuteValuePlan(pathPlan,
+                        AllocateMemberAccessor(bctx.ModelSymbol, segments) + "(scope.ModelData)");
+                    return true;
                 }
 
                 paramExpr = ExecuteValuePlan(pathPlan,
@@ -3197,9 +3202,18 @@ namespace Heddle.Generator.Emit
                 var writer = new NativeExpressionWriter(_resolver, bctx.ModelSymbol, _modelSymbol, "m",
                     _exports, TypeFacts, AllocateHopLocal, bctx.Props, _modelDeclaredDynamic);
                 var expr = writer.WriteRoot(cp.NativeExpression);
-                DrainUnresolvable(writer);
                 if (expr == null)
                 {
+                    // A path-shaped expression the writer cannot spell but the engine resolves escapes to the
+                    // engine's own compilation of it, before the refusal (and its member-failure diagnostic, which
+                    // would describe a node that now precompiles) is recorded. The whole expression must be the
+                    // path: escaping an operand inside a larger expression would erase the static type the
+                    // surrounding typed C# is built from.
+                    if (writer.RefusalCategory == RefusalCategory.MemberAccess &&
+                        TryNativeAccessorEscape(cp.NativeExpression, bctx, out paramExpr))
+                        return true;
+
+                    DrainUnresolvable(writer);
                     // The writer's own refusal names the construct that cost the tier; the generic phrase
                     // survives only for a bail with no specific story.
                     reason = writer.RefusalReason != null
@@ -3208,6 +3222,8 @@ namespace Heddle.Generator.Emit
                             callPosition);
                     return false;
                 }
+
+                DrainUnresolvable(writer);
 
                 RecordFunctionUses(writer);
                 paramExpr = "(object)(" + expr + ")";
@@ -3236,27 +3252,41 @@ namespace Heddle.Generator.Emit
             return false;
         }
 
-        /// <summary>Plan selection for a resolved member-path value, from (resolved type, sink) — ordered so
+        /// <summary>Plan selection for a member-path value, from (resolution, sink) — ordered so
         /// <see cref="EmissionPlanKind.Refuse"/> is the LAST exit: a node may not refuse until every other plan
-        /// has been considered. Two plans have selectors today; the seams between the others mark where each
+        /// has been considered. Three plans have selectors today; the seams between the others mark where each
         /// remaining plan joins the ladder when it gains one.</summary>
-        private static EmissionPlan SelectValuePlan(SymbolTypeResolver.PathResolution resolved, RefStructUse use,
-            string pathKind, BlockPosition position)
+        private EmissionPlan SelectValuePlan(ITypeSymbol start, IReadOnlyList<string> segments,
+            SymbolTypeResolver.PathResolution resolved, RefStructUse use, string pathKind, BlockPosition position)
         {
-            // Direct: typed C# spells the value and the sink boxes it.
-            if (!SymbolTypeResolver.EndsOnRefStruct(resolved))
-                return EmissionPlan.Direct;
+            if (resolved.Kind == SymbolTypeResolver.PathKind.Resolved)
+            {
+                // Direct: typed C# spells the value and the sink boxes it.
+                if (!SymbolTypeResolver.EndsOnRefStruct(resolved))
+                    return EmissionPlan.Direct;
 
-            // Stringified: the rendered sink's own protocol (`value is string s ? s : value.ToString()`)
-            // stringifies a ref-like value in place, so the box is never needed.
-            if (use == RefStructUse.Rendered)
-                return EmissionPlan.Stringified;
+                // Stringified: the rendered sink's own protocol (`value is string s ? s : value.ToString()`)
+                // stringifies a ref-like value in place, so the box is never needed.
+                if (use == RefStructUse.Rendered)
+                    return EmissionPlan.Stringified;
 
-            // Generic selector seam: an inference helper cannot carry a ref-like value either (CS9244).
-            // LateBound selector seam: nothing on a member path resolves later than the sink boxes.
-            // EngineAccessor selector seam: the engine's accessor returns object — the very box being refused.
-            return EmissionPlan.Refused(new Refusal(RefusalCategory.RefLikeSink,
-                RefStructSinkReason(pathKind, use), position));
+                // Generic selector seam: an inference helper cannot carry a ref-like value either (CS9244).
+                // LateBound selector seam: nothing on a member path resolves later than the sink boxes.
+                // EngineAccessor selector seam: the engine's accessor returns object — the very box being refused.
+                return EmissionPlan.Refused(new Refusal(RefusalCategory.RefLikeSink,
+                    RefStructSinkReason(pathKind, use), position));
+            }
+
+            // EngineAccessor: the path this compilation cannot spell — a referenced assembly's internal member
+            // without IVT, an error-obsolete member, a member type with no writable name mid-chain — computed the
+            // way the engine computes it, once into a static delegate. Selected only where the engine's own walk
+            // proves the whole path resolves; every other non-resolution keeps degrading, which hands the template
+            // to the tier whose success or failure is the contract.
+            if (_config.NodeFallback && _resolver.EngineViewResolves(start, segments))
+                return EmissionPlan.EngineAccessor;
+
+            return EmissionPlan.Refused(new Refusal(RefusalCategory.MemberAccess,
+                pathKind + " (" + resolved.Kind + ")", position));
         }
 
         /// <summary>Executes the selected plan over a built path expression — the writer half, which decides
@@ -3267,6 +3297,90 @@ namespace Heddle.Generator.Emit
             plan.Kind == EmissionPlanKind.Stringified
                 ? "(object)((" + pathExpr + ").ToString())"
                 : "(object)(" + pathExpr + ")";
+
+        /// <summary>Accessor fields already allocated in this file, keyed by kind, start type and path — a path
+        /// read from two call sites shares one delegate and one type-init construction.</summary>
+        private readonly Dictionary<string, string> _accessorFields =
+            new Dictionary<string, string>(System.StringComparer.Ordinal);
+
+        private int _accessorCounter;
+
+        /// <summary>The <see cref="EmissionPlanKind.EngineAccessor"/> field for a member-tier path: a
+        /// <c>Func&lt;object, object&gt;</c> built once at type-init from the engine's own member resolution
+        /// (<c>PrecompiledRuntime.MemberAccessor</c>), called with the boxed start value at the site.</summary>
+        private string AllocateMemberAccessor(ITypeSymbol start, IReadOnlyList<string> segments) =>
+            AllocateAccessorField("global::System.Func<object, object>",
+                "MemberAccessor", start, segments, rootRefArg: null);
+
+        /// <summary>The accessor field for a native-tier path: the engine's three-channel delegate shape
+        /// (<c>model</c>, <c>chained</c>, <c>root</c>), built by <c>PrecompiledRuntime.NativeAccessor</c> the way
+        /// the engine's expression compiler builds it.</summary>
+        private string AllocateNativeAccessor(ITypeSymbol start, IReadOnlyList<string> segments, bool rootRef) =>
+            AllocateAccessorField("global::System.Func<object, object, object, object>",
+                "NativeAccessor", start, segments, rootRefArg: rootRef ? "true" : "false");
+
+        /// <summary>
+        /// The native tier's <see cref="EmissionPlanKind.EngineAccessor"/> selector: a value node that IS a member
+        /// path — model-rooted, <c>this</c>-rooted or <c>::</c>-rooted, with no expression around it — whose hops
+        /// the engine resolves, computed by the engine's own expression compilation into a static three-channel
+        /// delegate. A prop-rooted read stays with the writer (the engine roots it at the props array, a different
+        /// mechanism), and a path the engine's walk does not fully resolve keeps degrading, which reproduces the
+        /// engine's compile-time refusal.
+        /// </summary>
+        private bool TryNativeAccessorEscape(ExprNode node, BodyContext bctx, out string paramExpr)
+        {
+            paramExpr = null;
+            if (!_config.NodeFallback)
+                return false;
+            if (!(node is PathNode path) || path.Segments.Count == 0)
+                return false;
+            if (path.Target != null && !(path.Target is ThisNode))
+                return false;
+            // A body prop wins the first segment for a bare model-rooted path — the engine's own compiler asks
+            // the active layout before the scope type, and a `this.`-rooted path never consults it.
+            if (!path.RootRef && path.Target == null &&
+                bctx.Props != null && bctx.Props.ByName.ContainsKey(path.Segments[0]))
+                return false;
+
+            var start = path.RootRef ? _modelSymbol : bctx.ModelSymbol;
+            if (start == null || start.TypeKind == TypeKind.Dynamic)
+                return false;
+            if (!_resolver.EngineViewResolves(start, path.Segments))
+                return false;
+
+            paramExpr = "(object)(" + AllocateNativeAccessor(start, path.Segments, path.RootRef) +
+                        "(scope.ModelData, scope.ChainedData, " +
+                        "global::Heddle.Precompiled.PrecompiledRuntime.RootModel(in scope)))";
+            return true;
+        }
+
+        private string AllocateAccessorField(string delegateType, string factory, ITypeSymbol start,
+            IReadOnlyList<string> segments, string rootRefArg)
+        {
+            var startFq = SymbolTypeResolver.FullyQualified(start);
+            var key = factory + "\0" + (rootRefArg ?? string.Empty) + "\0" + startFq + "\0" +
+                      string.Join("\0", segments);
+            if (_accessorFields.TryGetValue(key, out var existing))
+                return existing;
+
+            var field = "__acc" + _accessorCounter++;
+            _fieldDecls.Append("        private static readonly ").Append(delegateType).Append(' ').Append(field)
+                .Append(" = global::Heddle.Precompiled.PrecompiledRuntime.").Append(factory)
+                .Append("(\n            typeof(").Append(startFq).Append("), new string[] { ");
+            for (int i = 0; i < segments.Count; i++)
+            {
+                if (i != 0)
+                    _fieldDecls.Append(", ");
+                _fieldDecls.Append('"').Append(segments[i]).Append('"');
+            }
+
+            _fieldDecls.Append(" }");
+            if (rootRefArg != null)
+                _fieldDecls.Append(", rootRef: ").Append(rootRefArg);
+            _fieldDecls.Append(");\n");
+            _accessorFields[key] = field;
+            return field;
+        }
 
         /// <summary>The <c>::</c> member-path parameter: a typed root emits the null-safe hop chain off the root
         /// model read cast to the template's model (the engine's own RootScopeType conversion, InvalidCastException
@@ -3285,21 +3399,21 @@ namespace Heddle.Generator.Emit
             }
 
             var resolution = _resolver.ResolvePath(_modelSymbol, segments);
-            if (resolution.Kind != SymbolTypeResolver.PathKind.Resolved)
+            var plan = SelectValuePlan(_modelSymbol, segments, resolution, use, "root member path", callPosition);
+            if (plan.Kind == EmissionPlanKind.Refuse)
             {
                 if (resolution.Kind == SymbolTypeResolver.PathKind.Failed ||
                     resolution.Kind == SymbolTypeResolver.PathKind.Inaccessible)
                     RecordMemberFailure(_modelSymbol, segments, resolution);
-                reason = new Refusal(RefusalCategory.MemberAccess, "root member path (" + resolution.Kind + ")",
-                    callPosition);
+                reason = plan.Refusal;
                 return false;
             }
 
-            var plan = SelectValuePlan(resolution, use, "root member path", callPosition);
-            if (plan.Kind == EmissionPlanKind.Refuse)
+            if (plan.Kind == EmissionPlanKind.EngineAccessor)
             {
-                reason = plan.Refusal;
-                return false;
+                paramExpr = ExecuteValuePlan(plan,
+                    AllocateMemberAccessor(_modelSymbol, segments) + "(" + rootRead + ")");
+                return true;
             }
 
             var root = "((" + SymbolTypeResolver.FullyQualified(_modelSymbol) + ")" + rootRead + ")";

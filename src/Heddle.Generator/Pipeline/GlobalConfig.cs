@@ -13,7 +13,8 @@ namespace Heddle.Generator.Pipeline
     internal sealed class GlobalConfig : IEquatable<GlobalConfig>
     {
         public GlobalConfig(OutputProfile outputProfile, ExpressionMode expressionMode, bool trimDirectiveLines,
-            int maxRecursionCount, string templateRoot, string generatedNamespace, bool emitUtf8Pieces)
+            int maxRecursionCount, string templateRoot, string generatedNamespace, bool emitUtf8Pieces,
+            bool nodeFallback)
         {
             OutputProfile = outputProfile;
             ExpressionMode = expressionMode;
@@ -22,6 +23,7 @@ namespace Heddle.Generator.Pipeline
             TemplateRoot = templateRoot;
             GeneratedNamespace = generatedNamespace;
             EmitUtf8Pieces = emitUtf8Pieces;
+            NodeFallback = nodeFallback;
         }
 
         public OutputProfile OutputProfile { get; }
@@ -32,6 +34,10 @@ namespace Heddle.Generator.Pipeline
         public string GeneratedNamespace { get; }
         public bool EmitUtf8Pieces { get; }
 
+        /// <summary>Per-node engine-accessor fallback (<c>HeddleNodeFallback</c>). Decides whether a template
+        /// precompiles, never a rendered byte, so it is not a fingerprint input.</summary>
+        public bool NodeFallback { get; }
+
         public bool Equals(GlobalConfig other)
         {
             if (other is null) return false;
@@ -41,7 +47,8 @@ namespace Heddle.Generator.Pipeline
                    && MaxRecursionCount == other.MaxRecursionCount
                    && string.Equals(TemplateRoot, other.TemplateRoot, StringComparison.Ordinal)
                    && string.Equals(GeneratedNamespace, other.GeneratedNamespace, StringComparison.Ordinal)
-                   && EmitUtf8Pieces == other.EmitUtf8Pieces;
+                   && EmitUtf8Pieces == other.EmitUtf8Pieces
+                   && NodeFallback == other.NodeFallback;
         }
 
         public override bool Equals(object obj) => Equals(obj as GlobalConfig);
@@ -58,6 +65,7 @@ namespace Heddle.Generator.Pipeline
                 hash = hash * 31 + (TemplateRoot?.GetHashCode() ?? 0);
                 hash = hash * 31 + (GeneratedNamespace?.GetHashCode() ?? 0);
                 hash = hash * 31 + EmitUtf8Pieces.GetHashCode();
+                hash = hash * 31 + NodeFallback.GetHashCode();
                 return hash;
             }
         }

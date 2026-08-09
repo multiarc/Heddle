@@ -232,6 +232,8 @@ namespace Heddle.Tests
                 props[HeddleBuildOptions.MaxRecursionCountProperty]);
             Assert.Equal(HeddleBuildOptions.DefaultEmitUtf8Pieces ? "true" : "false",
                 props[HeddleBuildOptions.EmitUtf8PiecesProperty]);
+            Assert.Equal(HeddleBuildOptions.DefaultNodeFallback ? "true" : "false",
+                props[HeddleBuildOptions.NodeFallbackProperty]);
 
             // HeddleTemplateRoot's default is MSBuild-only; assert it is still stated, not its C# twin.
             Assert.Equal("$(MSBuildProjectDirectory)", props[HeddleBuildOptions.TemplateRootProperty]);
@@ -253,6 +255,7 @@ namespace Heddle.Tests
             Assert.True(HeddleBuildOptions.DefaultTrimDirectiveLines);
             Assert.Equal(100, HeddleBuildOptions.DefaultMaxRecursionCount);
             Assert.False(HeddleBuildOptions.DefaultEmitUtf8Pieces);
+            Assert.True(HeddleBuildOptions.DefaultNodeFallback);
         }
 
         /// <summary>Both <see cref="TemplateOptions"/> constructors used to state the defaults independently; the
@@ -375,7 +378,7 @@ namespace Heddle.Tests
                 defaults[match.Groups["name"].Value] = match.Groups["value"].Value;
 
             // Presence is part of the assertion: a structural change that breaks the parse must be a red test.
-            Assert.Equal(6, defaults.Count);
+            Assert.Equal(7, defaults.Count);
             return defaults;
         }
 

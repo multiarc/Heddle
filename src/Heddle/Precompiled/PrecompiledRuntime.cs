@@ -367,6 +367,74 @@ namespace Heddle.Precompiled
                 scope.Renderer.Render(_template.Generate(scope.ModelData, scope.ChainedData));
         }
 
+        /// <summary>
+        /// The engine's member-path accessor for one value node, built once from a generated static field
+        /// initializer. Resolves <paramref name="segments"/> off <paramref name="startType"/> through the engine's
+        /// own member walk (same visibility filter, same hop order) and compiles the engine's null-safe hop chain —
+        /// so the value is byte-identical to the dynamic tier's by construction, including members generated C#
+        /// could not name (an <c>internal</c> getter of a referenced assembly, a member type with no writable name).
+        /// The returned delegate performs one call per render and allocates nothing beyond what the engine's own
+        /// accessor allocates (a box for a value-type result).
+        /// </summary>
+        /// <param name="startType">The type the walk starts at; the input object is converted to it exactly as the
+        /// engine converts, so a mismatched value throws the same <see cref="InvalidCastException"/>.</param>
+        /// <param name="segments">The member path, one property name per hop.</param>
+        /// <returns>A delegate from the boxed start value to the boxed path value; a <c>null</c> receiver
+        /// propagates <c>null</c> per the engine's hop rule.</returns>
+        /// <exception cref="ArgumentException">The path does not resolve under the engine's member walk — the
+        /// build emitted this call against a different shape of <paramref name="startType"/> than the one loaded,
+        /// which is a host deployment fault, not a template fault.</exception>
+        public static Func<object, object> MemberAccessor(Type startType, string[] segments)
+        {
+            var resolution = ResolveEngineChain(startType, segments);
+            return Runtime.Parameters.ModelParameter.GetPropertyChainAccessor(resolution.Properties).Compile();
+        }
+
+        /// <summary>
+        /// The engine's native-expression compilation for a path-shaped value node, built once from a generated
+        /// static field initializer. Mirrors the dynamic tier's expression compiler for a model-rooted or
+        /// <c>::</c>-rooted path: the same shared member resolution, the same null-safe hop chain over the same
+        /// three-channel delegate shape (<c>model</c>, <c>chained</c>, <c>root</c>), boxed to <c>object</c> the way
+        /// the engine boxes its expression result. One delegate call per render; no allocation beyond the engine's
+        /// own (a box for a value-type result).
+        /// </summary>
+        /// <param name="startType">The type the path walks from — the scope's model type, or the root model type
+        /// for a <c>::</c>-rooted path.</param>
+        /// <param name="segments">The member path, one property name per hop.</param>
+        /// <param name="rootRef">Whether the path is <c>::</c>-rooted; selects the root channel over the model
+        /// channel, as the engine's compiler does.</param>
+        /// <exception cref="ArgumentException">The path does not resolve under the engine's member walk — see
+        /// <see cref="MemberAccessor"/>.</exception>
+        public static Func<object, object, object, object> NativeAccessor(Type startType, string[] segments,
+            bool rootRef)
+        {
+            var resolution = ResolveEngineChain(startType, segments);
+            var model = System.Linq.Expressions.Expression.Parameter(typeof(object), "model");
+            var chained = System.Linq.Expressions.Expression.Parameter(typeof(object), "chained");
+            var root = System.Linq.Expressions.Expression.Parameter(typeof(object), "root");
+            var body = Runtime.Parameters.ModelParameter.BuildNullSafePropertyChain(
+                rootRef ? root : model, resolution.Properties);
+            var boxed = System.Linq.Expressions.Expression.Convert(body, typeof(object));
+            return System.Linq.Expressions.Expression
+                .Lambda<Func<object, object, object, object>>(boxed, model, chained, root).Compile();
+        }
+
+        /// <summary>The engine's member resolution for the two accessors — a host-programming failure throws,
+        /// because the generator only emits an accessor for a path it proved the engine resolves.</summary>
+        private static Runtime.Expressions.MemberPathResolution ResolveEngineChain(Type startType, string[] segments)
+        {
+            if (startType == null)
+                throw new ArgumentNullException(nameof(startType));
+            if (segments == null)
+                throw new ArgumentNullException(nameof(segments));
+            var resolution = Runtime.Expressions.MemberPathResolver.TryResolve(new ExType(startType), segments);
+            if (resolution.Kind != Runtime.Expressions.MemberPathResolutionKind.Resolved)
+                throw new ArgumentException(
+                    resolution.FailureMessage ??
+                    "Member path does not resolve under the engine's member walk: " + string.Join(".", segments));
+            return resolution;
+        }
+
         /// <summary>Single dynamic member hop — shared single implementation of dynamic tier's member access.
         /// <para><c>null</c> receiver propagates <c>null</c>, reproducing engine's per-hop behavior.</para>
         /// <para><b>Binder context:</b> bound in Heddle's assembly, not caller's. This prevents seeing caller's

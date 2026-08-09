@@ -9,6 +9,7 @@
     <CompilerVisibleProperty Include="HeddleTemplateRoot" />
     <CompilerVisibleProperty Include="HeddleGeneratedNamespace" />
     <CompilerVisibleProperty Include="HeddleEmitUtf8Pieces" />
+    <CompilerVisibleProperty Include="HeddleNodeFallback" />
   </ItemGroup>
 
   <!-- Per-item metadata surfaced as build_metadata.AdditionalFiles.*.
@@ -45,6 +46,7 @@
     <HeddleMaxRecursionCount Condition="'$(HeddleMaxRecursionCount)' == ''">100</HeddleMaxRecursionCount>
     <HeddleTemplateRoot Condition="'$(HeddleTemplateRoot)' == ''">$(MSBuildProjectDirectory)</HeddleTemplateRoot>
     <HeddleEmitUtf8Pieces Condition="'$(HeddleEmitUtf8Pieces)' == ''">false</HeddleEmitUtf8Pieces>
+    <HeddleNodeFallback Condition="'$(HeddleNodeFallback)' == ''">true</HeddleNodeFallback>
   </PropertyGroup>
 
 </Project>

@@ -707,6 +707,7 @@ TYPE Heddle.Precompiled.HeddleBuildOptions
   FIELD Heddle.Data.ExpressionMode DefaultExpressionMode
   FIELD Heddle.Data.OutputProfile DefaultOutputProfile
   FIELD System.Boolean DefaultEmitUtf8Pieces
+  FIELD System.Boolean DefaultNodeFallback
   FIELD System.Boolean DefaultTrimDirectiveLines
   FIELD System.Int32 DefaultMaxRecursionCount
   FIELD System.String BuildPropertyPrefix
@@ -718,6 +719,7 @@ TYPE Heddle.Precompiled.HeddleBuildOptions
   FIELD System.String ExpressionModeProperty
   FIELD System.String GeneratedNamespaceProperty
   FIELD System.String MaxRecursionCountProperty
+  FIELD System.String NodeFallbackProperty
   FIELD System.String OutputProfileProperty
   FIELD System.String TemplateRootProperty
   FIELD System.String TrimDirectiveLinesProperty
@@ -858,6 +860,8 @@ TYPE Heddle.Precompiled.PrecompiledRuntime
   METHOD Heddle.Runtime.IProcessStrategy ResolvePartial(System.String, Heddle.Data.TemplateOptions)
   METHOD Heddle.Runtime.IProcessStrategy ResolvePartial(System.String, System.Type)
   METHOD Heddle.Runtime.IProcessStrategy WithLocalsFrame(Heddle.Runtime.IProcessStrategy)
+  METHOD System.Func<System.Object, System.Object, System.Object, System.Object> NativeAccessor(System.Type, System.String[], System.Boolean)
+  METHOD System.Func<System.Object, System.Object> MemberAccessor(System.Type, System.String[])
   METHOD System.Object DynamicMember(System.Object, System.String)
   METHOD System.Object Prop(ref Heddle.Data.Scope, System.Int32)
   METHOD System.Object RootModel(ref Heddle.Data.Scope)
