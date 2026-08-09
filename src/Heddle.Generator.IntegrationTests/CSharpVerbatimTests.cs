@@ -92,15 +92,30 @@ namespace Heddle.Generator.IntegrationTests
         /// and both of which pre-compiled and rendered.
         /// </summary>
         [Theory]
+        // The slot row is refused by the projection's own hook at registration rather than by the build: the site
+        // carries the type Roslyn gave the fragment, and OutExtension checks it against the declared slot type
+        // there. The list row is still a build refusal — @list's accepted-type gate is the compiler's own.
         [InlineData("slot-value",
-            "@%\n<frame(out:: string)>{{[@out(@model.Products.Count)]}} :: " + CatalogType + "\n%@\n@frame(this){{[q]}}\n")]
-        [InlineData("list-data", "@list(@model.Products.Count){{x}}\n")]
-        public void AValueTypedFromEmbeddedCSharpIsCheckedTheWayTheEngineChecksIt(string name, string body)
+            "@%\n<frame(out:: string)>{{[@out(@model.Products.Count)]}} :: " + CatalogType + "\n%@\n@frame(this){{[q]}}\n",
+            true)]
+        [InlineData("list-data", "@list(@model.Products.Count){{x}}\n", false)]
+        public void AValueTypedFromEmbeddedCSharpIsCheckedTheWayTheEngineChecksIt(string name, string body,
+            bool refusedAtInit)
         {
             var key = "views/cs-typed-" + name + ".heddle";
             var content = "@model(){{" + CatalogType + "}}@\\\n" + body;
 
-            AssertDegrades(key, content);
+            if (refusedAtInit)
+            {
+                var gen = DifferentialHarness.Generate(new[] { (key, content) }, FullCSharp);
+                Assert.Empty(gen.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
+                DifferentialHarness.ExpectInitRefusal(gen, key, HeddleDiagnosticIds.SlotValueTypeMismatch);
+            }
+            else
+            {
+                AssertDegrades(key, content);
+            }
+
             Assert.False(EngineCompiles(content));
         }
 

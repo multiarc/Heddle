@@ -105,6 +105,30 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
     }
 
     /// <summary>
+    /// A third-party <b>slot projection</b>: not derived from the engine's own, not named after it, and carrying
+    /// nothing but <c>[SlotProjection]</c>. It wraps the value the call site hands it and renders that; it
+    /// declares no slot rules of its own, because the two members the role's contract names —
+    /// <c>CompileContext.SlotParameterType</c> and the scope's slot carrier — are engine-internal, so the
+    /// compile-time half of the role is not reachable from outside the engine assembly at all.
+    /// <para>What it proves is the half that is: a call to it inside a slot-declaring definition body takes the
+    /// ordinary bound-extension route and precompiles in a default build. The build no longer applies the
+    /// <b>built-in's</b> slot reasoning to it — a valueless call, and a value the declared slot type could not
+    /// take, are refusals <c>OutExtension</c> raises for itself and this extension does not, so the engine
+    /// compiles both and the precompiled tier has to keep them.</para>
+    /// </summary>
+    [ExtensionName("project")]
+    [SlotProjection]
+    public sealed class ProjectExtension : AbstractExtension
+    {
+        public override object ProcessData(in Scope scope) => "<" + (scope.ModelData ?? "-") + ">";
+
+        public override void RenderData(in Scope scope)
+        {
+            scope.Renderer.Render((string) ProcessData(scope));
+        }
+    }
+
+    /// <summary>
     /// A third-party <b>child-template host</b>: not derived from the engine's own, not named after it, and
     /// written the way a package author would write one — the role is the <c>[ChildTemplateHost]</c> declaration
     /// and nothing else. It evaluates its body once at compile time to get the child's name, queues the child's

@@ -1,3 +1,4 @@
+using System.Linq;
 using Heddle.Data;
 using Heddle.Generator.IntegrationTests.Fixtures;
 using Heddle.Runtime;
@@ -11,6 +12,12 @@ namespace Heddle.Generator.IntegrationTests
     /// such check: it precompiled the same template and either rendered it — the engine having refused to compile it
     /// at all — or threw <c>InvalidCastException</c> from the caller-content cast at render, depending on whether
     /// the caller's body happened to read a member.
+    /// <para>The check is no longer the build's at all. <c>OutExtension.InitStart</c> makes it, for real, at
+    /// registration — the site carries the declared slot type and the value type the build read, and a hook that
+    /// reports the engine's <c>HED5014</c> there is a <b>template-scope</b> fault, which is the gauntlet's
+    /// instruction to render the request on the dynamic tier. So the template still never renders past the engine's
+    /// refusal; what moved is which tier notices, and <see cref="DifferentialHarness.ExpectInitRefusal"/> is where
+    /// each row says so.</para>
     /// </summary>
     public class SlotValueTypeTests
     {
@@ -24,14 +31,36 @@ namespace Heddle.Generator.IntegrationTests
         /// <summary>The engine's own verdict, asserted on its message and not only on the id. <c>HED5014</c> carries
         /// two distinct rules — a slot value with no static type at all, and one whose type does not fit — and a test
         /// that greps for the id alone cannot tell which of them it just reproduced, so it goes on passing when the
-        /// template it describes has stopped being the one it means.</summary>
-        private static void AssertEngineRefuses(string template, System.Type modelType, string message)
+        /// template it describes has stopped being the one it means. Returns the error, so a caller can pin where it
+        /// points as well as what it says.</summary>
+        private static HeddleCompileError AssertEngineRefuses(string template, System.Type modelType, string message)
         {
             var dynamicTemplate = new HeddleTemplate(template, new CompileContext(new TemplateOptions(), modelType));
             Assert.False(dynamicTemplate.CompileResult.Success);
             var text = dynamicTemplate.CompileResult.ToString();
             Assert.Contains("HED5014", text);
             Assert.Contains(message, text);
+            return dynamicTemplate.CompileResult.Errors.First(
+                e => e.DiagnosticId == HeddleDiagnosticIds.SlotValueTypeMismatch &&
+                     e.Error.IndexOf(message, System.StringComparison.Ordinal) >= 0);
+        }
+
+        /// <summary>The refusal as the reader actually meets it, on both tiers. The build keeps the template — it
+        /// predicts nothing about the slot value any more — and the projection's own hook reports the engine's
+        /// <c>HED5014</c> when it runs at registration; that is a template-scope fault, which is the gauntlet's
+        /// instruction to render the request on the dynamic tier, where the engine refuses it with the same id, the
+        /// same sentence and the same position. Both coordinates are asserted, because an error pointing somewhere
+        /// else is a different error.</summary>
+        private static void AssertBothTiersRefuse(string key, string template, System.Type modelType, string message)
+        {
+            var initError = DifferentialHarness.ExpectInitRefusal(
+                DifferentialHarness.Generate(new[] { (key, template) }), key,
+                HeddleDiagnosticIds.SlotValueTypeMismatch);
+            Assert.Contains(message, initError.Error);
+
+            var engineError = AssertEngineRefuses(template, modelType, message);
+            Assert.Equal(engineError.Position.StartIndex, initError.Position.StartIndex);
+            Assert.Equal(engineError.Position.Length, initError.Position.Length);
         }
 
         private static void AssertEngineAccepts(string template, System.Type modelType)
@@ -56,8 +85,7 @@ namespace Heddle.Generator.IntegrationTests
             var template = "@model(){{System.String}}" + Definition(ArticleType, "System.String") +
                            "@frame(this){{[q]}}\n";
 
-            DifferentialHarness.ExpectDegrade(DifferentialHarness.Generate(new[] { (key, template) }), key);
-            AssertEngineRefuses(template, typeof(string), Mismatch("System.String", ArticleType));
+            AssertBothTiersRefuse(key, template, typeof(string), Mismatch("System.String", ArticleType));
         }
 
         /// <summary>The same refusal with the caller's content reading a member, which is what turned the divergence
@@ -69,8 +97,7 @@ namespace Heddle.Generator.IntegrationTests
             var template = "@model(){{System.String}}" + Definition(ArticleType, "System.String") +
                            "@frame(this){{[@(Title)]}}\n";
 
-            DifferentialHarness.ExpectDegrade(DifferentialHarness.Generate(new[] { (key, template) }), key);
-            AssertEngineRefuses(template, typeof(string), Mismatch("System.String", ArticleType));
+            AssertBothTiersRefuse(key, template, typeof(string), Mismatch("System.String", ArticleType));
         }
 
         /// <summary>A slot value that would have to be boxed. The engine asks its conversion table with boxing
@@ -83,8 +110,7 @@ namespace Heddle.Generator.IntegrationTests
             var template = "@model(){{System.Int32}}" + Definition("object", "System.Int32") +
                            "@frame(this){{[q]}}\n";
 
-            DifferentialHarness.ExpectDegrade(DifferentialHarness.Generate(new[] { (key, template) }), key);
-            AssertEngineRefuses(template, typeof(int), Mismatch("System.Int32", "System.Object"));
+            AssertBothTiersRefuse(key, template, typeof(int), Mismatch("System.Int32", "System.Object"));
         }
 
         /// <summary>
@@ -101,8 +127,7 @@ namespace Heddle.Generator.IntegrationTests
             var template = "@model(){{System.String}}" + Definition(ArticleType, "dynamic") +
                            "@frame(this){{[q]}}\n";
 
-            DifferentialHarness.ExpectDegrade(DifferentialHarness.Generate(new[] { (key, template) }), key);
-            AssertEngineRefuses(template, typeof(string), Mismatch("System.String", ArticleType));
+            AssertBothTiersRefuse(key, template, typeof(string), Mismatch("System.String", ArticleType));
         }
 
         /// <summary>
@@ -150,8 +175,7 @@ namespace Heddle.Generator.IntegrationTests
             var template = "@model(){{" + ArticleType + "}}@%\n<frame(out:: " + slotType + ")>{{[@out(" + outValue +
                            ")]}} :: dynamic\n%@\n" + call + "{{[q]}}\n";
 
-            DifferentialHarness.ExpectDegrade(DifferentialHarness.Generate(new[] { (key, template) }), key);
-            AssertEngineRefuses(template, typeof(Article), NoStaticType);
+            AssertBothTiersRefuse(key, template, typeof(Article), NoStaticType);
         }
 
         /// <summary>
@@ -194,12 +218,12 @@ namespace Heddle.Generator.IntegrationTests
             var gen = DifferentialHarness.Generate(new[] { (key, template) });
             if (precompiles)
             {
-                DifferentialHarness.ExpectPrecompiled(gen, key);
+                DifferentialHarness.ExpectInitClean(gen, key);
                 AssertEngineAccepts(template, typeof(Article));
             }
             else
             {
-                DifferentialHarness.ExpectDegrade(gen, key);
+                DifferentialHarness.ExpectInitRefusal(gen, key, HeddleDiagnosticIds.SlotValueTypeMismatch);
                 AssertEngineRefuses(template, typeof(Article), Mismatch("System.Int32", "System.String"));
             }
         }
@@ -227,8 +251,7 @@ namespace Heddle.Generator.IntegrationTests
             var misfits = "@model(){{" + MenuType + "}}@%\n<frame(out:: " + ArticleType + ")>{{[@out(this)]}} :: dynamic\n%@\n" +
                           "@list(Options){{@frame(this){{[q]}}}}\n";
 
-            DifferentialHarness.ExpectDegrade(DifferentialHarness.Generate(new[] { (misfitsKey, misfits) }), misfitsKey);
-            AssertEngineRefuses(misfits, typeof(Menu), Mismatch(OptionType, ArticleType));
+            AssertBothTiersRefuse(misfitsKey, misfits, typeof(Menu), Mismatch(OptionType, ArticleType));
         }
 
         /// <summary>
@@ -252,8 +275,8 @@ namespace Heddle.Generator.IntegrationTests
             const string oneTemplate = preamble + "@fits(\"s\")\n";
 
             var gen = DifferentialHarness.Generate(new[] { (bothKey, bothTemplate), (oneKey, oneTemplate) });
-            DifferentialHarness.ExpectDegrade(gen, bothKey);
-            DifferentialHarness.ExpectPrecompiled(gen, oneKey);
+            DifferentialHarness.ExpectInitRefusal(gen, bothKey, HeddleDiagnosticIds.SlotValueTypeMismatch);
+            DifferentialHarness.ExpectInitClean(gen, oneKey);
             AssertEngineRefuses(bothTemplate, typeof(Article), Mismatch("System.Int32", "System.String"));
         }
 
@@ -273,8 +296,7 @@ namespace Heddle.Generator.IntegrationTests
             var template = "@model(){{" + MenuType + "}}@%\n<frame(out:: " + ArticleType + ")>{{[@out(" + literal +
                            ")]}} :: " + MenuType + "\n%@\n@frame(this){{[q]}}\n";
 
-            DifferentialHarness.ExpectDegrade(DifferentialHarness.Generate(new[] { (key, template) }), key);
-            AssertEngineRefuses(template, typeof(Menu), Mismatch(clr, ArticleType));
+            AssertBothTiersRefuse(key, template, typeof(Menu), Mismatch(clr, ArticleType));
         }
 
         /// <summary>
@@ -294,8 +316,7 @@ namespace Heddle.Generator.IntegrationTests
             var template = "@model(){{" + MenuType + "}}@%\n<frame(out:: " + slotType + ")>{{[@out(null)]}} :: " +
                            MenuType + "\n%@\n@frame(this){{[q]}}\n";
 
-            DifferentialHarness.ExpectDegrade(DifferentialHarness.Generate(new[] { (key, template) }), key);
-            AssertEngineRefuses(template, typeof(Menu), "The slot value type System.Object is not assignable");
+            AssertBothTiersRefuse(key, template, typeof(Menu), "The slot value type System.Object is not assignable");
         }
 
         /// <summary>The cost control: an <c>object</c> slot takes the null literal on both tiers — the engine's own
@@ -344,8 +365,7 @@ namespace Heddle.Generator.IntegrationTests
             var template = "@model(){{" + MenuType + "}}@%\n<s(out:: object)>{{[@out(range(1, 3))]}} :: " + MenuType +
                            "\n%@\n@s(this){{|@()|}}\n";
 
-            DifferentialHarness.ExpectDegrade(DifferentialHarness.Generate(new[] { (key, template) }), key);
-            AssertEngineRefuses(template, typeof(Menu), Mismatch("Heddle.Models.Range", "System.Object"));
+            AssertBothTiersRefuse(key, template, typeof(Menu), Mismatch("Heddle.Models.Range", "System.Object"));
         }
 
         /// <summary>The near neighbour: the same call syntax whose return type the slot does take still precompiles

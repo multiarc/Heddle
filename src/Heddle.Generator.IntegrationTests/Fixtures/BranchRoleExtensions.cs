@@ -13,6 +13,7 @@ using Heddle.Runtime;
     typeof(Heddle.Generator.IntegrationTests.Fixtures.YellExtension),
     typeof(Heddle.Generator.IntegrationTests.Fixtures.BellowExtension),
     typeof(Heddle.Generator.IntegrationTests.Fixtures.IncludeExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.ProjectExtension),
     typeof(Heddle.Generator.IntegrationTests.Fixtures.ScannerExtension),
     typeof(Heddle.Generator.IntegrationTests.Fixtures.BeginExtension),
     typeof(Heddle.Generator.IntegrationTests.Fixtures.BetweenExtension),

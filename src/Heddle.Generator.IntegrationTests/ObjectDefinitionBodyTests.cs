@@ -32,9 +32,25 @@ namespace Heddle.Generator.IntegrationTests
             Assert.Equal(dyn, precompiled);
         }
 
+        /// <summary>The slot half of the rule above, where the refusal is the projection's own: the build keeps the
+        /// template and <c>OutExtension.InitStart</c> reports the engine's error when it runs at registration, which
+        /// is a template-scope fault and puts the request on the dynamic tier — where the engine refuses it.</summary>
+        private static void AssertInitRefusesAndEngineRefuses(string key, string template, string id, string message)
+        {
+            var initError = DifferentialHarness.ExpectInitRefusal(
+                DifferentialHarness.Generate(new[] { (key, template) }), key, id);
+            Assert.Contains(message, initError.Error, StringComparison.Ordinal);
+            AssertEngineRefuses(template, id, message);
+        }
+
         private static void AssertDegradesAndEngineRefuses(string key, string template, string id, string message)
         {
             DifferentialHarness.ExpectDegrade(DifferentialHarness.Generate(new[] { (key, template) }), key);
+            AssertEngineRefuses(template, id, message);
+        }
+
+        private static void AssertEngineRefuses(string template, string id, string message)
+        {
             var dynamicTemplate = new HeddleTemplate(template,
                 new CompileContext(new TemplateOptions(), typeof(Cart)));
             Assert.False(dynamicTemplate.CompileResult.Success);
@@ -115,9 +131,9 @@ namespace Heddle.Generator.IntegrationTests
         [Fact]
         public void ASlotValueTheEngineWillNotBoxDegradesUnderAnObjectDefinition()
         {
-            AssertDegradesAndEngineRefuses("views/obj-slot-box.heddle",
+            AssertInitRefusesAndEngineRefuses("views/obj-slot-box.heddle",
                 Doc("<s(out:: object)>{{[@out(this)]}} :: object", "@s(5){{|@()|}}"),
-                "HED5014",
+                HeddleDiagnosticIds.SlotValueTypeMismatch,
                 "The slot value type System.Int32 is not assignable to the declared slot parameter type System.Object.");
         }
 

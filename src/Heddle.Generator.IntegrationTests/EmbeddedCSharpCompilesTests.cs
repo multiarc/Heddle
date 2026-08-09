@@ -213,6 +213,9 @@ namespace Heddle.Generator.IntegrationTests
         /// what came back, so a constant <c>null</c> is <c>typeof(object)</c> there where Roslyn says
         /// <c>string</c>. An <c>out:: string</c> slot then refuses it on the engine and accepted it here — the
         /// build tier pre-compiled and rendered a template the engine will not compile.
+        /// <para>The refusal is the projection's own now: the site carries the type the build read, the real
+        /// <c>InitStart</c> checks it against the declared slot type when it runs at registration, and a hook that
+        /// reports the engine's error there faults the template onto the dynamic tier.</para>
         /// </summary>
         [Theory]
         [InlineData("default(string)")]
@@ -230,7 +233,7 @@ namespace Heddle.Generator.IntegrationTests
             if (engine.CompileResult.Success)
                 DifferentialHarness.ExpectPrecompiled(gen, key);
             else
-                DifferentialHarness.ExpectDegrade(gen, key);
+                DifferentialHarness.ExpectInitRefusal(gen, key, HeddleDiagnosticIds.SlotValueTypeMismatch);
         }
     }
 }

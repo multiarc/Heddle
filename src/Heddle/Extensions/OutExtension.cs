@@ -17,8 +17,10 @@ namespace Heddle.Extensions
 
         /// <summary>Puts this pre-constructed carrier in slot-projection mode, reproducing the
         /// <c>_slotMode</c> flag <see cref="InitStart"/> derives from <c>CompileContext.SlotParameterType</c> (the
-        /// InitStart <see cref="Heddle.Precompiled.PrecompiledRuntime.BindDefinition"/> bypasses). Called only from a
-        /// generated static initializer via <c>PrecompiledRuntime.BindOut</c>; never mutated after.</summary>
+        /// InitStart <see cref="Heddle.Precompiled.PrecompiledRuntime.BindDefinition"/> bypasses). Reached only
+        /// through the retired <c>PrecompiledRuntime.BindOut</c>, which generated code from earlier generator
+        /// versions still calls; the current build runs the real <see cref="InitStart"/> instead and this decides
+        /// nothing for it. Never mutated after.</summary>
         internal void SetPrecompiledSlotMode() => _slotMode = true;
 
         private const string GuardMessage =

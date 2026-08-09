@@ -502,7 +502,7 @@ namespace Heddle.Generator.IntegrationTests
             Assert.Contains("HED5013", compiled.CompileResult.ToString());
 
             var gen = DifferentialHarness.Generate(new[] { (key, t) });
-            Assert.Empty(gen.TemplateSources);
+            DifferentialHarness.ExpectInitRefusal(gen, key, HeddleDiagnosticIds.SlotValueRequired);
         }
 
         /// <summary>Its near neighbour, and the half the slot mode was costing: the same region with a value on the

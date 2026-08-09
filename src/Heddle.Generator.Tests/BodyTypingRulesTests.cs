@@ -202,39 +202,6 @@ namespace Heddle.Generator.Tests
             Assert.Null(BodyTypingRules.PropShadowSlot(null, "Name"));
         }
 
-        // ---- Slot typing: the HED5014 decision over the value's static type ----
-
-        [Fact]
-        public void AValueWithNoEstablishedTypeIsExemptFromTheSlotCheck()
-        {
-            Assert.True(BodyTypingRules.TrySlotValue(null, StringType, (s, t) => false, out var reason));
-            Assert.Null(reason);
-        }
-
-        [Fact]
-        public void ADynamicSlotValueIsRefusedBeforeTheConversionTableIsAsked()
-        {
-            Assert.False(BodyTypingRules.TrySlotValue(DynamicType, StringType,
-                (s, t) => throw new InvalidOperationException("the conversion table must not be consulted"),
-                out var reason));
-            Assert.Equal("slot value is dynamic under a dynamic definition model", reason);
-        }
-
-        [Fact]
-        public void AConvertibleSlotValuePasses()
-        {
-            Assert.True(BodyTypingRules.TrySlotValue(StringType, StringType, (s, t) => true, out var reason));
-            Assert.Null(reason);
-        }
-
-        [Fact]
-        public void AnInconvertibleSlotValueNamesBothTypesInItsReason()
-        {
-            Assert.False(BodyTypingRules.TrySlotValue(IntType, Person, (s, t) => false, out var reason));
-            Assert.Contains(SymbolTypeResolver.FullyQualified(IntType), reason);
-            Assert.Contains(SymbolTypeResolver.FullyQualified(Person), reason);
-        }
-
         // ---- The shared-typing memo: one body per parse context, typed by whoever arrives first ----
 
         [Fact]

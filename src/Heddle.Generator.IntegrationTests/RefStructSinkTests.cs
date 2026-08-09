@@ -165,13 +165,13 @@ namespace Heddle.Generator.IntegrationTests
                 "an indexer returning a ref struct, which an expression operand cannot box");
         }
 
-        /// <summary>The slot sink: an <c>@out</c> value is boxed into the slot channel, which a ref struct cannot
-        /// be (CS0029). Stays refused. The reason that fires is the HED5014 assignability twin — its shared
-        /// conversion table can accept a ref struct into no spellable slot type, so it subsumes the ref-struct case
-        /// for every statically-typed slot value and names the slot sink concretely; the <c>RefStructUse.Boxed</c>
-        /// arm behind it is defense in depth for a value the table cannot type.</summary>
+        /// <summary>The slot value, which is the projecting extension's own positional value and lands in the same
+        /// <c>Scope.ModelData</c> box every other call's does. Stays refused, and names that sink: the value cannot
+        /// be built at all, so no site is written and the assignability question the extension's own hook would ask
+        /// at registration is never reached. The reason used to be the HED5014 assignability twin, which the
+        /// projection's real <c>InitStart</c> now makes for itself.</summary>
         [Fact]
-        public void ARefStructSlotValueDegradesNamingTheSlotSink()
+        public void ARefStructSlotValueDegradesNamingTheModelSink()
         {
             const string key = "views/refstruct-slot-sink.heddle";
             const string template =
@@ -181,7 +181,7 @@ namespace Heddle.Generator.IntegrationTests
             var gen = DifferentialHarness.Generate(new[] { (key, template) },
                 extraReferences: DifferentialHarness.EngineTestModelReferences());
             DifferentialHarness.ExpectDegrade(gen, key,
-                "slot value 'global::System.Span<char>' is not assignable to slot type 'object'");
+                "member path ends on a ref struct, which a model value cannot box (CS1503)");
         }
     }
 }
