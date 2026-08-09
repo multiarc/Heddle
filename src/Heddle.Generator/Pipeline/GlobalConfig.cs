@@ -1,5 +1,6 @@
 using System;
 using Heddle.Data;
+using Heddle.Precompiled;
 
 namespace Heddle.Generator.Pipeline
 {
@@ -14,7 +15,7 @@ namespace Heddle.Generator.Pipeline
     {
         public GlobalConfig(OutputProfile outputProfile, ExpressionMode expressionMode, bool trimDirectiveLines,
             int maxRecursionCount, string templateRoot, string generatedNamespace, bool emitUtf8Pieces,
-            bool nodeFallback)
+            bool nodeFallback, ObserveMode observeMode, string observeIntermediatePath)
         {
             OutputProfile = outputProfile;
             ExpressionMode = expressionMode;
@@ -24,6 +25,8 @@ namespace Heddle.Generator.Pipeline
             GeneratedNamespace = generatedNamespace;
             EmitUtf8Pieces = emitUtf8Pieces;
             NodeFallback = nodeFallback;
+            ObserveMode = observeMode;
+            ObserveIntermediatePath = observeIntermediatePath;
         }
 
         public OutputProfile OutputProfile { get; }
@@ -38,6 +41,15 @@ namespace Heddle.Generator.Pipeline
         /// precompiles, never a rendered byte, so it is not a fingerprint input.</summary>
         public bool NodeFallback { get; }
 
+        /// <summary>Engine observation's tri-state (<c>HeddleObserveEngine</c>). It decides which TYPING a body is
+        /// emitted with and whether an unobservable build is an error, never a rendered byte, so it is not a
+        /// fingerprint input.</summary>
+        public ObserveMode ObserveMode { get; }
+
+        /// <summary>Where observation may write its content-addressed intermediate assemblies; empty means
+        /// nowhere, which is observation being unavailable.</summary>
+        public string ObserveIntermediatePath { get; }
+
         public bool Equals(GlobalConfig other)
         {
             if (other is null) return false;
@@ -48,7 +60,10 @@ namespace Heddle.Generator.Pipeline
                    && string.Equals(TemplateRoot, other.TemplateRoot, StringComparison.Ordinal)
                    && string.Equals(GeneratedNamespace, other.GeneratedNamespace, StringComparison.Ordinal)
                    && EmitUtf8Pieces == other.EmitUtf8Pieces
-                   && NodeFallback == other.NodeFallback;
+                   && NodeFallback == other.NodeFallback
+                   && ObserveMode == other.ObserveMode
+                   && string.Equals(ObserveIntermediatePath, other.ObserveIntermediatePath,
+                       StringComparison.Ordinal);
         }
 
         public override bool Equals(object obj) => Equals(obj as GlobalConfig);
@@ -66,6 +81,8 @@ namespace Heddle.Generator.Pipeline
                 hash = hash * 31 + (GeneratedNamespace?.GetHashCode() ?? 0);
                 hash = hash * 31 + EmitUtf8Pieces.GetHashCode();
                 hash = hash * 31 + NodeFallback.GetHashCode();
+                hash = hash * 31 + (int)ObserveMode;
+                hash = hash * 31 + (ObserveIntermediatePath?.GetHashCode() ?? 0);
                 return hash;
             }
         }

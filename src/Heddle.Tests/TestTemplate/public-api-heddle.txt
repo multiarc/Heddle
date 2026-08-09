@@ -127,6 +127,7 @@ TYPE Heddle.Data.HeddleDiagnosticIds
   FIELD System.String BuildDuplicateKey
   FIELD System.String BuildDuplicateSanitizedName
   FIELD System.String BuildEmitterFault
+  FIELD System.String BuildEngineNotObserved
   FIELD System.String BuildEngineVersionUnresolved
   FIELD System.String BuildExtensionNotBindable
   FIELD System.String BuildExtensionOverridesHook
@@ -714,12 +715,14 @@ TYPE Heddle.Precompiled.ContentHash
 TYPE Heddle.Precompiled.HeddleBuildOptions
   FIELD Heddle.Data.ExpressionMode DefaultExpressionMode
   FIELD Heddle.Data.OutputProfile DefaultOutputProfile
+  FIELD Heddle.Precompiled.ObserveMode DefaultObserveMode
   FIELD System.Boolean DefaultEmitUtf8Pieces
   FIELD System.Boolean DefaultNodeFallback
   FIELD System.Boolean DefaultTrimDirectiveLines
   FIELD System.Int32 DefaultMaxRecursionCount
   FIELD System.String BuildPropertyPrefix
   FIELD System.String DefaultGeneratedNamespace
+  FIELD System.String DefaultObserveIntermediatePath
   FIELD System.String DefaultTemplateRoot
   FIELD System.String EmitUtf8PiecesProperty
   FIELD System.String ExpectedBool
@@ -728,6 +731,8 @@ TYPE Heddle.Precompiled.HeddleBuildOptions
   FIELD System.String GeneratedNamespaceProperty
   FIELD System.String MaxRecursionCountProperty
   FIELD System.String NodeFallbackProperty
+  FIELD System.String ObserveEngineProperty
+  FIELD System.String ObserveIntermediatePathProperty
   FIELD System.String OutputProfileProperty
   FIELD System.String TemplateRootProperty
   FIELD System.String TrimDirectiveLinesProperty
@@ -743,6 +748,11 @@ TYPE Heddle.Precompiled.HeddleCompiledTemplatesAttribute : System.Attribute
   PROP System.Type ManifestType {get;}
 TYPE Heddle.Precompiled.IHeddleTemplateManifest
   METHOD System.Collections.Generic.IReadOnlyList<Heddle.Precompiled.PrecompiledTemplateInfo> GetTemplates()
+TYPE Heddle.Precompiled.ObserveMode : System.Enum
+  FIELD Heddle.Precompiled.ObserveMode Auto
+  FIELD Heddle.Precompiled.ObserveMode Off
+  FIELD Heddle.Precompiled.ObserveMode Strict
+  FIELD System.Int32 value__
 TYPE Heddle.Precompiled.PrecompiledCallShape : System.Enum
   FIELD Heddle.Precompiled.PrecompiledCallShape CSharpExpression
   FIELD Heddle.Precompiled.PrecompiledCallShape Chain

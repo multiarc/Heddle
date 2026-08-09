@@ -10,6 +10,10 @@
     <CompilerVisibleProperty Include="HeddleGeneratedNamespace" />
     <CompilerVisibleProperty Include="HeddleEmitUtf8Pieces" />
     <CompilerVisibleProperty Include="HeddleNodeFallback" />
+    <CompilerVisibleProperty Include="HeddleObserveEngine" />
+    <!-- Assigned in Heddle.Generator.targets, not here: $(IntermediateOutputPath) is not yet defined this early in
+         evaluation, and the generator has no other way to learn where it may write. -->
+    <CompilerVisibleProperty Include="HeddleObserveIntermediatePath" />
   </ItemGroup>
 
   <!-- Per-item metadata surfaced as build_metadata.AdditionalFiles.*.
@@ -47,6 +51,7 @@
     <HeddleTemplateRoot Condition="'$(HeddleTemplateRoot)' == ''">$(MSBuildProjectDirectory)</HeddleTemplateRoot>
     <HeddleEmitUtf8Pieces Condition="'$(HeddleEmitUtf8Pieces)' == ''">false</HeddleEmitUtf8Pieces>
     <HeddleNodeFallback Condition="'$(HeddleNodeFallback)' == ''">true</HeddleNodeFallback>
+    <HeddleObserveEngine Condition="'$(HeddleObserveEngine)' == ''">Auto</HeddleObserveEngine>
   </PropertyGroup>
 
 </Project>

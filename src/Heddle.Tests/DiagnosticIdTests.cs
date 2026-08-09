@@ -81,6 +81,9 @@ namespace Heddle.Tests
                 // HED7033: an extension declaring [PrecompileUnsupported] -- the author's own statement that a
                 // static initializer cannot reproduce its hook, costing that call site and not the template.
                 "HED7033",
+                // HED7034: the build could not observe a real engine compile -- a note under Auto and an error
+                // under Strict, never a statement about a template.
+                "HED7034",
                 "HED7101", "HED7102", "HED7103",
                 // HED7104: registered name also answered by another template; runtime id due to cross-assembly collision.
                 "HED7104"

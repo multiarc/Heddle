@@ -45,8 +45,14 @@ namespace Heddle.Generator.Pipeline
                 HeddleBuildOptions.DefaultEmitUtf8Pieces, errors);
             var nodeFallback = ReadBool(lookup, HeddleBuildOptions.NodeFallbackProperty,
                 HeddleBuildOptions.DefaultNodeFallback, errors);
+            var observe = ReadEnum<ObserveMode>(lookup, HeddleBuildOptions.ObserveEngineProperty,
+                HeddleBuildOptions.DefaultObserveMode, errors);
+            var observePath = HeddleBuildOptions.ReadString(
+                lookup(HeddleBuildOptions.ObserveIntermediatePathProperty),
+                HeddleBuildOptions.DefaultObserveIntermediatePath);
 
-            return new GlobalConfig(profile, mode, trim, maxRecursion, root, ns, emitU8, nodeFallback);
+            return new GlobalConfig(profile, mode, trim, maxRecursion, root, ns, emitU8, nodeFallback, observe,
+                observePath);
         }
 
         private static TEnum ReadEnum<TEnum>(Func<string, string> lookup, string name, TEnum fallback,
