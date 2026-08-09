@@ -77,6 +77,24 @@ namespace Heddle.Tests
             Assert.Equal(expected, Render(PersonHeader + "@for(3){{@out()}}", new Person { Name = "Ada" }));
         }
 
+        /// <summary>Chained column prediction for the <c>@list</c> row: <c>Int32Index</c> makes <c>@out()</c> splice
+        /// the element index, exactly as it does inside a <c>@for</c> body — <c>ListExtension.InitStart</c> hands
+        /// <c>new ExType(typeof(int))</c> to the body compile and <c>scope.Model(item, index)</c> puts the index on
+        /// the chained channel at render.
+        /// <para>The row said <c>None</c> from the day it was written and no test read the chained column for it, so
+        /// the error stayed latent: the emitter consults the body column alone (<c>BodyTypingRules</c> discards the
+        /// chained one), which is why a provably wrong row cost nothing and nothing caught it. A table whose rows
+        /// nothing reads is not a contract; this test is what makes the <c>@list</c> row one.</para></summary>
+        [Fact]
+        public void TheListRowsChainedColumnPredictsTheIterationIndex()
+        {
+            Assert.True(BodyModelRules.TryGet("list", out _, out var chained));
+            var expected = chained == ChainedModelSource.Int32Index ? "012" : string.Empty;
+            Assert.Equal(expected,
+                Render(PersonHeader + "@list(Scores){{@out()}}",
+                    new Person { Name = "Ada", Scores = new[] { 7, 8, 9 } }));
+        }
+
         /// <summary>Branch rows' Chained column: None predicts empty @out().</summary>
         [Theory]
         [InlineData("if")]

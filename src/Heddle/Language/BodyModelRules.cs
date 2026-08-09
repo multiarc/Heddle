@@ -25,7 +25,13 @@ namespace Heddle.Language
 
         /// <summary>A region body: its declared <c>:: T</c>, or — for a bare call on an untyped region — the
         /// enclosing model.</summary>
-        DeclaredOrParent
+        DeclaredOrParent,
+
+        /// <summary>The value on the chained channel — the host hands its own <c>chainedType</c> to the body compile
+        /// (<c>@out</c>, <c>@swap</c>). The name the table never had, because the table only ever pinned the seven
+        /// body-hosting names the emitter emits itself; the hook probe answers for every extension, and two of the
+        /// built-ins answer this.</summary>
+        Chained
     }
 
     /// <summary>What a nested body sees on the chained channel.</summary>
@@ -34,8 +40,15 @@ namespace Heddle.Language
         /// <summary>Nothing host-specific; the ambient chained value.</summary>
         None,
 
-        /// <summary>The boxed <see cref="int"/> iteration index (<c>@for</c>).</summary>
-        Int32Index
+        /// <summary>The boxed <see cref="int"/> iteration index (<c>@for</c>, <c>@list</c>).</summary>
+        Int32Index,
+
+        /// <summary>The enclosing body's model, put on the chained channel (<c>@out</c>: it swaps the two channels
+        /// so the body sees the chained value as its model and the model as its chained).</summary>
+        Parent,
+
+        /// <summary>The host's own positional data value, put on the chained channel (<c>@swap</c>).</summary>
+        Data
     }
 
     /// <summary>The body model-typing table, consolidated from prose comments scattered across emission branches.
@@ -62,7 +75,11 @@ namespace Heddle.Language
                 ["elseif"] = (BodyModelSource.Parent, ChainedModelSource.None),
                 ["else"] = (BodyModelSource.Parent, ChainedModelSource.None),
                 ["for"] = (BodyModelSource.Parent, ChainedModelSource.Int32Index),
-                ["list"] = (BodyModelSource.ElementOfData, ChainedModelSource.None)
+                // Int32Index, not None: ListExtension.InitStart hands `new ExType(typeof(int))` to the body compile
+                // and ProcessData/RenderData call scope.Model(item, index), so an @out() in a @list body splices the
+                // iteration index exactly as it does in a @for body. The row read None for as long as it existed;
+                // it was latent because the emitter consults the body column alone, and it is read now.
+                ["list"] = (BodyModelSource.ElementOfData, ChainedModelSource.Int32Index)
             };
 
         /// <summary>The row for a body-hosting built-in extension name, or <c>false</c> when the name declares no

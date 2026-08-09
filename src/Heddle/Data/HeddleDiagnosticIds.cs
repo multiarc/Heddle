@@ -255,7 +255,12 @@ namespace Heddle.Data
         /// resolves once at first render through the engine's own overload ranker.</para></summary>
         public const string BuildUnresolvableFunction = "HED7014";
 
-        /// <summary>A bound extension overrides a compile-time hook the generator cannot evaluate.</summary>
+        /// <summary>A bound extension overrides a compile-time hook the generator cannot evaluate.
+        /// <para>A <b>warning</b>: it was an error until the hook-probing program, on the ground that a
+        /// third-party extension the generator cannot reason about should cost its call site the precompiled tier,
+        /// not fail the consumer's build. The id is kept — never reused, never renumbered — because the fault it
+        /// names is real and worth saying at the call, more precisely than the template-level
+        /// <see cref="BuildTemplateNotPrecompiled"/> degrade it now accompanies.</para></summary>
         public const string BuildExtensionOverridesHook = "HED7015";
 
         /// <summary>The build-tier twin of <see cref="BranchRoleMissingScopeChannel"/>.</summary>

@@ -95,7 +95,7 @@ namespace Heddle.TestCorpus
     {
         /// <summary>Exact row count (not floor): makes "this stage added N entries" a reviewable one-line diff
         /// the reviewer can check against scope, not a silent overshoot.</summary>
-        public const int DeclaredRowCount = 64;
+        public const int DeclaredRowCount = 65;
 
         private static Dictionary<string, CorpusIntentRow> _byName;
 
@@ -207,6 +207,8 @@ namespace Heddle.TestCorpus
                 "The HTML-context lint corpus: its subject is parse-time HED4xxx classification, and it needs the lint suite's host setup to render."),
             new CorpusIntentRow("ctx-encoding.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
                 "Context-encoding golden fixture: every call is a BODILESS step-back encoder (@url/@attr/@js), which the emitter now binds from pinned knowledge — the hook re-types only a default body these calls do not have. ContextEncodingFallbackTests proves tier parity; the bodied form still falls back."),
+            new CorpusIntentRow("ctx-encoding-bodied.heddle", CorpusTier.FallsBackSafely, CorpusRender.Standalone,
+                "The bodied twin of ctx-encoding, and the row that could not exist before: a step-back encoder's default body is exactly what its InitStart re-types, so the emitter has no pinned knowledge for the bodied form and refuses it — 'bodied step-back encoder <name>'. It is here to be flipped: the hook probe reads that typing off the extension instead of predicting it, and when the emitter consumes the probe this row moves to Precompiles in one reviewable line. Until then the blocker it pins is the emitter's, not the language's."),
             new CorpusIntentRow("dynamic-recursion.heddle", CorpusTier.FallsBackSafely, CorpusRender.WithModel,
                 "Its embedded C# now compiles as fragments — under a FullCSharp build the whole document precompiles byte-identically (EmbeddedCSharpFragmentTests) — but this sweep builds with the default Native mode, where 'embedded C# outside FullCSharp mode' degrades it, exactly as the engine refuses the same template without FullCSharp options.",
                 bom: true),

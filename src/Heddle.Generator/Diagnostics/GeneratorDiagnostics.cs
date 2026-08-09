@@ -91,7 +91,8 @@ namespace Heddle.Generator.Diagnostics
 
         /// <summary>A bound extension outside the engine assembly overrides <c>InitStart</c>/
         /// <c>CompleteInit</c> — compile-time logic the generator cannot evaluate; precompiled binding would silently
-        /// skip it (position: the call).</summary>
+        /// skip it (position: the call). A <b>warning</b> that accompanies a degrade: the call site loses the
+        /// precompiled tier, the consumer's build does not fail.</summary>
         public static readonly DiagnosticDescriptor ExtensionOverridesHook =
             FromCatalog(HeddleDiagnosticIds.BuildExtensionOverridesHook);
 

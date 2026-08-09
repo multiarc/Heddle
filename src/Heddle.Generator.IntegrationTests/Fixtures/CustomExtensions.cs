@@ -22,8 +22,9 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
     }
 
     /// <summary>A custom extension that overrides the compile-time hook <c>InitStart</c> — the generator cannot
-    /// evaluate that logic at build time, so binding it is refused with <c>HED7015</c>. Not exported: it exists
-    /// only as a build-visible <c>[ExtensionName]</c> type for the diagnostic fixture.</summary>
+    /// evaluate that logic at build time, so the call site degrades to the dynamic tier under the <c>HED7015</c>
+    /// <b>warning</b> rather than failing the build. Exported (see <c>BranchRoleExtensions.cs</c>), so the dynamic
+    /// tier the degrade routes to can actually render it.</summary>
     [ExtensionName("hooked")]
     public sealed class HookedExtension : AbstractExtension
     {

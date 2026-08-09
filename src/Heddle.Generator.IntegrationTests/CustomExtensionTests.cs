@@ -1,3 +1,4 @@
+extern alias generator;
 using System;
 using System.Linq;
 using Microsoft.CodeAnalysis;
@@ -8,8 +9,8 @@ namespace Heddle.Generator.IntegrationTests
     /// <summary>
     /// Custom <c>[ExtensionName]</c> extensions bind from referenced assemblies (never inlined) so custom-extension
     /// templates precompile, rendering byte-identically with the dynamic backend. A resolved extension that
-    /// overrides a compile-time hook is refused (<c>HED7015</c>); an extension-only call shape whose name resolves
-    /// nowhere is <c>HED7006</c>.
+    /// overrides a compile-time hook degrades to the dynamic tier under the <c>HED7015</c> warning; an
+    /// extension-only call shape whose name resolves nowhere is the <c>HED7006</c> error.
     /// </summary>
     public class CustomExtensionTests
     {
@@ -49,17 +50,41 @@ namespace Heddle.Generator.IntegrationTests
         }
 
         [Fact]
-        public void HookOverridingCustomExtensionReportsHed7015()
+        public void HookOverridingCustomExtensionWarnsHed7015AndDegrades()
         {
-            // HookedExtension overrides InitStart, unevaluable at build time.
+            // HookedExtension overrides InitStart, unevaluable at build time. That costs the call site its tier —
+            // it does not fail the consumer's build: a third-party extension the generator cannot reason about is
+            // not an authoring error.
             var t = "@model(){{System.String}}@\\\n@hooked(this)\n";
             var gen = DifferentialHarness.Generate(new[] { ("views/hooked.heddle", t) });
             var hed7015 = gen.Diagnostics.FirstOrDefault(d => d.Id == "HED7015");
             Assert.NotEqual(default, hed7015);
-            Assert.Equal(DiagnosticSeverity.Error, hed7015.Severity);
+            Assert.Equal(DiagnosticSeverity.Warning, hed7015.Severity);
             Assert.Contains("hooked", hed7015.GetMessage());
-            // No entry class emitted — the template is refused, not precompiled.
+            // Nothing the generator reports for this template is an error, so the consumer's build survives it.
+            Assert.DoesNotContain(gen.Diagnostics, d => d.Severity == DiagnosticSeverity.Error);
+            // No entry class emitted — the template degrades, it is not precompiled.
             Assert.DoesNotContain("class Views_Hooked", gen.ManifestSource ?? string.Empty);
+        }
+
+        [Fact]
+        public void HookOverridingCustomExtensionStillRendersThroughTheDynamicTier()
+        {
+            // The other half of the degrade: the template is refused at build time and the reader still gets a page,
+            // rendered by the tier the refusal routes to.
+            const string key = "views/hooked-render.heddle";
+            var t = "@model(){{System.String}}@\\\n<x>@hooked(this)</x>\n";
+            var gen = DifferentialHarness.Generate(new[] { (key, t) });
+            Assert.DoesNotContain(gen.Diagnostics, d => d.Severity == DiagnosticSeverity.Error);
+            Assert.Empty(gen.TemplateSources);   // degraded — no .g.cs
+            DifferentialHarness.ExpectDegrade(gen, key,
+                generator::Heddle.Generator.Emit.RefusalCategory.HookBehavior,
+                "overrides a compile-time hook");
+
+            var dynamicTemplate = new HeddleTemplate(t,
+                new Heddle.Runtime.CompileContext(new Heddle.Data.TemplateOptions(), typeof(string)));
+            Assert.True(dynamicTemplate.CompileResult.Success, dynamicTemplate.CompileResult.ToString());
+            Assert.Equal("<x>wonder</x>\n", dynamicTemplate.Generate("wonder"));
         }
 
         [Fact]
