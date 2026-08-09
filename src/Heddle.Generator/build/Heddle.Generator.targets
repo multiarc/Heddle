@@ -58,8 +58,11 @@
        deliberately NOT added to @(FileWrites): a locked file in the Clean list fails Clean on Windows, and an
        accumulating cache under obj/ is the cheaper of the two problems. _HeddleCleanObserveCache removes what it
        can and shrugs at the rest. -->
-  <PropertyGroup>
-    <HeddleObserveIntermediatePath Condition="'$(HeddleObserveIntermediatePath)' == '' and '$(HeddleObserveEngine)' != 'Off'">$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)/$(IntermediateOutputPath)heddle/observe'))</HeddleObserveIntermediatePath>
+  <PropertyGroup Condition="'$(HeddleObserveIntermediatePath)' == '' and '$(HeddleObserveEngine)' != 'Off'">
+    <_HeddleObserveBase>$(IntermediateOutputPath)</_HeddleObserveBase>
+    <_HeddleObserveBase Condition="'$(_HeddleObserveBase)' == ''">$(BaseIntermediateOutputPath)</_HeddleObserveBase>
+    <_HeddleObserveBase Condition="'$(_HeddleObserveBase)' == ''">obj/</_HeddleObserveBase>
+    <HeddleObserveIntermediatePath>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)/$(_HeddleObserveBase)heddle/observe'))</HeddleObserveIntermediatePath>
   </PropertyGroup>
 
   <Target Name="_HeddleCreateObserveCache" BeforeTargets="CoreCompile" Condition="'$(HeddleObserveIntermediatePath)' != ''">
