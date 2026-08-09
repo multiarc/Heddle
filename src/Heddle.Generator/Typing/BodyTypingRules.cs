@@ -114,31 +114,5 @@ namespace Heddle.Generator.Typing
             props != null && firstSegment != null && props.ByName.TryGetValue(firstSegment, out var slot)
                 ? slot
                 : null;
-
-        /// <summary>The slot-value typing decision, given the value's static type (null = "cannot say", exempt):
-        /// a value with no static type is the engine's first HED5014 arm and is refused outright — C#'s own table
-        /// would say yes to every <c>dynamic</c> — and a typed one must pass the conversion the caller supplies
-        /// (<c>PropConversion.CanConvert</c> semantics with boxing disallowed, exactly as <c>OutExtension.InitStart</c>
-        /// asks it).</summary>
-        internal static bool TrySlotValue(ITypeSymbol valueType, ITypeSymbol slotType,
-            System.Func<ITypeSymbol, ITypeSymbol, bool> convertibleWithoutBoxing, out string reason)
-        {
-            reason = null;
-            if (valueType == null)
-                return true;
-
-            if (valueType.TypeKind == TypeKind.Dynamic)
-            {
-                reason = "slot value is dynamic under a dynamic definition model";
-                return false;
-            }
-
-            if (convertibleWithoutBoxing(valueType, slotType))
-                return true;
-
-            reason = "slot value '" + SymbolTypeResolver.FullyQualified(valueType) + "' is not assignable to slot type '" +
-                     SymbolTypeResolver.FullyQualified(slotType) + "'";
-            return false;
-        }
     }
 }

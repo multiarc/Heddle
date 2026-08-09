@@ -180,8 +180,9 @@ namespace IsolatedExports
                 var t = "@model(){{" + ProductType + "}}@%\n<s(out:: " + slotType + ")>{{[@out(" + call + ")]}} :: " +
                         ProductType + "\n%@\n@s(this){{|@()|}}\n";
 
-                DifferentialHarness.ExpectDegrade(
-                    DifferentialHarness.Generate(new[] { (key, t) }, extraReferences: References()), key);
+                DifferentialHarness.ExpectInitRefusal(
+                    DifferentialHarness.Generate(new[] { (key, t) }, extraReferences: References()), key,
+                    HeddleDiagnosticIds.SlotValueTypeMismatch);
                 AssertEngineRefuses(t,
                     "The slot value type " + returned + " is not assignable to the declared slot parameter type " +
                     slotClr + ".");
@@ -212,8 +213,9 @@ namespace IsolatedExports
                 }
                 else
                 {
-                    DifferentialHarness.ExpectDegrade(
-                        DifferentialHarness.Generate(new[] { (key, t) }, extraReferences: References()), key);
+                    DifferentialHarness.ExpectInitRefusal(
+                        DifferentialHarness.Generate(new[] { (key, t) }, extraReferences: References()), key,
+                        HeddleDiagnosticIds.SlotValueTypeMismatch);
                     AssertEngineRefuses(t, "The slot value type System.Object is not assignable to the declared " +
                                            "slot parameter type System.String.");
                 }

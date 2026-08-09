@@ -905,11 +905,9 @@ namespace Heddle.Generator.Emit
                 return null;
             }
 
-            // The two routes below are declared roles read off the extension's own type, never names this
-            // compiler knows: an extension that consumes the enclosing definition's slot parameter, and one whose
-            // body names a child template it compiles and hosts, are each served here whoever wrote them. A
-            // chained call, an ambient fill and a definition have all returned above, so a role is only ever read
-            // for a call the extension tier owns.
+            // The declared roles are read off the extension's own type, never names this compiler knows. A chained
+            // call, an ambient fill and a definition have all returned above, so a role is only ever read for a
+            // call the extension tier owns.
             if (_extensionBinder.TryResolve(name, out var roleInfo) &&
                 (roleInfo.HasSlotProjection || roleInfo.HasChildTemplateHost))
             {
@@ -925,7 +923,7 @@ namespace Heddle.Generator.Emit
                 }
 
                 if (roleInfo.HasSlotProjection)
-                    return BuildOutCall(name, roleInfo, chain, item, cp, bctx, out reason);
+                    return BuildSlotProjectionCall(name, roleInfo, chain, item, cp, bctx, out reason);
 
                 return BuildChildTemplateCall(name, roleInfo, chain, item, cp, bctx, out reason);
             }
@@ -1812,8 +1810,11 @@ namespace Heddle.Generator.Emit
         private bool DefaultConvertible(ITypeSymbol source, ITypeSymbol target) =>
             Convertible(source, target, allowBoxToObject: true);
 
-        /// <summary>The symbol-side <c>PropConversion.CanConvertTypes</c>, flag and all: prop defaults ask with
-        /// boxing allowed, a slot value asks without it, exactly as the two runtime callers do.</summary>
+        /// <summary>The symbol-side <c>PropConversion.CanConvertTypes</c>, flag and all. Only the boxing-allowed
+        /// arm has a caller here now — prop defaults; the slot value's boxing-forbidden arm is asked by
+        /// <c>OutExtension.InitStart</c> itself, against the runtime table, when it runs at registration. The flag
+        /// stays because it is the runtime rule's own shape, and a rule core that drops the distinction its
+        /// original makes is no longer the same rule.</summary>
         private bool Convertible(ITypeSymbol source, ITypeSymbol target, bool allowBoxToObject)
         {
             if (source == null || target == null)
@@ -2053,84 +2054,6 @@ namespace Heddle.Generator.Emit
             var field = AllocateInitDefinition(EmitInitSite(plan), bodyInfo.Body.Name, callerBody?.Name,
                 propsFieldRef, dynamicSettersRef);
             return MakeCall(field, paramExpr, usesModel, item.Position);
-        }
-
-        /// <summary>The bodiless caller-content splice. Non-slot: passes current model. Slot mode: value becomes projection model.</summary>
-        private Call BuildOutCall(string name, ExtensionBinder.Info info, OutputChain chain, OutputItem item,
-            CallParameter cp, BodyContext bctx, out Refusal reason)
-        {
-            reason = null;
-            if (!string.IsNullOrEmpty(item.ParameterTemplate))
-            {
-                reason = new Refusal(RefusalCategory.SlotChannel, "bodied @out", item.Position);
-                return null;
-            }
-            // Use the canonical five-way test (OutExtension.InitStart), not a simplified approximation.
-            bool hasValue = SlotRules.HasOutValue(cp);
-
-            if (hasValue)
-            {
-                // Value on @out is only valid inside a slot-declaring definition body.
-                if (!bctx.InSlot)
-                {
-                    reason = new Refusal(RefusalCategory.SlotChannel, "@out with value outside a slot definition",
-                        item.Position);
-                    return null;
-                }
-
-                if (cp.PropArguments != null && cp.PropArguments.Count != 0)
-                {
-                    reason = new Refusal(RefusalCategory.SlotChannel, "@out prop arguments", item.Position);
-                    return null;
-                }
-                if (!SlotValueAssignable(cp, bctx, out reason))
-                    return null;
-                if (!BuildParamExpr(cp, bctx, RefStructUse.Boxed, out var vParam, out var vUses, out reason, item.Position))
-                    return null;
-                var slotField = AllocateOutExtension(name, info, chain, item, cp, bctx, out reason);
-                if (slotField == null)
-                    return null;
-                return MakeCall(slotField, vParam, vUses, item.Position);
-            }
-
-            // Bodiless valueless @out inside slot definition is a SlotValueRequired error at runtime.
-            if (bctx.InSlot)
-            {
-                reason = new Refusal(RefusalCategory.SlotChannel, "@out() without a slot value", item.Position);
-                return null;
-            }
-
-            var field = AllocateOutExtension(name, info, chain, item, cp, bctx, out reason);
-            if (field == null)
-                return null;
-            return MakeCall(field, "scope.ModelData", false, item.Position);
-        }
-
-        /// <summary>
-        /// The HED5014 twin: the engine refuses a template whose <c>@out</c> value is not assignable to the declared
-        /// slot type — at compile time, with an id and a position — and the emitter precompiled the same template
-        /// and rendered it, or threw <c>InvalidCastException</c> at render where the caller's content casts the
-        /// value. Same rule, same conversion table (<c>OutExtension.InitStart</c> asks
-        /// <c>PropConversion.CanConvert(…, allowBoxToObject: false)</c>), so the slot value the engine will not take
-        /// is one the emitter refuses to precompile and the engine's refusal is what the reader gets.
-        /// <para>What this cannot answer is a value whose type is not statically known here — a chained call, or an
-        /// expression outside what the shared operator tables decide. Those keep precompiling: the emitter has
-        /// nothing to check, and refusing every one of them would take working slot projections off the precompiled
-        /// tier to catch a template the caller's cast already throws on. An <c>@out(this)</c> inside an <c>@list</c>
-        /// body is <b>not</b> one of them any more: the element type is the collection's <c>IEnumerable&lt;T&gt;</c>
-        /// argument, which is a static type and gets checked like any other.</para>
-        /// </summary>
-        private bool SlotValueAssignable(CallParameter cp, BodyContext bctx, out Refusal reason)
-        {
-            if (BodyTypingRules.TrySlotValue(CallSiteValueType(cp, bctx), bctx.SlotType,
-                    (source, target) => Convertible(source, target, allowBoxToObject: false), out var detail))
-            {
-                reason = null;
-                return true;
-            }
-
-            reason = new Refusal(RefusalCategory.EngineParity, detail);
-            return false;
         }
 
         /// <summary>The static type of the value a call site passes, or null where the emitter has none. Null is
@@ -2618,6 +2541,34 @@ namespace Heddle.Generator.Emit
                 return null;
             var resolution = _resolver.ResolvePath(start, segments);
             return resolution.Kind == SymbolTypeResolver.PathKind.Resolved ? resolution.ResultType : null;
+        }
+
+        /// <summary>
+        /// A call to an extension declaring the slot-projection role. Nothing about the projection is reproduced
+        /// here — whether the call is in slot mode, whether a value belongs at it, and whether the value it passes
+        /// is one the declared slot type can take are all read by the extension's own <c>InitStart</c> off the slot
+        /// parameter type the site already carries (<c>SitePlan.SlotTypeExpr</c>, taken from the enclosing body
+        /// context), run at static init through <c>PrecompiledRuntime.Init</c>. A hook that reports the engine's
+        /// compile errors there faults the template, which is where the dynamic tier takes it too.
+        /// <para>The one thing decided here is the shape the role cannot carry: a bodied call. Not because the hook
+        /// misses it — inside a slot-declaring definition it reports the "value and a body" error for itself — but
+        /// because outside one it accepts the body, and the two tiers then disagree about a body with no dynamic
+        /// content in it. The engine compiles such a body to no processors at all, so the projection has no inner
+        /// to render and emits the chained value alone; the build emits the same body as a real strategy, the
+        /// supply installs it, and <c>[@out(){{BODY}}]</c> renders <c>[BODY]</c> where the engine renders
+        /// <c>[]</c>. A rendered byte, not a preference.</para>
+        /// </summary>
+        private Call BuildSlotProjectionCall(string name, ExtensionBinder.Info info, OutputChain chain,
+            OutputItem item, CallParameter cp, BodyContext bctx, out Refusal reason)
+        {
+            reason = null;
+            if (!string.IsNullOrEmpty(item.ParameterTemplate))
+            {
+                reason = new Refusal(RefusalCategory.SlotChannel, "bodied @" + name, item.Position);
+                return null;
+            }
+
+            return BuildBoundExtensionCall(name, info, chain, item, cp, bctx, out reason);
         }
 
         /// <summary>
@@ -3445,24 +3396,6 @@ namespace Heddle.Generator.Emit
             return new BodyContext("(" + fq + ")", sym, false, root: _modelSymbol);
         }
 
-        /// <summary>
-        /// The <c>@out</c> projection's call site. Slot mode is not a flag the build computes and hands over any
-        /// more: the extension's own <c>InitStart</c> reads the active slot parameter type off the compile context
-        /// the site rebuilds and decides for itself, exactly as it does on the dynamic tier — so an
-        /// <c>[EncodeOutput]</c> added to it, or a sixth diagnostic, reaches this tier without a second
-        /// implementation of it existing here to be updated.
-        /// </summary>
-        private string AllocateOutExtension(string name, ExtensionBinder.Info info, OutputChain chain,
-            OutputItem item, CallParameter cp, BodyContext bctx, out Refusal reason)
-        {
-            if (!CanWriteExtensionTypeName(info.TypeSymbol, item.Position, out reason))
-                return null;
-            if (!TryPlanSite(name, chain, item, cp, bctx, out var plan, out reason))
-                return null;
-
-            return AllocateInitExtension(name, info, EmitInitSite(plan), null);
-        }
-
         private static CallNode BuildFunctionCallNode(string name, CallParameter cp, BlockPosition position)
         {
             var args = new List<ExprNode>();
@@ -3504,17 +3437,13 @@ namespace Heddle.Generator.Emit
             Rendered,
 
             /// <summary>An extension's or definition's positional value, boxed into <c>Scope.ModelData</c>
-            /// (CS1503 territory).</summary>
-            Model,
-
-            /// <summary>An <c>@out</c> slot value, boxed into the slot channel (CS0029 territory).</summary>
-            Boxed
+            /// (CS1503 territory). A slot projection's value lands here too: it is the projecting extension's own
+            /// positional value, emitted into the same channel as every other call's.</summary>
+            Model
         }
 
-        private static string RefStructSinkReason(string pathKind, RefStructUse use) =>
-            use == RefStructUse.Boxed
-                ? pathKind + " ends on a ref struct, which a slot value cannot box (CS0029)"
-                : pathKind + " ends on a ref struct, which a model value cannot box (CS1503)";
+        private static string RefStructSinkReason(string pathKind) =>
+            pathKind + " ends on a ref struct, which a model value cannot box (CS1503)";
 
         /// <param name="use">The sink the built value lands in; decides the ref-struct verdict per position.</param>
         /// <param name="callPosition">The call this parameter belongs to — where the runtime positions a
@@ -3757,7 +3686,7 @@ namespace Heddle.Generator.Emit
                 // none — its selector lives where the calls are, in NativeExpressionWriter's WriteLateBoundCall.
                 // EngineAccessor selector seam: the engine's accessor returns object — the very box being refused.
                 return EmissionPlan.Refused(new Refusal(RefusalCategory.RefLikeSink,
-                    RefStructSinkReason(pathKind, use), position));
+                    RefStructSinkReason(pathKind), position));
             }
 
             // EngineAccessor: the path this compilation cannot spell — a referenced assembly's internal member

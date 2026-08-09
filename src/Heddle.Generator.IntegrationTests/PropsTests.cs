@@ -255,7 +255,7 @@ namespace Heddle.Generator.IntegrationTests
                              "@frame(this, Cols: 5){{[c]}}\n";
 
             var gen = DifferentialHarness.Generate(new[] { (key, t) });
-            DifferentialHarness.ExpectDegrade(gen, key);
+            DifferentialHarness.ExpectInitRefusal(gen, key, HeddleDiagnosticIds.SlotValueTypeMismatch);
 
             var dynamicTemplate = new HeddleTemplate(t, new CompileContext(new TemplateOptions(), typeof(GridModel)));
             Assert.False(dynamicTemplate.CompileResult.Success);
@@ -333,7 +333,7 @@ namespace Heddle.Generator.IntegrationTests
                                 "<mid(out:: string)>{{[@out(\"S\")]<@plain(this){{@out()}}>}} :: " + GridType +
                                 "\n%@\n@mid(this){{|@()|}}\n";
             var gen = DifferentialHarness.Generate(new[] { (bareKey, bare) });
-            DifferentialHarness.ExpectDegrade(gen, bareKey);
+            DifferentialHarness.ExpectInitRefusal(gen, bareKey, HeddleDiagnosticIds.SlotValueRequired);
 
             var dynamicTemplate = new HeddleTemplate(bare, new CompileContext(new TemplateOptions(), typeof(GridModel)));
             Assert.False(dynamicTemplate.CompileResult.Success);

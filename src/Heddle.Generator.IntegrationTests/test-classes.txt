@@ -90,6 +90,7 @@ Heddle.Generator.IntegrationTests.RootReferenceDifferentialTests
 Heddle.Generator.IntegrationTests.ScopeParticipantDifferentialTests
 Heddle.Generator.IntegrationTests.SeededMismatchMetaTests
 Heddle.Generator.IntegrationTests.SlotAndDefaultOutputTests
+Heddle.Generator.IntegrationTests.SlotProjectionBindingTests
 Heddle.Generator.IntegrationTests.SlotValueTypeTests
 Heddle.Generator.IntegrationTests.StartupProbeTests
 Heddle.Generator.IntegrationTests.StrategyShapeDifferentialTests

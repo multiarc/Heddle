@@ -573,6 +573,74 @@ namespace Heddle.Generator.IntegrationTests
                 throw new InvalidOperationException("Generated entry class not found (fell back): " + key);
         }
 
+        /// <summary>Every <c>PrecompiledInitSite</c> the generated entry class for <paramref name="key"/> declares,
+        /// with the class's type initializer already forced — which is where every one of its hooks runs, so each
+        /// site's <c>Fault</c> is the answer that call's own extension gave at registration.</summary>
+        internal static IReadOnlyList<PrecompiledInitSite> InitSitesOf(GenResult gen, string key)
+        {
+            var entryType = FindEntryTypeByKey(gen.Assembly, key)
+                            ?? throw new InvalidOperationException("Generated entry class not found for key: " + key);
+            entryType.GetField("Root", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static)
+                .GetValue(null);
+            var sites = new List<PrecompiledInitSite>();
+            foreach (var field in entryType.GetFields(BindingFlags.NonPublic | BindingFlags.Public |
+                                                      BindingFlags.Static))
+                if (field.FieldType == typeof(PrecompiledInitSite))
+                    sites.Add((PrecompiledInitSite) field.GetValue(null));
+            return sites;
+        }
+
+        /// <summary>
+        /// The declared <b>registration-tier</b> refusal, and the counterpart of <see cref="ExpectDegrade(GenResult,string)"/>
+        /// for a template the build no longer predicts anything about: the emitter kept it, one of its call sites
+        /// ran the extension's real hook at static init, the hook reported the engine's own compile error, and
+        /// <c>PrecompiledRuntime</c> recorded that as a <b>template-scope</b> fault — which the gauntlet turns into a
+        /// per-request fallback, so the request renders on the dynamic tier and the dynamic tier refuses it there
+        /// with the same diagnostic.
+        /// <para>Returns the engine's error, so the caller can pin its position as well as its id.</para>
+        /// </summary>
+        public static HeddleCompileError ExpectInitRefusal(GenResult gen, string key, string diagnosticId)
+        {
+            ExpectPrecompiled(gen, key);
+            var seen = new List<string>();
+            foreach (var site in InitSitesOf(gen, key))
+            {
+                var fault = site?.Fault;
+                if (fault == null)
+                    continue;
+                if (fault.Scope != PrecompiledInitFaultScope.Template)
+                {
+                    seen.Add(fault.Scope + ": " + fault.Detail);
+                    continue;
+                }
+
+                foreach (var error in fault.Errors)
+                {
+                    if (string.Equals(error.DiagnosticId, diagnosticId, StringComparison.Ordinal))
+                        return error;
+                    seen.Add(error.DiagnosticId + ": " + error.Error);
+                }
+            }
+
+            throw new InvalidOperationException(
+                $"Expected a template-scope init fault carrying {diagnosticId} for '{key}', but the sites reported: " +
+                (seen.Count == 0 ? "<none — every hook succeeded>" : string.Join(" | ", seen)));
+        }
+
+        /// <summary>Everything <see cref="ExpectPrecompiled"/> asserts, plus that every one of the template's hooks
+        /// succeeded when it ran at registration — no call-site substitute installed and no template-scope fault
+        /// recorded. The cost control for <see cref="ExpectInitRefusal"/>: a template that keeps its tier all the
+        /// way through registration says so here, so a refusal that over-reaches onto its neighbour is visible.</summary>
+        public static void ExpectInitClean(GenResult gen, string key)
+        {
+            ExpectPrecompiled(gen, key);
+            foreach (var site in InitSitesOf(gen, key))
+                if (site?.Fault != null)
+                    throw new InvalidOperationException(
+                        $"Expected every hook of '{key}' to bind, but one faulted ({site.Fault.Scope}): " +
+                        site.Fault.Detail);
+        }
+
         /// <summary>The declared build-time degrade: the emitter deliberately refused this template, so the manifest
         /// carries no bound strategy for it (either a HED7014 marker entry or no entry at all) and no entry class was
         /// generated. This is the exhaustive, greppable list of tests that expect a build-tier fallback; the

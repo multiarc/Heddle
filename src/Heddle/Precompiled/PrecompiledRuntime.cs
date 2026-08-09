@@ -107,7 +107,13 @@ namespace Heddle.Precompiled
 
         /// <summary>Binds an <see cref="OutExtension"/> call site. <paramref name="slotMode"/> puts the carrier
         /// in slot-projection mode: <c>@out(value)</c> projects caller content through <c>SlotContent</c> carrier
-        /// instead of splicing pre-rendered chained content. Only reached from generated static initializers.</summary>
+        /// instead of splicing pre-rendered chained content. Only reached from generated static initializers.
+        /// <para><b>Retired in place; the current generator emits no call to it.</b> A slot projection now takes
+        /// the ordinary bound-extension route through <see cref="Init"/>, which constructs the extension and runs
+        /// its real <c>InitStart</c> — the hook derives slot mode from <see cref="PrecompiledInitSite.SlotType"/>
+        /// itself, so nothing on this side decides it any more. It stays public and working because generated code
+        /// from earlier generator versions names it, and removing a member an already-built consumer assembly's IL
+        /// calls faults that assembly at registration.</para></summary>
         public static Heddle.Extensions.OutExtension BindOut(Heddle.Extensions.OutExtension extension, bool slotMode,
             int line, int column)
         {
