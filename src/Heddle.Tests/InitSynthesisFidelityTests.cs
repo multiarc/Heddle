@@ -529,6 +529,8 @@ namespace Heddle.Tests
             ["InitContext.ParameterTemplate"] = "PrecompiledInitSite.Body.RawText.",
             ["InitContext.CompileScope"] = "Synthesized from the site's types, options and namespace set.",
             ["InitContext.ParseContext"] = "Synthesized; carries the in-definition flag.",
+            ["InitContext.CallCarriesValue"] = "Reads the witness's call parameter, whose shape the site records.",
+            ["InitContext.IsChainedConsumer"] = "Reads the witness's chained-consumer flag, set from the site.",
             ["CompileScope.CompileErrors"] = "The synthesized context's list; what the hook adds is read back.",
             ["CompileScope.CompileWarnings"] = "The synthesized context's list.",
             ["CompileScope.Namespaces"] = "PrecompiledInitSite.Namespaces, the @using set in scope at the call.",
@@ -543,6 +545,8 @@ namespace Heddle.Tests
             ["CompileContext.RootScopeType"] = "PrecompiledInitSite.RootModelType.",
             ["CompileContext.Options"] = "Rebuilt from the site.",
             ["CompileContext.OutputProfile"] = "PrecompiledInitSite.OutputProfile.",
+            ["CompileContext.SlotParameterType"] = "PrecompiledInitSite.SlotType, installed on the synthesized " +
+                                                   "scope so a slot projection's hook reaches the same state.",
             ["CompileContext.AddDelayedCompileTemplate"] = "The queue is real and drained as the engine drains it.",
             ["ParseContext.Offset"] = "PrecompiledInitSite.PositionStart.",
             ["ParseContext.Errors"] = "A live list; the engine drains parse errors before compiling, so nothing " +
@@ -617,6 +621,10 @@ namespace Heddle.Tests
             var expected = new[]
             {
                 "InitContext.cs:internal OutputItem SourceItem;",
+                "InitContext.cs:public bool CallCarriesValue => SourceItem != null && " +
+                "SlotRules.HasOutValue(SourceItem.CallParameter);",
+                "InitContext.cs:public bool IsChainedConsumer => SourceItem != null && " +
+                "SourceItem.IsChainedConsumer;",
                 "HeddleCompiler.cs:SourceItem = sourceItem",
                 "OutExtension.cs:var source = initContext.SourceItem;"
             };

@@ -92,10 +92,11 @@ namespace Heddle.Extensions
         {
             if (_slotMode)
             {
-                if (_composedGuard || !(scope.SlotCarrier is SlotContent carrier))
+                var carrier = scope.SlotCarrier;
+                if (_composedGuard || carrier == null)
                     throw new TemplateProcessingException(GuardMessage);
                 var projectionScope = carrier.InvocationScope.Model(scope.ModelData);
-                return carrier.Outer.RenderCallerContent(projectionScope);
+                return carrier.RenderCallerContent(projectionScope);
             }
 
             if (!InnerExist)
@@ -109,10 +110,11 @@ namespace Heddle.Extensions
         {
             if (_slotMode)
             {
-                if (_composedGuard || !(scope.SlotCarrier is SlotContent carrier))
+                var carrier = scope.SlotCarrier;
+                if (_composedGuard || carrier == null)
                     throw new TemplateProcessingException(GuardMessage);
                 var projectionScope = carrier.InvocationScope.Model(scope.ModelData);
-                carrier.Outer.RenderCallerContentInto(projectionScope);
+                carrier.RenderCallerContentInto(projectionScope);
                 return;
             }
 

@@ -73,6 +73,8 @@ TYPE Heddle.Core.InitContext : System.ValueType
   FIELD Heddle.Language.ParseContext ParseContext
   FIELD Heddle.Runtime.CompileScope CompileScope
   FIELD System.String ParameterTemplate
+  PROP System.Boolean CallCarriesValue {get;}
+  PROP System.Boolean IsChainedConsumer {get;}
 TYPE Heddle.Data.BranchState : System.ValueType
   CTOR(System.Boolean)
   FIELD System.String ReservedKey
@@ -223,6 +225,10 @@ TYPE Heddle.Data.HtmlEncodedRenderer impl Heddle.Data.IScopeRenderer, Heddle.Dat
 TYPE Heddle.Data.IScopeRenderer
   METHOD System.String ToString()
   METHOD System.Void Render(System.String)
+TYPE Heddle.Data.ISlotContent
+  METHOD System.String RenderCallerContent(ref Heddle.Data.Scope)
+  METHOD System.Void RenderCallerContentInto(ref Heddle.Data.Scope)
+  PROP Heddle.Data.Scope InvocationScope {get;}
 TYPE Heddle.Data.ISpanScopeRenderer impl Heddle.Data.IScopeRenderer
   METHOD System.Void Render(System.ReadOnlySpan<System.Char>)
 TYPE Heddle.Data.IUtf8ScopeRenderer impl Heddle.Data.IScopeRenderer, Heddle.Data.ISpanScopeRenderer
@@ -262,6 +268,7 @@ TYPE Heddle.Data.RenderTypeRules
   METHOD Heddle.Data.RenderType Derive(System.Boolean, System.Boolean)
 TYPE Heddle.Data.Scope : System.ValueType
   FIELD Heddle.Data.IScopeRenderer Renderer
+  FIELD Heddle.Data.ISlotContent SlotCarrier
   FIELD Heddle.Data.Scope Null
   FIELD System.Object CallerData
   FIELD System.Object ChainedData
@@ -1082,6 +1089,7 @@ TYPE Heddle.Runtime.CompileContext
   METHOD System.Void Dispose()
   PROP Heddle.Data.ExType RootScopeType {get;}
   PROP Heddle.Data.ExType ScopeType {get;set;}
+  PROP Heddle.Data.ExType SlotParameterType {get;}
   PROP Heddle.Data.OutputProfile OutputProfile {get;set;}
   PROP Heddle.Data.TemplateOptions Options {get;}
   PROP System.Boolean Compiled {get;}
