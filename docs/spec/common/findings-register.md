@@ -99,8 +99,6 @@ they get broken.
 - A backslash in a `#line` file name. `pp_string` processes no escapes; escaping it would be the bug.
 - `ThreadLocal<int>` per definition. Measured: ids recycle via the finalizer; no template workload
   grows the slot array.
-- `@out(::X)` never type-checked. Unreachable: `BuildParamExpr` refuses every root-reference call
-  parameter first.
 - The export guard's container arm. Unreachable today, kept deliberately so both spelled names are
   guarded alike. Rule for unreachable arms: keep and label it if it pairs with a live arm; delete it
   if it reads as a member of a list.

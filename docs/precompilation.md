@@ -12,9 +12,10 @@ runtime‑loaded template strings, `:: dynamic`, `AllowCSharp`/`ExpressionMode.F
 runtime compilation, and hot
 reload all keep working, and precompiled and runtime‑compiled templates coexist in one
 process. The precompiled assembly is a *cache seeded at build time*, never a cage. A template the
-build cannot fully bind renders through the dynamic tier instead of failing — see
-[What precompiles, and what falls back](#what-precompiles-and-what-falls-back) for where that line
-now runs.
+build cannot fully bind renders through the dynamic tier instead of failing, and a single *call* the
+build cannot bind costs that call rather than the file — see
+[What precompiles, and what falls back](#what-precompiles-and-what-falls-back) for where those two
+lines now run.
 
 > The generated backend must produce **byte‑identical** output to the runtime backend — a
 > differential test harness proves it across the whole fixture corpus in CI. The runtime
@@ -157,7 +158,7 @@ there is nothing to match: the property decides how the artifact is emitted, not
 | `HeddleTemplateRoot` | dir, default `$(MSBuildProjectDirectory)` | `TemplateOptions.RootPath` | Root the template key is made relative to. |
 | `HeddleGeneratedNamespace` | default `Heddle.Generated` | *(build only)* | Namespace of the generated entry classes. |
 | `HeddleEmitUtf8Pieces` | `false` (default) \| `true` | *(build only)* | Emit pre‑encoded `"…"u8` static pieces for the byte sink. |
-| `HeddleNodeFallback` | `true` (default) \| `false` | *(build only)* | Per‑node fallback: a member path the engine resolves but generated C# cannot name (e.g. a referenced assembly's `internal` member without `[InternalsVisibleTo]`) is computed by the engine's own accessor instead of degrading the whole template. Never changes rendered bytes, so it is not part of the options fingerprint; `false` restores the whole‑template degrade. |
+| `HeddleNodeFallback` | `true` (default) \| `false` | *(build only)* | Per‑node fallback: a member path the engine resolves but generated C# cannot **name** (e.g. a referenced assembly's `internal` member without `[InternalsVisibleTo]`) is computed by the engine's own accessor instead of degrading the whole template. Never changes rendered bytes, so it is not part of the options fingerprint; `false` restores the whole‑template degrade **for the nodes it governs**. Its scope is exactly the naming question: it decides between spelling a member in generated C# and computing it through the engine, so it does **not** reach a type‑agnostic body, where the model type is unresolved and nothing could have been spelled in the first place — those reads bind through the same accessors either way, and the body precompiles either way. |
 | `HeddleObserveEngine` | `Auto` (default) \| `Off` \| `Strict` | *(build only)* | Whether the build **observes a real engine compile** of each template before emitting it, to learn the model type an extension's hook chooses for its body. A body it types is emitted with a direct cast; a body it cannot type is still precompiled, through the engine's own accessors — so this changes which tier a *read* takes and never a rendered byte, and it is not part of the options fingerprint. `Auto` reports `HED7034` as a note when it cannot observe; `Strict` makes that an error, so a CI leg never silently emits different sources from a developer machine that can observe; `Off` never tries. The intermediate assemblies it writes live under `obj/…/heddle/observe/`, are named after a digest of their own content, and are removed by `Clean`. Nothing is written at all unless a template actually contains a body the build cannot type on its own. Observation needs the **implementation** of your engine and extension assemblies: a package reference gives it one, a project‑to‑project reference gives the compiler a reference assembly with no method bodies, and there the build reports `HED7034` and emits type‑agnostically. |
 
 The same mapping is what the editor uses: each of the first five has a `.heddle-lsp.json` key spelled as the
@@ -494,15 +495,63 @@ precompile in a **default build**, with no property to set and no name list to b
 chooses a model type the build could not resolve, the body is emitted with **no model cast** and its
 member reads bind to the engine's own accessor once the hook has answered.
 
+**The type‑agnostic body costs nothing at render.** Each member read inside it is emitted as the path
+only — a `PrecompiledLateAccessor` — and the delegate behind it is built the moment your hook answers,
+over the **engine's own** member walk rather than over a type the build guessed. A read is then one
+field read and one delegate call, the same as a directly emitted accessor field: no per‑render
+allocation, no DLR, no runtime Roslyn. Deliberately not the DLR, in fact: its visibility policy and hop
+rule are the *dynamic* tier's, and the engine types this read the way the typed tier does.
+
 Three shapes inside such a body still cannot be written without knowing that type — a computed native
 expression (its result type depends on an operand type that does not exist yet, and the DLR's numeric
 promotion is not the engine's), an embedded C# expression (its model parameter has to be *spelled*), and
 a nested call whose own typing needs one. Each costs **that call site** and not the template: the call
 renders by compiling its own source text at first render.
 
+The substitute states its own bound, and the build respects it. A fragment compiled as its own document
+sees no enclosing definition, no ambient region fill scope and no active prop layout — so a body that
+would need the substitute *and* reaches for one of those is not handed to it; the **template** goes to
+the dynamic tier instead, where all three exist. That is the `HookBehavior` refusal below, and it is the
+one place a hook still costs a file rather than a call.
+
 An extension whose compile‑time behaviour genuinely cannot survive this — chiefly one whose hook walks
 the enclosing document through `InitContext.ParseContext` — says so with
-`[PrecompileUnsupported("…")]`, and gets the same per‑call‑site treatment under `HED7033`.
+`[PrecompileUnsupported("…")]`, and gets the same per‑call‑site treatment under `HED7033`. The
+declaration is read on both sides: off the symbol at build, and off the **live type** at run, so an
+extension package that adds it after your assembly was built still falls back rather than binding
+through a seam its author has disowned.
+
+### Engine observation — a typing optimisation, never a degrade
+
+`HeddleObserveEngine` decides whether the build **observes a real engine compile** of your templates
+before emitting them, purely so it can learn the model type a hook chooses and write a direct cast
+instead of a type‑agnostic body. It is an optimisation about which tier a *read* takes, and it can
+never change a rendered byte or take a template off the precompiled tier — the whole corpus is
+generated under `Off` and under `Strict` and rendered through both, and the bytes must be identical.
+
+| Mode | What it does |
+| --- | --- |
+| `Auto` (default) | Observe where it can. Where it cannot, emit type‑agnostically and report `HED7034` **once per compilation** as a note. Nothing is reported when no template needed observing, or when no observe directory was configured at all. |
+| `Strict` | The same, except that a failure to observe is a build **error**. This exists so a CI leg that cannot observe never silently emits *different sources* from a developer machine that can. |
+| `Off` | Never try. Every body the build cannot type on its own is emitted type‑agnostically. |
+
+How it works: the generator emits the compilation it is being run inside to a **content‑addressed**
+intermediate assembly, loads it together with your `Heddle.dll` and your extension assemblies, and
+compiles the real template through the real engine — so a source‑declared model and a source‑declared
+extension are real `Type`s rather than shims.
+
+Two honest limits:
+
+- **A project‑to‑project reference cannot be observed.** The compiler is handed a *reference assembly*
+  for a referenced project: metadata with no method bodies, so there is no hook to run. That is
+  `HED7034`, and the template precompiles anyway. A package reference carries an implementation
+  assembly and is observable.
+- **Each distinct C# source state leaves one intermediate assembly on disk.** `Assembly.LoadFrom` holds
+  a file open for the life of the compiler server, which is exactly why the file is named after a
+  digest of its own content — the permanent lock always lands on a file nothing will ever rewrite.
+  The cost is that an edit that changes the compilation produces a new file rather than replacing the
+  old one, under `obj/…/heddle/observe/`, until MSBuild `Clean` removes them. Nothing is written at all
+  unless a template actually contains a body the build cannot type on its own.
 
 ### Startup order: a suggestion, not a rule
 
@@ -568,19 +617,36 @@ could not fully bind — the degrade — so the two never disagree about a templ
 
 ## What precompiles, and what falls back
 
-A template either precompiles whole or renders through the dynamic path whole: the escapes below are
-for **values**, never for control flow, because reproducing the engine's compile context for a subtree
-(prop layout, fill scope, slot carrier, region rebinds) is where byte identity gets genuinely hard.
-Within a value, though, **refusal is the last option and not the first**. Each value node is planned
-before it is written — typed C# in place, `.ToString()` in place where the sink only renders, a site
-that resolves once at first use, the engine's own accessor delegate — and only a node no plan serves
-declines the template. That inversion is why the list of constructs that cost a template its tier is
-much shorter than it was.
+**The headline: custom and third‑party extensions precompile in a default build.** Bodied,
+hook‑overriding, `[Prop]`‑declaring, branch‑role — all of them, with no property to set, no probe to
+enable and no name list to be on. The build stopped predicting what an extension's compile‑time hook
+does and started *running* it: the generated static initializer constructs your extension inside your
+own assembly and calls its real `InitStart`/`CompleteInit`, handing it the already‑generated body in
+place of a body compile. See
+[Custom extensions in precompiled templates](#custom-extensions-in-precompiled-templates).
 
-Falling back is never a correctness question. Both tiers are parity‑checked to the byte, so a
-fallen‑back template renders exactly what a precompiled one would; what it costs is the build‑time
-work. `HED7031` is how you hear about it, and `<WarningsAsErrors>HED7031</WarningsAsErrors>` is how
-you make it matter.
+**There are two sizes of fallback, and only one of them is about the template.**
+
+- A **template** fallback: the build declined the file, the manifest carries no bound strategy for it,
+  and the dynamic tier renders it. `HED7031` says so, with the refusal's class beside the sentence.
+- A **call‑site** fallback: the file precompiles, and one call inside it renders by compiling its own
+  source text at first render. The rest of the template is emitted normally. This is what
+  `[PrecompileUnsupported]` buys (`HED7033`), and what the three shapes a type‑agnostic body cannot
+  write cost. Nothing else in the file is affected.
+
+Within a template, **refusal is the last option and not the first**. Each value node is planned before
+it is written — typed C# in place, `.ToString()` in place where the sink only renders, a site that
+resolves once at first use, the engine's own accessor delegate, a per‑call‑site substitute — and only a
+node no plan serves declines the file. That inversion is why the list of constructs that cost a
+template its tier is much shorter than it was. Control flow is still the harder half: reproducing the
+engine's compile context for a subtree (prop layout, fill scope, slot carrier, region rebinds) is where
+byte identity gets genuinely hard, which is why the substitute states its own bound rather than
+guessing (see `HookBehavior` below).
+
+Falling back is never a correctness question, at either size. Both tiers are parity‑checked to the
+byte, so a fallen‑back template — or a fallen‑back call — renders exactly what a precompiled one
+would; what it costs is the build‑time work. `HED7031` is how you hear about the template‑sized one,
+and `<WarningsAsErrors>HED7031</WarningsAsErrors>` is how you make it matter.
 
 ### Recovered — these precompile now
 
@@ -589,7 +655,8 @@ you make it matter.
 | Embedded C# (`@( @expr )`), reading `model`, `chained` or `root` | Emitted as a one‑line static method into the generated file, inside a `namespace Heddle.Runtime` block — the same shape and the same enclosing namespace the engine's own generated assembly uses, compiled by your compiler with the rest of the file. A value with no static type is declared `dynamic`, so the DLR call sites are the engine's mechanism rather than a reconstruction of it. Needs `HeddleExpressionMode=FullCSharp`, exactly as the engine needs `ExpressionMode.FullCSharp`, and an in‑file `@model` — typed **or** `dynamic` — to pin the scope every host compiles this template under. |
 | A computed `@partial` name (`@partial(){{ … }}`) | The engine evaluates that name once, at **its** compile time, against a null scope; the generated code does the same at static init through `PrecompiledRuntime.EvaluatePartialName`, and a name body that fails to evaluate re‑raises the engine's own positioned error rather than rendering something else. |
 | A member path ending on a `ref struct` in a **rendered** position | Stringified in place. The rendered carrier's protocol never needs the boxed value, so `.ToString()` is byte‑identical. Every other sink still boxes — see the boundary table. |
-| A member the engine resolves and your assembly may not *name* — a referenced assembly's `internal` member without `[InternalsVisibleTo]` | Computed by the engine's own accessor, built once at type init from `System.Linq.Expressions` and called once per render (`PrecompiledRuntime.MemberAccessor`/`NativeAccessor`). No runtime Roslyn, no per‑render allocation. Controlled by `HeddleNodeFallback` (on by default); `false` restores the whole‑template degrade. |
+| A member the engine resolves and your assembly may not *name* — a referenced assembly's `internal` member without `[InternalsVisibleTo]` | Computed by the engine's own accessor, built once at type init from `System.Linq.Expressions` and called once per render (`PrecompiledRuntime.MemberAccessor`/`NativeAccessor`). No runtime Roslyn, no per‑render allocation. Controlled by `HeddleNodeFallback` (on by default); `false` restores the whole‑template degrade for this node. |
+| A **bodied** call to a custom or third‑party extension — including one that overrides a compile‑time hook, declares `[Prop]`s, or carries a `[BranchRole]` | The hook is not predicted, it is run: `PrecompiledRuntime.Init` constructs your extension inside your assembly at static init and calls its real `InitStart`/`CompleteInit` with the generated body supplied in place of a body compile. Where the build cannot resolve the model type your hook chooses, the body is emitted **type‑agnostically** — no model cast — and each member read inside it becomes a `PrecompiledLateAccessor` bound to the engine's own member walk the moment your hook answers. One field read and one delegate call per read, no per‑render allocation, no runtime Roslyn. |
 | A function only a run‑time `Register(string, Delegate)` supplies | Emitted as a late‑bound site that resolves once at first render through the engine's own overload ranker and caches the result — see [Functions the build cannot see](#functions-the-build-cannot-see). |
 | A **bodied** call to a step‑back encoder (`@money(Cost){{ @(Locale) }}`, `@url`, `@attr`, `@js`, `@date`, `@time`, `@int`, `@guid`, `@string`) | Their hook re‑types the default body against the caller's scope and does nothing else — one hook body shared verbatim by nine built‑ins. That role is now read off the extension rather than predicted from a name list, so the bodiless and bodied forms bind alike. |
 | A template that declares no `@model`, served to a host whose `CompileContext` **is** typed | Routed rather than assumed: the entry records that its model type is the build's answer (`ModelTypeIsAmbient`), the gauntlet compares it against the request, and a disagreement degrades that request with `ModelTypeMismatch` instead of serving the build's guess. Declaring the type with `ModelType` item metadata is what makes it precompile for that host. |
@@ -623,9 +690,17 @@ Every `HED7031` carries a machine‑readable class beside its sentence, under th
 `HeddleRefusalCategory`. The sentence is what a template author reads; the category is what a build
 log, a dashboard or a coverage gate can group by, because a message is prose and a class is not.
 
+Every category here names a decline that costs the **template** its tier. A per‑call‑site fallback has
+no category, because it is not a refusal: the file precompiles, and the call renders by compiling its
+own text. It reports as `HED7033` when an extension author declared it, and as nothing at all when the
+build simply could not write one body shape.
+
 Three of the seventeen are the only *legitimate* end‑state refusals — a genuine wall, a value the
 build cannot know, and an engine failure the degrade reproduces. The rest are operational groupings
-of what the emitter cannot emit **yet**, each one the retire‑target of a capability.
+of what the emitter cannot emit **yet**, each one the retire‑target of a capability. Two of the
+seventeen currently have **no site in the emitter at all** and are kept as declared, unreached members
+— `ClrWall` and `DefinitionLayering` — because the coverage gates pin these names, so a category is
+retired in place rather than deleted, exactly as a diagnostic id is.
 
 | Category | The refusal it names |
 | --- | --- |
@@ -635,13 +710,13 @@ of what the emitter cannot emit **yet**, each one the retire‑target of a capab
 | `ChainCarrier` | A chained call, bodied unnamed carrier or chain item the emitter cannot flatten. |
 | `DefinitionLayering` | Definition override/layering. Reached by nothing: it named a belief about how the emitter resolved definitions rather than a limit, and it is retired in place — declared, so the category vocabulary the degrade seam pins keeps its member — the way `ClrWall` is. |
 | `DefinitionProps` | A definition or extension prop prototype the emitter cannot freeze: unknown, duplicate, missing or unreproducible values, and dynamic arguments it cannot type. |
-| `EmbeddedCSharp` | An embedded C# expression the compiled‑fragment path cannot carry — no in‑file `@model` to pin the scope, an expression reading `root` where nothing pins the root type, a `@using` body naming no namespace, or text the engine's own compiler rejects. |
+| `EmbeddedCSharp` | An embedded C# expression the compiled‑fragment path cannot carry — no in‑file `@model` to pin the scope, an expression reading `root` where nothing pins the root type, a `@using` body naming no namespace, or text the engine's own compiler rejects. Inside a type‑agnostic body it costs the call site rather than the template: the fragment's model parameter would have to be *spelled*. |
 | `FunctionBinding` | A call no build‑time registration binds and no late‑bound site can serve. Its loud twin is `HED7014`. |
-| `HookBehavior` | Extension behaviour a call site cannot be given: a body whose typing the hook chooses and which reaches for an enclosing definition, an ambient region fill scope or an active prop layout — none of which a fragment compiled as its own document would see, so the template goes rather than the call. The hook itself is no longer a decline; `HED7015`, its loud twin, is retired in place. |
+| `HookBehavior` | The **substitute's own bound**, and nothing wider. A hook the build has not read is not a decline — it runs for real at static‑init — so what is left here is what a per‑call‑site substitute cannot be honest about: it compiles the call's own text as its own document, which sees no enclosing definition, no ambient region fill scope and no active prop layout. A body reaching for any of those sends the **template** to the dynamic tier rather than the call. `HED7015`, the loud twin the unread hook once had, is retired in place. |
 | `ExtensionBinding` | An extension the binder cannot bind at build time, or a binding‑surface fault: an unbindable type, an unbound name, a malformed `[Prop]` declaration. |
 | `HostSetup` | The consumer's build configuration forbids the emission — an expression‑mode gate, a missing `Microsoft.CSharp` reference, conflicting model declarations. The remedy is host setup, not template or emitter work. |
 | `MemberAccess` | A member path, prop read or receiver the emitter cannot resolve statically — and that the engine's accessor cannot serve either. |
-| `NativeExpression` | A native‑expression shape the shared operator tables or the expression writer do not emit. |
+| `NativeExpression` | A native‑expression shape the shared operator tables or the expression writer do not emit. Inside a type‑agnostic body a *computed* expression costs the call site rather than the template: its result type depends on an operand type that does not exist until the hook answers. |
 | `PartialName` | An `@partial` name the emitter cannot evaluate or normalize. |
 | `RefLikeSink` | A ref‑struct value in a boxing sink — recoverable only in the rendered sink, where the carrier stringifies in place. |
 | `SlotChannel` | An `@out`/slot shape the emitter cannot carry. |
@@ -670,8 +745,6 @@ their `.heddle` position; file/key/option‑level conditions report without a so
 | `HED7012`/`HED7013` | A forwarded front‑end error/warning carrying no id. |
 | `HED7014` | A called function no build‑time registration binds, in a call shape a late‑bound site cannot serve either (chiefly an argument whose static type has no build‑time answer) — the template falls back (warning). A delegate‑only registration alone no longer reaches this: see *Functions the build cannot see*. |
 | `HED7015` | **Retired in place — no build raises it any more, and the id stays claimed forever.** It reported that a bound extension outside the engine assembly overrode a compile‑time hook the build had not read, and that the template therefore fell back. The build no longer has to read a hook to bind one: the extension's own `InitStart`/`CompleteInit` runs inside your assembly at static‑init, so the fact this warning reported is no longer true of any build. The id is never reused and never renumbered; this row is its permanent home. |
-| `HED7033` | A bound extension declares `[PrecompileUnsupported]` — its author's own statement that a static initializer cannot reproduce its compile‑time behaviour (warning). The declared reason is quoted **verbatim**. Cost is **one call site**: that call binds dynamically (it renders by compiling its own source text at first render) while the rest of the template stays precompiled. Read on both sides — the build reads the declaration off the symbol, the runtime reads it off the live type — so an extension package that adds the declaration *after* your assembly was built still falls back rather than binding through a seam its author has disowned. |
-| `HED7034` | The build could not observe a real engine compile of your templates, so a body whose model type only an extension's hook can supply is emitted type‑agnostically rather than with a direct cast. A **note** under `HeddleObserveEngine=Auto` and an **error** under `Strict`; reported once per compilation, and not at all under `Auto` when no observe directory was configured — nor in either mode when no template ever needed observing. The commonest reason is a **project‑to‑project reference** to the engine or to an extension assembly: the compiler is handed a reference assembly, which carries no method bodies and cannot be executed, so there is no hook to run. The template still precompiles and renders identical output either way — this is a typing optimisation, not a tier. |
 | `HED7016` | A branch continuation/terminal (`[BranchRole]`) omits `[ScopeChannel]`, so it can never read the branch state at run time (warning). |
 | `HED7017` | An extension declares a malformed `[Prop]` parameter — the build‑tier twin of the dynamic tier's declaration diagnostics. |
 | `HED7018` | A template is outside `HeddleTemplateRoot` and has no explicit `Key`, so its directory is dropped and it registers under a flattened filename key (warning). Only `Key` suppresses it: a `Name` is additive and leaves the flattened key in place, so the warning is still about something real. |
@@ -686,6 +759,8 @@ their `.heddle` position; file/key/option‑level conditions report without a so
 | `HED7030` | A type — a model, a member's type, or a bound host **extension** — that generated code may not name: an `internal` type or `internal` member declared in a *referenced* assembly, or one marked `[Obsolete(…, error: true)]`. The engine binds it by reflection — which ignores both assembly boundaries and `[Obsolete]` — and renders normally, while generated code naming it would not compile (`CS0122`, `CS0619`), so the template degrades to the dynamic tier under a warning. Make it public or grant the consuming assembly `[InternalsVisibleTo]`, or drop the error-level `[Obsolete]`, to precompile it. A warning-level `[Obsolete]` changes nothing: the template still precompiles, and the generated file suppresses the warning. An extension is discovered by reflection over the exporting assembly and created with `Activator.CreateInstance`, neither of which asks either question, so a non-public or error-obsolete extension registers and renders while the `new` the generated field is initialised with does not compile. An extension whose declared `[Prop]` *type* is unnameable is unaffected: nothing on the parameter path ever spells a prop type. |
 | `HED7031` | The emitter declined to precompile this template for a reason with no more specific channel — embedded C# outside `FullCSharp` expression mode, or a prop prototype the build cannot freeze — so it renders through the dynamic path. The message carries the emitter's own reason, and the diagnostic carries the reason's **class** beside it as the `HeddleRefusalCategory` property: see [Why a template declines](#why-a-template-declines-the-refusal-categories). Output is unaffected: the two tiers are parity-checked and produce identical bytes, so this costs build-time work rather than correctness. It is the catch-all for a decline that was previously **silent**: the emitter computed a reason, the generator's `if (Emitted) … else if (IsMarker)` had no final `else`, and the template produced no source, no manifest row and no diagnostic — leaving a project no way to learn that a template it believed precompiled was rendering dynamically on every request. Where precompilation is a requirement rather than an optimisation, promote it with `<WarningsAsErrors>HED7031</WarningsAsErrors>`. |
 | `HED7032` | A template carries **both** an in‑file `@model` directive and `ModelType` item metadata, and the two spellings resolve to **different types**. The runtime reads only the directive, so the build refuses to pick one rather than typing the same template differently on the two tiers. Equal spellings, or different spellings resolving to the same type, agree and raise nothing. Reported at the file's start — item metadata has no in‑file position. |
+| `HED7033` | A bound extension declares `[PrecompileUnsupported]` — its author's own statement that a static initializer cannot reproduce its compile‑time behaviour (warning). The declared reason is quoted **verbatim**. Cost is **one call site**: that call binds dynamically (it renders by compiling its own source text at first render) while the rest of the template stays precompiled. Read on both sides — the build reads the declaration off the symbol, the runtime reads it off the live type — so an extension package that adds the declaration *after* your assembly was built still falls back rather than binding through a seam its author has disowned. |
+| `HED7034` | The build could not observe a real engine compile of your templates, so a body whose model type only an extension's hook can supply is emitted type‑agnostically rather than with a direct cast. A **note** under `HeddleObserveEngine=Auto` and an **error** under `Strict`; reported once per compilation, and not at all under `Auto` when no observe directory was configured — nor in either mode when no template ever needed observing. The commonest reason is a **project‑to‑project reference** to the engine or to an extension assembly: the compiler is handed a reference assembly, which carries no method bodies and cannot be executed, so there is no hook to run. The template still precompiles and renders identical output either way — this is a typing optimisation, not a tier. |
 
 **Engine ids that fire at build.** A refusal the generator can *prove* the engine repeats at its own
 template compile is not a `HED7xxx` twin but the engine's id **forwarded** as a build error — same
