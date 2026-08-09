@@ -92,5 +92,18 @@ namespace Heddle.Generator.IntegrationTests
         [Fact]
         public void TheNativeAccessorEscapeAddsNoPerRenderAllocation() =>
             AssertEscapeAddsNoPerRenderAllocation("[@(this.Direct)]\n", "[@(this.Hidden)]\n");
+
+        /// <summary>
+        /// The <b>type-agnostic body</b>'s price, isolated the same way. Both templates are the same bodied call to
+        /// the same extension whose hook the build has not read, so both bodies are emitted with no model cast and
+        /// every shared cost cancels; they differ only in which read the body performs. A <c>::</c>-rooted read
+        /// starts at the root model, which the build knows, and stays on the typed path; a bare read starts at the
+        /// model the hook chooses and goes through <c>PrecompiledLateAccessor</c>, bound once at static-init. Same
+        /// bytes out, and the delta must be zero per render: a field read and a delegate call, no allocation.
+        /// </summary>
+        [Fact]
+        public void ATypeAgnosticBodysLateAccessorAddsNoPerRenderAllocation() =>
+            AssertEscapeAddsNoPerRenderAllocation(
+                "[@bellow(Missing){{@(::Direct)}}]\n", "[@bellow(Missing){{@(Direct)}}]\n");
     }
 }

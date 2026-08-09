@@ -1063,13 +1063,13 @@ namespace Heddle.Generator.Emit
                     if (!TryTypedBody(name, bodySource, item, cp, bctx, plan, out body, out reason))
                         return null;
                 }
-                else if (!TryTypeAgnosticBody(item, bctx, plan, out body, out reason))
+                else if (!TryTypeAgnosticBody(item, bctx, plan, out body, out reason, out var canSubstitute))
                 {
                     // The three shapes no type-agnostic emission reproduces — a computed native expression,
                     // embedded C#, and a nested call whose own typing needs one — cost THIS call site rather than
-                    // the template, by rendering it through the substitute. Where the substitute cannot be honest
-                    // about what the fragment would see, TryTypeAgnosticBody refused instead and left no reason.
-                    if (reason == null)
+                    // the template, by rendering it through the substitute. Where the substitute could not be
+                    // honest about what the fragment would see, the reason stands and the template goes instead.
+                    if (!canSubstitute)
                         return null;
                     var fallbackDetail = "The body of <" + name + "> cannot be emitted without knowing the model " +
                                          "its hook chooses: " + reason.Detail + ".";
@@ -1177,15 +1177,16 @@ namespace Heddle.Generator.Emit
         /// model cast, every member read becomes a <c>PrecompiledLateAccessor</c> bound to the engine's own walk
         /// once the hook answers, and every nested call site becomes a dependent whose typing that same answer
         /// fills in.
-        /// <para>Returns false with a reason when some shape inside it cannot be written that way, and false with
-        /// <c>reason</c> already assigned to the caller's <c>out</c> when the whole template must go instead —
-        /// which is the case the substitute cannot serve honestly.</para>
+        /// <para>Returns false with a reason when some shape inside it cannot be written that way.
+        /// <paramref name="canSubstitute"/> then says whether the per-call-site substitute may serve that shape —
+        /// false means the reason stands and the whole template goes to the dynamic tier instead.</para>
         /// </summary>
         private bool TryTypeAgnosticBody(OutputItem item, BodyContext bctx, SitePlan plan, out BodyClass body,
-            out Refusal reason)
+            out Refusal reason, out bool canSubstitute)
         {
             body = null;
             reason = null;
+            canSubstitute = false;
             plan.BodyTypeAgnostic = true;
             if (item.Context == null)
                 return true;
@@ -1208,14 +1209,18 @@ namespace Heddle.Generator.Emit
             // The substitute compiles this call's own text as its own document, so it sees no enclosing definition,
             // no ambient region fill scope and no active prop layout. A body that reaches for any of those must not
             // be handed to it — the template goes to the dynamic tier instead, where all three exist.
+            var inner = reason?.Detail ?? "body of an unread hook";
             if (!SubstituteCanServe(item, bctx))
             {
-                reason = reason ?? new Refusal(RefusalCategory.HookBehavior,
-                    "body of an unread hook", item.Position);
+                // Not the inner construct's category: what costs the TEMPLATE here is the substitute's own bound,
+                // and the inner construct is only why the substitute was reached at all.
+                reason = new Refusal(RefusalCategory.HookBehavior,
+                    "body under an unread hook reaches an enclosing definition, fill scope or prop layout, which a " +
+                    "fragment compiled as its own document would not see (" + inner + ")", item.Position);
                 return false;
             }
 
-            reason = reason ?? new Refusal(RefusalCategory.HookBehavior, "unemittable body", item.Position);
+            canSubstitute = true;
             plan.Late = null;
             return false;
         }
