@@ -893,7 +893,7 @@ namespace Heddle.Generator.Emit
                 return BuildDefinitionCall(definitionItem, item, cp, bctx, isFill: false, out reason);
 
             if (name == "out")
-                return BuildOutCall(item, cp, bctx, out reason);
+                return BuildOutCall(name, chain, item, cp, bctx, out reason);
 
             if (name == "partial")
                 return BuildPartialCall(item, cp, bctx, out reason);
@@ -1906,7 +1906,8 @@ namespace Heddle.Generator.Emit
         }
 
         /// <summary>The bodiless caller-content splice. Non-slot: passes current model. Slot mode: value becomes projection model.</summary>
-        private Call BuildOutCall(OutputItem item, CallParameter cp, BodyContext bctx, out Refusal reason)
+        private Call BuildOutCall(string name, OutputChain chain, OutputItem item, CallParameter cp,
+            BodyContext bctx, out Refusal reason)
         {
             reason = null;
             if (!string.IsNullOrEmpty(item.ParameterTemplate))
@@ -1936,7 +1937,9 @@ namespace Heddle.Generator.Emit
                     return null;
                 if (!BuildParamExpr(cp, bctx, RefStructUse.Boxed, out var vParam, out var vUses, out reason, item.Position))
                     return null;
-                var slotField = AllocateOutExtension(slotMode: true, item.Position);
+                var slotField = AllocateOutExtension(name, chain, item, cp, bctx, out reason);
+                if (slotField == null)
+                    return null;
                 return MakeCall(slotField, vParam, vUses, item.Position);
             }
 
@@ -1947,7 +1950,9 @@ namespace Heddle.Generator.Emit
                 return null;
             }
 
-            var field = AllocateOutExtension(slotMode: false, item.Position);
+            var field = AllocateOutExtension(name, chain, item, cp, bctx, out reason);
+            if (field == null)
+                return null;
             return MakeCall(field, "scope.ModelData", false, item.Position);
         }
 
@@ -3406,18 +3411,29 @@ namespace Heddle.Generator.Emit
             return new BodyContext("(" + fq + ")", sym, false, root: _modelSymbol);
         }
 
-        private string AllocateOutExtension(bool slotMode, BlockPosition position)
+        /// <summary>
+        /// The <c>@out</c> projection's call site. Slot mode is not a flag the build computes and hands over any
+        /// more: the extension's own <c>InitStart</c> reads the active slot parameter type off the compile context
+        /// the site rebuilds and decides for itself, exactly as it does on the dynamic tier — so an
+        /// <c>[EncodeOutput]</c> added to it, or a sixth diagnostic, reaches this tier without a second
+        /// implementation of it existing here to be updated.
+        /// </summary>
+        private string AllocateOutExtension(string name, OutputChain chain, OutputItem item, CallParameter cp,
+            BodyContext bctx, out Refusal reason)
         {
-            var field = "E" + _extensionCounter++;
-            var (line, col) = _map.Map(position.StartIndex);
-            _fieldDecls.Append("        private static readonly global::Heddle.Extensions.OutExtension ").Append(field)
-                .Append(" = global::Heddle.Precompiled.PrecompiledRuntime.BindOut(\n");
-            _fieldDecls.Append("            new global::Heddle.Extensions.OutExtension(), slotMode: ")
-                .Append(slotMode ? "true" : "false")
-                .Append(", line: ").Append(line).Append(", column: ").Append(col).Append(");\n");
-            _extensionFields.Add(field);
-            RecordExtensionBinding("out", "Heddle.Extensions.OutExtension", _extensionBinder.EngineAssemblyName);
-            return field;
+            if (!_extensionBinder.TryResolve(name, out var info))
+            {
+                reason = new Refusal(RefusalCategory.ExtensionBinding,
+                    "no extension is registered for the slot projection", item.Position);
+                return null;
+            }
+
+            if (!CanWriteExtensionTypeName(info.TypeSymbol, item.Position, out reason))
+                return null;
+            if (!TryPlanSite(name, chain, item, cp, bctx, out var plan, out reason))
+                return null;
+
+            return AllocateInitExtension(name, info, EmitInitSite(plan), null);
         }
 
         private static CallNode BuildFunctionCallNode(string name, CallParameter cp, BlockPosition position)
