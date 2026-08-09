@@ -55,12 +55,14 @@ namespace Heddle.Generator.Tests
                 Assert.DoesNotContain("key: \"refused.heddle\"", manifest);
         }
 
-        /// <summary>Delegate-only functions after refusals now reach HED7014 marker arm (previously hidden by walk order).</summary>
+        /// <summary>An un-precompilable function after a refusal reaches the HED7014 marker arm, which walk order
+        /// used to hide. The call has to be one late binding cannot serve — its argument is an expression over a
+        /// second unknown name, so nothing types it — because a call the build can shape now precompiles.</summary>
         [Fact]
         public void ADelegateOnlyFunctionAfterTheFirstRefusalNowReachesTheHed7014MarkerArm()
         {
             const string content =
-                "@model(){{System.String}}@\\\nfirst: @(min(1, 2u))\nsecond: @(nosuchfn9000(this))\n";
+                "@model(){{System.String}}@\\\nfirst: @(min(1, 2u))\nsecond: @(nosuchfn9000(alsonone(this) + 1))\n";
 
             var run = GeneratorHarness.Run(new[] { ("/repo/app/marker-after-refusal.heddle", content) },
                 globalOptions: Root("/repo/app"));

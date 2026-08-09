@@ -107,18 +107,21 @@ namespace Heddle.Precompiled
             if (rows.Count == 0)
                 return null;
 
-            var registry = options.Functions;
+            // A request with no registry compiles against the frozen default set — and so does a late-bound site
+            // (PrecompiledRuntime.EffectiveFunctions), which is why a null-target row still has to be checked
+            // where the all-built-in shortcut used to answer for the whole entry.
+            var registry = options.Functions ?? FunctionRegistry.Default;
             var allBuiltIn = rows.All(r => r.TargetTypeName == DefaultFunctionTable.ShimTargetTypeName);
 
-            if (registry == null)
+            if (options.Functions == null)
             {
-                // Request compiles against frozen FunctionRegistry.Default — must not contain exports.
                 if (allBuiltIn)
                     return null;
-                var exportRow = rows.First(r => r.TargetTypeName != DefaultFunctionTable.ShimTargetTypeName &&
-                                                r.TargetTypeName != null);
-                return Fail(entry.Key, PrecompiledFallbackReason.FunctionBindingMismatch,
-                    $"Function '{exportRow.Name}': manifest={exportRow.TargetTypeName} live=<missing>");
+                var exportRow = rows.FirstOrDefault(r =>
+                    r.TargetTypeName != DefaultFunctionTable.ShimTargetTypeName && r.TargetTypeName != null);
+                if (exportRow.TargetTypeName != null)
+                    return Fail(entry.Key, PrecompiledFallbackReason.FunctionBindingMismatch,
+                        $"Function '{exportRow.Name}': manifest={exportRow.TargetTypeName} live=<missing>");
             }
 
             var names = new List<string>();
@@ -130,7 +133,22 @@ namespace Heddle.Precompiled
             {
                 var recordedForName = rows.Where(r => r.Name == name && r.TargetTypeName != null).ToList();
                 if (recordedForName.Count == 0)
+                {
+                    // A null-target row on a PRECOMPILED entry is a late-bound call site: the build knew the call
+                    // shape but not the target, and PrecompiledFunctionSite resolves it at first render through
+                    // the engine's own ranker. Two render-time configurations are outside what that site can
+                    // reproduce, and both are the dynamic tier's to answer, so they fall back here rather than at
+                    // a render: a name that is a registered EXTENSION (whose render protocol is not a value), and
+                    // a name registered nowhere (whose engine answer is a compile error, and a compile error the
+                    // dynamic tier raises is the parity contract).
+                    if (TemplateFactory.Exists(name))
+                        return Fail(entry.Key, PrecompiledFallbackReason.FunctionBindingMismatch,
+                            $"Function '{name}': manifest=<late-bound> live=<extension>");
+                    if (!registry.Contains(name))
+                        return Fail(entry.Key, PrecompiledFallbackReason.UnsupportedFunction,
+                            $"Function '{name}': manifest=<late-bound> live=<unregistered>");
                     continue;
+                }
                 var recordedTargets = new HashSet<string>(recordedForName.Select(r => r.TargetTypeName),
                     StringComparer.Ordinal);
                 var manifestTarget = recordedForName[0].TargetTypeName;

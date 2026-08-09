@@ -19,8 +19,15 @@ namespace Heddle.Generator.Emit
         /// selector a later stage adds; no selector chooses it yet.</summary>
         Generic,
 
-        /// <summary>Resolve once at first use — delegate-only functions, computed <c>@partial</c> names. Declared
-        /// for the selector a later stage adds; no selector chooses it yet.</summary>
+        /// <summary>Resolve once at first use, then cache. Chosen for a function call whose target only a
+        /// run-time registration supplies: the call's SHAPE is known at build time and is exactly what the
+        /// engine's overload ranker takes, so a generated <c>PrecompiledFunctionSite</c> replays that selection
+        /// against the live registry at first render. Selected in
+        /// <see cref="NativeExpressionWriter"/>'s call writer, which is where the targets are — a member path has
+        /// none, so <see cref="TemplateEmitter"/>'s value-plan ladder never reaches this.
+        /// <para>The other deferred resolution named for this plan, the computed <c>@partial</c> name, landed
+        /// earlier through <c>PrecompiledPartialName</c>: the engine evaluates that one at ITS compile time, so it
+        /// resolves at static init rather than at first use, and it never joins this ladder.</para></summary>
         LateBound,
 
         /// <summary>Compute the value the way the engine computes it: a static accessor delegate built once at

@@ -476,7 +476,8 @@ namespace Heddle.Generator.IntegrationTests
             string dynamicRootPath, bool fileBacked = false, bool renderDynamicReference = true,
             bool render = true,
             Dictionary<string, string> globalOptions = null,
-            IReadOnlyList<MetadataReference> extraReferences = null)
+            IReadOnlyList<MetadataReference> extraReferences = null,
+            Action<TemplateOptions> configureOptions = null)
         {
             var gen = Generate(corpus, globalOptions, extraReferences);
             var errors = gen.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ToList();
@@ -499,6 +500,9 @@ namespace Heddle.Generator.IntegrationTests
                 options.RootPath = stageDir + Path.DirectorySeparatorChar;
                 options.FileNamePostfix = ".heddle";
                 options.EnableFileChangeCheck = fileBacked;
+                // Host configuration the gauntlet judges the request against — a function registry, chiefly, since
+                // a late-bound entry crosses only where the live registry can serve the name it recorded.
+                configureOptions?.Invoke(options);
 
                 using (var guard = FallbackGuard.Install())
                 {
@@ -542,6 +546,7 @@ namespace Heddle.Generator.IntegrationTests
             {
                 var target = targets[i];
                 var dynamicOptions = new TemplateOptions { RootPath = rooted, FileNamePostfix = ".heddle" };
+                configureOptions?.Invoke(dynamicOptions);
                 var dynamicTemplate = new HeddleTemplate(target.Content,
                     new CompileContext(dynamicOptions, ToExType(target.ModelType)));
                 if (!target.Render)

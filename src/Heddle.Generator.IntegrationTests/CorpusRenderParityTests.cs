@@ -30,8 +30,8 @@ namespace Heddle.Generator.IntegrationTests
         public static IEnumerable<object[]> ModelLessRenderable() =>
             NamesWithRender(r => r != CorpusRender.ResolveOnly).Select(n => new object[] { n });
 
-        /// <summary>Precompiling entries the table excuses from rendering altogether. Empty today — see
-        /// <see cref="NoPrecompilingEntryIsCurrentlyExcusedFromRendering"/>.</summary>
+        /// <summary>Precompiling entries the table excuses from rendering altogether — earned, never declared;
+        /// see <see cref="AnEntryDeclaredResolveOnlyGenuinelyDoesNotRender"/>.</summary>
         public static IEnumerable<string> DeclaredResolveOnly() =>
             NamesWithRender(r => r == CorpusRender.ResolveOnly);
 
@@ -55,19 +55,20 @@ namespace Heddle.Generator.IntegrationTests
         /// find out: a row that reads <c>ResolveOnly</c> for a template that renders perfectly well has taken it out
         /// of the gate for nothing, and the column drifts one silent row at a time.
         /// </summary>
-        /// <para>The column is empty today, and that is a property worth asserting rather than a reason to delete
-        /// the check. A template the engine refuses to render is now also one the build tier declines to precompile,
-        /// so the two values cannot currently co-occur. They are not mutually exclusive in principle — a template can
-        /// precompile and still refuse at render for a model reason rather than a branch one — so the day a row does
-        /// appear, the count below reddens and the loop that follows becomes the real gate for it.</para>
+        /// <para>The column was empty while a template the engine refuses to render was also one the build tier
+        /// declined to precompile. Late-bound functions separate the two: a call the host has not registered
+        /// precompiles — the build knows the call's shape, only not its target — and both tiers then refuse the
+        /// same way when nothing supplies it. So the loop below is now the real gate, and the cardinality check
+        /// that stood in for it while the set was empty has become the guard that it is not empty again by
+        /// accident.</para>
         [Fact]
         public void AnEntryDeclaredResolveOnlyGenuinelyDoesNotRender()
         {
             var declared = DeclaredResolveOnly().ToList();
 
-            // The cardinality is the guard. Without it the loop is the whole test, and a loop over an empty
-            // self-derived set passes without executing its body — the assertion would be describing nothing.
-            Assert.Empty(declared);
+            // The cardinality is the guard on the loop, not on the column: a loop over an empty self-derived set
+            // passes without executing its body, and the assertion would be describing nothing.
+            Assert.NotEmpty(declared);
 
             foreach (var name in declared)
             {
@@ -75,8 +76,12 @@ namespace Heddle.Generator.IntegrationTests
 
                 // Not merely "something threw". A harness failure — a missing fixture, a build-time degrade where
                 // one was not declared — throws too, and would let a row keep its exemption for a reason that has
-                // nothing to do with the template. What earns the exemption is the engine itself refusing to render.
-                Assert.IsType<TemplateProcessingException>(refusal);
+                // nothing to do with the template. What earns the exemption is a refusal the ENGINE owns: a render
+                // fault, or the compile fault it raises for a call nothing registered, which a late-bound site
+                // reproduces rather than rendering past.
+                Assert.True(refusal is TemplateProcessingException || refusal is TemplateCompileException,
+                    "'" + name + "' is excused from render parity, but it failed with " +
+                    refusal.GetType().Name + " rather than a refusal the engine owns: " + refusal.Message);
             }
         }
 

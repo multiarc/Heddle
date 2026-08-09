@@ -84,14 +84,21 @@ namespace Heddle
         // Precompiled adapter mode: resolvers bind a strategy directly (no parse/compile); model-type validation is skipped.
         private readonly bool _precompiled;
 
+        // The request options a precompiled-adapter render runs under. Only late-bound function sites read them
+        // (through PrecompiledRuntime's ambient), and only the adapter needs to carry them: every other
+        // precompiled entry point IS PrecompiledRuntime, which establishes the ambient itself.
+        private readonly TemplateOptions _precompiledOptions;
+
         internal HeddleTemplate(IProcessStrategy precompiledStrategy,
-            System.Text.Encodings.Web.TextEncoder encoder = null, RenderBudget renderBudget = null)
+            System.Text.Encodings.Web.TextEncoder encoder = null, RenderBudget renderBudget = null,
+            TemplateOptions options = null)
         {
             if (precompiledStrategy == null)
                 throw new ArgumentNullException(nameof(precompiledStrategy));
             _processStrategy = precompiledStrategy;
             _encoder = encoder;
             _renderBudget = renderBudget;
+            _precompiledOptions = options;
             _precompiled = true;
             CompileResult = new HeddleCompileResult(true, null, null);
         }
@@ -275,7 +282,24 @@ namespace Heddle
                 }
                 var scope = new Scope(data, callerData, data, chained, renderer, null,
                     (doc?.NeedsLocals ?? false) ? new ScopeLocals() : null);
-                strategy.Render(scope);
+                if (_precompiledOptions == null)
+                {
+                    strategy.Render(scope);
+                }
+                else
+                {
+                    // The adapter drives the generated strategy itself, so it — not PrecompiledRuntime — is what
+                    // makes the request's registry the one a late-bound function site binds against.
+                    var previousAmbient = Precompiled.PrecompiledRuntime.EnterAmbient(_precompiledOptions);
+                    try
+                    {
+                        strategy.Render(scope);
+                    }
+                    finally
+                    {
+                        Precompiled.PrecompiledRuntime.LeaveAmbient(previousAmbient);
+                    }
+                }
             }
             finally
             {

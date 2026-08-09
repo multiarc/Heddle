@@ -95,7 +95,7 @@ namespace Heddle.TestCorpus
     {
         /// <summary>Exact row count (not floor): makes "this stage added N entries" a reviewable one-line diff
         /// the reviewer can check against scope, not a silent overshoot.</summary>
-        public const int DeclaredRowCount = 63;
+        public const int DeclaredRowCount = 64;
 
         private static Dictionary<string, CorpusIntentRow> _byName;
 
@@ -241,8 +241,10 @@ namespace Heddle.TestCorpus
                 "Whitespace-torture document whose first refusal is the bodied unnamed carrier (@(  ){{...}}), reached before its embedded C#; HeddleTemplateTests owns its bytes.",
                 bom: true),
 
+            new CorpusIntentRow("fn-late-bound.heddle", CorpusTier.Precompiles, CorpusRender.ResolveOnly,
+                "Was the corpus's marker entry until late binding arrived: it calls a function resolvable from neither the default table nor any referenced export, which is now emitted as a PrecompiledFunctionSite resolved once at first render through the engine's own ranker instead of costing the file its tier. Renders only against a host that registers the delegate — with none registered BOTH tiers refuse the same way, which is what earns its ResolveOnly row and is asserted rather than assumed; LateBoundFunctionTests owns its bytes and its ranking."),
             new CorpusIntentRow("fn-unresolvable-marker.heddle", CorpusTier.DegradesToMarker, CorpusRender.ResolveOnly,
-                "The one marker entry: it calls a function resolvable from neither the default table nor any referenced export, which is the only construct that yields a manifest row with a null strategy instead of no row at all. Renders only against a host that registers the delegate, so no shared harness renders it and nothing asserts its bytes; UnresolvableFunctionTests owns its classification and its diagnostic."),
+                "The marker entry, kept deliberately so the tier still has a member after late binding took the previous one. Its outer call's ARGUMENT is an expression over a second un-bindable name, whose return type is exactly what no build-time answer exists for — so the argument has no static type to rank the outer call against, and inventing one is the one thing a late-bound site must not do (it would pick an overload the engine never picks). Still the only construct yielding a manifest row with a null strategy instead of no row at all; UnresolvableFunctionTests owns its classification and its diagnostic."),
 
             // These entries assert the diagnostic's IDENTITY, not offsets into a hand-counted string, which is why
             // they are corpus entries at all; position probes stay inline in their own tests.

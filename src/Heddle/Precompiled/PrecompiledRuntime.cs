@@ -277,6 +277,29 @@ namespace Heddle.Precompiled
         // Thread-static so concurrent renders never share ambient options; dynamic path only reads this, untouched.
         [ThreadStatic] private static TemplateOptions _ambientOptions;
 
+        /// <summary>The function registry this render binds late-bound call sites against: the ambient request's
+        /// own <see cref="TemplateOptions.Functions"/>, or the frozen default set the dynamic tier's compiler
+        /// falls back to for the same input (<c>NativeExpressionCompiler</c>'s
+        /// <c>Options.Functions ?? FunctionRegistry.Default</c>). Reading it allocates nothing.</summary>
+        internal static Runtime.Expressions.FunctionRegistry EffectiveFunctions =>
+            _ambientOptions?.Functions ?? Runtime.Expressions.FunctionRegistry.Default;
+
+        /// <summary>Establishes <paramref name="options"/> as the ambient request for a render this class does not
+        /// itself drive — the resolver's precompiled adapter calls <c>IProcessStrategy.Render</c> directly, so
+        /// without this a late-bound site would bind against the default registry while the gauntlet had just
+        /// validated the request's own. Returns the previous ambient for <see cref="LeaveAmbient"/>; the pair is
+        /// a plain field swap and allocates nothing.</summary>
+        internal static TemplateOptions EnterAmbient(TemplateOptions options)
+        {
+            var previous = _ambientOptions;
+            if (options != null)
+                _ambientOptions = options;
+            return previous;
+        }
+
+        /// <summary>Restores the ambient request <see cref="EnterAmbient"/> displaced.</summary>
+        internal static void LeaveAmbient(TemplateOptions previous) => _ambientOptions = previous;
+
         /// <summary>Registry-then-dynamic-compile partial resolution against the ambient options, dynamic child
         /// model. Called from generated <c>@partial</c> code in a dynamic-tier body, memoized once via
         /// <c>LazyInitializer</c>.</summary>

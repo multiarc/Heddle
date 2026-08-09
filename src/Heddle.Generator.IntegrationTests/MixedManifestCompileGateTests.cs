@@ -23,7 +23,11 @@ namespace Heddle.Generator.IntegrationTests
             var gen = DifferentialHarness.Generate(new[]
             {
                 (normalKey, "@model(){{" + ProductType + "}}@\\\n<span>@(upper(Name))</span>\n"),
-                (markerKey, "@model(){{" + ProductType + "}}@\\\n<span>@(mystery(Name))</span>\n"),
+                // The marker half needs a call late binding genuinely cannot serve: the argument is an
+                // expression over a second un-bindable name, so it has no static type to rank the outer call
+                // against. A call over a typeable argument precompiles now and would not exercise this gate.
+                (markerKey,
+                    "@model(){{" + ProductType + "}}@\\\n<span>@(mystery(other(Name) + \"!\"))</span>\n"),
             });
 
             DifferentialHarness.ExpectPrecompiled(gen, normalKey);

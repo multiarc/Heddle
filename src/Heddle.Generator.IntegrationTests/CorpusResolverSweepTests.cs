@@ -2,7 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Heddle.Data;
 using Heddle.Precompiled;
+using Heddle.Runtime.Expressions;
 using Heddle.TestCorpus;
 using Microsoft.CodeAnalysis;
 using Xunit;
@@ -17,6 +19,21 @@ namespace Heddle.Generator.IntegrationTests
     [Collection("PrecompiledRegistry")]
     public class CorpusResolverSweepTests : PrecompiledRegistryTestBase
     {
+        /// <summary>
+        /// The host registrations the corpus's late-bound entries name. <c>fn-late-bound.heddle</c> calls a
+        /// function no metadata carries, so it precompiles to a site that binds at first render — and the gauntlet
+        /// deliberately moves the request to the dynamic tier where the live registry cannot serve the name. A
+        /// deployment that registers it is the one the entry is built for, and it is the only configuration under
+        /// which "every precompiled entry crosses the gauntlet" is a claim about the entry rather than about the
+        /// harness's own empty registry.
+        /// </summary>
+        private static void RegisterCorpusHostFunctions(TemplateOptions options)
+        {
+            var registry = new FunctionRegistry();
+            registry.Register("mystery", new Func<string, string>(value => "[" + value + "]"));
+            options.Functions = registry;
+        }
+
         /// <summary>The corpus minus front-end-error fixtures; read from the intent table.</summary>
         private static List<(string key, string content)> Corpus() =>
             TestCorpusIndex.Load(includeFrontEndErrorFixtures: false);
@@ -125,7 +142,8 @@ namespace Heddle.Generator.IntegrationTests
                 .ToList();
 
             var swept = DifferentialHarness.SweepViaResolver(corpus, targets, TestCorpusIndex.CorpusDir,
-                fileBacked: false, renderDynamicReference: false, globalOptions: null, extraReferences: extra);
+                fileBacked: false, renderDynamicReference: false, globalOptions: null, extraReferences: extra,
+                configureOptions: RegisterCorpusHostFunctions);
 
             Assert.Equal(precompiledKeys.Count, swept.Count);
             foreach (var key in precompiledKeys)

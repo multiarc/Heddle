@@ -78,8 +78,19 @@ namespace Heddle.Tests
                 new[] { "HED0003/E@23,0" }, null,
                 new[] { "HED0003/E@23,0" }, None),
 
+            // The name is unknown to BOTH tiers, but only the run tier can say so: the build knows the call's
+            // shape and emits a late-bound site for it, so it raises no twin of its own here. The HED7014 twin
+            // moved to the fixture below, which is the shape late binding cannot serve.
             new Case("unknownFunction", "@(nosuchfunc(1))",
                 new[] { "HED1001/E@2,13" }, null,
+                None, None),
+
+            // Two unknown names, the inner one an argument of the outer: the inner call's return type is the
+            // value no build-time answer exists for, so the outer call has nothing to rank against and the build
+            // raises its own HED7014 instead of emitting a late-bound site. The run tier stops at the innermost
+            // unknown name, which is why one entry and not two.
+            new Case("unresolvableFunctionArgument", "@(nosuchfunc(alsonone(1) + 1))",
+                new[] { "HED1001/E@2,27" }, null,
                 None, new[] { "HED7014" }),
 
             new Case("unknownProfile", "@profile(){{xml}}\nhi\n",

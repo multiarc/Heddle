@@ -96,9 +96,19 @@ namespace Heddle.Generator.Tests
             VerifyTemplate("views/shout.heddle",
                 "@model(){{System.String}}@\\\n@(upper(this))\n");
 
+        /// <summary>The marker entry that survives late binding: the outer call's argument is an expression over
+        /// a second unknown name, so no static type exists to select an overload against.</summary>
         [Fact]
         public Task Example7b_UnresolvableFunctionMarker() =>
             VerifyTemplate("views/unresolved.heddle",
+                "@model(){{System.String}}@\\\n@(nosuchfn9000(alsonone(this) + 1))\n");
+
+        /// <summary>The late-bound site: a call no build-time registration binds, emitted as a
+        /// <c>PrecompiledFunctionSite</c> whose generic <c>Invoke</c> lets the consumer's compiler infer the
+        /// argument type the engine's ranker will rank against, plus its null-target manifest row.</summary>
+        [Fact]
+        public Task Example7c_LateBoundFunctionSite() =>
+            VerifyTemplate("views/late-bound.heddle",
                 "@model(){{System.String}}@\\\n@(nosuchfn9000(this))\n");
     }
 }

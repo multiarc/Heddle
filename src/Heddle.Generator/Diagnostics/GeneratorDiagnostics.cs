@@ -136,10 +136,14 @@ namespace Heddle.Generator.Diagnostics
         public static readonly DiagnosticDescriptor CaseOnlyKeyTwin =
             FromCatalog(HeddleDiagnosticIds.BuildCaseOnlyKeyTwin);
 
-        /// <summary>A called function name is neither a default built-in nor exported by any
-        /// referenced assembly (a delegate-only registration, not representable in assembly metadata), so there is
-        /// nothing for build-time discovery to bind against. The template is left un-precompiled with a
-        /// fallback-marker manifest entry; it renders through the dynamic path at run time.</summary>
+        /// <summary>A called function name is neither a default built-in nor exported by any referenced
+        /// assembly, in a call shape a late-bound site cannot serve either — an argument whose static type has no
+        /// build-time answer, so no overload can be selected against it, or a call wider than a site takes. The
+        /// template is left un-precompiled with a fallback-marker manifest entry; it renders through the dynamic
+        /// path at run time.
+        /// <para>A delegate-only registration on its own no longer reaches this: the call's shape is known even
+        /// where its target is not, and a site resolves it at first render through the engine's own ranker.</para>
+        /// </summary>
         public static readonly DiagnosticDescriptor UnresolvableFunction =
             FromCatalog(HeddleDiagnosticIds.BuildUnresolvableFunction);
 
