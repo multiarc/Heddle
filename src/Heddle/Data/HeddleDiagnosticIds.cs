@@ -328,6 +328,12 @@ namespace Heddle.Data
         /// still precompiles. The declared reason is carried verbatim.</summary>
         public const string BuildExtensionPrecompileUnsupported = "HED7033";
 
+        /// <summary>The build could not observe a real engine compile of a template, so bodies whose typing only a
+        /// hook can supply are emitted type-agnostically. Informational under <c>HeddleObserveEngine=Auto</c> and an
+        /// error under <c>Strict</c>, which is how a CI leg refuses to emit different sources from a developer
+        /// machine that could observe.</summary>
+        public const string BuildEngineNotObserved = "HED7034";
+
         /// <summary>A precompiled entry failed the run-time gauntlet, so the render degrades to the dynamic
         /// tier (carried on <c>PrecompiledFallbackEvent.DiagnosticId</c>).</summary>
         public const string PrecompiledGauntletFallback = "HED7101";

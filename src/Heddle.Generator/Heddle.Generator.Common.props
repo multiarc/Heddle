@@ -87,6 +87,7 @@
          instead of producing a manifest that will not compile in the consumer. -->
     <Compile Include="$(MSBuildThisFileDirectory)..\Heddle\Precompiled\PrecompiledLinePathForm.cs" Link="Shared\Precompiled\PrecompiledLinePathForm.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)..\Heddle\Precompiled\PrecompiledCallShape.cs" Link="Shared\Precompiled\PrecompiledCallShape.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\Heddle\Precompiled\ObserveMode.cs" Link="Shared\Precompiled\ObserveMode.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)..\Heddle\Precompiled\HeddleBuildOptions.cs" Link="Shared\Precompiled\HeddleBuildOptions.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)..\Heddle\Data\OutputProfile.cs" Link="Shared\Data\OutputProfile.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)..\Heddle\Data\ExpressionMode.cs" Link="Shared\Data\ExpressionMode.cs" />

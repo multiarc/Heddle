@@ -35,7 +35,9 @@ namespace Heddle.Generator.Tests
                 Assert.Equal(
                     row.DefaultSeverity == gen::Heddle.Data.HeddleDiagnosticSeverity.Warning
                         ? DiagnosticSeverity.Warning
-                        : DiagnosticSeverity.Error,
+                        : row.DefaultSeverity == gen::Heddle.Data.HeddleDiagnosticSeverity.Info
+                            ? DiagnosticSeverity.Info
+                            : DiagnosticSeverity.Error,
                     descriptor.DefaultSeverity);
                 Assert.Equal("Heddle.Precompile", descriptor.Category);
                 Assert.True(descriptor.IsEnabledByDefault);

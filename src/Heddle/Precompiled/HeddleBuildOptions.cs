@@ -19,6 +19,12 @@ namespace Heddle.Precompiled
         public const string GeneratedNamespaceProperty = "HeddleGeneratedNamespace";
         public const string EmitUtf8PiecesProperty = "HeddleEmitUtf8Pieces";
         public const string NodeFallbackProperty = "HeddleNodeFallback";
+        public const string ObserveEngineProperty = "HeddleObserveEngine";
+
+        /// <summary>Where the build may write and load the content-addressed intermediate assemblies engine
+        /// observation needs. MSBuild owns the value because only MSBuild knows the intermediate output path, and
+        /// only MSBuild can create the directory: an analyzer may not touch <c>System.IO.Directory</c>.</summary>
+        public const string ObserveIntermediatePathProperty = "HeddleObserveIntermediatePath";
 
         public const OutputProfile DefaultOutputProfile = OutputProfile.Html;
         public const ExpressionMode DefaultExpressionMode = ExpressionMode.Native;
@@ -29,6 +35,14 @@ namespace Heddle.Precompiled
         /// <summary>Per-node engine-accessor fallback, on by default. Not identity-bearing and so not a
         /// fingerprint input: it changes whether a template precompiles, never a rendered byte.</summary>
         public const bool DefaultNodeFallback = true;
+
+        /// <summary>Observation is on by default and forgiving by default: it is an optimisation, so the cost of
+        /// not getting it is a type-agnostic body rather than a failed build.</summary>
+        public const ObserveMode DefaultObserveMode = ObserveMode.Auto;
+
+        /// <summary>The generator's blank fallback for the observe directory. An empty path means "nowhere to write
+        /// an intermediate assembly", which is observation being unavailable rather than an error.</summary>
+        public const string DefaultObserveIntermediatePath = "";
 
         /// <summary>The generator's blank fallback for the template root. The <i>effective</i> default is MSBuild's
         /// <c>$(MSBuildProjectDirectory)</c>; an empty root here means "no root", which flattens keys (and now draws

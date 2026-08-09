@@ -48,6 +48,31 @@
     </ItemGroup>
   </Target>
 
+  <!-- Where engine observation may write its content-addressed intermediate assemblies, and the target that makes
+       the directory exist. Both halves belong here rather than in the props: $(IntermediateOutputPath) is not
+       defined at props-evaluation time, and RS1035 bans System.IO.Directory in an analyzer, so the generator can
+       open a FileStream in this directory but can never create it. A path that does not exist is observation being
+       unavailable — a tier, never an error.
+       The files under it are content-addressed and therefore immutable: a changed input produces a different
+       filename, so Assembly.LoadFrom's permanent lock is always on a file nothing will ever rewrite. They are
+       deliberately NOT added to @(FileWrites): a locked file in the Clean list fails Clean on Windows, and an
+       accumulating cache under obj/ is the cheaper of the two problems. _HeddleCleanObserveCache removes what it
+       can and shrugs at the rest. -->
+  <PropertyGroup>
+    <HeddleObserveIntermediatePath Condition="'$(HeddleObserveIntermediatePath)' == '' and '$(HeddleObserveEngine)' != 'Off'">$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)/$(IntermediateOutputPath)heddle/observe'))</HeddleObserveIntermediatePath>
+  </PropertyGroup>
+
+  <Target Name="_HeddleCreateObserveCache" BeforeTargets="CoreCompile" Condition="'$(HeddleObserveIntermediatePath)' != ''">
+    <MakeDir Directories="$(HeddleObserveIntermediatePath)" ContinueOnError="true" />
+  </Target>
+
+  <Target Name="_HeddleCleanObserveCache" AfterTargets="CoreClean" Condition="'$(HeddleObserveIntermediatePath)' != ''">
+    <ItemGroup>
+      <_HeddleObserveCacheFile Include="$(HeddleObserveIntermediatePath)/**" />
+    </ItemGroup>
+    <Delete Files="@(_HeddleObserveCacheFile)" ContinueOnError="true" />
+  </Target>
+
   <!-- The package ships one generator per Roslyn API version under analyzers/dotnet/roslyn{4.1,4.11,5.3}/cs.
        A host that understands component versioning selects exactly one folder — the highest its compiler
        supports. A host that does not (SDKs before 6, old NuGet) loads every folder at once, which would run

@@ -234,6 +234,8 @@ namespace Heddle.Tests
                 props[HeddleBuildOptions.EmitUtf8PiecesProperty]);
             Assert.Equal(HeddleBuildOptions.DefaultNodeFallback ? "true" : "false",
                 props[HeddleBuildOptions.NodeFallbackProperty]);
+            Assert.Equal(HeddleBuildOptions.DefaultObserveMode.ToString(),
+                props[HeddleBuildOptions.ObserveEngineProperty]);
 
             // HeddleTemplateRoot's default is MSBuild-only; assert it is still stated, not its C# twin.
             Assert.Equal("$(MSBuildProjectDirectory)", props[HeddleBuildOptions.TemplateRootProperty]);
@@ -256,6 +258,10 @@ namespace Heddle.Tests
             Assert.Equal(100, HeddleBuildOptions.DefaultMaxRecursionCount);
             Assert.False(HeddleBuildOptions.DefaultEmitUtf8Pieces);
             Assert.True(HeddleBuildOptions.DefaultNodeFallback);
+
+            // 2.1 addition: observation is on by default and forgiving by default, because it is an
+            // optimisation and the cost of not getting it is a type-agnostic body, not a failed build.
+            Assert.Equal(ObserveMode.Auto, HeddleBuildOptions.DefaultObserveMode);
         }
 
         /// <summary>Both <see cref="TemplateOptions"/> constructors used to state the defaults independently; the
@@ -465,7 +471,8 @@ namespace Heddle.Tests
             Assert.Equal(new[]
             {
                 "HeddleEmitUtf8Pieces", "HeddleExpressionMode", "HeddleGeneratedNamespace", "HeddleMaxRecursionCount",
-                "HeddleNodeFallback", "HeddleOutputProfile", "HeddleTemplateRoot", "HeddleTrimDirectiveLines"
+                "HeddleNodeFallback", "HeddleObserveEngine", "HeddleObserveIntermediatePath", "HeddleOutputProfile",
+                "HeddleTemplateRoot", "HeddleTrimDirectiveLines"
             }, declared.ToArray());
             Assert.Equal(declared.ToArray(), read.ToArray());
         }
@@ -479,7 +486,7 @@ namespace Heddle.Tests
                 defaults[match.Groups["name"].Value] = match.Groups["value"].Value;
 
             // Presence is part of the assertion: a structural change that breaks the parse must be a red test.
-            Assert.Equal(7, defaults.Count);
+            Assert.Equal(8, defaults.Count);
             return defaults;
         }
 

@@ -29,13 +29,18 @@ namespace Heddle.Data
         DefaultNotConvertible = 5
     }
 
-    /// <summary>Default severity of a diagnostic ID, independent of the surface reporting it. Deliberately
-    /// two-valued: a Heddle compile diagnostic is an error or a warning, and adding a third level is a registry
-    /// change, not a table change.</summary>
+    /// <summary>Default severity of a diagnostic ID, independent of the surface reporting it. A Heddle
+    /// <i>compile</i> diagnostic is an error or a warning and nothing else — <see cref="Info"/> exists for the one
+    /// thing that is neither, a note about the BUILD rather than about a template, and adding it was a deliberate
+    /// registry change rather than a table change.</summary>
     internal enum HeddleDiagnosticSeverity
     {
         Error,
-        Warning
+        Warning,
+
+        /// <summary>Neither a template fault nor a warning about one: a note about what the build could and could
+        /// not do. Never raised by the engine's own compile channels.</summary>
+        Info
     }
 
     /// <summary>One registry row: the shared identity of a <c>HED</c> diagnostic.
@@ -193,6 +198,7 @@ namespace Heddle.Data
 
             const HeddleDiagnosticSeverity error = HeddleDiagnosticSeverity.Error;
             const HeddleDiagnosticSeverity warning = HeddleDiagnosticSeverity.Warning;
+            const HeddleDiagnosticSeverity info = HeddleDiagnosticSeverity.Info;
 
             Add(HeddleDiagnosticIds.PropertyNotFound, "Unresolvable member path", error);
             Add(HeddleDiagnosticIds.ExtensionNotFound, "Extension not found", error);
@@ -389,6 +395,14 @@ namespace Heddle.Data
                 "Extension <{0}> ({1}) declares [PrecompileUnsupported]: {2}. This call renders through the " +
                 "dynamic path at run time while the rest of the template stays precompiled. The output is " +
                 "identical either way.");
+            // Observation is an optimisation, so its absence is news rather than a fault: the template still
+            // precompiles, through the engine's own accessors, and renders the same bytes either way.
+            Add(HeddleDiagnosticIds.BuildEngineNotObserved,
+                "Heddle build could not observe a real engine compile", info,
+                "Heddle could not observe a real engine compile ({0}). Bodies whose model type only an extension's " +
+                "hook can supply are emitted type-agnostically; the template still precompiles and renders " +
+                "identical output. Set <HeddleObserveEngine>Strict</HeddleObserveEngine> to make this an error, or " +
+                "Off to stop trying.");
             Add(HeddleDiagnosticIds.BuildEmitterFault, "Heddle template emitter fault", error,
                 "The Heddle template emitter failed on '{0}': {1}: {2}. This is a generator defect rather than a " +
                 "template error — please report it; setting Precompile=\"false\" on the item unblocks the build " +

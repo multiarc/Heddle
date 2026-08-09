@@ -28,10 +28,14 @@ namespace Heddle.Generator.Diagnostics
                 isEnabledByDefault: true);
         }
 
-        private static DiagnosticSeverity Severity(HeddleDiagnosticInfo row) =>
-            row.DefaultSeverity == HeddleDiagnosticSeverity.Warning
-                ? DiagnosticSeverity.Warning
+        private static DiagnosticSeverity Severity(HeddleDiagnosticInfo row)
+        {
+            if (row.DefaultSeverity == HeddleDiagnosticSeverity.Warning)
+                return DiagnosticSeverity.Warning;
+            return row.DefaultSeverity == HeddleDiagnosticSeverity.Info
+                ? DiagnosticSeverity.Info
                 : DiagnosticSeverity.Error;
+        }
 
         /// <summary>A forwarded front-end diagnostic with the front-end's HEDxxxx id and passthrough <c>"{0}"</c> format.
         /// Entries with no id fall back to <see cref="ForwardedError"/>/<see cref="ForwardedWarning"/>
@@ -105,6 +109,24 @@ namespace Heddle.Generator.Diagnostics
         /// sentence.</summary>
         public static readonly DiagnosticDescriptor ExtensionPrecompileUnsupported =
             FromCatalog(HeddleDiagnosticIds.BuildExtensionPrecompileUnsupported);
+
+        /// <summary>The build could not observe a real engine compile, so bodies whose typing only a hook supplies
+        /// are emitted type-agnostically. A note, not a fault: the template still precompiles and renders the same
+        /// bytes.</summary>
+        public static readonly DiagnosticDescriptor EngineNotObserved =
+            FromCatalog(HeddleDiagnosticIds.BuildEngineNotObserved);
+
+        /// <summary>The same id under <c>HeddleObserveEngine=Strict</c>, where not observing is the failure the
+        /// option asked for — so a CI leg never silently emits different sources from a developer machine that
+        /// could observe. Built beside its note rather than as a second field, the way a forwarded diagnostic's two
+        /// severities are: one id, one prose, two shapes.</summary>
+        public static DiagnosticDescriptor EngineNotObservedStrict => StrictObservation;
+
+        private static readonly DiagnosticDescriptor StrictObservation = StrictOf(EngineNotObserved);
+
+        private static DiagnosticDescriptor StrictOf(DiagnosticDescriptor note) =>
+            new DiagnosticDescriptor(note.Id, note.Title, note.MessageFormat, Category, DiagnosticSeverity.Error,
+                isEnabledByDefault: true);
 
         /// <summary>The <c>@model</c>/<c>::</c> type name does not resolve in the compilation or
         /// its references — a genuine typo/unresolvable symbol reported natively before the C# compiler sees the
