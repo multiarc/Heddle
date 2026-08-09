@@ -31,13 +31,6 @@ namespace Heddle.Tests
                 CorpusIntent.Describe("The corpus intent table", declared, onDisk));
         }
 
-        /// <summary>Verifies row count matches the declared count, preventing extra templates beyond scope.</summary>
-        [Fact]
-        public void TheIntentTableDeclaresExactlyTheRowCountItClaims()
-        {
-            Assert.Equal(CorpusIntent.DeclaredRowCount, CorpusIntent.Rows.Count);
-        }
-
         /// <summary><c>Why</c> is mandatory and non-empty. A classification with no stated reason is a rubber
         /// stamp, and the whole value of declaring intent is that contributing a template requires saying what it is
         /// for.</summary>

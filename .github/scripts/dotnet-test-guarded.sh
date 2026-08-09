@@ -1,34 +1,37 @@
 #!/usr/bin/env bash
-# Runs one test project and fails unless at least the expected number of tests actually ran.
+# Runs one test project under Microsoft.Testing.Platform, with the two guards that are worth having.
 #
-# Usage: dotnet-test-guarded.sh <minimum-expected-tests> <project> [extra dotnet test args...]
+# Usage: dotnet-test-guarded.sh <project> [extra dotnet test args...]
 #
-# A run that executes nothing is the failure mode this repo keeps hitting: a filter naming a test
-# that was renamed or deleted, a suite that stopped being discovered, or a theory row dropped so the
-# count falls silently. Under Microsoft.Testing.Platform the floor is enforced by the runner itself
-# -- `--minimum-expected-tests` exits 9 when fewer ran, and a filter matching nothing exits 8 -- so
-# the count is the guard, rather than scraping the log for a message the runner happens to print.
+# `--fail-skips on` turns a skipped test into a failed one. A skip is a test that stopped testing, and
+# CI is the wrong place to find out quietly; the repository's protocol for a known-failing test is
+# `[Fact(Explicit = true)]`, which is reported as NOT RUN rather than skipped and so survives this.
 #
-# The floor is the suite's real size, not 1. A suite that loses half its rows still ran "some"
-# tests, and only a real number notices.
+# Exit 8 -- a filter matched nothing, or discovery failed -- stays called out by name, because a stale
+# filter that runs nothing used to pass. It is the platform's own signal, not a number anyone maintains.
+#
+# What this script no longer does is carry a per-suite `--minimum-expected-tests` floor. Nine of them
+# were maintained by hand across two workflows and they failed at their own job: one commit added six
+# tests, raised the floor in one workflow and left the other, and that leg then tolerated a six-test
+# regression in silence for four commits. A floor is satisfied by editing a digit, it names nothing
+# when it reddens, and it fails a leg for the wrong reason whenever a test is legitimately quarantined.
+# Suite membership is gated instead by the checked-in test-class inventories (src/<Suite>/test-classes.txt,
+# asserted by set equality inside each suite), which name the class that appeared or vanished.
 
 set -uo pipefail
 
-if [ "$#" -lt 2 ]; then
-  echo "usage: $0 <minimum-expected-tests> <project> [extra args...]" >&2
+if [ "$#" -lt 1 ]; then
+  echo "usage: $0 <project> [extra args...]" >&2
   exit 64
 fi
 
-minimum=$1
-project=$2
-shift 2
+project=$1
+shift 1
 
-dotnet test --project "$project" "$@" -- --minimum-expected-tests "$minimum"
+dotnet test --project "$project" "$@" -- --fail-skips on
 status=$?
 
-if [ "$status" -eq 9 ]; then
-  echo "::error::Fewer than ${minimum} tests ran in ${project}; a test stopped being a test."
-elif [ "$status" -eq 8 ]; then
+if [ "$status" -eq 8 ]; then
   echo "::error::Zero tests ran in ${project} -- a filter matched nothing, or discovery failed."
 fi
 

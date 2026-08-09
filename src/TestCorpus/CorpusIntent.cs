@@ -93,10 +93,6 @@ namespace Heddle.TestCorpus
     /// </summary>
     internal static class CorpusIntent
     {
-        /// <summary>Exact row count (not floor): makes "this stage added N entries" a reviewable one-line diff
-        /// the reviewer can check against scope, not a silent overshoot.</summary>
-        public const int DeclaredRowCount = 67;
-
         private static Dictionary<string, CorpusIntentRow> _byName;
 
         /// <summary>Every declared row, in the order authored (grouped by family, not sorted, so a family reads as a

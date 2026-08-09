@@ -1,0 +1,5 @@
+# Every class in Heddle.Tool.Tests that declares a [Fact] or [Theory], ordinal-sorted.
+# Set-equality asserted by TestClassInventoryTests. A class added or removed here is the diff a
+# reviewer reads; nothing in this file measures how many tests a class carries.
+Heddle.Tool.Tests.HeddleToolTests
+Heddle.Tool.Tests.TestClassInventoryTests

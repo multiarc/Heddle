@@ -45,4 +45,7 @@
        and get their own build copy, so the generator suites consume the same files the engine suites read. -->
   <Import Project="..\TestCorpus\TestCorpus.props" />
 
+  <!-- The test-class inventory gate: this suite's classes, checked in and set-equality asserted. -->
+  <Import Project="..\TestInventory\TestInventory.props" />
+
 </Project>
