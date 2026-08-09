@@ -831,6 +831,8 @@ TYPE Heddle.Precompiled.PrecompiledOptionsFingerprint : System.ValueType
   PROP Heddle.Data.ExpressionMode ExpressionMode {get;}
   PROP Heddle.Data.OutputProfile Profile {get;}
   PROP System.Boolean TrimDirectiveLines {get;}
+TYPE Heddle.Precompiled.PrecompiledPartialName
+  METHOD System.String Get()
 TYPE Heddle.Precompiled.PrecompiledPropEvaluator : System.MulticastDelegate
   CTOR(System.Object, System.IntPtr)
   METHOD System.IAsyncResult BeginInvoke(ref Heddle.Data.Scope, System.AsyncCallback, System.Object)
@@ -851,6 +853,7 @@ TYPE Heddle.Precompiled.PrecompiledRuntime
   METHOD Heddle.Core.AbstractExtension BindDefinition(Heddle.Runtime.IProcessStrategy, Heddle.Runtime.IProcessStrategy, System.Object[], Heddle.Precompiled.PrecompiledPropSetter[], Heddle.Data.RenderType, System.Boolean, System.Int32, System.Int32, System.Int32)
   METHOD Heddle.Core.AbstractExtension BindExtension(TExtension, System.Object[], Heddle.Precompiled.PrecompiledPropSetter[], System.String[], Heddle.Data.RenderType, System.Boolean, System.Int32, System.Int32)
   METHOD Heddle.Extensions.OutExtension BindOut(Heddle.Extensions.OutExtension, System.Boolean, System.Int32, System.Int32)
+  METHOD Heddle.Precompiled.PrecompiledPartialName EvaluatePartialName(Heddle.Runtime.IProcessStrategy, System.Int32, System.Int32)
   METHOD Heddle.Runtime.IProcessStrategy ResolvePartial(System.String)
   METHOD Heddle.Runtime.IProcessStrategy ResolvePartial(System.String, Heddle.Data.TemplateOptions)
   METHOD Heddle.Runtime.IProcessStrategy ResolvePartial(System.String, System.Type)

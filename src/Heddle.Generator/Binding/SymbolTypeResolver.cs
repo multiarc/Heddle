@@ -505,7 +505,10 @@ namespace Heddle.Generator.Binding
             Unnameable,
 
             /// <summary>A type no generated code could ever hold a value of, whoever compiled it. Nothing to report:
-            /// the only remedy is a different model, and the engine serves the template either way.</summary>
+            /// the only remedy is a different model. Degrading hands the template to the engine, which serves it
+            /// where it can — though not always: a ref struct in a boxing position fails the modern-TFM engine too,
+            /// at its compile, with HED0005 (its expression trees reject by-ref-like types wholesale), so there the
+            /// degrade preserves the engine's own refusal rather than a render.</summary>
             Unusable,
         }
 
@@ -893,15 +896,19 @@ namespace Heddle.Generator.Binding
         private static readonly SymbolTypeFacts NullableProbe = new SymbolTypeFacts(null);
 
         /// <summary>
-        /// Whether a resolved path ends on a ref struct. Every consumer of a path's value boxes it — a rendered
-        /// parameter is an <c>object</c>, and an expression operand is one too — and a ref struct cannot be boxed.
-        /// <para>Neither tier can produce a value here; the difference is how they say so. The engine refuses the
-        /// template with <c>HED0005</c> when it compiles it, which is a diagnostic the host can catch and report
-        /// against the template. Emitting the path put <c>CS0030</c> into the consumer's <em>build</em> instead —
-        /// no Heddle id, reported against a <c>.heddle</c> file, and unfixable without editing the model. Degrading
-        /// hands the question back to the tier whose refusal is the contract.</para>
+        /// Whether a resolved path ends on a ref struct. What that costs depends on the <b>sink</b> the value lands
+        /// in, not on the type alone (<c>TemplateEmitter.RefStructUse</c>): a boxing sink — an extension's model
+        /// value, a slot value, an expression operand, a function argument — cannot take one, and emitting the path
+        /// there put <c>CS0030</c> into the consumer's <em>build</em>, so those sinks degrade with a reason naming
+        /// the sink. The engine cannot produce the value on any modern TFM either: its expression trees reject
+        /// by-ref-like types wholesale, so it refuses the same template at its compile with <c>HED0005</c> — a
+        /// diagnostic the host can catch — while the .NET Framework engine, whose <c>System.Memory</c> spans carry
+        /// no by-ref-like marking, boxes and renders.
+        /// <para>The rendered sink needs no box at all: the carrier's protocol is
+        /// <c>value is string s ? s : value.ToString()</c>, so the emitter stringifies the value in place and
+        /// precompiles — the functioning tier's bytes, on every TFM.</para>
         /// <para>A ref struct passed <em>through</em> to a member of its own — <c>Buf.Length</c> — is a different
-        /// matter and stays precompiled: what is read there is the <c>int</c>.</para>
+        /// matter and stays precompiled in every sink: what is read there is the <c>int</c>.</para>
         /// </summary>
         public static bool EndsOnRefStruct(PathResolution resolution)
         {

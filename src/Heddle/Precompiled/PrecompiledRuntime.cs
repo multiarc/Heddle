@@ -291,6 +291,41 @@ namespace Heddle.Precompiled
             => ResolvePartialCore(key, _ambientOptions ?? new TemplateOptions(),
                 callerModelType == null ? null : new ExType(callerModelType));
 
+        /// <summary>
+        /// The one-time evaluation of a computed <c>@partial</c> name, called from a generated static field
+        /// initializer. Reproduces <c>PartialExtension.InitStart</c>: the name body renders against
+        /// <see cref="Scope.Null"/> and the trimmed result is the resolved name — a fault during that render is the
+        /// engine's HED0005 compile fault for the call, captured here (never thrown, so type initialization always
+        /// succeeds) and re-raised by <see cref="PrecompiledPartialName.Get"/> at render.
+        /// </summary>
+        /// <param name="nameBody">The compiled name-body strategy (wrapped in a locals frame when it needs one).</param>
+        /// <param name="positionStart">The <c>@partial</c> call's start offset in the template document.</param>
+        /// <param name="positionLength">The call's length — with <paramref name="positionStart"/>, the position the
+        /// engine gives the fault.</param>
+        public static PrecompiledPartialName EvaluatePartialName(IProcessStrategy nameBody, int positionStart,
+            int positionLength)
+        {
+            if (nameBody == null)
+                throw new ArgumentNullException(nameof(nameBody));
+            try
+            {
+                var name = nameBody.Execute(Scope.Null);
+                return new PrecompiledPartialName(name == null ? string.Empty : name.Trim());
+            }
+            catch (Exception e)
+            {
+                // HeddleCompiler.CompileItemFault's exact shape for the '@partial' subject; the differential suite
+                // pins the two byte-for-byte.
+                return new PrecompiledPartialName(new HeddleCompileError
+                {
+                    Exception = e,
+                    Position = new BlockPosition(positionStart, positionLength),
+                    DiagnosticId = HeddleDiagnosticIds.CompilationFailed,
+                    Error = "Compiling '@partial' failed: " + e.Message
+                });
+            }
+        }
+
         /// <summary>Registry-then-dynamic-compile partial resolution: a registered precompiled entry wins
         /// (mixed mode — a precompiled template renders a precompiled partial); otherwise the named template compiles
         /// dynamically under <paramref name="options"/> against the dynamic tier (a precompiled template renders a

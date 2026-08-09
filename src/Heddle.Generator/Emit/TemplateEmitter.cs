@@ -915,9 +915,18 @@ namespace Heddle.Generator.Emit
         private sealed class Partial
         {
             public string FieldName;
+
+            /// <summary>The static, normalized key — null for a computed name, which lives in
+            /// <see cref="NameField"/> instead. Exactly one of the two is set.</summary>
             public string Key;
+
+            /// <summary>The generated <c>PrecompiledPartialName</c> field holding the name the engine evaluates
+            /// once, at compile time, against <c>Scope.Null</c> — evaluated here at static init. Null for a static
+            /// name.</summary>
+            public string NameField;
+
             public string ModelExpr;
-            public string CallerModelTypeFq;   // fully-qualified caller model type for a dynamic-compiled child; null = dynamic tier
+            public string CallerModelTypeFq;   // fully-qualified child model type for a dynamic-compiled child (the engine's dataType); null = dynamic tier
             public bool UsesModelLocal;
             public int SpanStartLine, SpanStartCol, SpanEndLine, SpanEndCol;
         }
@@ -946,7 +955,7 @@ namespace Heddle.Generator.Emit
                 }
 
                 WarnOnRedundantEncoding(cp);
-                if (!BuildParamExpr(cp, bctx, out var uParam, out var uUses, out reason, item.Position))
+                if (!BuildParamExpr(cp, bctx, RefStructUse.Rendered, out var uParam, out var uUses, out reason, item.Position))
                     return null;
                 var uField = AllocateEmptyExtension(item.Position);
                 return MakeCall(uField, uParam, uUses, item.Position);
@@ -1011,7 +1020,7 @@ namespace Heddle.Generator.Emit
                     return null;
                 }
 
-                if (!BuildParamExpr(cp, bctx, out var bParam, out var bUses, out reason, item.Position))
+                if (!BuildParamExpr(cp, bctx, RefStructUse.Model, out var bParam, out var bUses, out reason, item.Position))
                     return null;
 
                 BodyClass branchBody = null;
@@ -1055,7 +1064,7 @@ namespace Heddle.Generator.Emit
                     return null;
                 }
 
-                if (!BuildParamExpr(cp, bctx, out var lParam, out var lUses, out reason, item.Position))
+                if (!BuildParamExpr(cp, bctx, RefStructUse.Model, out var lParam, out var lUses, out reason, item.Position))
                     return null;
 
                 BodyClass itemBody = null;
@@ -1081,7 +1090,7 @@ namespace Heddle.Generator.Emit
                     return null;
                 }
 
-                if (!BuildParamExpr(cp, bctx, out var fParam, out var fUses, out reason, item.Position))
+                if (!BuildParamExpr(cp, bctx, RefStructUse.Model, out var fParam, out var fUses, out reason, item.Position))
                     return null;
 
                 BodyClass forBody = null;
@@ -1108,7 +1117,7 @@ namespace Heddle.Generator.Emit
                 DrainUnresolvable(writer);
                 if (expr == null)
                 {
-                    reason = "unsupported function call '" + name + "'";
+                    reason = writer.RefusalReason ?? "unsupported function call '" + name + "'";
                     return null;
                 }
 
@@ -1206,7 +1215,7 @@ namespace Heddle.Generator.Emit
                         out reason))
                     return null;   // unknown/duplicate/missing/unreproducible → safe dynamic fallback
 
-                if (!BuildParamExpr(cp, bctx, out var extParamExpr, out var extUses, out reason, item.Position))
+                if (!BuildParamExpr(cp, bctx, RefStructUse.Model, out var extParamExpr, out var extUses, out reason, item.Position))
                     return null;
 
                 var namesRef = EmitParameterNamesField(extLayout);
@@ -1215,7 +1224,7 @@ namespace Heddle.Generator.Emit
                 return MakeCall(extField, extParamExpr, extUses, item.Position);
             }
 
-            if (!BuildParamExpr(cp, bctx, out var paramExpr, out var uses, out reason, item.Position))
+            if (!BuildParamExpr(cp, bctx, RefStructUse.Model, out var paramExpr, out var uses, out reason, item.Position))
                 return null;
 
             var field = AllocateCustomExtension(name, info, item.Position);
@@ -1553,7 +1562,7 @@ namespace Heddle.Generator.Emit
             if (!DeclaredModelAcceptsCallSiteValue(def, cp, bctx, out reason))
                 return null;
 
-            if (!BuildParamExpr(cp, bctx, out var paramExpr, out var usesModel, out reason, item.Position))
+            if (!BuildParamExpr(cp, bctx, RefStructUse.Model, out var paramExpr, out var usesModel, out reason, item.Position))
                 return null;
 
             // Caller content typed by :: T (or slot type in slot mode); ambient fill scope stays active (lexical).
@@ -1634,7 +1643,7 @@ namespace Heddle.Generator.Emit
                 if (cp.PropArguments != null && cp.PropArguments.Count != 0) { reason = "@out prop arguments"; return null; }
                 if (!SlotValueAssignable(cp, bctx, out reason))
                     return null;
-                if (!BuildParamExpr(cp, bctx, out var vParam, out var vUses, out reason, item.Position))
+                if (!BuildParamExpr(cp, bctx, RefStructUse.Boxed, out var vParam, out var vUses, out reason, item.Position))
                     return null;
                 var slotField = AllocateOutExtension(slotMode: true, item.Position);
                 return MakeCall(slotField, vParam, vUses, item.Position);
@@ -2173,50 +2182,148 @@ namespace Heddle.Generator.Emit
             return resolution.Kind == SymbolTypeResolver.PathKind.Resolved ? resolution.ResultType : null;
         }
 
-        /// <summary>Renders the named template with the parameter as its model. Strategy resolved lazily on first render (registry first, dynamic compile second) and memoized. The name must be static text.</summary>
+        /// <summary>Renders the named template with the parameter as its model. Strategy resolved lazily on first
+        /// render (registry first, dynamic compile second) and memoized. The engine resolves the name by compiling
+        /// the name body and executing it once, at compile time, against <c>Scope.Null</c>
+        /// (<c>PartialExtension.InitStart</c>): a chain-free body folds to its shaped text here — raw-output escapes
+        /// collapsed, definitions stripped, exactly the text the engine's evaluation yields — and a body with output
+        /// chains compiles like any other body and evaluates at static init of the generated class
+        /// (<c>PrecompiledRuntime.EvaluatePartialName</c>), failure captured and re-raised the engine's way.</summary>
         private Partial BuildPartialCall(OutputItem item, CallParameter cp, BodyContext bctx, out string reason)
         {
             reason = null;
             var name = item.ParameterTemplate;
             if (string.IsNullOrWhiteSpace(name)) { reason = "empty @partial name"; return null; }
 
-            // Name must be static text; bodies with output chains, definitions, or imports are dynamic.
             var ctx = item.Context;
-            if (ctx != null &&
-                ((ctx.OutputChains != null && ctx.OutputChains.Count != 0) ||
-                 (ctx.RawOutputItems != null && ctx.RawOutputItems.Count != 0) ||
-                 (ctx.DefinitionsBlock != null && ctx.DefinitionsBlock.Positions != null && ctx.DefinitionsBlock.Positions.Count != 0)))
+            bool hasChains = ctx != null && ctx.OutputChains != null && ctx.OutputChains.Count != 0;
+            bool hasShapedText = ctx != null && !hasChains &&
+                ((ctx.RawOutputItems != null && ctx.RawOutputItems.Count != 0) ||
+                 (ctx.DefinitionsBlock != null && ctx.DefinitionsBlock.Positions != null &&
+                  ctx.DefinitionsBlock.Positions.Count != 0));
+
+            // The engine's dataType for this call — the type it compiles the name body against and hands the
+            // dynamically-compiled child (CompileItem passes the call value's type; an empty parameter passes the
+            // scope type). The old code passed the CALLER's model here, which typed a child of `@partial(Member)`
+            // by the wrong model whenever the member's type differs.
+            var childModel = CallSiteValueType(cp, bctx);
+
+            BodyClass nameBody = null;
+            if (hasChains)
             {
-                reason = "dynamic @partial name";
-                return null;
+                if (!TryPartialNameBodyContext(childModel, bctx, out var nameCtx))
+                {
+                    reason = "computed @partial name over a call value with no static type";
+                    return null;
+                }
+
+                nameBody = BuildBody(name, ctx, nameCtx, out reason);
+                if (nameBody == null)
+                    return null;
+            }
+            else if (hasShapedText)
+            {
+                name = ShapedPartialNameText(name, ctx, out reason);
+                if (name == null)
+                    return null;
             }
 
-            if (!TemplateKey.TryNormalize(name.Trim(), out var key))
+            string key = null;
+            if (nameBody == null && !TemplateKey.TryNormalize(name.Trim(), out key))
             {
                 reason = "unnormalizable @partial name '" + name.Trim() + "'";
                 return null;
             }
 
-            if (!BuildParamExpr(cp, bctx, out var modelExpr, out var usesModel, out reason, item.Position))
+            string callerModelFq = null;
+            if (childModel != null && childModel.TypeKind != TypeKind.Dynamic)
+            {
+                if (_resolver.ClassifyModelType(childModel, out _) != SymbolTypeResolver.NameFault.None)
+                {
+                    reason = "@partial call value of a type generated code cannot name";
+                    return null;
+                }
+
+                callerModelFq = SymbolTypeResolver.FullyQualified(childModel);
+            }
+
+            if (!BuildParamExpr(cp, bctx, RefStructUse.Model, out var modelExpr, out var usesModel, out reason,
+                    item.Position))
                 return null;
 
             var field = "_partial" + _partialCounter++;
             _fieldDecls.Append("        private static global::Heddle.Runtime.IProcessStrategy ").Append(field)
                 .Append(";\n");
 
-            // Dynamic-compile fallback types child by caller-site model type.
-            string callerModelFq = (!bctx.IsDynamic && bctx.ModelSymbol != null)
-                ? SymbolTypeResolver.FullyQualified(bctx.ModelSymbol)
-                : null;
+            string nameField = null;
+            if (nameBody != null)
+            {
+                nameField = field + "Name";
+                var bodyExpr = nameBody.HostsParticipant
+                    ? "global::Heddle.Precompiled.PrecompiledRuntime.WithLocalsFrame(new " + nameBody.Name + "())"
+                    : "new " + nameBody.Name + "()";
+                _fieldDecls.Append("        private static readonly global::Heddle.Precompiled.PrecompiledPartialName ")
+                    .Append(nameField).Append(" =\n")
+                    .Append("            global::Heddle.Precompiled.PrecompiledRuntime.EvaluatePartialName(")
+                    .Append(bodyExpr).Append(", ").Append(item.Position.StartIndex).Append(", ")
+                    .Append(item.Position.Length).Append(");\n");
+            }
 
             var (sl, sc) = _map.Map(item.Position.StartIndex);
             var (el, ec) = _map.Map(item.Position.StartIndex + item.Position.Length);
             return new Partial
             {
-                FieldName = field, Key = key, ModelExpr = modelExpr, CallerModelTypeFq = callerModelFq,
-                UsesModelLocal = usesModel,
+                FieldName = field, Key = key, NameField = nameField, ModelExpr = modelExpr,
+                CallerModelTypeFq = callerModelFq, UsesModelLocal = usesModel,
                 SpanStartLine = sl, SpanStartCol = sc, SpanEndLine = el, SpanEndCol = ec
             };
+        }
+
+        /// <summary>The typing environment of a computed <c>@partial</c> name body — the engine compiles it against
+        /// the call value's type (<c>InitSubTemplate</c> receives <c>dataType</c>), dynamic where that scope is
+        /// dynamic. False when the caller is typed but the value's type cannot be said, where a guess could change
+        /// what the null-scope evaluation does.</summary>
+        private bool TryPartialNameBodyContext(ITypeSymbol childModel, BodyContext bctx, out BodyContext nameCtx)
+        {
+            if (childModel == null && !bctx.IsDynamic)
+            {
+                nameCtx = bctx;
+                return false;
+            }
+
+            nameCtx = childModel == null || childModel.TypeKind == TypeKind.Dynamic
+                ? new BodyContext(null, null, true, props: bctx.Props, fills: bctx.Fills,
+                    regionHostProps: bctx.RegionHostProps, dynamicBodyModel: childModel,
+                    root: bctx.Root, chained: bctx.Chained)
+                : new BodyContext("(" + SymbolTypeResolver.FullyQualified(childModel) + ")", childModel, false,
+                    props: bctx.Props, fills: bctx.Fills, regionHostProps: bctx.RegionHostProps,
+                    dynamicBodyModel: childModel, root: bctx.Root, chained: bctx.Chained);
+            if (bctx.InSlot)
+                nameCtx = nameCtx.AsSlot(bctx.SlotType);
+            return true;
+        }
+
+        /// <summary>The engine's name for a chain-free body that still shapes — raw-output escapes (<c>@@</c>)
+        /// collapsed and definition blocks stripped: the same shared shaping passes the engine's sub-compile runs,
+        /// so the folded text is the document its evaluation renders. Null (with a reason) when the shaping lints
+        /// refuse the body.</summary>
+        private string ShapedPartialNameText(string doc, ParseContext ctx, out string reason)
+        {
+            reason = null;
+            var shape = DocumentShaper.Shape(doc, ctx, _config.TrimDirectiveLines, chain => IsZeroOutput(chain),
+                ctx.DefenitionExists, RoleOf, HasScopeChannel, _lints, chain => _profileHtml, _lintErrors);
+            DrainLints();
+            var lintRefusal = TakeLintRefusal();
+            if (lintRefusal != null)
+            {
+                reason = lintRefusal;
+                return null;
+            }
+
+            var sb = new StringBuilder();
+            DocumentShaping.SlicePieces(shape.Elements, element => element.Position, shape.WorkingDocument,
+                piece => sb.Append(piece), element => true);
+            return sb.ToString();
         }
 
         /// <summary>
@@ -3086,10 +3193,37 @@ namespace Heddle.Generator.Emit
             };
         }
 
+        /// <summary>The sink a call-parameter's <b>value</b> lands in — what decides whether a ref-struct-ending
+        /// path is recoverable. Only the rendered sink is: the carrier's own protocol is
+        /// <c>value is string s ? s : value.ToString()</c>, so a ref-like value stringifies in place and never needs
+        /// the box. Every other sink boxes, which a ref struct cannot survive, and the refusal names the sink.
+        /// Expression-tier sinks (operand, function argument) are refused inside
+        /// <see cref="NativeExpressionWriter"/> with their own sink-named reasons.</summary>
+        internal enum RefStructUse
+        {
+            /// <summary>Output position: the unnamed carrier renders the value. A ref-struct-ending path is
+            /// emitted as <c>.ToString()</c> in place — the exact bytes the carrier's boxed-value arm produces —
+            /// composing with the carrier's encode-vs-raw rule unchanged.</summary>
+            Rendered,
+
+            /// <summary>An extension's or definition's positional value, boxed into <c>Scope.ModelData</c>
+            /// (CS1503 territory).</summary>
+            Model,
+
+            /// <summary>An <c>@out</c> slot value, boxed into the slot channel (CS0029 territory).</summary>
+            Boxed
+        }
+
+        private static string RefStructSinkReason(string pathKind, RefStructUse use) =>
+            use == RefStructUse.Boxed
+                ? pathKind + " ends on a ref struct, which a slot value cannot box (CS0029)"
+                : pathKind + " ends on a ref struct, which a model value cannot box (CS1503)";
+
+        /// <param name="use">The sink the built value lands in; decides the ref-struct verdict per position.</param>
         /// <param name="callPosition">The call this parameter belongs to — where the runtime positions a
         /// prop-shadowing warning raised off the same read.</param>
-        private bool BuildParamExpr(CallParameter cp, BodyContext bctx, out string paramExpr, out bool usesModel,
-            out string reason, BlockPosition callPosition)
+        private bool BuildParamExpr(CallParameter cp, BodyContext bctx, RefStructUse use, out string paramExpr,
+            out bool usesModel, out string reason, BlockPosition callPosition)
         {
             reason = null;
             usesModel = false;
@@ -3133,14 +3267,15 @@ namespace Heddle.Generator.Emit
                         return false;
                     }
 
-                    if (SymbolTypeResolver.EndsOnRefStruct(res))
+                    if (SymbolTypeResolver.EndsOnRefStruct(res) && use != RefStructUse.Rendered)
                     {
-                        reason = "prop multi-hop ends on a ref struct";
+                        reason = RefStructSinkReason("prop multi-hop", use);
                         return false;
                     }
 
                     var root = "((" + slot.TypeFq + ")" + propRead + ")";
-                    paramExpr = "(object)(" + MemberPathWriter.Write(root, MapHops(res), AllocateHopLocal) + ")";
+                    paramExpr = Stringify(MemberPathWriter.Write(root, MapHops(res), AllocateHopLocal),
+                        SymbolTypeResolver.EndsOnRefStruct(res));
                     return true;
                 }
 
@@ -3148,7 +3283,7 @@ namespace Heddle.Generator.Emit
                 // against RootScopeType, which every nested and definition body inherits — so its tier follows
                 // the root typing, not the body's.
                 if (cp.RootReference)
-                    return BuildRootRefParamExpr(segments, out paramExpr, out reason);
+                    return BuildRootRefParamExpr(segments, use, out paramExpr, out reason);
 
                 if (bctx.IsDynamic)
                 {
@@ -3171,13 +3306,14 @@ namespace Heddle.Generator.Emit
                     return false;
                 }
 
-                if (SymbolTypeResolver.EndsOnRefStruct(resolution))
+                if (SymbolTypeResolver.EndsOnRefStruct(resolution) && use != RefStructUse.Rendered)
                 {
-                    reason = "member path ends on a ref struct";
+                    reason = RefStructSinkReason("member path", use);
                     return false;
                 }
 
-                paramExpr = "(object)(" + MemberPathWriter.Write("m", MapHops(resolution), AllocateHopLocal) + ")";
+                paramExpr = Stringify(MemberPathWriter.Write("m", MapHops(resolution), AllocateHopLocal),
+                    SymbolTypeResolver.EndsOnRefStruct(resolution));
                 usesModel = true;
                 return true;
             }
@@ -3240,11 +3376,20 @@ namespace Heddle.Generator.Emit
             return false;
         }
 
+        /// <summary>A built path expression boxed for the call — or, for a ref-struct-ending path in the rendered
+        /// sink, stringified in place: the string the carrier's boxed-value arm would have produced, handed to the
+        /// same <c>is string</c> arm, so encode-vs-raw composition is untouched.</summary>
+        private static string Stringify(string pathExpr, bool endsOnRefStruct) =>
+            endsOnRefStruct
+                ? "(object)((" + pathExpr + ").ToString())"
+                : "(object)(" + pathExpr + ")";
+
         /// <summary>The <c>::</c> member-path parameter: a typed root emits the null-safe hop chain off the root
         /// model read cast to the template's model (the engine's own RootScopeType conversion, InvalidCastException
         /// included), and an untyped root walks the per-segment DLR chain the engine's <c>RootDynamicParameter</c>
         /// compiles. Neither reads the model local, so the caller's <c>usesModel</c> stays false.</summary>
-        private bool BuildRootRefParamExpr(string[] segments, out string paramExpr, out string reason)
+        private bool BuildRootRefParamExpr(string[] segments, RefStructUse use, out string paramExpr,
+            out string reason)
         {
             reason = null;
             paramExpr = null;
@@ -3265,14 +3410,15 @@ namespace Heddle.Generator.Emit
                 return false;
             }
 
-            if (SymbolTypeResolver.EndsOnRefStruct(resolution))
+            if (SymbolTypeResolver.EndsOnRefStruct(resolution) && use != RefStructUse.Rendered)
             {
-                reason = "root member path ends on a ref struct";
+                reason = RefStructSinkReason("root member path", use);
                 return false;
             }
 
             var root = "((" + SymbolTypeResolver.FullyQualified(_modelSymbol) + ")" + rootRead + ")";
-            paramExpr = "(object)(" + MemberPathWriter.Write(root, MapHops(resolution), AllocateHopLocal) + ")";
+            paramExpr = Stringify(MemberPathWriter.Write(root, MapHops(resolution), AllocateHopLocal),
+                SymbolTypeResolver.EndsOnRefStruct(resolution));
             return true;
         }
 
@@ -3405,7 +3551,7 @@ namespace Heddle.Generator.Emit
 
             var name = inner.ExtensionName;
             if (name.Length == 0)
-                return BuildParamExpr(inner.CallParameter, bctx, out paramExpr, out usesModel, out reason,
+                return BuildParamExpr(inner.CallParameter, bctx, RefStructUse.Model, out paramExpr, out usesModel, out reason,
                     inner.Position);
 
             // Use same precedence as top-level dispatch (HeddleCompiler.CompileItem).
@@ -3423,7 +3569,7 @@ namespace Heddle.Generator.Emit
                 DrainUnresolvable(writer);
                 if (expr == null)
                 {
-                    reason = "unsupported function '" + name + "'";
+                    reason = writer.RefusalReason ?? "unsupported function '" + name + "'";
                     return false;
                 }
 
@@ -3898,7 +4044,22 @@ namespace Heddle.Generator.Emit
                 else if (seg is Partial pt)
                 {
                     EmitLineSpanRaw(w, pt.SpanStartLine, pt.SpanStartCol, pt.SpanEndLine, pt.SpanEndCol);
-                    w.Line($"scope.Renderer.Render(global::Heddle.Precompiled.PrecompiledRuntime.GenerateString({PartialResolveExpr(pt)}, {pt.ModelExpr}, scope.ChainedData, null));");
+                    if (pt.NameField != null)
+                    {
+                        // The engine schedules no child for a name that evaluated empty; a faulted evaluation
+                        // throws from Get() on every render, the way the engine's Generate throws for the compile
+                        // this fault failed.
+                        w.Line($"if ({pt.NameField}.Get().Length != 0)");
+                        w.Line("{");
+                        w.Indent();
+                        w.Line($"scope.Renderer.Render(global::Heddle.Precompiled.PrecompiledRuntime.GenerateString({PartialResolveExpr(pt)}, {pt.ModelExpr}, scope.ChainedData, null));");
+                        w.Outdent();
+                        w.Line("}");
+                    }
+                    else
+                    {
+                        w.Line($"scope.Renderer.Render(global::Heddle.Precompiled.PrecompiledRuntime.GenerateString({PartialResolveExpr(pt)}, {pt.ModelExpr}, scope.ChainedData, null));");
+                    }
                 }
                 else
                 {
@@ -3929,7 +4090,10 @@ namespace Heddle.Generator.Emit
                 {
                     var v = "v" + vIndex++;
                     EmitLineSpanRaw(w, pt.SpanStartLine, pt.SpanStartCol, pt.SpanEndLine, pt.SpanEndCol);
-                    w.Line($"var {v} = global::Heddle.Precompiled.PrecompiledRuntime.GenerateString({PartialResolveExpr(pt)}, {pt.ModelExpr}, scope.ChainedData, null) ?? string.Empty;");
+                    if (pt.NameField != null)
+                        w.Line($"var {v} = {pt.NameField}.Get().Length == 0 ? string.Empty : global::Heddle.Precompiled.PrecompiledRuntime.GenerateString({PartialResolveExpr(pt)}, {pt.ModelExpr}, scope.ChainedData, null) ?? string.Empty;");
+                    else
+                        w.Line($"var {v} = global::Heddle.Precompiled.PrecompiledRuntime.GenerateString({PartialResolveExpr(pt)}, {pt.ModelExpr}, scope.ChainedData, null) ?? string.Empty;");
                     concatParts.Add(v);
                 }
                 else
@@ -3957,12 +4121,15 @@ namespace Heddle.Generator.Emit
             w.Line("}");
         }
 
-        /// <summary>Lazily-memoized partial-strategy resolution via <c>LazyInitializer.EnsureInitialized</c>.</summary>
+        /// <summary>Lazily-memoized partial-strategy resolution via <c>LazyInitializer.EnsureInitialized</c>. A
+        /// computed name reads its once-evaluated field; the lambda captures only statics, so no closure is
+        /// allocated per render.</summary>
         private static string PartialResolveExpr(Partial pt)
         {
+            var nameExpr = pt.Key != null ? CSharpEscape.StringLiteral(pt.Key) : pt.NameField + ".Get()";
             var resolve = pt.CallerModelTypeFq == null
-                ? "global::Heddle.Precompiled.PrecompiledRuntime.ResolvePartial(" + CSharpEscape.StringLiteral(pt.Key) + ")"
-                : "global::Heddle.Precompiled.PrecompiledRuntime.ResolvePartial(" + CSharpEscape.StringLiteral(pt.Key) +
+                ? "global::Heddle.Precompiled.PrecompiledRuntime.ResolvePartial(" + nameExpr + ")"
+                : "global::Heddle.Precompiled.PrecompiledRuntime.ResolvePartial(" + nameExpr +
                   ", typeof(" + pt.CallerModelTypeFq + "))";
             return "global::System.Threading.LazyInitializer.EnsureInitialized(ref " + pt.FieldName +
                    ", () => " + resolve + ")";
