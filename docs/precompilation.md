@@ -278,7 +278,8 @@ Before trusting a precompiled entry the resolver checks it is compatible with th
   chose the type: the `ModelType` item metadatum, else `object`. The engine types such a template from the
   requesting `CompileContext` instead, so the two answers have to be the same type or the entry is not an
   answer to this request. A template that declares `@model` is typed by its directive on both tiers and
-  this step does not look at the request at all.
+  this step does not look at the request at all — the *value* is still checked at render, where a model the
+  entry's `ModelType` cannot hold raises the dynamic tier's own `TemplateProcessingException`.
 - **Extension bindings** — the `[ExtensionName]` extensions the template bound at build vs.
   the live registry (catches `[ExtensionReplace]` overrides). Default match is
   assembly‑qualified type name *without* version; supply your own via

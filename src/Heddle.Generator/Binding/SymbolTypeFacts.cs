@@ -179,19 +179,23 @@ namespace Heddle.Generator.Binding
                 return false;
             if (type.TypeKind == TypeKind.Pointer || type.TypeKind == TypeKind.FunctionPointer)
                 return false;
-            return !ContainsTypeParameter(type);
+            return !ContainsGenericParameters(type);
         }
 
         /// <summary><c>Type.ContainsGenericParameters</c> over symbols: the type <em>is</em> a type parameter, is an
-        /// unbound generic definition, or has one anywhere in its type arguments / element type.</summary>
-        private static bool ContainsTypeParameter(ITypeSymbol type)
+        /// unbound generic definition, or has one anywhere in its type arguments / element type. Internal because
+        /// the emitter asks the same question of a model type, where the answer decides which CLASS of refusal the
+        /// template degrades under; a second walk would be a second chance to disagree with this one.</summary>
+        internal static bool ContainsGenericParameters(ITypeSymbol type)
         {
+            if (type == null)
+                return false;
             switch (type.TypeKind)
             {
                 case TypeKind.TypeParameter:
                     return true;
                 case TypeKind.Array:
-                    return ContainsTypeParameter(((IArrayTypeSymbol) type).ElementType);
+                    return ContainsGenericParameters(((IArrayTypeSymbol) type).ElementType);
             }
 
             if (type is INamedTypeSymbol named)
@@ -199,10 +203,10 @@ namespace Heddle.Generator.Binding
                 if (named.IsUnboundGenericType)
                     return true;
                 foreach (var argument in named.TypeArguments)
-                    if (ContainsTypeParameter(argument))
+                    if (ContainsGenericParameters(argument))
                         return true;
                 if (named.ContainingType != null)
-                    return ContainsTypeParameter(named.ContainingType);
+                    return ContainsGenericParameters(named.ContainingType);
             }
 
             return false;

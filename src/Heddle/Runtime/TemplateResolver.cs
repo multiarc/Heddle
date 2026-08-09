@@ -206,7 +206,8 @@ namespace Heddle.Runtime {
                 // A miss, or a Fallback-policy gauntlet failure (an options fingerprint built Native cannot answer
                 // these arms' FullCSharp request), falls through to the unchanged cache/disk ladder.
                 if (PrecompiledTemplates.TryResolve(key, options, requestModelType, out var entry)) {
-                    cached = new HeddleTemplate(entry.Strategy, options.Encoder, options.RenderBudget);
+                    cached = new HeddleTemplate(entry.Strategy, options.Encoder, options.RenderBudget,
+                        modelType: entry.ModelType);
                     searchedLocations = null;
                     relativePath = candidate;
                     return Path.Combine(_rootPath, candidate);
@@ -287,8 +288,10 @@ namespace Heddle.Runtime {
                 return false;
 
             // Carry the request's output encoder and render budget onto the precompiled-adapter render (the
-            // adapter has no CompileContext to read options from at render time).
-            result = new HeddleTemplate(entry.Strategy, options.Encoder, options.RenderBudget, options);
+            // adapter has no CompileContext to read options from at render time), and the entry's own model type,
+            // which is what the adapter gates the model value on — the dynamic tier reads that from ScopeType.
+            result = new HeddleTemplate(entry.Strategy, options.Encoder, options.RenderBudget, options,
+                entry.ModelType);
             return true;
         }
 

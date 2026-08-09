@@ -289,7 +289,8 @@ namespace Heddle.Generator.Emit
                 if (!CanWriteTypeName(_modelSymbol, _modelDirectivePosition, out var modelReason))
                     return new Result
                     {
-                        Emitted = false, Diagnostics = _diagnostics, Unsupported = modelReason
+                        Emitted = false, Diagnostics = _diagnostics,
+                        Unsupported = OpenGenericModelRefusal(_modelSymbol, _modelDirectivePosition) ?? modelReason
                     };
 
                 if (_modelSymbol != null)
@@ -3933,6 +3934,33 @@ namespace Heddle.Generator.Emit
         /// the same construct, so a merge would suppress a duplicate rather than the wrong diagnostic.
         /// </summary>
         private readonly HashSet<string> _seenInaccessibleTypes = new HashSet<string>(System.StringComparer.Ordinal);
+
+        /// <summary>
+        /// The model-type refusal for a spelling that carries a type parameter — an open generic definition such as
+        /// <c>List`1</c>, a type nested in one, or an array of either. It is <b>not</b> the csc wall the general
+        /// unnameable verdict describes, and a generic entry class would not recover it: the dynamic tier serves no
+        /// such template <em>at all</em>, so a build that emitted one would render where the engine refuses.
+        /// <para>Two independent walls prove it, and both are in the engine rather than in the C# the build would
+        /// write. <c>HeddleTemplate.Generate</c> gates every render on
+        /// <c>ScopeType.Type.IsInstanceOfType(data)</c>, and no value is ever an instance of a generic type
+        /// <em>definition</em> — every model, including the obvious <c>List&lt;int&gt;</c>, is refused with the
+        /// engine's own type-mismatch fault. And a template that reads one member never reaches render:
+        /// <c>ModelParameter.GetPropertyChainAccessor</c> builds an <c>Expression.Convert</c> to the scope type,
+        /// which <c>System.Linq.Expressions</c> rejects for an open generic, so the engine's compile fails with
+        /// HED0005 instead.</para>
+        /// <para>So the category is <see cref="RefusalCategory.EngineParity"/>: the degrade hands the template to
+        /// the tier whose refusal is the contract, which is the only outcome that keeps the two tiers agreeing.
+        /// Null where the fault was something else, and the general verdict stands.</para>
+        /// </summary>
+        private static Refusal OpenGenericModelRefusal(ITypeSymbol model, BlockPosition position)
+        {
+            if (!Binding.SymbolTypeFacts.ContainsGenericParameters(model))
+                return null;
+            return new Refusal(RefusalCategory.EngineParity,
+                "model type '" + SymbolTypeResolver.FullyQualified(model) + "' carries a type parameter: the " +
+                "dynamic tier accepts no model value for an open generic type and cannot build a member accessor " +
+                "for one, so precompiling it would render where the engine refuses", position);
+        }
 
         /// <summary>
         /// Whether generated code may be written against <paramref name="type"/> at all — asked of every type the

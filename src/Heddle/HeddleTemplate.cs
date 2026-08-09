@@ -81,7 +81,7 @@ namespace Heddle
             CompileResult = Compile(new CompileScope(context ?? new CompileContext()), document);
         }
 
-        // Precompiled adapter mode: resolvers bind a strategy directly (no parse/compile); model-type validation is skipped.
+        // Precompiled adapter mode: resolvers bind a strategy directly (no parse/compile).
         private readonly bool _precompiled;
 
         // The request options a precompiled-adapter render runs under. Only late-bound function sites read them
@@ -89,9 +89,15 @@ namespace Heddle
         // precompiled entry point IS PrecompiledRuntime, which establishes the ambient itself.
         private readonly TemplateOptions _precompiledOptions;
 
+        /// <summary>The type the bound strategy's generated code was compiled against — the manifest's
+        /// <c>ModelType</c> — or null where there is nothing to check: an untyped entry (whose recorded type is
+        /// <c>object</c>, which admits every value) or a hand-written manifest that declines to name one. Held
+        /// pre-reduced so the render gate costs one null compare on the untyped path.</summary>
+        private readonly Type _precompiledModelType;
+
         internal HeddleTemplate(IProcessStrategy precompiledStrategy,
             System.Text.Encodings.Web.TextEncoder encoder = null, RenderBudget renderBudget = null,
-            TemplateOptions options = null)
+            TemplateOptions options = null, Type modelType = null)
         {
             if (precompiledStrategy == null)
                 throw new ArgumentNullException(nameof(precompiledStrategy));
@@ -99,6 +105,7 @@ namespace Heddle
             _encoder = encoder;
             _renderBudget = renderBudget;
             _precompiledOptions = options;
+            _precompiledModelType = modelType == typeof(object) ? null : modelType;
             _precompiled = true;
             CompileResult = new HeddleCompileResult(true, null, null);
         }
@@ -270,16 +277,23 @@ namespace Heddle
                 // A model the template cannot accept is refused here, as a Heddle fault. Without this the value
                 // reaches the compiled accessor's cast and escapes as a raw InvalidCastException, which is not the
                 // shape any other render fault has. One instance check per render — not per processor, so the
-                // recursive path is untouched. The precompiled adapter has no compile-time model type to check
-                // against, so it is skipped there, as it always has been.
+                // recursive path is untouched.
                 if (!_precompiled && data != null && !ctx.ScopeType.Type.IsType(data))
                 {
-                    throw new TemplateProcessingException
-                        (string.Format
-                            (CultureInfo.InvariantCulture, "Type mismatch. Need {0} but got {1}",
-                                ctx.ScopeType.Type?.FullName ?? ctx.ScopeType.ToString(),
-                                data.GetType().FullName));
+                    throw ModelTypeMismatch(ctx.ScopeType.Type?.FullName ?? ctx.ScopeType.ToString(), data);
                 }
+
+                // The adapter has a compile-time model type after all — the manifest records the type the generated
+                // code was compiled against, and the generated body casts to exactly that type. Skipping the check
+                // here made the tier that is meant to be byte-identical answer a wrong model with a raw
+                // InvalidCastException where this one raises a Heddle fault, and, for a body that reads no member,
+                // render a page the dynamic tier refuses outright.
+                if (_precompiled && data != null && _precompiledModelType != null &&
+                    !_precompiledModelType.IsType(data))
+                {
+                    throw ModelTypeMismatch(_precompiledModelType.FullName ?? _precompiledModelType.ToString(), data);
+                }
+
                 var scope = new Scope(data, callerData, data, chained, renderer, null,
                     (doc?.NeedsLocals ?? false) ? new ScopeLocals() : null);
                 if (_precompiledOptions == null)
@@ -306,6 +320,13 @@ namespace Heddle
                 ExitRender();
             }
         }
+
+        /// <summary>The one model-type fault, raised identically by both tiers: the dynamic path names the type its
+        /// <c>@model</c> directive (or the host's context) pinned, the precompiled adapter names the type the
+        /// manifest says the generated code was compiled against, and a caller cannot tell which tier answered.</summary>
+        private static TemplateProcessingException ModelTypeMismatch(string needed, object data) =>
+            new TemplateProcessingException(string.Format(CultureInfo.InvariantCulture,
+                "Type mismatch. Need {0} but got {1}", needed, data.GetType().FullName));
 
         public HeddleCompileResult Recompile(ExType newModelType)
         {
