@@ -15,6 +15,7 @@ using Heddle.Runtime;
     typeof(Heddle.Generator.IntegrationTests.Fixtures.IncludeExtension),
     typeof(Heddle.Generator.IntegrationTests.Fixtures.ProjectExtension),
     typeof(Heddle.Generator.IntegrationTests.Fixtures.ScannerExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.ChainedTypeProbeExtension),
     typeof(Heddle.Generator.IntegrationTests.Fixtures.BeginExtension),
     typeof(Heddle.Generator.IntegrationTests.Fixtures.BetweenExtension),
     typeof(Heddle.Generator.IntegrationTests.Fixtures.FinishExtension),

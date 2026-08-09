@@ -186,7 +186,7 @@ namespace Heddle.Precompiled
 
                 var scope = BuildScope(site, site.SlotType);
                 var run = RunInit(extension, site, scope, BuildParseContext(site), BuildSourceItem(site),
-                    site.Body, body, ToExType(site.DataType), ToExType(site.ChainedType), ToExType(site.ParentType),
+                    site.Body, body, ToExType(site.DataType), ChainedTypeOf(site), ToExType(site.ParentType),
                     new BlockPosition(site.PositionStart, site.PositionLength), publish: true);
                 if (run != null)
                     return Faulted(site, run.Scope, run.Detail, run.Exception, run.Errors, run.Reason);
@@ -238,7 +238,7 @@ namespace Heddle.Precompiled
                 var parseContext = BuildParseContext(site);
                 var sourceItem = BuildSourceItem(site);
                 var dataType = ToExType(site.DataType);
-                var chainedType = ToExType(site.ChainedType);
+                var chainedType = ChainedTypeOf(site);
                 var parentType = ToExType(site.ParentType);
                 var slotType = site.DefinitionSlotType == null ? null : new ExType(site.DefinitionSlotType);
 
@@ -322,7 +322,15 @@ namespace Heddle.Precompiled
             PrecompiledBodySupply.Arm(frame);
             try
             {
-                extension.InitStart(initContext, dataType ?? ExType.Dynamic, chainedType ?? ExType.Dynamic, parentType);
+                var returned = extension.InitStart(initContext, dataType ?? ExType.Dynamic,
+                    chainedType ?? ExType.Dynamic, parentType);
+                // The engine's returnTypeChainedPrevious, published for the consumer to this call's left. Written
+                // before any of the checks below, because the engine assigns it before it looks at anything either.
+                if (publish)
+                {
+                    site.ResolvedReturnType = returned;
+                    site.ReturnTypePublished = true;
+                }
             }
             catch (Exception e)
             {
@@ -461,6 +469,21 @@ namespace Heddle.Precompiled
         /// other disagreement — a hook that re-types the body to a real type the build did not expect — still
         /// costs the template its tier.</para></summary>
         private static Type Erase(ExType type) => type == null || type.IsDynamic ? typeof(object) : type.Type;
+
+        /// <summary>The <c>chainedType</c> this call's hook is run with. A chain consumer takes the type the
+        /// producer to its right actually returned — the engine's own <c>returnTypeChainedPrevious</c>, threaded
+        /// right to left — rather than one the build predicted; a producer that returned nothing threads
+        /// <see cref="object"/>, which is what <c>InitializeTemplate</c>'s own <c>??=</c> substitutes. Every other
+        /// call, and a consumer whose producer never ran a hook, keeps the type its carriage declares.</summary>
+        private static ExType ChainedTypeOf(PrecompiledInitSite site)
+        {
+            var producer = site.ChainProducer;
+            if (producer == null || !producer.ReturnTypePublished)
+                return ToExType(site.ChainedType);
+            return producer.ResolvedReturnType ?? ObjectType;
+        }
+
+        private static readonly ExType ObjectType = new ExType(typeof(object));
 
         /// <summary>The <c>[PrecompileUnsupported]</c> reason declared on <paramref name="extensionType"/> or one of
         /// its bases, or <c>null</c>. Never throws: a reflection failure over a moved attribute assembly must cost

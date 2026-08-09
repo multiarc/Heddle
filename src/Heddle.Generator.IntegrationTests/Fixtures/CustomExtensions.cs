@@ -105,6 +105,30 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
     }
 
     /// <summary>
+    /// Renders the <c>chainedType</c> its own compile-time hook was handed. The chained channel's type is the one
+    /// thing about a chain a build cannot name without predicting a hook — the engine threads
+    /// <c>returnTypeChainedPrevious</c> right to left, and each item's answer is whatever the item to its right
+    /// returned — so this fixture is what makes the answer visible in rendered bytes rather than in a claim.
+    /// <para>The field is written once, by the hook, at compile time; nothing mutates it per render, so the shared
+    /// instance the precompiled tier holds is as safe as any other extension's compile-time state.</para>
+    /// </summary>
+    [ExtensionName("chainedtype")]
+    public sealed class ChainedTypeProbeExtension : AbstractExtension
+    {
+        private string _seen = "?";
+
+        public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType, ExType parent)
+        {
+            _seen = chainedType == null ? "null" : chainedType.ToString();
+            return base.InitStart(initContext, dataType, chainedType, parent);
+        }
+
+        public override object ProcessData(in Scope scope) => _seen;
+
+        public override void RenderData(in Scope scope) => scope.Renderer.Render(_seen);
+    }
+
+    /// <summary>
     /// A third-party <b>slot projection</b>: not derived from the engine's own, not named after it, and carrying
     /// nothing but <c>[SlotProjection]</c>. It wraps the value the call site hands it and renders that; it
     /// declares no slot rules of its own, because the two members the role's contract names —
