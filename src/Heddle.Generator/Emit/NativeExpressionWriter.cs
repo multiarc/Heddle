@@ -187,7 +187,7 @@ namespace Heddle.Generator.Emit
         {
             if (message != null)
                 _engineRefusals.Add((id, position, message));
-            return Refuse(reason);
+            return Refuse(reason, RefusalCategory.EngineParity);
         }
 
         private const string TypedModelRequiredMessage =
@@ -199,10 +199,18 @@ namespace Heddle.Generator.Emit
         /// HED7031's parenthesis in place of the generic "unsupported native expression".</summary>
         public string RefusalReason { get; private set; }
 
-        private string Refuse(string reason)
+        /// <summary>The category of <see cref="RefusalReason"/>, recorded by the same first-wins rule so the pair
+        /// always describes one refusal. Meaningful only while <see cref="RefusalReason"/> is non-null.</summary>
+        public RefusalCategory RefusalCategory { get; private set; }
+
+        private string Refuse(string reason, RefusalCategory category = RefusalCategory.NativeExpression)
         {
             if (RefusalReason == null)
+            {
                 RefusalReason = reason;
+                RefusalCategory = category;
+            }
+
             return null;
         }
 
@@ -332,7 +340,8 @@ namespace Heddle.Generator.Emit
             if (!isDefault && !hasExport)
             {
                 _unresolvableFunctions.Add((call.Name, call.Position));
-                return Refuse("a call to '" + call.Name + "', which is neither a built-in nor an export");
+                return Refuse("a call to '" + call.Name + "', which is neither a built-in nor an export",
+                    RefusalCategory.FunctionBinding);
             }
 
             var args = new string[call.Arguments.Count];
@@ -352,7 +361,8 @@ namespace Heddle.Generator.Emit
             {
                 var exportBinding = BindExportCall(call);
                 if (exportBinding == null)
-                    return Refuse("an export call to '" + call.Name + "' the binder refuses");
+                    return Refuse("an export call to '" + call.Name + "' the binder refuses",
+                        RefusalCategory.FunctionBinding);
 
                 for (int i = 0; i < args.Length; i++)
                     if (exportBinding.ArgumentCasts[i] != null)
@@ -373,7 +383,8 @@ namespace Heddle.Generator.Emit
 
             var binding = BindDefaultCall(call);
             if (binding == null)
-                return Refuse("a built-in call to '" + call.Name + "' the binder refuses");
+                return Refuse("a built-in call to '" + call.Name + "' the binder refuses",
+                    RefusalCategory.FunctionBinding);
 
             for (int i = 0; i < args.Length; i++)
             {
@@ -394,7 +405,8 @@ namespace Heddle.Generator.Emit
             var binding = BindMergedCall(call);
             if (binding == null)
                 return Refuse("a call to '" + call.Name +
-                              "' the merged built-in and export candidate set does not bind");
+                              "' the merged built-in and export candidate set does not bind",
+                    RefusalCategory.FunctionBinding);
 
             for (int i = 0; i < args.Length; i++)
                 if (binding.ArgumentCasts[i] != null)
@@ -492,7 +504,7 @@ namespace Heddle.Generator.Emit
                 return binding.EngineMessage != null
                     ? RefuseAsEngine(HeddleDiagnosticIds.IndexerNotFound, index.Position, binding.EngineMessage,
                         binding.Refusal)
-                    : Refuse(binding.Refusal);
+                    : Refuse(binding.Refusal, binding.Category);
 
             for (int i = 0; i < args.Length; i++)
             {
@@ -522,6 +534,11 @@ namespace Heddle.Generator.Emit
 
             public string Refusal;
 
+            /// <summary>The category <see cref="Refusal"/> reports under. When <see cref="EngineMessage"/> is set
+            /// the refusal routes through the engine-proven forward and reports
+            /// <see cref="RefusalCategory.EngineParity"/> regardless.</summary>
+            public RefusalCategory Category;
+
             /// <summary>The engine's HED1010 sentence, set only on the refusals whose engine counterpart is
             /// proven and whose every type spelling the writer can reproduce; drives the forward.</summary>
             public string EngineMessage;
@@ -539,8 +556,9 @@ namespace Heddle.Generator.Emit
             return binding;
         }
 
-        private static IndexBinding IndexRefusal(string reason, string engineMessage = null) =>
-            new IndexBinding { Refusal = reason, EngineMessage = engineMessage };
+        private static IndexBinding IndexRefusal(string reason, string engineMessage = null,
+            RefusalCategory category = RefusalCategory.NativeExpression) =>
+            new IndexBinding { Refusal = reason, EngineMessage = engineMessage, Category = category };
 
         /// <summary>The engine's HED1010 sentence for this access — receiver and argument types in the engine's
         /// own spelling — or null when any of them cannot be reproduced exactly.</summary>
@@ -579,7 +597,8 @@ namespace Heddle.Generator.Emit
             if (array.Rank != index.Arguments.Count)
                 return IndexRefusal("an array index whose argument count does not match the array's rank");
             if (_resolver.ClassifyTypeName(array.ElementType, out _) != SymbolTypeResolver.NameFault.None)
-                return IndexRefusal("an array element type generated code cannot name");
+                return IndexRefusal("an array element type generated code cannot name",
+                    category: RefusalCategory.UnnameableType);
 
             var casts = new string[index.Arguments.Count];
             for (int i = 0; i < casts.Length; i++)
@@ -589,7 +608,7 @@ namespace Heddle.Generator.Emit
                     return IndexRefusal("an index whose static type the writer cannot establish");
                 if (kind.Category != OperandCategory.Numeric || !NumericTable.IsIntegral(kind.Kind))
                     return IndexRefusal("an index access the engine refuses too (HED1010)",
-                        IndexerNotFoundMessage(array, index));
+                        IndexerNotFoundMessage(array, index), RefusalCategory.EngineParity);
                 if (kind.Kind != NumericKind.Int32 || kind.IsNullable)
                     casts[i] = "int";
             }
@@ -652,23 +671,27 @@ namespace Heddle.Generator.Emit
                     if (!matches)
                         continue;
                     if (single != null)
-                        return IndexRefusal("an indexer choice that depends on reflection order");
+                        return IndexRefusal("an indexer choice that depends on reflection order",
+                            category: RefusalCategory.UnknowableValue);
                     single = property;
                 }
             }
 
             if (single == null)
                 return IndexRefusal("an indexer access the engine refuses too (HED1010)",
-                    IndexerNotFoundMessage(receiverType, index));
+                    IndexerNotFoundMessage(receiverType, index), RefusalCategory.EngineParity);
 
             if (!_resolver.IsAccessibleFromCompilation(single) ||
                 !_resolver.IsAccessibleFromCompilation(single.GetMethod) ||
                 SymbolTypeResolver.IsObsoleteError(single) || SymbolTypeResolver.IsObsoleteError(single.GetMethod))
-                return IndexRefusal("an indexer generated code cannot name");
+                return IndexRefusal("an indexer generated code cannot name",
+                    category: RefusalCategory.UnnameableType);
             if (_resolver.ClassifyTypeName(single.Type, out _) != SymbolTypeResolver.NameFault.None)
-                return IndexRefusal("an indexer whose type generated code cannot name");
+                return IndexRefusal("an indexer whose type generated code cannot name",
+                    category: RefusalCategory.UnnameableType);
             if (SymbolTypeResolver.IsRefLikeOrRestricted(single.Type))
-                return IndexRefusal("an indexer returning a ref struct, which an expression operand cannot box");
+                return IndexRefusal("an indexer returning a ref struct, which an expression operand cannot box",
+                    category: RefusalCategory.RefLikeSink);
 
             var casts = new string[args.Length];
             for (int i = 0; i < casts.Length; i++)
@@ -677,7 +700,8 @@ namespace Heddle.Generator.Emit
                 if (!args[i].IsNullLiteral && SymbolEqualityComparer.Default.Equals(args[i].Type, parameterType))
                     continue;
                 if (_resolver.ClassifyTypeName(parameterType, out _) != SymbolTypeResolver.NameFault.None)
-                    return IndexRefusal("an indexer whose type generated code cannot name");
+                    return IndexRefusal("an indexer whose type generated code cannot name",
+                    category: RefusalCategory.UnnameableType);
                 casts[i] = SymbolTypeResolver.FullyQualified(parameterType);
             }
 
@@ -783,7 +807,7 @@ namespace Heddle.Generator.Emit
                     }
                 }
 
-                return Refuse("a member path that does not resolve statically");
+                return Refuse("a member path that does not resolve statically", RefusalCategory.MemberAccess);
             }
 
             // An expression's operands and a function's arguments are boxed, and a ref struct cannot be. The
@@ -794,7 +818,8 @@ namespace Heddle.Generator.Emit
             if (SymbolTypeResolver.EndsOnRefStruct(resolution))
                 return Refuse(_functionArgDepth > 0
                     ? "a member path ending on a ref struct, which a function argument cannot box (CS1503)"
-                    : "a member path ending on a ref struct, which an expression operand cannot box (CS0029)");
+                    : "a member path ending on a ref struct, which an expression operand cannot box (CS0029)",
+                    RefusalCategory.RefLikeSink);
 
             return MemberPathWriter.Write(rootExpr, TemplateEmitter.MapHops(resolution), _allocateHopLocal);
         }
@@ -811,11 +836,14 @@ namespace Heddle.Generator.Emit
 
             var targetType = TargetType(path.Target);
             if (!IsEstablishedType(targetType))
-                return Refuse("a member path rooted at an expression with no established static type");
+                return Refuse("a member path rooted at an expression with no established static type",
+                    RefusalCategory.MemberAccess);
             if (SymbolTypeResolver.IsRefLikeOrRestricted(targetType))
-                return Refuse("a member path rooted at a ref struct, which an expression operand cannot box");
+                return Refuse("a member path rooted at a ref struct, which an expression operand cannot box",
+                    RefusalCategory.RefLikeSink);
             if (_resolver.ClassifyTypeName(targetType, out _) != SymbolTypeResolver.NameFault.None)
-                return Refuse("a member path rooted at a type generated code cannot name");
+                return Refuse("a member path rooted at a type generated code cannot name",
+                    RefusalCategory.UnnameableType);
 
             var rootRead = "((" + SymbolTypeResolver.FullyQualified(targetType) + ")(" + target + "))";
             return WriteMemberChain(targetType, path, rootRead);
@@ -844,7 +872,8 @@ namespace Heddle.Generator.Emit
         private string WritePropPath(PropSlotInfo slot, PathNode path)
         {
             if (slot.Type == null)
-                return Refuse("a prop whose declared type the writer cannot resolve");
+                return Refuse("a prop whose declared type the writer cannot resolve",
+                    RefusalCategory.UnnameableType);
 
             var read = "((" + slot.TypeFq + ")global::Heddle.Precompiled.PrecompiledRuntime.Prop(in scope, " +
                        slot.Index + "))";
@@ -852,7 +881,7 @@ namespace Heddle.Generator.Emit
                 return read;
 
             if (slot.Type.TypeKind == TypeKind.Dynamic)
-                return Refuse("a path crossing a [Dynamic] prop");
+                return Refuse("a path crossing a [Dynamic] prop", RefusalCategory.MemberAccess);
 
             var resolution = _resolver.ResolvePath(slot.Type, Rest(path));
             if (resolution.Kind == SymbolTypeResolver.PathKind.DynamicHop)
@@ -860,7 +889,8 @@ namespace Heddle.Generator.Emit
                     TypedModelRequiredMessage, "a prop-rooted path crossing a [Dynamic] property");
             if (resolution.Kind != SymbolTypeResolver.PathKind.Resolved ||
                 SymbolTypeResolver.EndsOnRefStruct(resolution))
-                return Refuse("a prop-rooted path that does not resolve statically");
+                return Refuse("a prop-rooted path that does not resolve statically",
+                    RefusalCategory.MemberAccess);
 
             return MemberPathWriter.Write(read, TemplateEmitter.MapHops(resolution), _allocateHopLocal);
         }
@@ -930,7 +960,8 @@ namespace Heddle.Generator.Emit
                 ReferenceEquals(zeroSite, node))
             {
                 RecordDivisionByConstantZero(node);
-                return Refuse("a constant division by a zero divisor, refused on both tiers (HED1018)");
+                return Refuse("a constant division by a zero divisor, refused on both tiers (HED1018)",
+                    RefusalCategory.EngineParity);
             }
 
             // A constant arithmetic whose engine evaluation throws at render — the smallest signed value
@@ -1074,7 +1105,7 @@ namespace Heddle.Generator.Emit
             if (node.Operator == ExprOperator.Coalesce)
             {
                 if (!left.IsNullAssignable)
-                    return Refuse(reason);
+                    return Refuse(reason, RefusalCategory.EngineParity);
                 var leftName = EngineTypeName(node.Left);
                 var rightName = EngineTypeName(node.Right);
                 return RefuseAsEngine(HeddleDiagnosticIds.TernaryArmsNoCommonType, node.Position,

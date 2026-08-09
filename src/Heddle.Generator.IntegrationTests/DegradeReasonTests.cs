@@ -1,3 +1,4 @@
+extern alias generator;
 using System.Collections.Generic;
 using System.Linq;
 using Heddle.TestCorpus;
@@ -28,6 +29,22 @@ namespace Heddle.Generator.IntegrationTests
                 "Unexpected generator error: " + string.Join("; ", gen.Diagnostics.Select(d => d.ToString())));
 
             DifferentialHarness.ExpectDegrade(gen, "template.heddle", "embedded C# outside FullCSharp mode");
+        }
+
+        /// <summary>The category seam over the same flagship degrade: HED7031 carries a machine-readable
+        /// <c>RefusalCategory</c> in its diagnostic properties beside the message — <c>HostSetup</c> here, because
+        /// the FullCSharp gate is the consumer's build configuration — so coverage regressions are pinnable per
+        /// category, not only per message substring.</summary>
+        [Fact]
+        public void TheFlagshipDegradeCarriesItsMachineReadableCategory()
+        {
+            var row = TestCorpusIndex.Load().Single(t => t.key == "template.heddle");
+            var gen = DifferentialHarness.Generate(new[] { row },
+                extraReferences: DifferentialHarness.EngineTestModelReferences());
+
+            DifferentialHarness.ExpectDegrade(gen, "template.heddle",
+                generator::Heddle.Generator.Emit.RefusalCategory.HostSetup,
+                "embedded C# outside FullCSharp mode");
         }
 
         /// <summary>The positive form of the retired "embedded C# references chained/root" refusal: the fragment

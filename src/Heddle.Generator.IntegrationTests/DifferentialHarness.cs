@@ -606,6 +606,41 @@ namespace Heddle.Generator.IntegrationTests
                     string.Join(" | ", messages));
         }
 
+        /// <summary>The declared build-time degrade with the refusal CATEGORY pinned: everything
+        /// <see cref="ExpectDegrade(GenResult,string)"/> asserts, plus that the HED7031 warning for the key carries
+        /// <paramref name="category"/> in its diagnostic properties — the machine-readable half of the refusal —
+        /// and, when given, <paramref name="reason"/> as an ordinal substring of its message. A construct that
+        /// silently starts degrading for a different CLASS of refusal fails this even where the messages happen
+        /// to overlap, which is what makes coverage regressions measurable per category.</summary>
+        public static void ExpectDegrade(GenResult gen, string key,
+            generator::Heddle.Generator.Emit.RefusalCategory category, string reason = null)
+        {
+            ExpectDegrade(gen, key);
+            var diags = gen.Diagnostics
+                .Where(d => d.Id == HeddleDiagnosticIds.BuildTemplateNotPrecompiled &&
+                            d.Location.GetLineSpan().Path == key)
+                .ToList();
+            if (diags.Count == 0)
+                throw new InvalidOperationException(
+                    $"Expected a HED7031 warning for '{key}', but none was reported (a HED7014 marker degrade " +
+                    "carries no HED7031 — pin those with the two-argument overload).");
+            var categories = diags
+                .Select(d => d.Properties.TryGetValue(
+                    generator::Heddle.Generator.Diagnostics.GeneratorDiagnostics.RefusalCategoryProperty,
+                    out var value)
+                    ? value
+                    : "<none>")
+                .ToList();
+            if (!categories.Contains(category.ToString()))
+                throw new InvalidOperationException(
+                    $"Expected the HED7031 refusal category for '{key}' to be '{category}', but it reported: " +
+                    string.Join(" | ", categories));
+            if (reason != null && !diags.Any(d => d.GetMessage().IndexOf(reason, StringComparison.Ordinal) >= 0))
+                throw new InvalidOperationException(
+                    $"Expected the HED7031 reason for '{key}' to contain \"{reason}\", but it reported: " +
+                    string.Join(" | ", diags.Select(d => d.GetMessage())));
+        }
+
         internal enum ManifestState
         {
             /// <summary>No manifest entry at all — the whole template degraded to the dynamic tier.</summary>

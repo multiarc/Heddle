@@ -425,6 +425,11 @@ namespace Heddle.Generator
                         spc.ReportDiagnostic(Diagnostic.Create(
                             GeneratorDiagnostics.TemplateNotPrecompiled,
                             ToLocation(template.Text, SafeText(template.Text), default),
+                            result.Unsupported == null
+                                ? null
+                                : ImmutableDictionary<string, string>.Empty.Add(
+                                    GeneratorDiagnostics.RefusalCategoryProperty,
+                                    result.Unsupported.Category.ToString()),
                             result.UnsupportedReason ?? "no reason recorded by the emitter"));
                     }
                 }

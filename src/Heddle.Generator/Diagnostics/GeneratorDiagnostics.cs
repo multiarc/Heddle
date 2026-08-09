@@ -150,6 +150,11 @@ namespace Heddle.Generator.Diagnostics
         public static readonly DiagnosticDescriptor TemplateNotPrecompiled =
             FromCatalog(HeddleDiagnosticIds.BuildTemplateNotPrecompiled);
 
+        /// <summary>The diagnostic-property key HED7031 carries its <see cref="Emit.RefusalCategory"/> under —
+        /// the machine-readable half of the refusal, beside the human-readable message, so tooling and the
+        /// degrade-expectation seam can pin the CLASS of a refusal rather than a message substring.</summary>
+        public const string RefusalCategoryProperty = "HeddleRefusalCategory";
+
         /// <summary>A branch <c>Continuation</c>/<c>Terminal</c> extension (<c>[BranchRole]</c>)
         /// does not carry <c>[ScopeChannel]</c>, so its <c>TryRead</c> of the branch state always misses at
         /// render. Additive and never fired by the built-ins, which all comply.</summary>
