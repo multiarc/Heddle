@@ -264,6 +264,7 @@ namespace Heddle.Generator.Emit
             // very same spelling, so it un-pins it.
             _modelDeclaredDynamic = string.Equals(_modelTypeText, "dynamic", System.StringComparison.Ordinal) &&
                                     !HasAliasNamed("dynamic");
+            _modelDeclaredInTemplate = _modelTypeText != null;
             if (_modelTypeText == null)
             {
                 // No directive: the metadata types the template, through the very pipeline the directive feeds, so
@@ -446,6 +447,12 @@ namespace Heddle.Generator.Emit
         }
 
         private bool _modelDeclaredDynamic;
+
+        /// <summary>Whether the template's own <c>@model</c> directive named the model type. False means the
+        /// recorded model type is the build's — the <c>ModelType</c> item metadata, else <c>object</c> — while the
+        /// engine would take the requesting context's instead, which is the fact the manifest carries as
+        /// <c>PrecompiledTemplateInfo.ModelTypeIsAmbient</c> so the gauntlet can refuse the mismatch.</summary>
+        private bool _modelDeclaredInTemplate;
 
         /// <summary>Whether a <c>@using(){{name = …}}</c> alias claims <paramref name="name"/>.</summary>
         private bool HasAliasNamed(string name)
@@ -4319,7 +4326,11 @@ namespace Heddle.Generator.Emit
                     ? nameof(Heddle.Precompiled.PrecompiledLinePathForm.Unspecified)
                     : _lineDirectiveFileIsRootRelative
                         ? nameof(Heddle.Precompiled.PrecompiledLinePathForm.RootRelative)
-                        : nameof(Heddle.Precompiled.PrecompiledLinePathForm.TemplatePath)) + ")");
+                        : nameof(Heddle.Precompiled.PrecompiledLinePathForm.TemplatePath)));
+
+            // Written only when it is true, so a template that pins its own model keeps the row it has always had
+            // and the wider constructor appears exactly where it says something.
+            sb.Append(_modelDeclaredInTemplate ? ")" : ",\n    modelTypeIsAmbient: true)");
             return sb.ToString();
         }
 

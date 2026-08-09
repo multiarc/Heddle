@@ -115,9 +115,11 @@ namespace Heddle.Runtime {
                 return null;
             case TemplatePathType.View:
                 // The View arm builds its own options below and ignores the caller's context, so the registry
-                // consult inside Search synthesizes the same ones (null = synthesize).
-                path = Search(viewName, controllerName, searchType, profile, trim, null, out searchedLocations,
-                    out result, out relative);
+                // consult inside Search synthesizes the same ones (null = synthesize) — and, for the same reason,
+                // the model type it declares is the untyped one the context it builds would carry, not the
+                // caller's.
+                path = Search(viewName, controllerName, searchType, profile, trim, null, typeof(object),
+                    out searchedLocations, out result, out relative);
                 if (result != null)
                     return result;
                 options = HostedOptions(relative, profile, trim);
@@ -126,7 +128,7 @@ namespace Heddle.Runtime {
                 // The PartialView arm hands the caller's context straight to Create when it has one, so the consult
                 // must run the gauntlet against exactly those options.
                 path = Search(viewName, controllerName, searchType, profile, trim, context?.Options,
-                    out searchedLocations, out result, out relative);
+                    RequestModelType(context), out searchedLocations, out result, out relative);
                 if (result != null)
                     return result;
                 options = HostedOptions(relative, profile, trim);
@@ -146,11 +148,11 @@ namespace Heddle.Runtime {
             out IEnumerable<string> searchedLocations, out HeddleTemplate cached)
         {
             return Search(viewName, controllerName, searchType, _defaultProfile, _trimDirectiveLines, null,
-                out searchedLocations, out cached, out _);
+                requestModelType: null, out searchedLocations, out cached, out _);
         }
 
         private string Search(string viewName, string controllerName, TemplatePathType searchType,
-            OutputProfile profile, bool trim, TemplateOptions requestOptions,
+            OutputProfile profile, bool trim, TemplateOptions requestOptions, Type requestModelType,
             out IEnumerable<string> searchedLocations, out HeddleTemplate cached, out string relativePath)
         {
             if (viewName == null) throw new ArgumentNullException(nameof(viewName));
@@ -170,14 +172,14 @@ namespace Heddle.Runtime {
                 case TemplatePathType.None:
                     throw new TemplateCreateException("Search is not eligiable to non hosted views.");
                 case TemplatePathType.View:
-                    return Search(viewName, controllerName, _viewPath, profile, trim, requestOptions, out searchedLocations,
-                        out cached, out relativePath);
+                    return Search(viewName, controllerName, _viewPath, profile, trim, requestOptions,
+                        requestModelType, out searchedLocations, out cached, out relativePath);
                 case TemplatePathType.PartialView:
-                    return Search(viewName, controllerName, _partialPath, profile, trim, requestOptions, out searchedLocations,
-                        out cached, out relativePath);
+                    return Search(viewName, controllerName, _partialPath, profile, trim, requestOptions,
+                        requestModelType, out searchedLocations, out cached, out relativePath);
                 case TemplatePathType.Master:
-                    return Search(viewName, controllerName, _masterPath, profile, trim, requestOptions, out searchedLocations,
-                        out cached, out relativePath);
+                    return Search(viewName, controllerName, _masterPath, profile, trim, requestOptions,
+                        requestModelType, out searchedLocations, out cached, out relativePath);
                 default:
                     throw new ArgumentOutOfRangeException(nameof(searchType));
             }
@@ -188,8 +190,8 @@ namespace Heddle.Runtime {
         /// the registry ahead of both tiers. Tier order beats location order, exactly as it already
         /// did for the cache: a cached location-2 template has always won over a location-1 file on disk.</summary>
         private string Search(string viewName, string controllerName, string[] locations, OutputProfile profile, bool trim,
-            TemplateOptions requestOptions, out IEnumerable<string> searchedLocations, out HeddleTemplate cached,
-            out string relativePath) {
+            TemplateOptions requestOptions, Type requestModelType, out IEnumerable<string> searchedLocations,
+            out HeddleTemplate cached, out string relativePath) {
             if (viewName == null) throw new ArgumentNullException(nameof(viewName));
             if (controllerName == null) throw new ArgumentNullException(nameof(controllerName));
             if (locations == null) throw new ArgumentNullException(nameof(locations));
@@ -203,7 +205,7 @@ namespace Heddle.Runtime {
                 var options = requestOptions ?? HostedOptions(candidate, profile, trim);
                 // A miss, or a Fallback-policy gauntlet failure (an options fingerprint built Native cannot answer
                 // these arms' FullCSharp request), falls through to the unchanged cache/disk ladder.
-                if (PrecompiledTemplates.TryResolve(key, options, out var entry)) {
+                if (PrecompiledTemplates.TryResolve(key, options, requestModelType, out var entry)) {
                     cached = new HeddleTemplate(entry.Strategy, options.Encoder, options.RenderBudget);
                     searchedLocations = null;
                     relativePath = candidate;
@@ -255,10 +257,19 @@ namespace Heddle.Runtime {
                 TrimDirectiveLines = trim,
             };
 
+        /// <summary>The model type this request would compile a template against, which is what the gauntlet's
+        /// model-type step judges an ambient entry by. A caller with no context gets the same answer the dynamic path
+        /// would have reached for it — <see cref="CompileContext"/>'s own untyped default — rather than "no claim",
+        /// because the absence of a context is itself a decision about the model type, not an unknown.</summary>
+        private static Type RequestModelType(CompileContext context) =>
+            context?.RootScopeType?.Type ?? typeof(object);
+
         /// <summary>Registry consult for a <see cref="TemplatePathType.None"/> request. Derives the request's
         /// effective options (the caller's when present, else a synthesized view carrying this resolver's
-        /// profile/trim/root/change-check), then <see cref="PrecompiledTemplates.TryResolve"/>. A hit returns a
-        /// <see cref="HeddleTemplate"/> in precompiled-adapter mode; a miss or Fallback failure returns false.</summary>
+        /// profile/trim/root/change-check) and its model type, then
+        /// <see cref="PrecompiledTemplates.TryResolve(string,TemplateOptions,Type,out PrecompiledTemplateInfo)"/>.
+        /// A hit returns a <see cref="HeddleTemplate"/> in precompiled-adapter mode; a miss or Fallback failure
+        /// returns false.</summary>
         private bool ConsultPrecompiled(string viewName, CompileContext context, OutputProfile profile, bool trim,
             out HeddleTemplate result)
         {
@@ -272,7 +283,7 @@ namespace Heddle.Runtime {
                 TrimDirectiveLines = trim,
             };
 
-            if (!PrecompiledTemplates.TryResolve(viewName, options, out var entry))
+            if (!PrecompiledTemplates.TryResolve(viewName, options, RequestModelType(context), out var entry))
                 return false;
 
             // Carry the request's output encoder and render budget onto the precompiled-adapter render (the

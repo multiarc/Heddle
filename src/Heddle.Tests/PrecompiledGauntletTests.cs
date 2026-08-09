@@ -41,8 +41,22 @@ namespace Heddle.Tests
                 strategy ?? Strategy);
         }
 
+        /// <summary>An entry whose model type is the build's assumption rather than a type the template pins —
+        /// the only shape the model-type step judges.</summary>
+        private static PrecompiledTemplateInfo AmbientEntry(Type modelType,
+            PrecompiledOptionsFingerprint fingerprint)
+        {
+            return new PrecompiledTemplateInfo("views/x.heddle", typeof(object), modelType, false, "0", null,
+                fingerprint, null, null, PrecompiledCapabilities.StringOutput, Strategy, registeredName: null,
+                linePathForm: PrecompiledLinePathForm.Unspecified, modelTypeIsAmbient: true);
+        }
+
         private static PrecompiledFallbackEvent? Run(PrecompiledTemplateInfo entry, TemplateOptions options)
             => PrecompiledGauntlet.Validate(entry, options, null);
+
+        private static PrecompiledFallbackEvent? Run(PrecompiledTemplateInfo entry, TemplateOptions options,
+            Type requestModelType)
+            => PrecompiledGauntlet.Validate(entry, options, null, requestModelType);
 
         private static readonly PrecompiledOptionsFingerprint TextNative =
             new PrecompiledOptionsFingerprint(OutputProfile.Text, ExpressionMode.Native, false);
@@ -98,6 +112,56 @@ namespace Heddle.Tests
             var entry = Entry(TextNative);
             var evt = Run(entry, new TemplateOptions { OutputProfile = OutputProfile.Text, TrimDirectiveLines = true });
             Assert.Equal("TrimDirectiveLines: manifest=false request=true", evt.Value.Detail);
+        }
+
+        /// <summary>The model-type step, on the only entry shape it applies to: the build assumed one model type
+        /// and the request would compile the template against another, so the typed code the build wrote is not the
+        /// code the request asked for.</summary>
+        [Fact]
+        public void AmbientModelTypeMismatchFails()
+        {
+            var entry = AmbientEntry(typeof(HeddleTemplate), TextNative);
+            var evt = Run(entry, Match(), typeof(TemplateOptions));
+            Assert.NotNull(evt);
+            Assert.Equal(PrecompiledFallbackReason.ModelTypeMismatch, evt.Value.Reason);
+            Assert.Equal("Model: manifest=Heddle.HeddleTemplate, Heddle request=Heddle.Data.TemplateOptions, Heddle",
+                evt.Value.Detail);
+            Assert.Equal("HED7101", evt.Value.DiagnosticId);
+        }
+
+        [Fact]
+        public void AmbientModelTypeMatchPasses()
+        {
+            var entry = AmbientEntry(typeof(HeddleTemplate), TextNative);
+            Assert.Null(Run(entry, Match(), typeof(HeddleTemplate)));
+        }
+
+        /// <summary>A caller with no model type to declare — the aggregate validation pass, chiefly — leaves the
+        /// step skipped rather than having it invent <c>object</c> and refuse everything ambient.</summary>
+        [Fact]
+        public void AmbientEntryWithNoDeclaredRequestModelTypePasses()
+        {
+            var entry = AmbientEntry(typeof(HeddleTemplate), TextNative);
+            Assert.Null(Run(entry, Match(), null));
+        }
+
+        /// <summary>A template that pins its own <c>@model</c> types both tiers from the directive, so the request's
+        /// model type is not evidence of anything and the step does not look at it.</summary>
+        [Fact]
+        public void ADeclaredModelTypeEntryIgnoresTheRequestModelType()
+        {
+            Assert.Null(Run(Entry(TextNative), Match(), typeof(TemplateOptions)));
+        }
+
+        /// <summary>Order is pinned like every other step's: options are judged before the model type, so an entry
+        /// failing both reports the options failure.</summary>
+        [Fact]
+        public void OptionsAreJudgedBeforeTheModelType()
+        {
+            var entry = AmbientEntry(typeof(HeddleTemplate), TextNative);
+            var evt = Run(entry, new TemplateOptions { OutputProfile = OutputProfile.Html }, typeof(TemplateOptions));
+            Assert.NotNull(evt);
+            Assert.Equal(PrecompiledFallbackReason.OptionsMismatch, evt.Value.Reason);
         }
 
         [Fact]

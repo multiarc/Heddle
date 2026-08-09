@@ -25,6 +25,16 @@ namespace Heddle.Precompiled
 
         /// <summary>Registration-time: a registered <c>Name</c> conflicts with another template's key or name,
         /// or violates <see cref="TemplateKey"/> rules. Never throws; the template stays registered under its key.</summary>
-        RegisteredNameUnavailable
+        RegisteredNameUnavailable,
+
+        /// <summary>The entry's <see cref="PrecompiledTemplateInfo.ModelType"/> is not the type the request would
+        /// have compiled the template against. Only an entry whose
+        /// <see cref="PrecompiledTemplateInfo.ModelTypeIsAmbient"/> is set can raise this: the template declares no
+        /// <c>@model</c>, so the build's assumed model type and the host's <c>CompileContext</c> model type are two
+        /// independent answers to the same question, and typed code compiled against one of them may not produce the
+        /// other's bytes.
+        /// <para>Appended rather than grouped with the other per-request reasons so that no existing member's
+        /// numeric value moves.</para></summary>
+        ModelTypeMismatch
     }
 }

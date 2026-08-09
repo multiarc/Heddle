@@ -758,6 +758,7 @@ TYPE Heddle.Precompiled.PrecompiledFallbackReason : System.Enum
   FIELD Heddle.Precompiled.PrecompiledFallbackReason EngineVersionIncompatible
   FIELD Heddle.Precompiled.PrecompiledFallbackReason ExtensionBindingMismatch
   FIELD Heddle.Precompiled.PrecompiledFallbackReason FunctionBindingMismatch
+  FIELD Heddle.Precompiled.PrecompiledFallbackReason ModelTypeMismatch
   FIELD Heddle.Precompiled.PrecompiledFallbackReason OptionsMismatch
   FIELD Heddle.Precompiled.PrecompiledFallbackReason RegisteredNameUnavailable
   FIELD Heddle.Precompiled.PrecompiledFallbackReason SchemaVersionUnsupported
@@ -885,6 +886,7 @@ TYPE Heddle.Precompiled.PrecompiledRuntime
   METHOD System.Void WritePiece(ref Heddle.Data.Scope, System.String, System.ReadOnlySpan<System.Byte>)
   METHOD TExtension Bind(TExtension, Heddle.Runtime.IProcessStrategy, Heddle.Data.RenderType, System.Boolean, System.Int32, System.Int32)
 TYPE Heddle.Precompiled.PrecompiledSchema
+  FIELD System.Int32 AmbientModelTypeSchemaVersion
   FIELD System.Int32 CurrentSchemaVersion
   FIELD System.Int32 DynamicMemberRoutingSchemaVersion
   FIELD System.Int32 LateBoundFunctionMaxArity
@@ -904,12 +906,14 @@ TYPE Heddle.Precompiled.PrecompiledSchema
 TYPE Heddle.Precompiled.PrecompiledTemplateInfo
   CTOR(System.String, System.Type, System.Type, System.Boolean, System.String, System.Collections.Generic.IReadOnlyList<Heddle.Precompiled.PrecompiledImport>, Heddle.Precompiled.PrecompiledOptionsFingerprint, System.Collections.Generic.IReadOnlyList<Heddle.Precompiled.PrecompiledExtensionBinding>, System.Collections.Generic.IReadOnlyList<Heddle.Precompiled.PrecompiledFunctionBinding>, Heddle.Precompiled.PrecompiledCapabilities, Heddle.Runtime.IProcessStrategy)
   CTOR(System.String, System.Type, System.Type, System.Boolean, System.String, System.Collections.Generic.IReadOnlyList<Heddle.Precompiled.PrecompiledImport>, Heddle.Precompiled.PrecompiledOptionsFingerprint, System.Collections.Generic.IReadOnlyList<Heddle.Precompiled.PrecompiledExtensionBinding>, System.Collections.Generic.IReadOnlyList<Heddle.Precompiled.PrecompiledFunctionBinding>, Heddle.Precompiled.PrecompiledCapabilities, Heddle.Runtime.IProcessStrategy, System.String, Heddle.Precompiled.PrecompiledLinePathForm)
+  CTOR(System.String, System.Type, System.Type, System.Boolean, System.String, System.Collections.Generic.IReadOnlyList<Heddle.Precompiled.PrecompiledImport>, Heddle.Precompiled.PrecompiledOptionsFingerprint, System.Collections.Generic.IReadOnlyList<Heddle.Precompiled.PrecompiledExtensionBinding>, System.Collections.Generic.IReadOnlyList<Heddle.Precompiled.PrecompiledFunctionBinding>, Heddle.Precompiled.PrecompiledCapabilities, Heddle.Runtime.IProcessStrategy, System.String, Heddle.Precompiled.PrecompiledLinePathForm, System.Boolean)
   PROP Heddle.Precompiled.PrecompiledCapabilities Capabilities {get;}
   PROP Heddle.Precompiled.PrecompiledLinePathForm LinePathForm {get;}
   PROP Heddle.Precompiled.PrecompiledOptionsFingerprint OptionsFingerprint {get;}
   PROP Heddle.Runtime.IProcessStrategy Strategy {get;}
   PROP System.Boolean IsDynamic {get;}
   PROP System.Boolean IsPrecompiled {get;}
+  PROP System.Boolean ModelTypeIsAmbient {get;}
   PROP System.Collections.Generic.IReadOnlyList<Heddle.Precompiled.PrecompiledExtensionBinding> ExtensionBindings {get;}
   PROP System.Collections.Generic.IReadOnlyList<Heddle.Precompiled.PrecompiledFunctionBinding> FunctionBindings {get;}
   PROP System.Collections.Generic.IReadOnlyList<Heddle.Precompiled.PrecompiledImport> Imports {get;}
@@ -921,6 +925,7 @@ TYPE Heddle.Precompiled.PrecompiledTemplateInfo
 TYPE Heddle.Precompiled.PrecompiledTemplates
   METHOD Heddle.Precompiled.PrecompiledValidationReport ValidateAll(Heddle.Data.TemplateOptions)
   METHOD System.Boolean TryGet(System.String, out Heddle.Precompiled.PrecompiledTemplateInfo)
+  METHOD System.Boolean TryResolve(System.String, Heddle.Data.TemplateOptions, System.Type, out Heddle.Precompiled.PrecompiledTemplateInfo)
   METHOD System.Boolean TryResolve(System.String, Heddle.Data.TemplateOptions, out Heddle.Precompiled.PrecompiledTemplateInfo)
   METHOD System.Nullable<Heddle.Precompiled.PrecompiledFallbackEvent> Validate(Heddle.Precompiled.PrecompiledTemplateInfo, Heddle.Data.TemplateOptions)
   METHOD System.Void Register(System.Reflection.Assembly)

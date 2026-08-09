@@ -253,7 +253,9 @@ namespace Heddle.Precompiled
         /// <summary>Runs the per-request validation gauntlet for a resolved entry. Returns the first
         /// failure as a <see cref="PrecompiledFallbackEvent"/> or <c>null</c> on success. Exposed so integration/host
         /// code can validate coverage; the resolver adapter calls this before rendering through
-        /// <see cref="PrecompiledTemplateInfo.Strategy"/>.</summary>
+        /// <see cref="PrecompiledTemplateInfo.Strategy"/>.
+        /// <para>The model-type step is skipped, as it is in <see cref="ValidateAll"/> and for the same reason: a
+        /// request's model type is not something <see cref="TemplateOptions"/> carries.</para></summary>
         public static PrecompiledFallbackEvent? Validate(PrecompiledTemplateInfo entry, TemplateOptions options)
         {
             if (entry == null)
@@ -281,6 +283,10 @@ namespace Heddle.Precompiled
         /// <para><b>The answer is scoped to <paramref name="options"/></b> and the report says so — see
         /// <see cref="PrecompiledValidationReport"/>. Four gauntlet inputs are per-request, so one pass cannot
         /// speak for a host that renders under several shapes; such a host calls this once per shape.</para>
+        /// <para>The gauntlet's model-type step is <b>not</b> among them and is skipped here: it judges the request's
+        /// <c>CompileContext</c> model type, which options do not carry and a pre-render pass does not have. An entry
+        /// with <see cref="PrecompiledTemplateInfo.ModelTypeIsAmbient"/> set can therefore still fall back at a
+        /// request this report passed.</para>
         /// </summary>
         /// <param name="options">The options shape to validate against. Required: a verdict with no options to
         /// scope it would be unreadable, so there is no parameterless form.</param>
@@ -314,7 +320,18 @@ namespace Heddle.Precompiled
         /// with the entry; on a registry miss returns false (the dynamic path proceeds untouched). On a gauntlet
         /// failure the <see cref="OnFallback"/> callback fires; under <see cref="PrecompiledMismatchPolicy.Strict"/>
         /// it then throws <see cref="PrecompiledMismatchException"/>, under <c>Fallback</c> it returns false.</summary>
-        public static bool TryResolve(string key, TemplateOptions options, out PrecompiledTemplateInfo entry)
+        public static bool TryResolve(string key, TemplateOptions options, out PrecompiledTemplateInfo entry) =>
+            TryResolve(key, options, null, out entry);
+
+        /// <summary>Resolves a precompiled entry for a request that also knows the model type it would compile
+        /// the template against — the requesting <see cref="Runtime.CompileContext.RootScopeType"/>. Everything
+        /// <see cref="TryResolve(string,TemplateOptions,out PrecompiledTemplateInfo)"/> does, plus the gauntlet's
+        /// model-type step, which is the only check that can tell a template the host typed from one the build
+        /// assumed was untyped.</summary>
+        /// <param name="requestModelType">The request's model type, or <c>null</c> to make no claim — which leaves
+        /// the model-type step skipped, exactly as the shorter overload leaves it.</param>
+        public static bool TryResolve(string key, TemplateOptions options, Type requestModelType,
+            out PrecompiledTemplateInfo entry)
         {
             entry = null;
             if (options == null)
@@ -322,7 +339,7 @@ namespace Heddle.Precompiled
             if (!TryGet(key, out var found))
                 return false;
 
-            var failure = PrecompiledGauntlet.Validate(found, options, BindingResolver);
+            var failure = PrecompiledGauntlet.Validate(found, options, BindingResolver, requestModelType);
             if (failure == null)
             {
                 entry = found;

@@ -93,6 +93,15 @@ namespace Heddle.Precompiled
         /// </summary>
         public const int LinePathFormSchemaVersion = 3;
 
+        /// <summary>
+        /// The schema at which a template row records that its model type is <b>ambient</b> — that the template
+        /// declares no <c>@model</c>, so <c>PrecompiledTemplateInfo.ModelType</c> is the build's assumption and the
+        /// gauntlet must check it against the request's own model type. Additive in the
+        /// <see cref="PropLayoutFingerprintSchemaVersion"/> sense, and deliberately so in the safe direction: a row
+        /// that omits the value reads back <c>false</c>, which is exactly how every earlier manifest behaves today.
+        /// </summary>
+        public const int AmbientModelTypeSchemaVersion = 3;
+
         /// <summary>Whether the generator may emit the per-carrier <c>BindDefinition</c> overload at the schema it
         /// is currently emitting. Structurally unbuildable in the unsafe combination, exactly as
         /// <see cref="EmitsDynamicMemberRouting"/> is.</summary>
