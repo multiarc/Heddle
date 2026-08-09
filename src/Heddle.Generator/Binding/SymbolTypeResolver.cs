@@ -114,13 +114,10 @@ namespace Heddle.Generator.Binding
             public bool TryResolveSimple(string name, int backtickArity, out ITypeSymbol type,
                 out TypeSpellingFault fault)
             {
-                fault = TypeSpellingFault.None;
-                if (backtickArity == 0 && Keywords.TryGetValue(name, out var special))
-                {
-                    type = _compilation.GetSpecialType(special);
-                    return true;
-                }
-
+                // The predefined-type aliases are an arm of the shared ladder, not a step in front of it: a
+                // `@using` alias directive and `global::` both bind ahead of them, which is what C# does and what
+                // the runtime has always done. Asking here first answered `int` for a template that had aliased
+                // the name to something else.
                 if (SymbolTypeIndex.For(_compilation).TryResolve(name, _usings, out var named, out fault))
                 {
                     type = named;
