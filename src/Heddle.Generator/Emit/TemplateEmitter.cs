@@ -211,7 +211,13 @@ namespace Heddle.Generator.Emit
         internal sealed class Result
         {
             public bool Emitted { get; set; }
-            public string UnsupportedReason { get; set; }
+
+            /// <summary>The categorized refusal that declined the template, or null when it emitted (or degraded
+            /// through the HED7014 marker channel). <see cref="UnsupportedReason"/> is its human-readable detail —
+            /// the sentence HED7031 prints.</summary>
+            public Refusal Unsupported { get; set; }
+
+            public string UnsupportedReason => Unsupported?.Detail;
             public string Source { get; set; }
             public string ManifestEntry { get; set; }
             public bool IsDynamic { get; set; }
@@ -282,7 +288,7 @@ namespace Heddle.Generator.Emit
                 if (!CanWriteTypeName(_modelSymbol, _modelDirectivePosition, out var modelReason))
                     return new Result
                     {
-                        Emitted = false, Diagnostics = _diagnostics, UnsupportedReason = modelReason
+                        Emitted = false, Diagnostics = _diagnostics, Unsupported = modelReason
                     };
 
                 if (_modelSymbol != null)
@@ -317,7 +323,8 @@ namespace Heddle.Generator.Emit
                     return new Result
                     {
                         Emitted = false, Diagnostics = _diagnostics,
-                        UnsupportedReason = "model type '" + _modelTypeText + "' resolves to no symbol"
+                        Unsupported = new Refusal(RefusalCategory.UnnameableType,
+                            "model type '" + _modelTypeText + "' resolves to no symbol", _modelDirectivePosition)
                     };
                 }
             }
@@ -341,7 +348,7 @@ namespace Heddle.Generator.Emit
                     };
                 }
 
-                return new Result { Emitted = false, UnsupportedReason = reason, Diagnostics = _diagnostics };
+                return new Result { Emitted = false, Unsupported = reason, Diagnostics = _diagnostics };
             }
 
             // An unconsumed region-fill candidate is no longer a reason to un-precompile the template silently.
@@ -399,7 +406,8 @@ namespace Heddle.Generator.Emit
                 return new Result
                 {
                     Emitted = false, Diagnostics = _diagnostics,
-                    UnsupportedReason = "ModelType metadata '" + _metadataModelType + "' resolves to no symbol"
+                    Unsupported = new Refusal(RefusalCategory.UnnameableType,
+                        "ModelType metadata '" + _metadataModelType + "' resolves to no symbol")
                 };
             }
 
@@ -412,8 +420,8 @@ namespace Heddle.Generator.Emit
             return new Result
             {
                 Emitted = false, Diagnostics = _diagnostics,
-                UnsupportedReason = "ModelType metadata '" + _metadataModelType +
-                    "' and the @model directive '" + _modelTypeText + "' name different types"
+                Unsupported = new Refusal(RefusalCategory.HostSetup, "ModelType metadata '" + _metadataModelType +
+                    "' and the @model directive '" + _modelTypeText + "' name different types")
             };
         }
 
@@ -510,7 +518,7 @@ namespace Heddle.Generator.Emit
         {
             public BodyClass Body;
             public bool Failed;
-            public string Reason;
+            public Refusal Reason;
         }
 
         private BodyClass NewBody(BodyContext bctx)
@@ -525,13 +533,13 @@ namespace Heddle.Generator.Emit
             return body;
         }
 
-        private BodyClass BuildBody(string doc, ParseContext ctx, BodyContext bctx, out string reason)
+        private BodyClass BuildBody(string doc, ParseContext ctx, BodyContext bctx, out Refusal reason)
         {
             var body = NewBody(bctx);
             return PopulateBody(body, doc, ctx, bctx, out reason) ? body : null;
         }
 
-        private bool PopulateBody(BodyClass body, string doc, ParseContext ctx, BodyContext bctx, out string reason)
+        private bool PopulateBody(BodyClass body, string doc, ParseContext ctx, BodyContext bctx, out Refusal reason)
         {
             reason = null;
             // The body's own profile lineage: it inherits the profile active where its parent element sits, and its
@@ -550,7 +558,7 @@ namespace Heddle.Generator.Emit
             var lintRefusal = TakeLintRefusal();
             if (lintRefusal != null)
             {
-                reason = lintRefusal;
+                reason = new Refusal(RefusalCategory.EngineParity, lintRefusal);
                 return false;
             }
             var working = shape.WorkingDocument;
@@ -559,8 +567,8 @@ namespace Heddle.Generator.Emit
             // P0..Pn constants below are the same strings the dynamic tier slices.
             // Collect refusals for multi-error reporting (sound: sibling elements are independent).
             // Still refuses the body (partial emit would be worse than sequential reporting).
-            string localReason = null;
-            string firstReason = null;
+            Refusal localReason = null;
+            Refusal firstReason = null;
             var refused = false;
             var completed = DocumentShaping.SlicePieces(shape.Elements, element => element.Position, working,
                 piece => AddPiece(body, piece),
@@ -779,12 +787,12 @@ namespace Heddle.Generator.Emit
 
         private int _partialCounter;
 
-        private object BuildCall(OutputChain chain, ParseContext ctx, BodyContext bctx, out string reason)
+        private object BuildCall(OutputChain chain, ParseContext ctx, BodyContext bctx, out Refusal reason)
         {
             reason = null;
             if (chain.Chain.Count != 1)
             {
-                reason = "chained call";
+                reason = new Refusal(RefusalCategory.ChainCarrier, "chained call", chain.Chain[0].Position);
                 return null;
             }
 
@@ -796,7 +804,7 @@ namespace Heddle.Generator.Emit
             {
                 if (!string.IsNullOrEmpty(item.ParameterTemplate))
                 {
-                    reason = "bodied unnamed carrier";
+                    reason = new Refusal(RefusalCategory.ChainCarrier, "bodied unnamed carrier", item.Position);
                     return null;
                 }
 
@@ -849,7 +857,8 @@ namespace Heddle.Generator.Emit
             if (_extensionBinder.TryResolve(name, out var acceptInfo) &&
                 !AcceptedTypeSatisfied(acceptInfo, CallSiteValueType(cp, bctx), out var acceptReason))
             {
-                reason = "'" + name + "' " + acceptReason;
+                reason = new Refusal(RefusalCategory.EngineParity, "'" + name + "' " + acceptReason,
+                    item.Position);
                 return null;
             }
 
@@ -862,7 +871,8 @@ namespace Heddle.Generator.Emit
                 // Body model: the rule is BodyModelRules' row and it is consumed, not asserted.
                 if (!BodyTypingRules.TryNestedBodyContext(name, bctx, null, out var branchBodyCtx))
                 {
-                    reason = "no pinned body model-typing row for branch '" + name + "'";
+                    reason = new Refusal(RefusalCategory.HookBehavior,
+                        "no pinned body model-typing row for branch '" + name + "'", item.Position);
                     return null;
                 }
 
@@ -893,7 +903,8 @@ namespace Heddle.Generator.Emit
                 var elementModel = ListElementModel(cp, bctx, out var elementAmbiguous);
                 if (elementAmbiguous)
                 {
-                    reason = "collection reaches IEnumerable<T> at more than one element type";
+                    reason = new Refusal(RefusalCategory.UnknowableValue,
+                        "collection reaches IEnumerable<T> at more than one element type", item.Position);
                     return null;
                 }
 
@@ -906,7 +917,8 @@ namespace Heddle.Generator.Emit
 
                 if (!BodyTypingRules.TryNestedBodyContext("list", bctx, elementModel, out var itemCtx))
                 {
-                    reason = "no pinned body model-typing row for 'list'";
+                    reason = new Refusal(RefusalCategory.HookBehavior,
+                        "no pinned body model-typing row for 'list'", item.Position);
                     return null;
                 }
 
@@ -932,7 +944,8 @@ namespace Heddle.Generator.Emit
                 // Body typed by enclosing model; @out() splices the boxed index (BodyModelRules row).
                 if (!BodyTypingRules.TryNestedBodyContext("for", bctx, null, out var forBodyCtx))
                 {
-                    reason = "no pinned body model-typing row for 'for'";
+                    reason = new Refusal(RefusalCategory.HookBehavior,
+                        "no pinned body model-typing row for 'for'", item.Position);
                     return null;
                 }
 
@@ -963,7 +976,10 @@ namespace Heddle.Generator.Emit
                 DrainUnresolvable(writer);
                 if (expr == null)
                 {
-                    reason = writer.RefusalReason ?? "unsupported function call '" + name + "'";
+                    reason = writer.RefusalReason != null
+                        ? new Refusal(writer.RefusalCategory, writer.RefusalReason, item.Position)
+                        : new Refusal(RefusalCategory.FunctionBinding,
+                            "unsupported function call '" + name + "'", item.Position);
                     return null;
                 }
 
@@ -978,7 +994,7 @@ namespace Heddle.Generator.Emit
             // Runtime will find it but emitter cannot reproduce render protocol — must not fire HED7006.
             if (_extensionBinder.TryGetUnbindableReason(name, out var unbindableReason))
             {
-                reason = unbindableReason;
+                reason = new Refusal(RefusalCategory.ExtensionBinding, unbindableReason, item.Position);
                 return null;
             }
 
@@ -986,7 +1002,8 @@ namespace Heddle.Generator.Emit
             if (!string.IsNullOrEmpty(item.ParameterTemplate))
                 _diagnostics.Add(new EmitDiagnostic(GeneratorDiagnostics.ExtensionNotBindable, item.Position, name));
 
-            reason = "named extension '" + name + "'";
+            reason = new Refusal(RefusalCategory.ExtensionBinding, "named extension '" + name + "'",
+                item.Position);
             return null;
         }
 
@@ -998,7 +1015,7 @@ namespace Heddle.Generator.Emit
         /// The exception is a BODILESS call to a pinned step-back encoder
         /// (<see cref="ExtensionBinder.Info.HasPinnedStepBackHook"/>), which binds like a plain extension.</summary>
         private Call BuildCustomExtensionCall(string name, ExtensionBinder.Info info, OutputItem item,
-            CallParameter cp, BodyContext bctx, out string reason)
+            CallParameter cp, BodyContext bctx, out Refusal reason)
         {
             reason = null;
 
@@ -1009,7 +1026,8 @@ namespace Heddle.Generator.Emit
                 // not an authoring error — it degrades quietly to the dynamic tier instead.
                 _diagnostics.Add(new EmitDiagnostic(GeneratorDiagnostics.ExtensionOverridesHook,
                     item.Position, name, info.AqnSansVersion, "InitStart/CompleteInit"));
-                reason = "extension <" + name + "> overrides a compile-time hook";
+                reason = new Refusal(RefusalCategory.HookBehavior,
+                    "extension <" + name + "> overrides a compile-time hook", item.Position);
                 return null;
             }
 
@@ -1019,11 +1037,12 @@ namespace Heddle.Generator.Emit
             // fallback, through the bodied-custom refusal just after this one.
             if (info.OverridesHook && !(info.HasPinnedStepBackHook && string.IsNullOrEmpty(item.ParameterTemplate)))
             {
-                reason = info.Role.HasValue
+                reason = new Refusal(RefusalCategory.HookBehavior, info.Role.HasValue
                     ? "custom branch extension <" + name + ">"
                     : info.HasPinnedStepBackHook
                         ? "bodied step-back encoder <" + name + ">"
-                        : "engine extension <" + name + "> with a compile-time hook (no pinned knowledge)";
+                        : "engine extension <" + name + "> with a compile-time hook (no pinned knowledge)",
+                    item.Position);
                 return null;
             }
 
@@ -1031,7 +1050,8 @@ namespace Heddle.Generator.Emit
             // conservatively fall back rather than guess. Bodiless value transformers (@ext(x)) bind directly.
             if (!string.IsNullOrEmpty(item.ParameterTemplate))
             {
-                reason = "bodied custom extension <" + name + ">";
+                reason = new Refusal(RefusalCategory.HookBehavior, "bodied custom extension <" + name + ">",
+                    item.Position);
                 return null;
             }
 
@@ -1040,7 +1060,8 @@ namespace Heddle.Generator.Emit
             // (mirrors TryBuildPropsPrototype's prop-less-definition guard).
             if (info.Parameters.Count == 0 && cp.PropArguments != null && cp.PropArguments.Count != 0)
             {
-                reason = "named arguments on parameter-less extension <" + name + ">";
+                reason = new Refusal(RefusalCategory.EngineParity,
+                    "named arguments on parameter-less extension <" + name + ">", item.Position);
                 return null;
             }
 
@@ -1053,7 +1074,8 @@ namespace Heddle.Generator.Emit
                 {
                     // Malformed [Prop] declaration — HED7017 recorded (once per extension type); refuse, the
                     // build fails like HED7015 rather than silently degrading.
-                    reason = "malformed [Prop] declaration on extension <" + name + ">";
+                    reason = new Refusal(RefusalCategory.ExtensionBinding,
+                        "malformed [Prop] declaration on extension <" + name + ">", item.Position);
                     return null;
                 }
 
@@ -1334,19 +1356,28 @@ namespace Heddle.Generator.Emit
         // ---- Definition invocation ----
 
         private Call BuildDefinitionCall(DefinitionItem def, OutputItem item, CallParameter cp, BodyContext bctx,
-            bool isFill, out string reason)
+            bool isFill, out Refusal reason)
         {
             reason = null;
 
             // Emitter resolves flatly (always most-derived), so overrides calling themselves would recurse.
             // Lifted only for materialized region fills (fill scope carries self-call→base rebind).
-            if (!isFill && DefinitionInvolvesOverride(def)) { reason = "definition override/layering"; return null; }
+            if (!isFill && DefinitionInvolvesOverride(def))
+            {
+                reason = new Refusal(RefusalCategory.DefinitionLayering, "definition override/layering",
+                    item.Position);
+                return null;
+            }
 
             // Slot definitions bind through the slot-mode BindDefinition overload.
             bool slotMode = SlotRules.HasSlot(def);
 
             var layout = ResolvePropLayout(def);
-            if (layout.Failed) { reason = "unresolved prop type"; return null; }
+            if (layout.Failed)
+            {
+                reason = new Refusal(RefusalCategory.UnnameableType, "unresolved prop type", def.Position);
+                return null;
+            }
 
             // Frozen object[] prototype + dynamic setters for non-constant arguments (evaluated against caller view).
             if (!TryBuildPropsPrototype(layout, cp, bctx, out var propsFieldRef, out var dynamicSettersRef, out reason))
@@ -1462,7 +1493,8 @@ namespace Heddle.Generator.Emit
             var bodyInfo = GetOrBuildDefinitionBody(def, defBodyCtx, out reason);
             if (bodyInfo == null || bodyInfo.Failed)
             {
-                reason = reason ?? bodyInfo?.Reason ?? "definition body";
+                reason = reason ?? bodyInfo?.Reason ??
+                    new Refusal(RefusalCategory.DefinitionLayering, "definition body", item.Position);
                 return null;
             }
 
@@ -1475,18 +1507,32 @@ namespace Heddle.Generator.Emit
         }
 
         /// <summary>The bodiless caller-content splice. Non-slot: passes current model. Slot mode: value becomes projection model.</summary>
-        private Call BuildOutCall(OutputItem item, CallParameter cp, BodyContext bctx, out string reason)
+        private Call BuildOutCall(OutputItem item, CallParameter cp, BodyContext bctx, out Refusal reason)
         {
             reason = null;
-            if (!string.IsNullOrEmpty(item.ParameterTemplate)) { reason = "bodied @out"; return null; }
+            if (!string.IsNullOrEmpty(item.ParameterTemplate))
+            {
+                reason = new Refusal(RefusalCategory.SlotChannel, "bodied @out", item.Position);
+                return null;
+            }
             // Use the canonical five-way test (OutExtension.InitStart), not a simplified approximation.
             bool hasValue = SlotRules.HasOutValue(cp);
 
             if (hasValue)
             {
                 // Value on @out is only valid inside a slot-declaring definition body.
-                if (!bctx.InSlot) { reason = "@out with value outside a slot definition"; return null; }
-                if (cp.PropArguments != null && cp.PropArguments.Count != 0) { reason = "@out prop arguments"; return null; }
+                if (!bctx.InSlot)
+                {
+                    reason = new Refusal(RefusalCategory.SlotChannel, "@out with value outside a slot definition",
+                        item.Position);
+                    return null;
+                }
+
+                if (cp.PropArguments != null && cp.PropArguments.Count != 0)
+                {
+                    reason = new Refusal(RefusalCategory.SlotChannel, "@out prop arguments", item.Position);
+                    return null;
+                }
                 if (!SlotValueAssignable(cp, bctx, out reason))
                     return null;
                 if (!BuildParamExpr(cp, bctx, RefStructUse.Boxed, out var vParam, out var vUses, out reason, item.Position))
@@ -1496,7 +1542,11 @@ namespace Heddle.Generator.Emit
             }
 
             // Bodiless valueless @out inside slot definition is a SlotValueRequired error at runtime.
-            if (bctx.InSlot) { reason = "@out() without a slot value"; return null; }
+            if (bctx.InSlot)
+            {
+                reason = new Refusal(RefusalCategory.SlotChannel, "@out() without a slot value", item.Position);
+                return null;
+            }
 
             var field = AllocateOutExtension(slotMode: false, item.Position);
             return MakeCall(field, "scope.ModelData", false, item.Position);
@@ -1516,9 +1566,18 @@ namespace Heddle.Generator.Emit
         /// body is <b>not</b> one of them any more: the element type is the collection's <c>IEnumerable&lt;T&gt;</c>
         /// argument, which is a static type and gets checked like any other.</para>
         /// </summary>
-        private bool SlotValueAssignable(CallParameter cp, BodyContext bctx, out string reason) =>
-            BodyTypingRules.TrySlotValue(CallSiteValueType(cp, bctx), bctx.SlotType,
-                (source, target) => Convertible(source, target, allowBoxToObject: false), out reason);
+        private bool SlotValueAssignable(CallParameter cp, BodyContext bctx, out Refusal reason)
+        {
+            if (BodyTypingRules.TrySlotValue(CallSiteValueType(cp, bctx), bctx.SlotType,
+                    (source, target) => Convertible(source, target, allowBoxToObject: false), out var detail))
+            {
+                reason = null;
+                return true;
+            }
+
+            reason = new Refusal(RefusalCategory.EngineParity, detail);
+            return false;
+        }
 
         /// <summary>The static type of the value a call site passes, or null where the emitter has none. Null is
         /// "cannot say", never "no type"; the compilation's <c>dynamic</c> is the opposite, a definite "no static
@@ -1653,9 +1712,9 @@ namespace Heddle.Generator.Emit
         /// <para>"Cannot say" is exempt for the same reason it is everywhere else: refusing on a type the emitter
         /// never established would cost the precompiled tier over templates that are fine.</para>
         /// </summary>
-        private bool AcceptedTypeSatisfied(ExtensionBinder.Info info, ITypeSymbol valueType, out string reason)
+        private bool AcceptedTypeSatisfied(ExtensionBinder.Info info, ITypeSymbol valueType, out string detail)
         {
-            reason = null;
+            detail = null;
             var accepted = info.AcceptedDataTypes;
             if (accepted.Count == 0)
                 return true;
@@ -1672,7 +1731,7 @@ namespace Heddle.Generator.Emit
             var names = new List<string>(accepted.Count);
             foreach (var candidate in accepted)
                 names.Add(candidate == null ? "?" : SymbolTypeResolver.FullyQualified(candidate));
-            reason = "value type '" + SymbolTypeResolver.FullyQualified(valueType) +
+            detail = "value type '" + SymbolTypeResolver.FullyQualified(valueType) +
                      "' is not one of the accepted types [" + string.Join(", ", names) + "]";
             return false;
         }
@@ -1888,7 +1947,7 @@ namespace Heddle.Generator.Emit
         /// read the <c>string</c> does not have is a compile-time refusal rather than a render-time throw.</para>
         /// </summary>
         private bool TryTypeCallSiteBody(DefinitionItem def, CallParameter cp, BodyContext bctx,
-            BlockPosition position, ref BodyContext defBodyCtx, out string reason)
+            BlockPosition position, ref BodyContext defBodyCtx, out Refusal reason)
         {
             reason = null;
             var model = DeclaresDynamicModel(def)
@@ -1896,7 +1955,8 @@ namespace Heddle.Generator.Emit
                 : ObjectDefinitionBodyModel(cp, bctx);
             if (model == null)
             {
-                reason = "definition body over a caller value this call site cannot type";
+                reason = new Refusal(RefusalCategory.UnknowableValue,
+                    "definition body over a caller value this call site cannot type", position);
                 return false;
             }
 
@@ -2009,11 +2069,15 @@ namespace Heddle.Generator.Emit
         /// collapsed, definitions stripped, exactly the text the engine's evaluation yields — and a body with output
         /// chains compiles like any other body and evaluates at static init of the generated class
         /// (<c>PrecompiledRuntime.EvaluatePartialName</c>), failure captured and re-raised the engine's way.</summary>
-        private Partial BuildPartialCall(OutputItem item, CallParameter cp, BodyContext bctx, out string reason)
+        private Partial BuildPartialCall(OutputItem item, CallParameter cp, BodyContext bctx, out Refusal reason)
         {
             reason = null;
             var name = item.ParameterTemplate;
-            if (string.IsNullOrWhiteSpace(name)) { reason = "empty @partial name"; return null; }
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                reason = new Refusal(RefusalCategory.PartialName, "empty @partial name", item.Position);
+                return null;
+            }
 
             var ctx = item.Context;
             bool hasChains = ctx != null && ctx.OutputChains != null && ctx.OutputChains.Count != 0;
@@ -2033,7 +2097,8 @@ namespace Heddle.Generator.Emit
             {
                 if (!BodyTypingRules.TryPartialNameBodyContext(childModel, bctx, out var nameCtx))
                 {
-                    reason = "computed @partial name over a call value with no static type";
+                    reason = new Refusal(RefusalCategory.PartialName,
+                        "computed @partial name over a call value with no static type", item.Position);
                     return null;
                 }
 
@@ -2051,7 +2116,8 @@ namespace Heddle.Generator.Emit
             string key = null;
             if (nameBody == null && !TemplateKey.TryNormalize(name.Trim(), out key))
             {
-                reason = "unnormalizable @partial name '" + name.Trim() + "'";
+                reason = new Refusal(RefusalCategory.PartialName,
+                    "unnormalizable @partial name '" + name.Trim() + "'", item.Position);
                 return null;
             }
 
@@ -2060,7 +2126,8 @@ namespace Heddle.Generator.Emit
             {
                 if (_resolver.ClassifyModelType(childModel, out _) != SymbolTypeResolver.NameFault.None)
                 {
-                    reason = "@partial call value of a type generated code cannot name";
+                    reason = new Refusal(RefusalCategory.UnnameableType,
+                        "@partial call value of a type generated code cannot name", item.Position);
                     return null;
                 }
 
@@ -2103,7 +2170,7 @@ namespace Heddle.Generator.Emit
         /// collapsed and definition blocks stripped: the same shared shaping passes the engine's sub-compile runs,
         /// so the folded text is the document its evaluation renders. Null (with a reason) when the shaping lints
         /// refuse the body.</summary>
-        private string ShapedPartialNameText(string doc, ParseContext ctx, out string reason)
+        private string ShapedPartialNameText(string doc, ParseContext ctx, out Refusal reason)
         {
             reason = null;
             var shape = DocumentShaper.Shape(doc, ctx, _config.TrimDirectiveLines, chain => IsZeroOutput(chain),
@@ -2112,7 +2179,7 @@ namespace Heddle.Generator.Emit
             var lintRefusal = TakeLintRefusal();
             if (lintRefusal != null)
             {
-                reason = lintRefusal;
+                reason = new Refusal(RefusalCategory.EngineParity, lintRefusal);
                 return null;
             }
 
@@ -2140,12 +2207,15 @@ namespace Heddle.Generator.Emit
         /// <c>ParseContext.IsolateContext</c>, gives the copy a <em>new</em> context, which only splits further.
         /// </para>
         /// </summary>
-        private DefBodyInfo GetOrBuildDefinitionBody(DefinitionItem def, BodyContext bodyCtx, out string reason)
+        private DefBodyInfo GetOrBuildDefinitionBody(DefinitionItem def, BodyContext bodyCtx, out Refusal reason)
         {
             reason = null;
             var key = _bodyTyping.KeyOf(def.Context);
-            if (!_bodyTyping.TryShareBodyTyping(key, ref bodyCtx, out reason))
+            if (!_bodyTyping.TryShareBodyTyping(key, ref bodyCtx, out var shareDetail))
+            {
+                reason = new Refusal(RefusalCategory.EngineParity, shareDetail, def.Position);
                 return null;
+            }
 
             if (_definitionBodies.TryGetValue(key, out var existing))
             {
@@ -2211,7 +2281,7 @@ namespace Heddle.Generator.Emit
         /// semantics do not. Always returns true — no verdict is a refusal any more.
         /// </summary>
         private bool TryBuildGeneratorFillScope(DefinitionItem def, OutputItem item,
-            out Dictionary<string, DefinitionItem> fills, out string reason)
+            out Dictionary<string, DefinitionItem> fills, out Refusal reason)
         {
             fills = null;
             reason = null;
@@ -2299,7 +2369,7 @@ namespace Heddle.Generator.Emit
         /// dynamic exit here exactly as it does there.</para>
         /// </summary>
         private bool TryRegionBodyContext(DefinitionItem def, CallParameter cp, BodyContext bctx,
-            BlockPosition position, out BodyContext ctx, out string reason)
+            BlockPosition position, out BodyContext ctx, out Refusal reason)
         {
             ctx = DefinitionBodyContext(def, out reason);
             if (reason != null)
@@ -2330,7 +2400,7 @@ namespace Heddle.Generator.Emit
         /// not the engine not having one.</para>
         /// </summary>
         private bool DeclaredModelAcceptsCallSiteValue(DefinitionItem def, CallParameter cp, BodyContext bctx,
-            out string reason)
+            out Refusal reason)
         {
             reason = null;
             var modelTypeName = def.ModelType;
@@ -2361,9 +2431,10 @@ namespace Heddle.Generator.Emit
             if (TypeFacts.IsAssignableFrom(declared, valueType))
                 return true;
 
-            reason = "value type '" + SymbolTypeResolver.FullyQualified(valueType) +
-                     "' is not accepted by the definition model '" +
-                     SymbolTypeResolver.FullyQualified(declared) + "'";
+            reason = new Refusal(RefusalCategory.EngineParity,
+                "value type '" + SymbolTypeResolver.FullyQualified(valueType) +
+                "' is not accepted by the definition model '" +
+                SymbolTypeResolver.FullyQualified(declared) + "'", def.Position);
             return false;
         }
 
@@ -2376,7 +2447,7 @@ namespace Heddle.Generator.Emit
         /// rather than the answer: <c>:: dynamic</c> sends the engine's model accessor down its dynamic exit and
         /// the other two do not.</para>
         /// </summary>
-        private BodyContext DefinitionBodyContext(DefinitionItem def, out string reason)
+        private BodyContext DefinitionBodyContext(DefinitionItem def, out Refusal reason)
         {
             reason = null;
             var modelTypeName = def.ModelType;
@@ -2386,7 +2457,8 @@ namespace Heddle.Generator.Emit
             var sym = _resolver.ResolveModelType(modelTypeName, _usings);
             if (sym == null)
             {
-                reason = "unresolved definition model type '" + modelTypeName + "'";
+                reason = new Refusal(RefusalCategory.UnnameableType,
+                    "unresolved definition model type '" + modelTypeName + "'", def.Position);
                 return default;
             }
 
@@ -2650,7 +2722,7 @@ namespace Heddle.Generator.Emit
         /// <paramref name="propsFieldRef"/> is "null" for prop-less; <paramref name="dynamicSettersRef"/> is "null" for all-constant.
         /// Falls back for unreproducible values or untypeable dynamic arguments.</summary>
         private bool TryBuildPropsPrototype(PropLayoutInfo layout, CallParameter cp,
-            BodyContext bctx, out string propsFieldRef, out string dynamicSettersRef, out string reason)
+            BodyContext bctx, out string propsFieldRef, out string dynamicSettersRef, out Refusal reason)
         {
             reason = null;
             propsFieldRef = "null";
@@ -2659,7 +2731,7 @@ namespace Heddle.Generator.Emit
             {
                 if (cp.PropArguments != null && cp.PropArguments.Count != 0)
                 {
-                    reason = "named arguments on prop-less definition";
+                    reason = new Refusal(RefusalCategory.EngineParity, "named arguments on prop-less definition");
                     return false;
                 }
 
@@ -2675,14 +2747,24 @@ namespace Heddle.Generator.Emit
                 var seen = new HashSet<string>(System.StringComparer.Ordinal);
                 foreach (var arg in cp.PropArguments)
                 {
-                    if (!seen.Add(arg.Name)) { reason = "duplicate prop argument"; return false; }
-                    if (!layout.ByName.TryGetValue(arg.Name, out var slot)) { reason = "unknown prop '" + arg.Name + "'"; return false; }
+                    if (!seen.Add(arg.Name))
+                    {
+                        reason = new Refusal(RefusalCategory.DefinitionProps, "duplicate prop argument");
+                        return false;
+                    }
+
+                    if (!layout.ByName.TryGetValue(arg.Name, out var slot))
+                    {
+                        reason = new Refusal(RefusalCategory.DefinitionProps, "unknown prop '" + arg.Name + "'");
+                        return false;
+                    }
 
                     if (arg.Value is LiteralNode lit && lit.LiteralError == null)
                     {
                         if (!TryFormatPropValue(slot.Type, true, lit.Value, out var expr))
                         {
-                            reason = "unreproducible prop value '" + arg.Name + "'";
+                            reason = new Refusal(RefusalCategory.DefinitionProps,
+                                "unreproducible prop value '" + arg.Name + "'");
                             return false;
                         }
 
@@ -2706,13 +2788,15 @@ namespace Heddle.Generator.Emit
                     continue;
                 if (!slot.HasDefault)
                 {
-                    reason = "missing required prop '" + slot.Name + "'";
+                    reason = new Refusal(RefusalCategory.DefinitionProps,
+                        "missing required prop '" + slot.Name + "'");
                     return false;
                 }
 
                 if (!TryFormatPropValue(slot.Type, true, slot.DefaultValue, out var expr, slot.DefaultSourceType))
                 {
-                    reason = "unreproducible prop default '" + slot.Name + "'";
+                    reason = new Refusal(RefusalCategory.DefinitionProps,
+                        "unreproducible prop default '" + slot.Name + "'");
                     return false;
                 }
 
@@ -2738,7 +2822,7 @@ namespace Heddle.Generator.Emit
 
         /// <summary>Emits an evaluator for non-constant prop arguments. Supports typed-caller member paths and native expressions.</summary>
         private bool TryBuildDynamicSetter(NamedArgument arg, PropSlotInfo slot, BodyContext bctx, out string setterExpr,
-            out string reason)
+            out Refusal reason)
         {
             reason = null;
             setterExpr = null;
@@ -2747,11 +2831,15 @@ namespace Heddle.Generator.Emit
             // only fatal when there is no layout to read either.
             if (callerModel == null && bctx.Props == null)
             {
-                reason = "dynamic arg without a typed caller model";
+                reason = new Refusal(RefusalCategory.DefinitionProps, "dynamic arg without a typed caller model");
                 return false;
             }
 
-            if (slot.Type == null) { reason = "dynamic arg with unresolved prop type"; return false; }
+            if (slot.Type == null)
+            {
+                reason = new Refusal(RefusalCategory.DefinitionProps, "dynamic arg with unresolved prop type");
+                return false;
+            }
 
             string conversionKeyword = null;
             if (arg.Value is PathNode pn)
@@ -2766,21 +2854,48 @@ namespace Heddle.Generator.Emit
                 {
                     // The engine compiles a '::' arg against RootScopeType; an untyped root is its own
                     // typed-model refusal, so degrading hands the template to the tier that raises it.
-                    if (_modelSymbol == null) { reason = "root-reference dynamic arg without a typed root model"; return false; }
+                    if (_modelSymbol == null)
+                    {
+                        reason = new Refusal(RefusalCategory.DefinitionProps,
+                            "root-reference dynamic arg without a typed root model");
+                        return false;
+                    }
+
                     var res = _resolver.ResolvePath(_modelSymbol, pn.Segments);
-                    if (res.Kind != SymbolTypeResolver.PathKind.Resolved) { reason = "dynamic arg root path (" + res.Kind + ")"; return false; }
+                    if (res.Kind != SymbolTypeResolver.PathKind.Resolved)
+                    {
+                        reason = new Refusal(RefusalCategory.DefinitionProps,
+                            "dynamic arg root path (" + res.Kind + ")");
+                        return false;
+                    }
                     argType = res.ResultType;
                 }
                 else if (BodyTypingRules.IsPropName(pn, bctx.Props))
                 {
                     argType = PropRootType(pn, bctx.Props);
-                    if (argType == null) { reason = "dynamic arg reads a prop this call site cannot type"; return false; }
+                    if (argType == null)
+                    {
+                        reason = new Refusal(RefusalCategory.DefinitionProps,
+                            "dynamic arg reads a prop this call site cannot type");
+                        return false;
+                    }
                 }
                 else
                 {
-                    if (callerModel == null) { reason = "model-rooted dynamic arg without a typed caller model"; return false; }
+                    if (callerModel == null)
+                    {
+                        reason = new Refusal(RefusalCategory.DefinitionProps,
+                            "model-rooted dynamic arg without a typed caller model");
+                        return false;
+                    }
+
                     var res = _resolver.ResolvePath(callerModel, pn.Segments);
-                    if (res.Kind != SymbolTypeResolver.PathKind.Resolved) { reason = "dynamic arg path (" + res.Kind + ")"; return false; }
+                    if (res.Kind != SymbolTypeResolver.PathKind.Resolved)
+                    {
+                        reason = new Refusal(RefusalCategory.DefinitionProps,
+                            "dynamic arg path (" + res.Kind + ")");
+                        return false;
+                    }
                     argType = res.ResultType;
                 }
 
@@ -2793,7 +2908,8 @@ namespace Heddle.Generator.Emit
                         conversionKeyword = NumericKeyword(to);
                     else
                     {
-                        reason = "dynamic arg needs an unprovable conversion";
+                        reason = new Refusal(RefusalCategory.DefinitionProps,
+                            "dynamic arg needs an unprovable conversion");
                         return false;
                     }
                 }
@@ -2801,7 +2917,7 @@ namespace Heddle.Generator.Emit
             else if (slot.Type.SpecialType != SpecialType.System_Object)
             {
                 // A non-path native argument: only safe without a conversion, i.e. when the prop takes object.
-                reason = "non-path dynamic arg needing a typed prop";
+                reason = new Refusal(RefusalCategory.DefinitionProps, "non-path dynamic arg needing a typed prop");
                 return false;
             }
 
@@ -2809,7 +2925,11 @@ namespace Heddle.Generator.Emit
                 AllocateHopLocal, bctx.Props, _modelDeclaredDynamic);
             var body = writer.WriteRoot(arg.Value);
             DrainUnresolvable(writer);
-            if (body == null) { reason = "unwritable dynamic arg"; return false; }
+            if (body == null)
+            {
+                reason = new Refusal(RefusalCategory.DefinitionProps, "unwritable dynamic arg");
+                return false;
+            }
             RecordFunctionUses(writer);
 
             var inner = conversionKeyword != null ? "(" + conversionKeyword + ")(" + body + ")" : body;
@@ -2857,14 +2977,24 @@ namespace Heddle.Generator.Emit
 
         /// <summary>Caller-content typing for slot-mode definitions: ModelData = slot value (declared slot type).
         /// Dynamic slot types and unresolvable types degrade the template.</summary>
-        private BodyContext SlotBodyContext(DefinitionItem def, out string reason)
+        private BodyContext SlotBodyContext(DefinitionItem def, out Refusal reason)
         {
             reason = null;
             // The shared base-chain walk (SlotRules), not this file's second copy of it.
             var slotName = SlotRules.SlotTypeName(def);
-            if (slotName == null) { reason = "slot definition without slot type"; return default; }
+            if (slotName == null)
+            {
+                reason = new Refusal(RefusalCategory.SlotChannel, "slot definition without slot type", def.Position);
+                return default;
+            }
+
             var sym = _resolver.ResolveModelType(slotName, _usings);
-            if (sym == null) { reason = "unresolved slot type '" + slotName + "'"; return default; }
+            if (sym == null)
+            {
+                reason = new Refusal(RefusalCategory.UnnameableType, "unresolved slot type '" + slotName + "'",
+                    def.Position);
+                return default;
+            }
             if (!CanWriteTypeName(sym, def.Position, out reason)) return default;
             var fq = SymbolTypeResolver.FullyQualified(sym);
             return new BodyContext("(" + fq + ")", sym, false, root: _modelSymbol);
@@ -2941,7 +3071,7 @@ namespace Heddle.Generator.Emit
         /// <param name="callPosition">The call this parameter belongs to — where the runtime positions a
         /// prop-shadowing warning raised off the same read.</param>
         private bool BuildParamExpr(CallParameter cp, BodyContext bctx, RefStructUse use, out string paramExpr,
-            out bool usesModel, out string reason, BlockPosition callPosition)
+            out bool usesModel, out Refusal reason, BlockPosition callPosition)
         {
             reason = null;
             usesModel = false;
@@ -2972,7 +3102,8 @@ namespace Heddle.Generator.Emit
                     // Multi-hop: cast prop to slot type and walk hop-by-hop (same tier as single-hop model path).
                     if (slot.Type == null || slot.Type.TypeKind == TypeKind.Dynamic)
                     {
-                        reason = "multi-hop prop read on dynamic/unresolved type";
+                        reason = new Refusal(RefusalCategory.MemberAccess,
+                            "multi-hop prop read on dynamic/unresolved type", callPosition);
                         return false;
                     }
 
@@ -2981,19 +3112,20 @@ namespace Heddle.Generator.Emit
                     var res = _resolver.ResolvePath(slot.Type, rest);
                     if (res.Kind != SymbolTypeResolver.PathKind.Resolved)
                     {
-                        reason = "prop multi-hop (" + res.Kind + ")";
+                        reason = new Refusal(RefusalCategory.MemberAccess, "prop multi-hop (" + res.Kind + ")",
+                            callPosition);
                         return false;
                     }
 
-                    if (SymbolTypeResolver.EndsOnRefStruct(res) && use != RefStructUse.Rendered)
+                    var plan = SelectValuePlan(res, use, "prop multi-hop", callPosition);
+                    if (plan.Kind == EmissionPlanKind.Refuse)
                     {
-                        reason = RefStructSinkReason("prop multi-hop", use);
+                        reason = plan.Refusal;
                         return false;
                     }
 
                     var root = "((" + slot.TypeFq + ")" + propRead + ")";
-                    paramExpr = Stringify(MemberPathWriter.Write(root, MapHops(res), AllocateHopLocal),
-                        SymbolTypeResolver.EndsOnRefStruct(res));
+                    paramExpr = ExecuteValuePlan(plan, MemberPathWriter.Write(root, MapHops(res), AllocateHopLocal));
                     return true;
                 }
 
@@ -3001,7 +3133,7 @@ namespace Heddle.Generator.Emit
                 // against RootScopeType, which every nested and definition body inherits — so its tier follows
                 // the root typing, not the body's.
                 if (cp.RootReference)
-                    return BuildRootRefParamExpr(segments, use, out paramExpr, out reason);
+                    return BuildRootRefParamExpr(segments, use, callPosition, out paramExpr, out reason);
 
                 if (bctx.IsDynamic)
                 {
@@ -3011,7 +3143,11 @@ namespace Heddle.Generator.Emit
                     return true;
                 }
 
-                if (bctx.ModelSymbol == null) { reason = "unresolved model type"; return false; }
+                if (bctx.ModelSymbol == null)
+                {
+                    reason = new Refusal(RefusalCategory.UnknowableValue, "unresolved model type", callPosition);
+                    return false;
+                }
 
                 var resolution = _resolver.ResolvePath(bctx.ModelSymbol, segments);
                 if (resolution.Kind != SymbolTypeResolver.PathKind.Resolved)
@@ -3020,18 +3156,20 @@ namespace Heddle.Generator.Emit
                     if (resolution.Kind == SymbolTypeResolver.PathKind.Failed ||
                         resolution.Kind == SymbolTypeResolver.PathKind.Inaccessible)
                         RecordMemberFailure(bctx.ModelSymbol, segments, resolution);
-                    reason = "member path (" + resolution.Kind + ")";
+                    reason = new Refusal(RefusalCategory.MemberAccess, "member path (" + resolution.Kind + ")",
+                        callPosition);
                     return false;
                 }
 
-                if (SymbolTypeResolver.EndsOnRefStruct(resolution) && use != RefStructUse.Rendered)
+                var pathPlan = SelectValuePlan(resolution, use, "member path", callPosition);
+                if (pathPlan.Kind == EmissionPlanKind.Refuse)
                 {
-                    reason = RefStructSinkReason("member path", use);
+                    reason = pathPlan.Refusal;
                     return false;
                 }
 
-                paramExpr = Stringify(MemberPathWriter.Write("m", MapHops(resolution), AllocateHopLocal),
-                    SymbolTypeResolver.EndsOnRefStruct(resolution));
+                paramExpr = ExecuteValuePlan(pathPlan,
+                    MemberPathWriter.Write("m", MapHops(resolution), AllocateHopLocal));
                 usesModel = true;
                 return true;
             }
@@ -3046,7 +3184,8 @@ namespace Heddle.Generator.Emit
 
                 if (_config.ExpressionMode == Heddle.Data.ExpressionMode.MemberPathsOnly)
                 {
-                    reason = "native expression under MemberPathsOnly";
+                    reason = new Refusal(RefusalCategory.HostSetup, "native expression under MemberPathsOnly",
+                        callPosition);
                     return false;
                 }
 
@@ -3063,7 +3202,10 @@ namespace Heddle.Generator.Emit
                 {
                     // The writer's own refusal names the construct that cost the tier; the generic phrase
                     // survives only for a bail with no specific story.
-                    reason = writer.RefusalReason ?? "unsupported native expression";
+                    reason = writer.RefusalReason != null
+                        ? new Refusal(writer.RefusalCategory, writer.RefusalReason, callPosition)
+                        : new Refusal(RefusalCategory.NativeExpression, "unsupported native expression",
+                            callPosition);
                     return false;
                 }
 
@@ -3090,15 +3232,39 @@ namespace Heddle.Generator.Emit
                 return true;
             }
 
-            reason = "C#/chain parameter";
+            reason = new Refusal(RefusalCategory.ChainCarrier, "C#/chain parameter", callPosition);
             return false;
         }
 
-        /// <summary>A built path expression boxed for the call — or, for a ref-struct-ending path in the rendered
-        /// sink, stringified in place: the string the carrier's boxed-value arm would have produced, handed to the
-        /// same <c>is string</c> arm, so encode-vs-raw composition is untouched.</summary>
-        private static string Stringify(string pathExpr, bool endsOnRefStruct) =>
-            endsOnRefStruct
+        /// <summary>Plan selection for a resolved member-path value, from (resolved type, sink) — ordered so
+        /// <see cref="EmissionPlanKind.Refuse"/> is the LAST exit: a node may not refuse until every other plan
+        /// has been considered. Two plans have selectors today; the seams between the others mark where each
+        /// remaining plan joins the ladder when it gains one.</summary>
+        private static EmissionPlan SelectValuePlan(SymbolTypeResolver.PathResolution resolved, RefStructUse use,
+            string pathKind, BlockPosition position)
+        {
+            // Direct: typed C# spells the value and the sink boxes it.
+            if (!SymbolTypeResolver.EndsOnRefStruct(resolved))
+                return EmissionPlan.Direct;
+
+            // Stringified: the rendered sink's own protocol (`value is string s ? s : value.ToString()`)
+            // stringifies a ref-like value in place, so the box is never needed.
+            if (use == RefStructUse.Rendered)
+                return EmissionPlan.Stringified;
+
+            // Generic selector seam: an inference helper cannot carry a ref-like value either (CS9244).
+            // LateBound selector seam: nothing on a member path resolves later than the sink boxes.
+            // EngineAccessor selector seam: the engine's accessor returns object — the very box being refused.
+            return EmissionPlan.Refused(new Refusal(RefusalCategory.RefLikeSink,
+                RefStructSinkReason(pathKind, use), position));
+        }
+
+        /// <summary>Executes the selected plan over a built path expression — the writer half, which decides
+        /// nothing: a stringified plan produces the string the carrier's boxed-value arm would have produced,
+        /// handed to the same <c>is string</c> arm, so encode-vs-raw composition is untouched, and every other
+        /// plan boxes the value as built.</summary>
+        private static string ExecuteValuePlan(in EmissionPlan plan, string pathExpr) =>
+            plan.Kind == EmissionPlanKind.Stringified
                 ? "(object)((" + pathExpr + ").ToString())"
                 : "(object)(" + pathExpr + ")";
 
@@ -3106,8 +3272,8 @@ namespace Heddle.Generator.Emit
         /// model read cast to the template's model (the engine's own RootScopeType conversion, InvalidCastException
         /// included), and an untyped root walks the per-segment DLR chain the engine's <c>RootDynamicParameter</c>
         /// compiles. Neither reads the model local, so the caller's <c>usesModel</c> stays false.</summary>
-        private bool BuildRootRefParamExpr(string[] segments, RefStructUse use, out string paramExpr,
-            out string reason)
+        private bool BuildRootRefParamExpr(string[] segments, RefStructUse use, BlockPosition callPosition,
+            out string paramExpr, out Refusal reason)
         {
             reason = null;
             paramExpr = null;
@@ -3124,19 +3290,20 @@ namespace Heddle.Generator.Emit
                 if (resolution.Kind == SymbolTypeResolver.PathKind.Failed ||
                     resolution.Kind == SymbolTypeResolver.PathKind.Inaccessible)
                     RecordMemberFailure(_modelSymbol, segments, resolution);
-                reason = "root member path (" + resolution.Kind + ")";
+                reason = new Refusal(RefusalCategory.MemberAccess, "root member path (" + resolution.Kind + ")",
+                    callPosition);
                 return false;
             }
 
-            if (SymbolTypeResolver.EndsOnRefStruct(resolution) && use != RefStructUse.Rendered)
+            var plan = SelectValuePlan(resolution, use, "root member path", callPosition);
+            if (plan.Kind == EmissionPlanKind.Refuse)
             {
-                reason = RefStructSinkReason("root member path", use);
+                reason = plan.Refusal;
                 return false;
             }
 
             var root = "((" + SymbolTypeResolver.FullyQualified(_modelSymbol) + ")" + rootRead + ")";
-            paramExpr = Stringify(MemberPathWriter.Write(root, MapHops(resolution), AllocateHopLocal),
-                SymbolTypeResolver.EndsOnRefStruct(resolution));
+            paramExpr = ExecuteValuePlan(plan, MemberPathWriter.Write(root, MapHops(resolution), AllocateHopLocal));
             return true;
         }
 
@@ -3147,7 +3314,7 @@ namespace Heddle.Generator.Emit
         /// capture an identifier the engine would fail to bind — and the model cast happens at the call, the way
         /// <c>CompiledParameter</c> converts, so an <c>InvalidCastException</c> fires at the same render position,
         /// after the preceding pieces are written.</summary>
-        private bool BuildCSharpExpr(string csharp, BodyContext bctx, out string paramExpr, out string reason)
+        private bool BuildCSharpExpr(string csharp, BodyContext bctx, out string paramExpr, out Refusal reason)
         {
             reason = null;
             paramExpr = null;
@@ -3155,7 +3322,7 @@ namespace Heddle.Generator.Emit
             if (_config.ExpressionMode != Heddle.Data.ExpressionMode.FullCSharp)
             {
                 // Runtime rejects C# unless FullCSharp mode; dynamic path surfaces engine's gate.
-                reason = "embedded C# outside FullCSharp mode";
+                reason = new Refusal(RefusalCategory.HostSetup, "embedded C# outside FullCSharp mode");
                 return false;
             }
 
@@ -3165,7 +3332,7 @@ namespace Heddle.Generator.Emit
             bool rootPinned = _modelSymbol != null || _modelDeclaredDynamic;
             if (bctx.ModelSymbol == null && !rootPinned)
             {
-                reason = "embedded C# without a typed model";
+                reason = new Refusal(RefusalCategory.EmbeddedCSharp, "embedded C# without a typed model");
                 return false;
             }
 
@@ -3180,7 +3347,8 @@ namespace Heddle.Generator.Emit
             {
                 if (_resolver.UsingDirectiveCompiles(ns))
                     continue;
-                reason = "embedded C# under a @using naming no namespace ('" + ns + "')";
+                reason = new Refusal(RefusalCategory.EmbeddedCSharp,
+                    "embedded C# under a @using naming no namespace ('" + ns + "')");
                 return false;
             }
 
@@ -3196,8 +3364,9 @@ namespace Heddle.Generator.Emit
                 // A dynamic operation this compilation cannot compile at all is the consumer's wall, not the
                 // expression's: the emitted fragment would hit the same CS0656 in the consumer's own build.
                 reason = _csharpTyper.NeedsRuntimeBinder(csharp, modelType, bctx.Root, usings)
-                    ? "embedded C# needing a Microsoft.CSharp reference this compilation does not have"
-                    : "embedded C# the engine's compiler rejects";
+                    ? new Refusal(RefusalCategory.HostSetup,
+                        "embedded C# needing a Microsoft.CSharp reference this compilation does not have")
+                    : new Refusal(RefusalCategory.EmbeddedCSharp, "embedded C# the engine's compiler rejects");
                 return false;
             }
 
@@ -3206,7 +3375,8 @@ namespace Heddle.Generator.Emit
             // word search — a lambda parameter of the same name shadows the parameter and is no reference.
             if (!rootPinned && _csharpTyper.BindsRoot(csharp, modelType, bctx.Root, usings))
             {
-                reason = "embedded C# reads root where no @model pins the root type";
+                reason = new Refusal(RefusalCategory.EmbeddedCSharp,
+                    "embedded C# reads root where no @model pins the root type");
                 return false;
             }
 
@@ -3255,7 +3425,7 @@ namespace Heddle.Generator.Emit
         }
 
         private bool BuildChainItemExpr(OutputItem inner, BodyContext bctx, out string paramExpr, out bool usesModel,
-            out string reason)
+            out Refusal reason)
         {
             reason = null;
             paramExpr = null;
@@ -3263,7 +3433,7 @@ namespace Heddle.Generator.Emit
 
             if (!string.IsNullOrEmpty(inner.ParameterTemplate))
             {
-                reason = "bodied chain item";
+                reason = new Refusal(RefusalCategory.ChainCarrier, "bodied chain item", inner.Position);
                 return false;
             }
 
@@ -3287,7 +3457,10 @@ namespace Heddle.Generator.Emit
                 DrainUnresolvable(writer);
                 if (expr == null)
                 {
-                    reason = writer.RefusalReason ?? "unsupported function '" + name + "'";
+                    reason = writer.RefusalReason != null
+                        ? new Refusal(writer.RefusalCategory, writer.RefusalReason, inner.Position)
+                        : new Refusal(RefusalCategory.FunctionBinding, "unsupported function '" + name + "'",
+                            inner.Position);
                     return false;
                 }
 
@@ -3305,7 +3478,8 @@ namespace Heddle.Generator.Emit
                 _unresolvableFunctions.Add((name, inner.Position));
             }
 
-            reason = "chain item extension '" + name + "'";
+            reason = new Refusal(RefusalCategory.ChainCarrier, "chain item extension '" + name + "'",
+                inner.Position);
             return false;
         }
 
@@ -3568,8 +3742,17 @@ namespace Heddle.Generator.Emit
         /// saying so. Every other refusal is a property of the type itself with no remedy but a different model, so
         /// it degrades silently to the tier that can serve it.</para>
         /// </summary>
-        private bool CanWriteTypeName(ITypeSymbol type, BlockPosition position, out string reason) =>
-            ReportUnnameable(_resolver.ClassifyModelType(type, out reason), type, position);
+        private bool CanWriteTypeName(ITypeSymbol type, BlockPosition position, out Refusal reason)
+        {
+            if (ReportUnnameable(_resolver.ClassifyModelType(type, out var detail), type, position))
+            {
+                reason = null;
+                return true;
+            }
+
+            reason = new Refusal(RefusalCategory.UnnameableType, detail, position);
+            return false;
+        }
 
         /// <summary>
         /// The same question for a type the emitter spells but never holds a <b>model</b> value of: a bound host
@@ -3581,8 +3764,17 @@ namespace Heddle.Generator.Emit
         /// consumer's build stops on a <c>.g.cs</c> they cannot edit. The ref-struct restriction is the one that
         /// does not apply here: nothing boxes the extension, and no extension could be a ref struct anyway.</para>
         /// </summary>
-        private bool CanWriteExtensionTypeName(ITypeSymbol type, BlockPosition position, out string reason) =>
-            ReportUnnameable(_resolver.ClassifyTypeName(type, out reason), type, position);
+        private bool CanWriteExtensionTypeName(ITypeSymbol type, BlockPosition position, out Refusal reason)
+        {
+            if (ReportUnnameable(_resolver.ClassifyTypeName(type, out var detail), type, position))
+            {
+                reason = null;
+                return true;
+            }
+
+            reason = new Refusal(RefusalCategory.UnnameableType, detail, position);
+            return false;
+        }
 
         private bool ReportUnnameable(SymbolTypeResolver.NameFault fault, ITypeSymbol type, BlockPosition position)
         {
