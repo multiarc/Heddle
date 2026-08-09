@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Text;
 using Heddle.Data;
 using Heddle.Generator.Binding;
+using Heddle.Generator.Typing;
 using Heddle.Language.Expressions;
 using Heddle.Language.Members;
 using Heddle.Precompiled;
@@ -40,7 +41,7 @@ namespace Heddle.Generator.Emit
         private readonly ITypeSymbol _modelType;
         private readonly ITypeSymbol _rootModelType;
         private readonly string _modelLocal;
-        private readonly TemplateEmitter.PropLayoutInfo _props;
+        private readonly PropLayoutInfo _props;
         private readonly FunctionExportResolver _exports;
         private bool _usedModel;
 
@@ -70,7 +71,7 @@ namespace Heddle.Generator.Emit
 
         public NativeExpressionWriter(SymbolTypeResolver resolver, ITypeSymbol modelType, ITypeSymbol rootModelType,
             string modelLocal, FunctionExportResolver exports, SymbolTypeFacts typeFacts,
-            Func<string> allocateHopLocal, TemplateEmitter.PropLayoutInfo props = null,
+            Func<string> allocateHopLocal, PropLayoutInfo props = null,
             bool modelDeclaredDynamic = false)
         {
             _resolver = resolver;
@@ -694,7 +695,7 @@ namespace Heddle.Generator.Emit
         /// rule rather than by coincidence — and once it does the model is out of the picture entirely: the read
         /// either roots at the prop or the expression degrades, never falls back to the member the prop shadows.
         /// </summary>
-        private TemplateEmitter.PropSlotInfo PropRoot(PathNode path)
+        private PropSlotInfo PropRoot(PathNode path)
         {
             if (path.Target != null || path.RootRef || _props == null || path.Segments.Count == 0)
                 return null;
@@ -840,7 +841,7 @@ namespace Heddle.Generator.Emit
         /// <summary>Emits the prop read: the boxed slot cast back to its declared type, then the remaining segments
         /// hopped off that type — the same shape a prop-rooted call-site parameter emits. Null degrades the
         /// expression; it never re-reads the model member the prop shadows.</summary>
-        private string WritePropPath(TemplateEmitter.PropSlotInfo slot, PathNode path)
+        private string WritePropPath(PropSlotInfo slot, PathNode path)
         {
             if (slot.Type == null)
                 return Refuse("a prop whose declared type the writer cannot resolve");
@@ -865,7 +866,7 @@ namespace Heddle.Generator.Emit
         }
 
         /// <summary>The static type of a prop-rooted path, or null where the remaining segments do not resolve.</summary>
-        private ITypeSymbol PropPathType(TemplateEmitter.PropSlotInfo slot, PathNode path)
+        private ITypeSymbol PropPathType(PropSlotInfo slot, PathNode path)
         {
             if (slot.Type == null)
                 return null;

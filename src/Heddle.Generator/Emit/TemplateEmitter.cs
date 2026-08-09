@@ -6,6 +6,7 @@ using Heddle.Data;
 using Heddle.Generator.Binding;
 using Heddle.Generator.Diagnostics;
 using Heddle.Generator.Pipeline;
+using Heddle.Generator.Typing;
 using Heddle.Language;
 using Heddle.Language.Binding;
 using Heddle.Language.Expressions;
@@ -476,161 +477,6 @@ namespace Heddle.Generator.Emit
             }
         }
 
-        private readonly struct BodyContext
-        {
-            public BodyContext(string modelCast, ITypeSymbol modelSymbol, bool isDynamic, PropLayoutInfo props = null,
-                ITypeSymbol slotType = null, Dictionary<string, DefinitionItem> fills = null,
-                PropLayoutInfo regionHostProps = null, ITypeSymbol dynamicBodyModel = null,
-                ITypeSymbol root = null, ITypeSymbol chained = null)
-            {
-                ModelCast = modelCast;
-                ModelSymbol = modelSymbol;
-                IsDynamic = isDynamic;
-                Props = props;
-                SlotType = slotType;
-                Fills = fills;
-                RegionHostProps = regionHostProps;
-                DynamicBodyModel = dynamicBodyModel;
-                Root = root;
-                Chained = chained;
-            }
-
-            public string ModelCast { get; }          // "(global::T)" or null for the dynamic tier
-
-            /// <summary>The model's type for member-path typing. Every construction site upholds
-            /// <c>IsDynamic ⇒ ModelSymbol is null</c> — the dynamic tier has no static model to type against — so a
-            /// reader wanting "the typed model here, if any" reads this alone. A body emitted on the dynamic tier
-            /// over a model the <b>engine</b> has typed carries that type in <see cref="DynamicBodyModel"/>, which
-            /// is a different question with a different answer.</summary>
-            public ITypeSymbol ModelSymbol { get; }
-
-            public bool IsDynamic { get; }
-
-            /// <summary>The active prop layout: a body prop read wins over the model on the first path
-            /// segment. Null outside a definition body with props. Prop-first resolution is syntactic, so both
-            /// backends resolve identically.</summary>
-            public PropLayoutInfo Props { get; }
-
-            /// <summary>The declared slot parameter type inside a slot-declaring definition body, null outside one.
-            /// Carried rather than a bare flag because every <c>@out(value)</c> here has to be checked against it,
-            /// the way the engine checks it when it compiles the same body.</summary>
-            public ITypeSymbol SlotType { get; }
-
-            /// <summary>True inside a slot-declaring definition body: <c>@out(value)</c> projects the caller content
-            /// (slot mode); outside a slot definition, an <c>@out</c> value is a runtime error the emitter refuses.</summary>
-            public bool InSlot => SlotType != null;
-
-            /// <summary>The ambient region fill scope — <c>regionName → materialized-fill DefinitionItem</c> —
-            /// the generator's parallel to the dynamic tier's <c>RegionFillScope</c> on <c>CompileContext</c>.
-            /// Threaded through every nested body build (branch/list/for bodies and the definition-body contexts)
-            /// so a fill resolves at any depth. Null outside a filled component body.</summary>
-            public Dictionary<string, DefinitionItem> Fills { get; }
-
-            /// <summary>The enclosing component's prop layout, carried through nested bodies so a region body
-            /// borrows the component's props (a region declares none of its own).</summary>
-            public PropLayoutInfo RegionHostProps { get; }
-
-            /// <summary>The model behind a body emitted on the dynamic tier, where <see cref="ModelSymbol"/> is
-            /// null but the engine still has a static type in hand.
-            /// <para>Two bodies set it, and both set it alongside the model they are typed by, so the two never
-            /// disagree. A <c>:: dynamic</c> definition body carries the model of the one call site that built it:
-            /// the engine compiles such a definition once per call site off the model that call site hands it, so
-            /// the declaration does not mean "untyped", it means "whatever this caller passes". A nested
-            /// <c>@list</c> body carries the <b>element</b> type for exactly the same reason. Either is on the
-            /// dynamic tier only when the value <em>is</em> the compilation's <c>dynamic</c> — then the body
-            /// genuinely has no static model, and that is what the <c>@out</c> check reads. Null on the typed tier
-            /// and in a body with neither source.</para>
-            /// <para>Two call sites that hand the same <c>:: dynamic</c> definition different models do not get
-            /// different bodies — the engine gives them one, and <see cref="TryShareBodyTyping"/> is where that is
-            /// decided.</para></summary>
-            public ITypeSymbol DynamicBodyModel { get; }
-
-            /// <summary>The root model's type — what an embedded expression's <c>root</c> parameter is spelled as.
-            /// Constant at every depth (the engine's <c>RootScopeType</c> is set once and every <c>Scope</c>
-            /// transform passes <c>RootData</c> through verbatim), so every construction site seeds it with the
-            /// entry model and every derivation carries it. Null means the root has no pinned static type and the
-            /// parameter is spelled <c>dynamic</c>.</summary>
-            public ITypeSymbol Root { get; }
-
-            /// <summary>The chained value's compile-time type for an embedded expression — null today for every
-            /// reachable one, spelled <c>dynamic</c>: the engine types <c>chained</c> as
-            /// <c>returnTypeChainedPrevious ?? ExType.Dynamic</c> and only a mid-chain expression, which the
-            /// emitter refuses elsewhere, ever sees a previous item. Carried so the typing pass that threads a
-            /// chain's real type has a seam to fill.</summary>
-            public ITypeSymbol Chained { get; }
-
-            public BodyContext WithProps(PropLayoutInfo props) =>
-                new BodyContext(ModelCast, ModelSymbol, IsDynamic, props, SlotType, Fills, RegionHostProps,
-                    DynamicBodyModel, Root, Chained);
-
-            public BodyContext AsSlot(ITypeSymbol slotType) =>
-                new BodyContext(ModelCast, ModelSymbol, IsDynamic, Props, slotType, Fills, RegionHostProps,
-                    DynamicBodyModel, Root, Chained);
-
-            /// <summary>The same body, now typed by the model the call site actually hands it.</summary>
-            public BodyContext TypedAs(ITypeSymbol model) =>
-                new BodyContext("(" + SymbolTypeResolver.FullyQualified(model) + ")", model, false, Props, SlotType,
-                    Fills, RegionHostProps, model, Root, Chained);
-
-            public BodyContext WithDynamicBodyModel(ITypeSymbol model) =>
-                new BodyContext(ModelCast, ModelSymbol, IsDynamic, Props, SlotType, Fills, RegionHostProps, model,
-                    Root, Chained);
-
-            public BodyContext WithFills(Dictionary<string, DefinitionItem> fills, PropLayoutInfo regionHostProps) =>
-                new BodyContext(ModelCast, ModelSymbol, IsDynamic, Props, SlotType, fills, regionHostProps,
-                    DynamicBodyModel, Root, Chained);
-        }
-
-        /// <summary>
-        /// <para>The nested body's model context is <b>derived from</b> <see cref="BodyModelRules"/>' row for the
-        /// host name, not chosen per emission branch. This is the emitter's real dependency on the table: the row
-        /// decides which context the body is built in, so the table is load-bearing.</para>
-        /// <list type="bullet">
-        /// <item><description><see cref="BodyModelSource.Parent"/> (the branch trio, <c>@for</c>) — the body keeps
-        /// the enclosing typed context, because it executes under <c>scope.Parent()</c>.</description></item>
-        /// <item><description><see cref="BodyModelSource.ElementOfData"/> (<c>@list</c>) — the body is typed by the
-        /// element type, because that is the type the engine compiles it against: <c>ListExtension.InitStart</c>
-        /// returns the collection's <c>IEnumerable&lt;T&gt;</c> argument and the body is compiled once, in a scope of
-        /// that type. Only where the host reaches no generic form does it hand back <c>ExType.Dynamic</c>, and only
-        /// then is the body genuinely untyped. The enclosing fill scope, region props, slot mode and — the engine
-        /// restores the prop layout around <b>definition</b> bodies only — the enclosing <b>prop layout</b> all
-        /// propagate.
-        /// <para>Emitting the reads on the dynamic tier regardless cost this both ways. A member the element type
-        /// does <em>not</em> carry is an <c>HED0001</c> the engine raises when it compiles the template; bound
-        /// dynamically it precompiled and threw <c>RuntimeBinderException</c> at render, and over an element type of
-        /// <c>object</c> — a static type, not the absence of one — it precompiled and <b>rendered</b> a page the
-        /// engine refuses outright. And every read the dynamic tier cannot express — a native expression over the
-        /// element's own member, a function call taking one — degraded a template the engine renders.</para></description></item>
-        /// </list>
-        /// <para>A name with no pinned row, or a row naming a source the emitter has no emission for, returns
-        /// <c>false</c>: the caller refuses the body and the template degrades, which is the safe direction.</para>
-        /// </summary>
-        private static bool TryNestedBodyContext(string name, BodyContext bctx, ITypeSymbol elementModel,
-            out BodyContext nested)
-        {
-            nested = bctx;
-            if (!BodyModelRules.TryGet(name, out var source, out _))
-                return false;
-
-            if (source == BodyModelSource.Parent)
-                return true;
-
-            if (source == BodyModelSource.ElementOfData)
-            {
-                var elementCtx = elementModel == null || elementModel.TypeKind == TypeKind.Dynamic
-                    ? new BodyContext(null, null, true, props: bctx.Props,
-                        fills: bctx.Fills, regionHostProps: bctx.RegionHostProps, dynamicBodyModel: elementModel,
-                        root: bctx.Root, chained: bctx.Chained)
-                    : new BodyContext("(" + SymbolTypeResolver.FullyQualified(elementModel) + ")", elementModel,
-                        false, props: bctx.Props, fills: bctx.Fills, regionHostProps: bctx.RegionHostProps,
-                        dynamicBodyModel: elementModel, root: bctx.Root, chained: bctx.Chained);
-                nested = bctx.InSlot ? elementCtx.AsSlot(bctx.SlotType) : elementCtx;
-                return true;
-            }
-
-            return false;
-        }
-
         private sealed class Piece { public int Index; }
 
         private sealed class Call
@@ -1014,7 +860,7 @@ namespace Heddle.Generator.Emit
                 branchInfo.IsEngineAssembly)
             {
                 // Body model: the rule is BodyModelRules' row and it is consumed, not asserted.
-                if (!TryNestedBodyContext(name, bctx, null, out var branchBodyCtx))
+                if (!BodyTypingRules.TryNestedBodyContext(name, bctx, null, out var branchBodyCtx))
                 {
                     reason = "no pinned body model-typing row for branch '" + name + "'";
                     return null;
@@ -1058,7 +904,7 @@ namespace Heddle.Generator.Emit
                     !CanWriteTypeName(elementModel, item.Position, out reason))
                     return null;
 
-                if (!TryNestedBodyContext("list", bctx, elementModel, out var itemCtx))
+                if (!BodyTypingRules.TryNestedBodyContext("list", bctx, elementModel, out var itemCtx))
                 {
                     reason = "no pinned body model-typing row for 'list'";
                     return null;
@@ -1084,7 +930,7 @@ namespace Heddle.Generator.Emit
             if (name == "for")
             {
                 // Body typed by enclosing model; @out() splices the boxed index (BodyModelRules row).
-                if (!TryNestedBodyContext("for", bctx, null, out var forBodyCtx))
+                if (!BodyTypingRules.TryNestedBodyContext("for", bctx, null, out var forBodyCtx))
                 {
                     reason = "no pinned body model-typing row for 'for'";
                     return null;
@@ -1670,29 +1516,9 @@ namespace Heddle.Generator.Emit
         /// body is <b>not</b> one of them any more: the element type is the collection's <c>IEnumerable&lt;T&gt;</c>
         /// argument, which is a static type and gets checked like any other.</para>
         /// </summary>
-        private bool SlotValueAssignable(CallParameter cp, BodyContext bctx, out string reason)
-        {
-            reason = null;
-            var valueType = CallSiteValueType(cp, bctx);
-            if (valueType == null)
-                return true;
-
-            // The engine's first HED5014 arm, before the conversion table is consulted at all: a slot value with no
-            // static type is refused outright. Asking C#'s table instead would say yes to every one of them —
-            // `dynamic` converts implicitly to anything — and precompile a template the engine will not compile.
-            if (valueType.TypeKind == TypeKind.Dynamic)
-            {
-                reason = "slot value is dynamic under a dynamic definition model";
-                return false;
-            }
-
-            if (Convertible(valueType, bctx.SlotType, allowBoxToObject: false))
-                return true;
-
-            reason = "slot value '" + SymbolTypeResolver.FullyQualified(valueType) + "' is not assignable to slot type '" +
-                     SymbolTypeResolver.FullyQualified(bctx.SlotType) + "'";
-            return false;
-        }
+        private bool SlotValueAssignable(CallParameter cp, BodyContext bctx, out string reason) =>
+            BodyTypingRules.TrySlotValue(CallSiteValueType(cp, bctx), bctx.SlotType,
+                (source, target) => Convertible(source, target, allowBoxToObject: false), out reason);
 
         /// <summary>The static type of the value a call site passes, or null where the emitter has none. Null is
         /// "cannot say", never "no type"; the compilation's <c>dynamic</c> is the opposite, a definite "no static
@@ -1752,7 +1578,8 @@ namespace Heddle.Generator.Emit
             if (segments == null || segments.Length == 0 || string.IsNullOrEmpty(segments[0]))
                 return model;
 
-            if (bctx.Props != null && bctx.Props.ByName.TryGetValue(segments[0], out var slot))
+            var slot = BodyTypingRules.PropShadowSlot(bctx.Props, segments[0]);
+            if (slot != null)
             {
                 if (segments.Length == 1)
                     return slot.Type;
@@ -1914,7 +1741,7 @@ namespace Heddle.Generator.Emit
                     // answers "cannot say" for it, the degrade an unproven value always gets. `this.` roots at
                     // the model, so it types like a bare path; `::` roots at the template's model whatever the
                     // body's scope is.
-                    if ((path.Target != null && !(path.Target is ThisNode)) || IsPropName(path, props))
+                    if ((path.Target != null && !(path.Target is ThisNode)) || BodyTypingRules.IsPropName(path, props))
                         return ComputedValue.None;
                     if (path.RootRef)
                     {
@@ -1995,18 +1822,11 @@ namespace Heddle.Generator.Emit
             }
         }
 
-        /// <summary>True when this path resolves prop-first: no target, no <c>::</c> root, and a first segment the
-        /// active layout carries. Once that holds the model is out of the picture — a first segment naming a prop
-        /// never falls back to the member it shadows.</summary>
-        private static bool IsPropName(PathNode path, PropLayoutInfo props) =>
-            path.Target == null && !path.RootRef && props != null && path.Segments.Count != 0 &&
-            props.ByName.ContainsKey(path.Segments[0]);
-
         /// <summary>The static type of a prop-rooted path, or null when the path is not prop-rooted or its remaining
         /// segments do not resolve off the slot's declared type.</summary>
         private ITypeSymbol PropRootType(PathNode path, PropLayoutInfo props)
         {
-            if (!IsPropName(path, props))
+            if (!BodyTypingRules.IsPropName(path, props))
                 return null;
             var slot = props.ByName[path.Segments[0]];
             if (slot.Type == null)
@@ -2122,7 +1942,7 @@ namespace Heddle.Generator.Emit
             var segments = cp.ModelParameter;
             bool propRead = !cp.RootReference && segments != null && segments.Length > 0 &&
                             !string.IsNullOrEmpty(segments[0]) &&
-                            bctx.Props != null && bctx.Props.ByName.ContainsKey(segments[0]);
+                            BodyTypingRules.PropShadowSlot(bctx.Props, segments[0]) != null;
             return propRead ? CallSiteValueType(cp, bctx) : _compilation.DynamicType;
         }
 
@@ -2211,7 +2031,7 @@ namespace Heddle.Generator.Emit
             BodyClass nameBody = null;
             if (hasChains)
             {
-                if (!TryPartialNameBodyContext(childModel, bctx, out var nameCtx))
+                if (!BodyTypingRules.TryPartialNameBodyContext(childModel, bctx, out var nameCtx))
                 {
                     reason = "computed @partial name over a call value with no static type";
                     return null;
@@ -2279,30 +2099,6 @@ namespace Heddle.Generator.Emit
             };
         }
 
-        /// <summary>The typing environment of a computed <c>@partial</c> name body — the engine compiles it against
-        /// the call value's type (<c>InitSubTemplate</c> receives <c>dataType</c>), dynamic where that scope is
-        /// dynamic. False when the caller is typed but the value's type cannot be said, where a guess could change
-        /// what the null-scope evaluation does.</summary>
-        private bool TryPartialNameBodyContext(ITypeSymbol childModel, BodyContext bctx, out BodyContext nameCtx)
-        {
-            if (childModel == null && !bctx.IsDynamic)
-            {
-                nameCtx = bctx;
-                return false;
-            }
-
-            nameCtx = childModel == null || childModel.TypeKind == TypeKind.Dynamic
-                ? new BodyContext(null, null, true, props: bctx.Props, fills: bctx.Fills,
-                    regionHostProps: bctx.RegionHostProps, dynamicBodyModel: childModel,
-                    root: bctx.Root, chained: bctx.Chained)
-                : new BodyContext("(" + SymbolTypeResolver.FullyQualified(childModel) + ")", childModel, false,
-                    props: bctx.Props, fills: bctx.Fills, regionHostProps: bctx.RegionHostProps,
-                    dynamicBodyModel: childModel, root: bctx.Root, chained: bctx.Chained);
-            if (bctx.InSlot)
-                nameCtx = nameCtx.AsSlot(bctx.SlotType);
-            return true;
-        }
-
         /// <summary>The engine's name for a chain-free body that still shapes — raw-output escapes (<c>@@</c>)
         /// collapsed and definition blocks stripped: the same shared shaping passes the engine's sub-compile runs,
         /// so the folded text is the document its evaluation renders. Null (with a reason) when the shaping lints
@@ -2347,8 +2143,8 @@ namespace Heddle.Generator.Emit
         private DefBodyInfo GetOrBuildDefinitionBody(DefinitionItem def, BodyContext bodyCtx, out string reason)
         {
             reason = null;
-            var key = ParseContextId(def.Context).ToString(System.Globalization.CultureInfo.InvariantCulture);
-            if (!TryShareBodyTyping(key, ref bodyCtx, out reason))
+            var key = _bodyTyping.KeyOf(def.Context);
+            if (!_bodyTyping.TryShareBodyTyping(key, ref bodyCtx, out reason))
                 return null;
 
             if (_definitionBodies.TryGetValue(key, out var existing))
@@ -2373,63 +2169,9 @@ namespace Heddle.Generator.Emit
             return info;
         }
 
-        /// <summary>
-        /// The engine compiles a definition body once per <see cref="ParseContext"/> the definition is reached
-        /// through — not once per call site. Every item it compiles is memoized for the whole compile, so a second
-        /// call site into one definition re-uses the code the first one produced, and its own value is simply cast
-        /// to the model the first one typed that code against. Two call sites reach two contexts, and so two
-        /// compiles, only where the parser isolated the definition tree between them: a document-scope output chain
-        /// and a subtemplate outside a definition body both isolate, and inside a definition body nothing does — one
-        /// body there serves every call, however many models the calls hand it.
-        /// <para>So the emitter shares by the same measure, and the call site that arrives second is re-typed to the
-        /// body that already exists. Where that body is typed, its <c>(T)scope.ModelData</c> is the engine's cast and
-        /// reproduces it exactly, failure included. Where it is on the dynamic tier there is no cast to reproduce —
-        /// its reads bind to whatever they are handed — so a later call site of another model degrades instead of
-        /// reading members off a value the engine would have refused to cast.</para>
-        /// <para>Two typings are the same when they agree on the tier and on the model symbol. A third term for
-        /// <c>DynamicBodyModel</c> would decide nothing: every context that reaches here got its model from
-        /// <see cref="DefinitionBodyContext"/> or <see cref="TryTypeCallSiteBody"/>, and both leave the two in
-        /// step — a typed body carries its own model in both, and an untyped one is untyped precisely because the
-        /// model is the compilation's <c>dynamic</c>.</para>
-        /// </summary>
-        private bool TryShareBodyTyping(string key, ref BodyContext bodyCtx, out string reason)
-        {
-            reason = null;
-            if (!_sharedBodyTyping.TryGetValue(key, out var first))
-            {
-                _sharedBodyTyping[key] = bodyCtx;
-                return true;
-            }
-
-            if (first.IsDynamic == bodyCtx.IsDynamic &&
-                SymbolEqualityComparer.Default.Equals(first.ModelSymbol, bodyCtx.ModelSymbol))
-                return true;
-
-            if (first.IsDynamic)
-            {
-                reason = "definition body already compiled untyped for a call site of another model";
-                return false;
-            }
-
-            bodyCtx = first;
-            return true;
-        }
-
-        private readonly Dictionary<string, BodyContext> _sharedBodyTyping =
-            new Dictionary<string, BodyContext>(System.StringComparer.Ordinal);
-
-        // ParseContext declares no equality of its own, so the dictionary keys by reference — which is the
-        // question being asked: whether the two call sites reached the same parsed body or an isolated copy of it.
-        private readonly Dictionary<ParseContext, int> _parseContextIds = new Dictionary<ParseContext, int>();
-
-        private int ParseContextId(ParseContext context)
-        {
-            if (context == null)
-                return 0;
-            if (!_parseContextIds.TryGetValue(context, out var id))
-                _parseContextIds[context] = id = _parseContextIds.Count + 1;
-            return id;
-        }
+        /// <summary>The typing pass's only state — definition-body sharing keyed by parse-context identity —
+        /// held as one <see cref="BodyTypingMemo"/> per emit; see it for why sharing is keyed this way.</summary>
+        private readonly BodyTypingMemo _bodyTyping = new BodyTypingMemo();
 
         /// <summary>The rebind for the generator's fill scope: while building region
         /// <paramref name="name"/>'s own fill body, the name resolves to <paramref name="target"/> (its base
@@ -2680,30 +2422,6 @@ namespace Heddle.Generator.Emit
                 if (predicate(d))
                     return true;
             return false;
-        }
-
-        internal sealed class PropSlotInfo
-        {
-            public string Name;
-            public ITypeSymbol Type;
-            public string TypeFq;
-            public bool HasDefault;
-            public object DefaultValue;   // decoded literal (pre-conversion CLR value)
-
-            /// <summary>The default's own declared type, where the declaration named one. Metadata hands an enum
-            /// constant over as its underlying primitive, so the value alone cannot say which of the two the
-            /// runtime will box. Null for a template-declared prop, whose default is a parsed literal.</summary>
-            public ITypeSymbol DefaultSourceType;
-            public int Index;
-        }
-
-        internal sealed class PropLayoutInfo
-        {
-            public readonly List<PropSlotInfo> Slots = new List<PropSlotInfo>();
-            public readonly Dictionary<string, PropSlotInfo> ByName =
-                new Dictionary<string, PropSlotInfo>(System.StringComparer.Ordinal);
-            public bool Failed;
-            public int Count => Slots.Count;
         }
 
         private readonly Dictionary<string, PropLayoutInfo> _propLayouts =
@@ -3053,7 +2771,7 @@ namespace Heddle.Generator.Emit
                     if (res.Kind != SymbolTypeResolver.PathKind.Resolved) { reason = "dynamic arg root path (" + res.Kind + ")"; return false; }
                     argType = res.ResultType;
                 }
-                else if (IsPropName(pn, bctx.Props))
+                else if (BodyTypingRules.IsPropName(pn, bctx.Props))
                 {
                     argType = PropRootType(pn, bctx.Props);
                     if (argType == null) { reason = "dynamic arg reads a prop this call site cannot type"; return false; }
