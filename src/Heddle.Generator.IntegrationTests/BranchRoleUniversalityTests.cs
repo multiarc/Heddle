@@ -12,8 +12,8 @@ namespace Heddle.Generator.IntegrationTests
     /// with a non-engine custom trio (<c>begin</c>/<c>between</c>/<c>finish</c>, the bodiless <c>flag</c>/<c>gate</c>
     /// pair, and the zebra-style <c>row</c> participant), all resolved from the referenced test assembly:
     /// <list type="bullet">
-    /// <item>a bodied custom-branch call degrades safely to the dynamic tier (no HED7015) and renders with full role
-    /// semantics;</item>
+    /// <item>a bodied custom-branch call precompiles (no HED7015 — the override runs for real at static-init) and
+    /// renders with full role semantics;</item>
     /// <item>a bodiless custom role opener binds via the generic custom path (manifest row + render parity);</item>
     /// <item>the generator's role-based strip machine removes inter-block text on the precompiled tier exactly as the
     /// runtime does (differential parity);</item>

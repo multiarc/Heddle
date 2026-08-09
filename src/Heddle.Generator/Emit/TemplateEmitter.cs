@@ -293,8 +293,8 @@ namespace Heddle.Generator.Emit
             public bool IsMarker { get; set; }
             public IReadOnlyList<(string Name, BlockPosition Position)> UnresolvableFunctions { get; set; }
 
-            /// <summary>Emitter-produced Roslyn diagnostics (HED7005/HED7006/HED7015) with their <c>.heddle</c>
-            /// span; reported by the generator in every result branch.</summary>
+            /// <summary>Emitter-produced Roslyn diagnostics (HED7005, HED7006, HED7033, the forwarded engine ids)
+            /// with their <c>.heddle</c> span; reported by the generator in every result branch.</summary>
             public IReadOnlyList<EmitDiagnostic> Diagnostics { get; set; }
 
             /// <summary>The region-fill candidate errors this emit <b>retracted</b> — matched public
@@ -1017,12 +1017,12 @@ namespace Heddle.Generator.Emit
         /// not. Its one question is whether the build knows what this extension's compile-time hook does; everything
         /// after that is the same emission the engine branch trio, <c>@list</c>, <c>@for</c> and a plain custom
         /// extension all reached separately before.</para>
-        /// <para>The hook is known when the probe observed it, or when the shared table carries a row for an engine
-        /// extension — a row now held equal to the probe's own answer for every registered extension. An extension
-        /// that overrides a hook the build has not read degrades exactly as it did before, under the
-        /// <c>HED7015</c> warning where the author can act on it and silently where the shape is canonical: an
-        /// unread hook is someone else's package behaving in a way this build cannot reproduce, never an authoring
-        /// error and never a build failure.</para>
+        /// <para>The hook's body typing is <i>known</i> when the shared table carries a row for an engine extension,
+        /// or when a real engine compile of this template was observed. It is not known for anything else, and that
+        /// is no longer a decline: the body is emitted type-agnostically and the extension's own hook chooses its
+        /// typing at static-init, so a bodied call to a third-party extension precompiles in a default build with no
+        /// property to set and no name to be on. Only the three shapes a type-agnostic body cannot write cost
+        /// anything, and they cost that one call site through the substitute.</para>
         /// </summary>
         private Call BuildBoundExtensionCall(string name, ExtensionBinder.Info info, OutputChain chain,
             OutputItem item, CallParameter cp, BodyContext bctx, out Refusal reason)

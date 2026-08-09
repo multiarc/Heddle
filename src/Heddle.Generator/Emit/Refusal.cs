@@ -7,11 +7,19 @@ namespace Heddle.Generator.Emit
     /// end-state refusal kinds — a genuine CLR/csc wall, a value the build cannot know, and an engine failure the
     /// degrade reproduces by letting the dynamic tier raise it — and the rest are operational groupings of what the
     /// emitter cannot yet emit, each the retire-target of a planned capability. Members are stable: tests pin them
-    /// through the degrade-expectation seam, so coverage regressions are measurable per category.
+    /// through the degrade-expectation seam, so a member whose population has emptied is <b>retired in place</b>
+    /// (<see cref="ClrWall"/>, <see cref="DefinitionLayering"/>) and never deleted, and coverage regressions stay
+    /// measurable per category.
+    /// <para>Every member here classifies a decline that costs the <b>template</b> its tier. A decline that costs
+    /// one call site instead has no category at all: it is not a refusal, it is an emission
+    /// (<c>PrecompiledRuntime.SiteFallback</c>), and it reports as <c>HED7033</c> or as nothing.</para>
     /// </summary>
     internal enum RefusalCategory
     {
-        /// <summary>No C# produces the engine's bytes — a genuine CLR/csc wall.</summary>
+        /// <summary>No C# produces the engine's bytes — a genuine CLR/csc wall. Declared and reached by nothing:
+        /// every wall found so far turned out to be a <i>sink</i> question (<see cref="RefLikeSink"/>) or a
+        /// <i>spelling</i> question (<see cref="UnnameableType"/>), both of which are narrower and recover more.
+        /// Retired in place rather than deleted — the degrade-expectation seam pins these members by name.</summary>
         ClrWall,
 
         /// <summary>A value or type that decides the bytes exists only at run time (or is chosen by reflection
@@ -37,15 +45,24 @@ namespace Heddle.Generator.Emit
         /// missing or unreproducible values, and dynamic arguments it cannot type.</summary>
         DefinitionProps,
 
-        /// <summary>An embedded C# expression the compiled-fragment path cannot carry.</summary>
+        /// <summary>An embedded C# expression the compiled-fragment path cannot carry — no in-file <c>@model</c> to
+        /// pin the scope, a read of <c>root</c> where nothing pins the root type, a <c>@using</c> body naming no
+        /// namespace, text the engine's own compiler rejects, or a position inside a type-agnostic body, where the
+        /// fragment's model parameter would have to be spelled before the hook has answered.</summary>
         EmbeddedCSharp,
 
         /// <summary>A function call no build-time registration binds, and no late-bound site can serve — calls the
         /// shared ranker refuses.</summary>
         FunctionBinding,
 
-        /// <summary>Extension behavior only a compile-time hook knows — <c>InitStart</c>/<c>CompleteInit</c>
-        /// overrides, bodied custom extensions, and missing body model-typing rows.</summary>
+        /// <summary>The <b>substitute's own bound</b>. A hook the build has not read is no longer a decline at all
+        /// — the extension's real <c>InitStart</c> runs at static-init and chooses its body's typing — so what is
+        /// left here is the one thing the per-call-site substitute cannot be honest about: it compiles the call's own
+        /// text as its own document, which sees no enclosing definition, no ambient region fill scope and no active
+        /// prop layout. A body reaching for any of those costs the <b>template</b> rather than the call, and this
+        /// names that, not the construct inside the body that sent the emitter to the substitute in the first
+        /// place. It also names a call shape a type-agnostic body cannot carry, whose value would have to be typed
+        /// before the hook has answered.</summary>
         HookBehavior,
 
         /// <summary>An extension the binder cannot bind at build time, or a binding-surface fault (unbindable
@@ -59,7 +76,10 @@ namespace Heddle.Generator.Emit
         /// <summary>A member path, prop read or receiver the emitter cannot resolve statically.</summary>
         MemberAccess,
 
-        /// <summary>A native expression shape the shared operator tables or the expression writer do not emit.</summary>
+        /// <summary>A native expression shape the shared operator tables or the expression writer do not emit, or a
+        /// computed one inside a type-agnostic body: its result type depends on an operand type that does not exist
+        /// until the hook answers, and the DLR's numeric promotion is not the engine's for every operand pair, so
+        /// routing it there would be wrong rather than slow.</summary>
         NativeExpression,
 
         /// <summary>An <c>@partial</c> name the emitter cannot evaluate or normalize.</summary>
