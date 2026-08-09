@@ -422,6 +422,10 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
         public string Direct => "steady";
 
         internal string Hidden => "steady";
+
+        /// <summary>Always null, so a step-back extension handed it renders its body instead of its value — which
+        /// is how a type-agnostic body is reached at all.</summary>
+        public string Missing => null;
     }
 
     /// <summary>A model whose one member fails on demand — the ordinary kind of failure a definition body has to be

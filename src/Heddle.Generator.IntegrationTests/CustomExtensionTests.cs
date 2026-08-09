@@ -121,6 +121,58 @@ namespace Heddle.Generator.IntegrationTests
         }
 
         /// <summary>
+        /// The first of the three shapes a type-agnostic body cannot carry: a <b>computed</b> native expression.
+        /// Its result type depends on an operand type that does not exist until the hook has answered, and routing
+        /// it through the DLR would be <i>wrong</i> rather than slow — the binder's numeric promotion is not the
+        /// engine's for every operand pair, and that is a rendered-bytes difference. It costs this call site, which
+        /// renders by compiling its own text; the neighbouring call and the template keep the tier.
+        /// </summary>
+        [Fact]
+        public void AComputedExpressionInATypeAgnosticBodyCostsThatCallSiteAndNotTheTemplate()
+        {
+            const string key = "views/bellow-computed.heddle";
+            var t = "@model(){{Heddle.Generator.IntegrationTests.Fixtures.GridModel}}@\\\n" +
+                    "<x>@bellow(Name){{@(Cols + 1)}}</x><y>@yell(Name)</y>\n";
+            var gen = DifferentialHarness.Generate(new[] { (key, t) });
+            Assert.DoesNotContain(gen.Diagnostics, d => d.Severity == DiagnosticSeverity.Error);
+            DifferentialHarness.ExpectPrecompiled(gen, key);
+
+            var source = Assert.Single(gen.TemplateSources).Value;
+            Assert.Contains("PrecompiledRuntime.SiteFallback(", source);
+            Assert.Contains("() => new global::Heddle.Generator.IntegrationTests.Fixtures.YellExtension()", source);
+
+            var (pre, dyn) = DifferentialHarness.Render(key, t, typeof(Fixtures.GridModel),
+                new Fixtures.GridModel { Name = "photos", Cols = 2 });
+            Assert.Equal(dyn, pre);
+        }
+
+        /// <summary>
+        /// The bound the substitute states about itself, enforced. A fragment compiled as its own document sees no
+        /// enclosing definitions — so where a body would have to take the substitute <i>and</i> calls one, the
+        /// substitute is refused and the <b>whole template</b> goes to the dynamic tier, where the definition
+        /// exists. Both halves are needed to reach it: a definition call the body can emit outright is not a
+        /// problem, and a computed expression on its own costs only the call site.
+        /// </summary>
+        [Fact]
+        public void ATypeAgnosticBodyNeedingTheSubstituteAndNamingADefinitionRefusesTheWholeTemplate()
+        {
+            const string key = "views/bellow-definition.heddle";
+            var t = "@model(){{Heddle.Generator.IntegrationTests.Fixtures.GridModel}}@\\\n" +
+                    "@%<greet>{{hello}} :: System.String%@\n" +
+                    "<x>@bellow(Name){{@greet(Name)@(Cols + 1)}}</x>\n";
+            var gen = DifferentialHarness.Generate(new[] { (key, t) });
+            Assert.DoesNotContain(gen.Diagnostics, d => d.Severity == DiagnosticSeverity.Error);
+            DifferentialHarness.ExpectDegrade(gen, key,
+                generator::Heddle.Generator.Emit.RefusalCategory.HookBehavior, "body");
+
+            var dynamicTemplate = new HeddleTemplate(t,
+                new Heddle.Runtime.CompileContext(new Heddle.Data.TemplateOptions(), typeof(Fixtures.GridModel)));
+            Assert.True(dynamicTemplate.CompileResult.Success, dynamicTemplate.CompileResult.ToString());
+            Assert.Contains("<x>",
+                dynamicTemplate.Generate(new Fixtures.GridModel { Name = "photos", Cols = 2 }));
+        }
+
+        /// <summary>
         /// <b><c>[PrecompileUnsupported]</c> costs one call site, not the template.</b> The declaring call binds
         /// dynamically — it renders by compiling its own source text at first render — while the neighbouring call
         /// in the same template is precompiled as usual, and the whole template keeps its manifest entry. The
