@@ -29,6 +29,10 @@ TYPE Heddle.Attributes.ExtensionNameAttribute : System.Attribute
   PROP System.String Name {get;}
 TYPE Heddle.Attributes.ExtensionReplaceAttribute : System.Attribute
   CTOR()
+TYPE Heddle.Attributes.HeddleModelAssemblyAttribute : System.Attribute
+  CTOR(System.Type)
+  CTOR(System.Type[])
+  PROP System.Collections.Generic.IReadOnlyCollection<System.Type> ModelTypes {get;}
 TYPE Heddle.Attributes.HiddenAttribute : System.Attribute
   CTOR()
 TYPE Heddle.Attributes.NotEncodeAttribute : System.Attribute

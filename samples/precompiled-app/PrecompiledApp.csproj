@@ -22,6 +22,9 @@
   <ItemGroup>
     <!-- The generator re-emits these each build; excluding the folder keeps them from being compiled twice. -->
     <Compile Remove="generated\**\*.cs" />
+    <!-- external-models is its own project, reached only through @(HeddleModelAssembly); compiling its sources here
+         too would put Acme.Models.Ticket in the app AND in the reference, which is HED7023 by construction. -->
+    <Compile Remove="external-models\**\*.cs" />
     <Compile Include="..\tools\SampleCapture.cs" Link="SampleCapture.cs" />
     <ProjectReference Include="..\..\src\Heddle\Heddle.csproj" />
     <!-- Build the generator (so its output DLLs exist) but do NOT add its own assembly as a runtime reference. -->
@@ -43,6 +46,24 @@
   <ItemGroup>
     <HeddleTemplate Include="templates\invoice.heddle" />
     <HeddleTemplate Include="templates\receipt.heddle" />
+    <HeddleTemplate Include="templates\ticket.heddle" />
+  </ItemGroup>
+
+  <!-- The escape-hatch item, exercised from a real project file. `ReferenceOutputAssembly="false"` means the
+       ProjectReference sequences the build and contributes NO compile reference, so `@(HeddleModelAssembly)` is the
+       only thing that puts Acme.Models in front of the compiler. It reaches @(ReferencePath), which is what both the
+       generator (through the compilation's reference closure) and Program.cs (which names Acme.Models.Ticket) see.
+       Delete the item and this sample fails to build with HED7007. -->
+  <PropertyGroup>
+    <_AcmeModelsAssembly>$(MSBuildThisFileDirectory)external-models\bin\$(Configuration)\netstandard2.0\Acme.Models.dll</_AcmeModelsAssembly>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="external-models\ExternalModels.csproj" ReferenceOutputAssembly="false" />
+    <HeddleModelAssembly Include="$(_AcmeModelsAssembly)" />
+    <!-- Not a compile reference, so nothing copies it: the app still has to carry it at run time. -->
+    <None Include="$(_AcmeModelsAssembly)" Link="Acme.Models.dll" CopyToOutputDirectory="PreserveNewest"
+          Visible="false" />
   </ItemGroup>
 
   <!-- Generator targets (maps HeddleTemplate items to AdditionalFiles). Imported last. -->

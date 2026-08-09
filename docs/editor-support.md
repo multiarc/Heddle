@@ -142,6 +142,12 @@ For runtime parity, do the same two registrations on the same assemblies in your
 [`HeddleTemplate.Register(assembly)`](csharp-api.md#registration-register). The editor and the host
 then see one set.
 
+**And the build tier is the third reader of the same declarations.** `assemblies` is how the editor is told
+which model assemblies to load; the build tier is told by a reference, which
+[`[HeddleModelAssembly(typeof(T))]`](precompilation.md#assemblies-the-build-must-see) makes exist and
+`HeddleTemplate.Register` reads at startup. Declaring it once covers the run and build tiers; point
+`assemblies` at the same DLLs and all three agree about what `@model Foo` names.
+
 **The scan is one‑shot per server process.** A new export, a changed extension body, or an
 `assemblies` change after load requires a **server restart** (VS Code: *Heddle: Restart Language
 Server*). Consider a dedicated export assembly so an extension/function export never pulls model

@@ -20,6 +20,34 @@
     </AdditionalFiles>
   </ItemGroup>
 
+  <!-- The escape hatch for assemblies the build must see, NOT the primary form. The primary form is
+       `[assembly: HeddleModelAssembly(typeof(T))]` in the consuming project's own source, because a typeof cannot
+       be spelled without a reference and so the C# compiler enforces it; these items exist for the cases that
+       cannot carry one — a templates-only project that must not take a source dependency, or a model assembly
+       with no compile-time-nameable public type.
+
+       They are appended to @(ReferencePath), so the item's job is to reach the COMPILER, not the generator. That
+       is deliberate and load-bearing: `SymbolTypeIndex.Build` already indexes
+       `compilation.SourceModule.ReferencedAssemblySymbols`, so an assembly that reaches @(ReferencePath) is
+       indexed with zero new generator code, and build output stays a function of the compilation's declared
+       inputs rather than of a path some generator read at some point in the build. That is why there is no
+       `CompilerVisibleItem` here and none is needed.
+
+       An item carries the obligation the attribute discharges for free: the host still makes its own
+       HeddleTemplate.Register call, because nothing in the item reaches the runtime.
+
+       Absent items add nothing, so an unset item set is byte-identical output. No metadata is restated on the
+       transform — see the @(HeddleTemplate) note above for why that would delete it. Guarded by
+       `PipelineContractTests.EveryDeclaredAssemblyItemReachesTheCompilerThroughReferencePath`. -->
+  <Target Name="_HeddleAddDeclaredAssemblyReferences"
+          AfterTargets="ResolveAssemblyReferences"
+          BeforeTargets="CoreCompile">
+    <ItemGroup>
+      <ReferencePath Include="@(HeddleModelAssembly)" />
+      <ReferencePath Include="@(HeddleExtensionAssembly)" />
+    </ItemGroup>
+  </Target>
+
   <!-- The package ships one generator per Roslyn API version under analyzers/dotnet/roslyn{4.1,4.11,5.3}/cs.
        A host that understands component versioning selects exactly one folder — the highest its compiler
        supports. A host that does not (SDKs before 6, old NuGet) loads every folder at once, which would run

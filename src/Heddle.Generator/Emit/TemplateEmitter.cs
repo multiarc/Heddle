@@ -319,8 +319,10 @@ namespace Heddle.Generator.Emit
                     // `System.Collections.Generic.List` both pass the name-existence gate and both become the entry
                     // point's parameter type, where the consumer's compiler answers CS0246 and CS0305 against a
                     // `.g.cs` no one can edit — and only a template body that degraded for some other reason ever
-                    // hid it. The engine binds a model name over the assemblies actually loaded rather than the ones
-                    // this compilation references, so it is also the only tier that might still serve the template.
+                    // hid it. The engine binds a model name over the assemblies actually loaded, which is the same
+                    // set wherever the host declared it: `[HeddleModelAssembly(typeof(T))]` cannot be spelled
+                    // without the reference this tier resolves against, and `AssemblyHelper.Register` reads it. So
+                    // the tier that might still serve the template is only the one the host did not declare.
                     return new Result
                     {
                         Emitted = false, Diagnostics = _diagnostics,
