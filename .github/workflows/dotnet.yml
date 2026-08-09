@@ -49,7 +49,7 @@ jobs:
     - name: Test engine suite (Debug)
       run: .github/scripts/dotnet-test-guarded.sh 2134 src/Heddle.Tests/Heddle.Tests.csproj -c Debug --no-restore
     - name: Test generator suite (Debug)
-      run: .github/scripts/dotnet-test-guarded.sh 611 src/Heddle.Generator.Tests/Heddle.Generator.Tests.csproj -c Debug --no-restore
+      run: .github/scripts/dotnet-test-guarded.sh 638 src/Heddle.Generator.Tests/Heddle.Generator.Tests.csproj -c Debug --no-restore
     - name: Test generator integration suite (Debug)
       run: .github/scripts/dotnet-test-guarded.sh 1139 src/Heddle.Generator.IntegrationTests/Heddle.Generator.IntegrationTests.csproj -c Debug --no-restore
     - name: Test language services suite (Debug)
@@ -60,7 +60,7 @@ jobs:
     # a Release-only failure in the integration suite survived because every run above it was Debug.
     # Reuses the Release build already produced by the Build step, the same way the LSP workflow does.
     - name: Test generator suite (Release)
-      run: .github/scripts/dotnet-test-guarded.sh 611 src/Heddle.Generator.Tests/Heddle.Generator.Tests.csproj -c Release --no-build
+      run: .github/scripts/dotnet-test-guarded.sh 638 src/Heddle.Generator.Tests/Heddle.Generator.Tests.csproj -c Release --no-build
     - name: Test generator integration suite (Release)
       run: .github/scripts/dotnet-test-guarded.sh 1139 src/Heddle.Generator.IntegrationTests/Heddle.Generator.IntegrationTests.csproj -c Release --no-build
 
