@@ -62,4 +62,7 @@
     <Compile Include="..\Heddle.Tests\PropDefaultConversionVectors.cs" Link="Shared\PropDefaultConversionVectors.cs" />
   </ItemGroup>
 
+  <!-- The test-class inventory gate: this suite's classes, checked in and set-equality asserted. -->
+  <Import Project="..\TestInventory\TestInventory.props" />
+
 </Project>

@@ -27,6 +27,10 @@ src/Heddle.Generator.IntegrationTests/Fixtures/** text eol=lf
 src/Heddle.LanguageServices.Tests/Corpus/**       text eol=lf
 src/Heddle.Demo.Wasm/contract-fixtures/**         text eol=lf
 
+# The per-suite test-class inventories are read line by line and compared as a set on both platforms.
+# Reading normalises CRLF, but pinning them keeps the diff a reviewer sees identical everywhere.
+src/*/test-classes.txt                            text eol=lf
+
 # Golden oracle corpus: the *.golden.html files intentionally end WITHOUT a trailing newline and must
 # round-trip byte-exact on every platform, so they are pinned -text (no smudging at all) rather than
 # eol=lf. The JSON sidecars are ordinary LF text.

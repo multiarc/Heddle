@@ -37,10 +37,29 @@ hosts its own runner. Three consequences, all of which bite silently if ignored:
   understood. A filter that matches nothing exits **8**, so a stale filter can no longer pass by
   running nothing, which is how several checks in this repo came to be documented as pinned while
   nothing executed them.
-- **Every CI leg passes a floor.** `.github/scripts/dotnet-test-guarded.sh <minimum> <project>` wraps
-  `--minimum-expected-tests`, which exits **9** when fewer tests ran than the suite really has. The
-  floor is the suite's true size, not 1 — a suite that loses half its rows still ran "some" tests.
-  When a suite legitimately grows or shrinks, update the floor in the same commit.
+- **Every CI leg goes through the same wrapper.** `.github/scripts/dotnet-test-guarded.sh <project>`
+  adds `--fail-skips on`, so a skipped test fails its leg: a skip is a test that stopped testing, and
+  CI is the wrong place to learn that quietly. Explicit tests are reported as *not run* rather than
+  skipped and are unaffected, which is why the confirmed-red protocol below uses them.
+
+**Test-count floors were tried and withdrawn.** Nine CI legs once passed
+`--minimum-expected-tests <n>`, a per-suite number maintained by hand in two workflow files. It failed
+at its own job in three separate ways, and all three are on the record here rather than left for
+someone to rediscover: the floors *drifted* — one commit added six tests, raised the number in
+`dotnet.yml` and left `lsp.yml` alone, after which the Release-only leg tolerated a six-test regression
+in silence for four commits; a floor *names nothing* when it reddens ("expected 2161, got 2160" is not
+a review artifact) and is satisfied by editing a digit; and it *punishes the skip protocol* directly,
+because quarantining one test for a known defect turns a leg red for a reason that has nothing to do
+with the change under test.
+
+What replaced it is a membership gate rather than a size gate: each suite checks in
+`src/<Suite>/test-classes.txt`, one line per type declaring a `[Fact]`/`[Theory]`, ordinal-sorted, and
+that suite's own `TestClassInventoryTests` asserts it against `Assembly.GetTypes()` by **set
+equality** — so a red gate names the class that appeared or vanished, and going green requires saying
+where its coverage went. It does **not** notice a single `[Fact]` deleted from a class that still
+exists; the unit of the gate is the class, because the class is the unit a whole file of coverage
+disappears in. This is deliberately the same shape as corpus membership, which is set-equality gated
+for the same reasons and never a count or a floor.
 
 The runner also randomises test order per run. Order-dependent tests therefore fail intermittently
 rather than never, which is a feature: it found one on the first run after the migration.
@@ -54,10 +73,14 @@ have been confirmed, and both outcomes are worth the same test.
 Write the test first, run it, and then read the outcome:
 
 - **Confirmed red** — the defect reproduces, and the fix is not part of this change. Check the test
-  in **skipped**, with the reason and its owner in the skip string:
-  `[Fact(Skip = "known defect — <owner>: <defect>; un-skip with that fix")]`. Rehearse it red first
-  and check *why* it went red: a test that fails for the wrong reason pins nothing. The skip list is
-  the pending-work list, and un-skipping is the fixer's acceptance evidence.
+  in **explicit**, with the reason and its owner in the doc comment above it:
+  `[Fact(Explicit = true)]`, one line of `<summary>` naming the defect, its owner, and the fix that
+  un-marks it. Explicit, not `Skip`: the platform reports an explicit test as *not run*, which is a
+  different state from skipped, so it survives the `--fail-skips on` every CI leg passes while a
+  genuine unplanned skip does not — the distinction is what lets a deliberate quarantine and an
+  accidental one be told apart at all. Rehearse it red first (`--explicit only` runs exactly these)
+  and check *why* it went red: a test that fails for the wrong reason pins nothing. The explicit list
+  is the pending-work list, and dropping the marker is the fixer's acceptance evidence.
 - **Overturned, green, and the behaviour is what it should be** — **keep the test open.** There is
   nothing to fix, so there is nothing to skip. The test stays as a normal running test: it is now
   the pin that stops the behaviour regressing, and the record that the claim was checked rather
@@ -139,7 +162,7 @@ table says so rather than leaving the reader to infer coverage that is not there
 
 | Suite | Debug | Release |
 | --- | --- | --- |
-| `src/Heddle.Tests` | [`dotnet.yml`](../../../.github/workflows/dotnet.yml), its own named leg with a test-count floor, Linux **and** Windows | [`lsp.yml`](../../../.github/workflows/lsp.yml), Windows only |
+| `src/Heddle.Tests` | [`dotnet.yml`](../../../.github/workflows/dotnet.yml), its own named leg, Linux **and** Windows | [`lsp.yml`](../../../.github/workflows/lsp.yml), Windows only |
 | `src/Heddle.LanguageServices.Tests` | same | [`lsp.yml`](../../../.github/workflows/lsp.yml), Windows only |
 | `src/Heddle.Generator.Tests` | same | [`dotnet.yml`](../../../.github/workflows/dotnet.yml), Linux **and** Windows |
 | `src/Heddle.Generator.IntegrationTests` | same | [`dotnet.yml`](../../../.github/workflows/dotnet.yml), Linux **and** Windows |
@@ -209,8 +232,10 @@ input mismatch and the nested/generic AQN mismatch) reached release precisely th
   for every template that precompiles, with at least one pass file-backed so the staleness /
   content-hash path is exercised.
 - **A guarded fixture that fails because of a known, owned defect is quarantined, never
-  weakened.** Its `Skip` string names the owning work item and the defect, and the owning work
-  item un-skips it as acceptance evidence. An unexplained or orphaned skip is a review failure.
+  weakened.** It ships `[Fact(Explicit = true)]` with the owning work item and the defect in its doc
+  comment, and the owning work item drops the marker as acceptance evidence. An unexplained or
+  orphaned explicit test is a review failure — and a `Skip` in its place fails the leg outright,
+  which is the point: quarantine is a decision someone made, not a state a suite drifts into.
 
 ## Test-input single-sourcing
 

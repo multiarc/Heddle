@@ -78,9 +78,6 @@ namespace Heddle.Generator.IntegrationTests
             Assert.True(new HashSet<string>(onDisk, StringComparer.Ordinal).SetEquals(declared),
                 CorpusIntent.Describe("The corpus intent table", declared, onDisk));
 
-            // Deliberate literal: makes "this stage added N entries" a one-line reviewable diff.
-            Assert.Equal(CorpusIntent.DeclaredRowCount, CorpusIntent.Rows.Count);
-
             var blank = CorpusIntent.Rows.Where(r => string.IsNullOrWhiteSpace(r.Why)).Select(r => r.Name).ToList();
             Assert.True(blank.Count == 0,
                 "Every corpus intent row needs a non-empty Why — a row without a reason is a rubber stamp. Missing: "

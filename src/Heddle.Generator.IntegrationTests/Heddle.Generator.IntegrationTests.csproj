@@ -71,4 +71,7 @@
        stay in src/Heddle.Tests/TestTemplate/; this is a build copy, not a second home for the input. -->
   <Import Project="..\TestCorpus\TestCorpus.props" />
 
+  <!-- The test-class inventory gate: this suite's classes, checked in and set-equality asserted. -->
+  <Import Project="..\TestInventory\TestInventory.props" />
+
 </Project>
