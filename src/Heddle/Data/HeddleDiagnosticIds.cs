@@ -255,10 +255,10 @@ namespace Heddle.Data
         /// resolves once at first render through the engine's own overload ranker.</para></summary>
         public const string BuildUnresolvableFunction = "HED7014";
 
-        /// <summary>A bound extension overrides a compile-time hook this build has not read — because probing is
-        /// off, because the extension is not loadable from an immutable root, or because the observed role has no
-        /// emission.
-        /// <para>A <b>warning</b>: it was an error until the hook-probing program, on the ground that a
+        /// <summary>A bound extension overrides a compile-time hook this build has not read. Not-read is the
+        /// whole condition, and it holds for every extension outside the engine assembly: the build reads no
+        /// compile-time hook it did not write itself.
+        /// <para>A <b>warning</b> rather than an error, on the ground that a
         /// third-party extension the generator cannot reason about should cost its call site the precompiled tier,
         /// not fail the consumer's build. The id is kept — never reused, never renumbered — because the fault it
         /// names is real and worth saying at the call, more precisely than the template-level

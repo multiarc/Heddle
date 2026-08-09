@@ -45,7 +45,6 @@ Heddle.Generator.IntegrationTests.FallbackGuardTests
 Heddle.Generator.IntegrationTests.ForTests
 Heddle.Generator.IntegrationTests.FunctionTests
 Heddle.Generator.IntegrationTests.GenericModelTypeTests
-Heddle.Generator.IntegrationTests.HookProbeShadowTests
 Heddle.Generator.IntegrationTests.HostedResolverRegistryTests
 Heddle.Generator.IntegrationTests.ImportKeyGrammarSpellingTests
 Heddle.Generator.IntegrationTests.ImportOnlyFragmentStandalonePassTests

@@ -14,8 +14,8 @@ namespace Heddle.Generator.Emit
     /// <para>The binder reports what an extension <i>is</i>, never what the emitter may do with it: whether it
     /// overrides the compile-time hooks <c>InitStart</c>/<c>CompleteInit</c>, what encoding attributes it carries,
     /// what it declares it accepts. Whether an override can be reproduced is the emitter's question, answered by
-    /// what the hook probe observed or by the shared table's row — never by a name list here, which was both
-    /// hardcoded and, for five of the nine extensions that share one hook body, silently incomplete.</para>
+    /// the shared table's row — never by a name list here, which was both hardcoded and, for five of the nine
+    /// extensions that share one hook body, silently incomplete.</para>
     /// </summary>
     internal sealed class ExtensionBinder
     {
@@ -150,17 +150,14 @@ namespace Heddle.Generator.Emit
         private readonly Dictionary<string, Info> _byName;
         private readonly Dictionary<string, string> _unbindable;
         private readonly List<string> _driftTypes;
-        private readonly List<IAssemblySymbol> _extensionAssemblies;
 
         private ExtensionBinder(Dictionary<string, Info> byName, Dictionary<string, string> unbindable,
-            List<string> driftTypes, IAssemblySymbol engineAssembly = null,
-            List<IAssemblySymbol> extensionAssemblies = null)
+            List<string> driftTypes, IAssemblySymbol engineAssembly = null)
         {
             _byName = byName;
             _unbindable = unbindable;
             _driftTypes = driftTypes;
             EngineAssemblyName = engineAssembly?.Identity.Name ?? string.Empty;
-            _extensionAssemblies = extensionAssemblies ?? new List<IAssemblySymbol>();
         }
 
         /// <summary>Simple name of the assembly the engine <i>is</i> — the one declaring
@@ -174,10 +171,6 @@ namespace Heddle.Generator.Emit
         /// declaring symbol answers it correctly under all three.</summary>
         public static IAssemblySymbol EngineAssemblyOf(Compilation compilation) =>
             compilation?.GetTypeByMetadataName(AbstractExtensionMetadataName)?.ContainingAssembly;
-
-        /// <summary>Every assembly this compilation found an extension in, in discovery order. The hook probe needs
-        /// them by name — the loaded engine only answers for extensions it has been told about.</summary>
-        public IReadOnlyList<IAssemblySymbol> ExtensionAssemblies => _extensionAssemblies;
 
         public bool TryResolve(string name, out Info info) => _byName.TryGetValue(name, out info);
 
@@ -256,21 +249,18 @@ namespace Heddle.Generator.Emit
 
             var exportAttr = compilation.GetTypeByMetadataName("Heddle.Attributes.ExportExtensionsAttribute");
             var candidates = new List<Candidate>();
-            var extensionAssemblies = new List<IAssemblySymbol>();
             foreach (var assembly in assemblies)
             {
                 var perAssembly = new List<Candidate>();
                 CollectExported(assembly, SymbolEqualityComparer.Default.Equals(assembly, engine), exportAttr,
                     symbols, perAssembly);
-                if (perAssembly.Count != 0)
-                    extensionAssemblies.Add(assembly);
                 candidates.AddRange(StableOrderBy(perAssembly, c => c.OrderingKey));
             }
 
             foreach (var candidate in StableOrderBy(candidates, c => c.Replaces ? 1 : 0))
                 Register(candidate, symbols, byName, unbindable, driftTypes);
 
-            return new ExtensionBinder(byName, unbindable, driftTypes, engine, extensionAssemblies);
+            return new ExtensionBinder(byName, unbindable, driftTypes, engine);
         }
 
         /// <summary>Stable order by a small integer key — <c>List.Sort</c> is unstable and LINQ is not

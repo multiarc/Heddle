@@ -19,13 +19,6 @@ namespace Heddle.Precompiled
         public const string GeneratedNamespaceProperty = "HeddleGeneratedNamespace";
         public const string EmitUtf8PiecesProperty = "HeddleEmitUtf8Pieces";
         public const string NodeFallbackProperty = "HeddleNodeFallback";
-        public const string ProbeExtensionHooksProperty = "HeddleProbeExtensionHooks";
-
-        /// <summary>The property NuGet's own restore writes, read rather than declared: it names the package
-        /// folders of this restore, which is the only set of directories the hook probe may load an assembly from.
-        /// It is not a Heddle option and has no Heddle default — an unrestored project simply has none, and no
-        /// roots means no probing.</summary>
-        public const string PackageFoldersProperty = "NuGetPackageFolders";
 
         public const OutputProfile DefaultOutputProfile = OutputProfile.Html;
         public const ExpressionMode DefaultExpressionMode = ExpressionMode.Native;
@@ -36,14 +29,6 @@ namespace Heddle.Precompiled
         /// <summary>Per-node engine-accessor fallback, on by default. Not identity-bearing and so not a
         /// fingerprint input: it changes whether a template precompiles, never a rendered byte.</summary>
         public const bool DefaultNodeFallback = true;
-
-        /// <summary>Extension hook probing, <b>off</b> by default. On, the build loads referenced extension
-        /// assemblies out of the restore's package folders and runs their compile-time hooks to learn what they do,
-        /// which makes generated output depend on the <i>behaviour</i> of a referenced assembly and not only on its
-        /// metadata. That is a real change to what "reproducible" means, so it is opted into, never inherited.
-        /// Like <see cref="DefaultNodeFallback"/> it decides whether a template precompiles, never a rendered byte,
-        /// and so is not a fingerprint input.</summary>
-        public const bool DefaultProbeExtensionHooks = false;
 
         /// <summary>The generator's blank fallback for the template root. The <i>effective</i> default is MSBuild's
         /// <c>$(MSBuildProjectDirectory)</c>; an empty root here means "no root", which flattens keys (and now draws

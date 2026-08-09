@@ -321,10 +321,8 @@ namespace Heddle.Data
             Add(HeddleDiagnosticIds.BuildExtensionOverridesHook, "Extension overrides a compile-time hook", warning,
                 "Extension <{0}> ({1}) overrides {2}, compile-time logic this build has not read; precompiled " +
                 "binding would silently skip it, so this template renders through the dynamic path at run time " +
-                "instead. The output is identical either way. To pre-compile it, set " +
-                "HeddleProbeExtensionHooks=true so the build can run the hook and see what it does (the extension " +
-                "must reach the build as a package reference), or keep the extension's compile-time behavior in " +
-                "the base implementation.");
+                "instead. The output is identical either way. To pre-compile it, keep the extension's " +
+                "compile-time behavior in the base implementation.");
             Add(HeddleDiagnosticIds.BuildBranchRoleMissingScopeChannel, "Branch role without scope channel",
                 warning,
                 "Branch continuation/terminal '{0}' does not carry [ScopeChannel]. It cannot read the branch " +

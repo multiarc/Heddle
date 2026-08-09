@@ -26,7 +26,6 @@ Heddle.Generator.Tests.ForwardedDiagnosticTests
 Heddle.Generator.Tests.GeneratorNumericTableAdoptionTests
 Heddle.Generator.Tests.GeneratorSnapshotTests
 Heddle.Generator.Tests.HeddleGeneratorTests
-Heddle.Generator.Tests.HookProbeLoaderTests
 Heddle.Generator.Tests.LineMapperAgreementTests
 Heddle.Generator.Tests.LoneSurrogateScanTests
 Heddle.Generator.Tests.MemberVisibilitySymbolConformanceTests

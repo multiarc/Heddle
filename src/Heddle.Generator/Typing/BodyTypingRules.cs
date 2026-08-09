@@ -45,9 +45,9 @@ namespace Heddle.Generator.Typing
                    TryNestedBodyContext(source, bctx, elementModel, out nested);
         }
 
-        /// <summary>The same rule, given the role directly rather than a name to look it up by — which is what the
-        /// hook probe supplies, and what lets an extension the table has no row for be typed by what its own hook
-        /// did rather than by whether the emitter happened to know its name.</summary>
+        /// <summary>The same rule, given the role directly rather than a name to look it up by, so an extension
+        /// can be typed by what its own hook did rather than by whether the emitter happened to know its
+        /// name.</summary>
         internal static bool TryNestedBodyContext(BodyModelSource source, BodyContext bctx,
             ITypeSymbol elementModel, out BodyContext nested)
         {

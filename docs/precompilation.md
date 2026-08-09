@@ -158,7 +158,6 @@ there is nothing to match: the property decides how the artifact is emitted, not
 | `HeddleGeneratedNamespace` | default `Heddle.Generated` | *(build only)* | Namespace of the generated entry classes. |
 | `HeddleEmitUtf8Pieces` | `false` (default) \| `true` | *(build only)* | Emit pre‑encoded `"…"u8` static pieces for the byte sink. |
 | `HeddleNodeFallback` | `true` (default) \| `false` | *(build only)* | Per‑node fallback: a member path the engine resolves but generated C# cannot name (e.g. a referenced assembly's `internal` member without `[InternalsVisibleTo]`) is computed by the engine's own accessor instead of degrading the whole template. Never changes rendered bytes, so it is not part of the options fingerprint; `false` restores the whole‑template degrade. |
-| `HeddleProbeExtensionHooks` | `false` (default) \| `true` | *(build only)* | Hook probing: the build runs a referenced extension's compile‑time hook to learn what it does with its body, instead of refusing every call it has no pinned knowledge of. Never changes rendered bytes, so it is not part of the fingerprint — but it does change what the build's answer is a function of. See [Hook probing](#hook-probing-opt-in). |
 
 The same mapping is what the editor uses: each of the first five has a `.heddle-lsp.json` key spelled as the
 camelCased **runtime** name (`outputProfile`, `expressionMode`, …), so the three tiers name one option three ways
@@ -166,43 +165,6 @@ and mean the same thing. See [editor‑support.md](editor-support.md#configuring
 
 Assembly configuration is deliberately **not** in this table — it is not an option, it is a reference. See
 [Assemblies the build must see](#assemblies-the-build-must-see).
-
-### Hook probing (opt-in)
-
-Most built‑in extensions, and many third‑party ones, override a compile‑time hook that decides how the extension's
-**body** is typed. The build cannot read an override out of metadata, so without help it refuses those call sites and
-the whole template degrades. `HeddleProbeExtensionHooks=true` lets the build ask the extension directly: it loads the
-referenced engine, compiles three tiny synthetic documents against sentinel types, and reads back which sentinel the
-hook handed to the body compile. The answer is a **role** — "the body sees the caller's model", "…the call value's
-element type" — never a type; the actual type is still computed symbolically from the call site.
-
-Three properties of this are worth stating plainly before you turn it on.
-
-**Reproducibility changes shape.** With probing off, generated output is a function of the compilation's inputs: the
-template text, the options, and the *metadata* of every reference. With probing on, it is also a function of the
-**behaviour** of referenced extension assemblies — code runs at build time and its answers steer emission. Two
-restores of byte-identical packages still produce byte-identical output, and every answer is double-checked (each
-extension is probed twice, on fresh instances, and refused if the two runs disagree), so this is determinism, not a
-coin flip. But an extension package that changes what its hook does changes what your build emits, without its public
-API having moved.
-
-**Only immutable roots are loaded.** The build loads an assembly only from this restore's package folders
-(`$(NuGetPackageFolders)`) — never from `bin/`, never from `obj/`, and never from a project reference, which has no
-assembly on disk at all. This is not caution for its own sake: `Assembly.LoadFrom` holds the file open for the life
-of the compiler process, and the compiler is a persistent server, so loading a build output would break the *next*
-build of that project. A project-to-project reference to an extension is therefore never probed; package it, or let
-the call site degrade.
-
-**There is no sandbox, and the build does not pretend there is one.** The generator targets `netstandard2.0` and runs
-inside both a .NET Framework compiler host (Visual Studio) and a .NET one (`dotnet build`), which leaves neither
-`AssemblyLoadContext` nor `AppDomain` available. A probed extension's hook runs in the compiler's own process, with
-the compiler's privileges, and cannot be unloaded afterwards. What the build does bound is its **wait**: probing
-happens on a background thread and is abandoned after a timeout, after which nothing further is probed for that
-compilation. Turn probing on for dependencies you would already trust to run code in your build — which is every
-package that ships an MSBuild task or a source generator, and not necessarily every package you reference.
-
-A hook the build cannot evaluate — unloadable, unreadable, timed out, or answering something the protocol has no role
-for — costs that call site the precompiled tier and nothing else. Probing never fails a build.
 
 ---
 
@@ -525,8 +487,7 @@ security or logic patch reaches precompiled templates by updating the package. S
 override the build has not read costs the call site its tier under the `HED7015` **warning** — the build
 does not fail, the template renders through the dynamic path — **except** for a `[BranchRole]` custom
 branch extension, whose `InitStart` override is its canonical shape and degrades with no diagnostic at
-all). [Hook probing](#hook-probing-opt-in) is what lets the build read such an override instead of
-refusing it.
+all).
 
 ### Startup order: a suggestion, not a rule
 
@@ -616,8 +577,6 @@ you make it matter.
 | A member the engine resolves and your assembly may not *name* — a referenced assembly's `internal` member without `[InternalsVisibleTo]` | Computed by the engine's own accessor, built once at type init from `System.Linq.Expressions` and called once per render (`PrecompiledRuntime.MemberAccessor`/`NativeAccessor`). No runtime Roslyn, no per‑render allocation. Controlled by `HeddleNodeFallback` (on by default); `false` restores the whole‑template degrade. |
 | A function only a run‑time `Register(string, Delegate)` supplies | Emitted as a late‑bound site that resolves once at first render through the engine's own overload ranker and caches the result — see [Functions the build cannot see](#functions-the-build-cannot-see). |
 | A **bodied** call to a step‑back encoder (`@money(Cost){{ @(Locale) }}`, `@url`, `@attr`, `@js`, `@date`, `@time`, `@int`, `@guid`, `@string`) | Their hook re‑types the default body against the caller's scope and does nothing else — one hook body shared verbatim by nine built‑ins. That role is now read off the extension rather than predicted from a name list, so the bodiless and bodied forms bind alike. |
-| A **bodied** call to a referenced third‑party extension | [Hook probing](#hook-probing-opt-in), opt‑in per build. No attribute, no declaration, no name list: the build runs the extension's own `InitStart` and emits what it observed. |
-| A `[BranchRole]` custom branch extension | The same mechanism — its `InitStart` override is its canonical shape, and probing is what reads it. |
 | A template that declares no `@model`, served to a host whose `CompileContext` **is** typed | Routed rather than assumed: the entry records that its model type is the build's answer (`ModelTypeIsAmbient`), the gauntlet compares it against the request, and a disagreement degrades that request with `ModelTypeMismatch` instead of serving the build's guess. Declaring the type with `ModelType` item metadata is what makes it precompile for that host. |
 | An `[EncodeOutput]` extension hosting a body | The render type is derived from the extension's own `[EncodeOutput]`/`[NotEncode]` attributes at every allocation site, including the body‑hosting one, which previously hard‑coded `Raw`. |
 
@@ -634,10 +593,7 @@ engine's own dynamic binder, pinned to Heddle's assembly so the two tiers bind a
 | Embedded C# outside `FullCSharp` | The engine refuses the same template under the same options. The degrade reproduces a refusal rather than losing a capability. |
 | Definition override/layering (`<name:name>`) | A **control‑flow** divergence, outside the value‑escape boundary above. The emitter resolves definitions flatly, so an override calling itself would recurse; it deserves its own design pass and has not had one. |
 | A bodied unnamed carrier (`@( … ){{ … }}`) and chained calls (`@a(x):b(y)`) | Chain carriage is control flow, not a value. |
-| A body typed by the **call value** | Probing reads that role perfectly well; the emitter has no emission for it. Observing a hook is not a licence to emit one, and an unemittable role costs the template its tier rather than being guessed into something emittable. |
-| A hook on an extension declared **in the compilation being built** | Unprobeable by construction: at generation time that extension has no assembly on disk, so there is nothing to load and run. A bodiless call to it still binds; a call needing the hook's answer degrades under `HED7015` and does not fail the build. Package it and it is probeable like any other reference. |
-| A hook on an extension reached by a **project reference** | The same answer for a neighbouring reason: a project‑to‑project reference reaches the generator with no file to load, and the loader will not touch `bin`/`obj` for the reason [Hook probing](#hook-probing-opt-in) gives. |
-| A hook that mutates **compile state** — the scope type, the import set, the output profile | The probe observes three things: how the body is typed, what reaches its chained channel, and whether the call produces output at all. Compile‑state mutation is not among them, and nothing checks for it. What makes that safe today is a property of the population rather than a guard: every built‑in that mutates compile state (`@model`, `@using`, `@profile`, `@partial`, `@out`) has dedicated emitter handling, so no probed answer is asked to carry it. A third‑party hook that mutated compile state would be emitted for what it typed and silently not for what it changed. Keep compile‑state work out of `InitStart` — `ProcessData`/`RenderData` are the render‑time methods both tiers share — and the question does not arise. |
+| An `InitStart`/`CompleteInit` override **outside the engine assembly** | Compile‑time logic the build has not read, whichever way the extension reaches it — a package reference, a project reference, or a declaration in the compilation being built. A bodiless call still binds; a call needing the hook's answer degrades under `HED7015` and does not fail the build. Keep compile‑time work out of `InitStart` — `ProcessData`/`RenderData` are the render‑time methods both tiers share — and the question does not arise. |
 | A `ref struct` in a boxing sink — a model, an operand, a function argument, a slot value | `CS0029`/`CS1503`, and the engine refuses it too on modern TFMs (its expression trees reject by‑ref‑like types wholesale). Both tiers say no. |
 | A type generated code may not **name** — a referenced assembly's `internal` type, or `[Obsolete(…, error: true)]` | `HED7030`. The engine binds by reflection, which asks neither question. The remedy is `[InternalsVisibleTo]` or dropping the error‑level `[Obsolete]`, not a Heddle setting. |
 | An open generic model type | Re‑grounded, not repaired: the dynamic tier accepts **no** model value for an open generic type and cannot build a member accessor for one, so precompiling it would render where the engine refuses. |
@@ -698,7 +654,7 @@ their `.heddle` position; file/key/option‑level conditions report without a so
 | `HED7011` | An `@<<` import is not among the compilation's `.heddle` `AdditionalFiles`. The spelling is matched against the item's key, so it is case-sensitive; it is first reduced the way the engine's own `Path.GetFullPath` reduces it — `.` segments and repeated separators drop out, a `..` cancels the segment before it, and a trailing separator survives (so `lib.heddle/.` names the file and `lib.heddle/` names a directory neither tier can read). Which characters separate segments is the platform's answer: a backslash separates on Windows and is an ordinary file-name character elsewhere, on both tiers. A `..` that reaches above the template root names nothing on either tier. An import path is **not** a template key, so the key idioms are refused rather than applied: a leading `/` is an absolute path to `Path.Combine`, a leading `~/` is a literal `~` directory, and an extension-less name is a file without an extension — the precompiler declines each of the three rather than renaming the file the engine reads. |
 | `HED7012`/`HED7013` | A forwarded front‑end error/warning carrying no id. |
 | `HED7014` | A called function no build‑time registration binds, in a call shape a late‑bound site cannot serve either (chiefly an argument whose static type has no build‑time answer) — the template falls back (warning). A delegate‑only registration alone no longer reaches this: see *Functions the build cannot see*. |
-| `HED7015` | A bound extension outside the engine assembly overrides a compile‑time hook the build has **not read**, so the template falls back to the dynamic tier (warning). *Not read* is the whole condition: with [hook probing](#hook-probing-opt-in) on, the build runs the hook, learns what it does with the body, and precompiles the call — this fires only where probing is off, where the extension cannot be loaded from an immutable root, or where the answer is a role the emitter has no emission for. It was an **error** until the hook‑probing work: a third‑party extension the generator cannot reason about should cost its call site the precompiled tier, not fail the consumer's build. The id is kept rather than folded into `HED7031`, because naming the extension and the hook is the one fact the author can act on. |
+| `HED7015` | A bound extension outside the engine assembly overrides a compile‑time hook the build has **not read**, so the template falls back to the dynamic tier (warning). *Not read* is the whole condition, and today it holds for every extension outside the engine: the build reads no compile‑time hook it did not write itself. It is a **warning** rather than an error because a third‑party extension the generator cannot reason about should cost its call site the precompiled tier, not fail the consumer's build. The id is kept rather than folded into `HED7031`, because naming the extension and the hook is the one fact the author can act on. |
 | `HED7016` | A branch continuation/terminal (`[BranchRole]`) omits `[ScopeChannel]`, so it can never read the branch state at run time (warning). |
 | `HED7017` | An extension declares a malformed `[Prop]` parameter — the build‑tier twin of the dynamic tier's declaration diagnostics. |
 | `HED7018` | A template is outside `HeddleTemplateRoot` and has no explicit `Key`, so its directory is dropped and it registers under a flattened filename key (warning). Only `Key` suppresses it: a `Name` is additive and leaves the flattened key in place, so the warning is still about something real. |

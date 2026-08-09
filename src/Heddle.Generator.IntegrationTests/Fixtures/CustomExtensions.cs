@@ -44,8 +44,8 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
 
     /// <summary>A referenced third-party extension with the step-back hook shape: its <c>InitStart</c> re-types the
     /// default body against the CALLER's scope and does nothing else, exactly as the engine's own encoders do. The
-    /// build cannot read that out of metadata, so without hook probing a bodied call degrades under HED7015; with
-    /// probing it precompiles, and this fixture is the third-party case the whole probe exists for.</summary>
+    /// build cannot read that out of metadata, so a bodied call to it degrades under HED7015 — the third-party
+    /// case the build tier still cannot serve, and the one Layer 1 binding is for.</summary>
     [ExtensionName("bellow")]
     public sealed class BellowExtension : AbstractExtension
     {

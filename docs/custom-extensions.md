@@ -442,9 +442,8 @@ only the statically visible case.
 
 **Precompilation.** Custom branch sets are fully functional on the runtime (dynamic) tier — the
 set‑*structuring* rules above apply on both tiers because classification is role‑based everywhere. On
-the build tier a custom branch extension precompiles once the build has read its `InitStart`, which is
-what [hook probing](precompilation.md#hook-probing-opt-in) does; without probing it falls back quietly to
-the dynamic tier (no `HED7015` at all — the override is the canonical shape here, not a mistake) and
+the build tier a custom branch extension falls back quietly to the dynamic tier — the build has not read
+its `InitStart` (no `HED7015` at all: the override is the canonical shape here, not a mistake) — and
 renders identically with full role semantics.
 
 ---
@@ -610,13 +609,7 @@ reproduces:
   build. **Exception:** a `[BranchRole]` custom branch extension is expected to override `InitStart`
   (its canonical parent‑model shape), so it draws no `HED7015` at all — a call to it degrades silently
   (see [Building your own branch set](#building-your-own-branch-set)).
-  **This is what [hook probing](precompilation.md#hook-probing-opt-in) removes.** With
-  `HeddleProbeExtensionHooks=true`, a consumer's build loads your package out of the NuGet cache and
-  runs the hook to see what it does with the body — no attribute, no declaration, no name list — and a
-  call it can reproduce precompiles instead of degrading. Two conditions: your extension has to reach
-  the build as a *package* reference (a project reference has no assembly on disk at generation time),
-  and the hook has to be deterministic — it is run twice and refused if the two runs disagree. Keeping
-  custom logic in `ProcessData`/`RenderData` remains the way to need none of this.
+  Keeping custom logic in `ProcessData`/`RenderData` is the way to need none of this.
 - **A `[Prop]` default whose type generated code can name.** Defaults are frozen into the generated
   source as the exact boxed value the runtime would build from the attribute, so a default of an `enum`
   type — including on an `object`‑typed prop, where the box keeps the enum, not its underlying number —
@@ -626,12 +619,11 @@ reproduces:
 
 **Bodied calls bind when the build knows how the body is typed.** A bodiless value transform (`@ext(x)`)
 binds directly. A call carrying a `{{ … }}` body needs one more fact — which scope the body is compiled
-against — and that is your `InitStart`'s decision. The build gets it from
-[hook probing](precompilation.md#hook-probing-opt-in) where probing is on, and from its own table for the
-built‑ins; without either it falls back for that call site. Two roles are emittable today: a body typed by
-the **caller's** scope (what every built‑in encoder does, and the shape to copy) and a body typed by the
-**element** of a sequence (what `@list` does). A body typed by the call value itself still falls back.
-Either way the rendered bytes are the same — falling back costs speed, never correctness.
+against — and that is your `InitStart`'s decision. The build has that fact for the built‑ins, from its own
+table, and for nothing else, so a bodied call to your extension falls back for that call site. Among the
+built‑ins two roles are emittable today: a body typed by the **caller's** scope (what every built‑in
+encoder does) and a body typed by the **element** of a sequence (what `@list` does). Either way the
+rendered bytes are the same — falling back costs speed, never correctness.
 
 > **`[EncodeOutput]` / `AbstractHtmlExtension` encoding is reproduced on both tiers.** Precompiled binding
 > derives the render type from the extension's own `[EncodeOutput]`/`[NotEncode]` attributes — the same

@@ -28,9 +28,8 @@ namespace Heddle.Language
         DeclaredOrParent,
 
         /// <summary>The value on the chained channel — the host hands its own <c>chainedType</c> to the body compile
-        /// (<c>@out</c>, <c>@swap</c>). The name the table never had, because the table only ever pinned the seven
-        /// body-hosting names the emitter emits itself; the hook probe answers for every extension, and two of the
-        /// built-ins answer this.</summary>
+        /// (<c>@out</c>, <c>@swap</c>). The name the table never had, because the table only ever pinned the
+        /// body-hosting names the emitter emits itself.</summary>
         Chained
     }
 
@@ -52,13 +51,12 @@ namespace Heddle.Language
     }
 
     /// <summary>The body model-typing table: which channel a body-hosting extension's body is compiled against.
-    /// <para><b>It is no longer a prediction.</b> Every row is held equal to what the extension's own
-    /// <c>InitStart</c> does by <c>HookProbeLockstepTests</c>, which probes every registered extension and compares.
-    /// That is what makes the table safe to consult when nothing can be probed — a build that has not opted into
-    /// hook probing, or one whose engine reference sits somewhere no assembly may be loaded from — and it is what
-    /// caught the <c>@list</c> chained column being wrong.</para>
-    /// <para>Rows are added by observation, not by guess: the way to add one is to run the probe, read the roles it
-    /// reports, and let the lockstep suite hold them there.</para></summary>
+    /// <para><b>It is a prediction, and only a rendered byte holds it honest.</b> Every row is read by a rendering
+    /// test in <c>BodyModelRuleTableTests</c> that reddens if the row and the extension's own <c>InitStart</c>
+    /// disagree — which is how the <c>@list</c> row was caught saying <c>None</c> where <c>ListExtension</c> puts
+    /// the iteration index. A row nothing renders against is not a contract.</para>
+    /// <para>The table is consulted for an engine extension and for nothing else: a package registering its own
+    /// <c>@list</c> must not inherit <c>ListExtension</c>'s typing.</para></summary>
     internal static class BodyModelRules
     {
         /// <summary>The typing of a definition body: its declared <c>:: T</c>.</summary>
@@ -88,7 +86,7 @@ namespace Heddle.Language
                 // The step-back encoders. Nine extensions, one hook body between them —
                 // `base.InitStart(ctx, parent, chainedType, null)` — which re-types the DEFAULT BODY against the
                 // caller's scope and changes nothing else. The build tier knew four of them and refused the other
-                // five for no reason but the list's length; the probe reports the same role for all nine.
+                // five for no reason but the list's length; all nine take the same row.
                 ["string"] = (BodyModelSource.Parent, ChainedModelSource.None),
                 ["attr"] = (BodyModelSource.Parent, ChainedModelSource.None),
                 ["url"] = (BodyModelSource.Parent, ChainedModelSource.None),

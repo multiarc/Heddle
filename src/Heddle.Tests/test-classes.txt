@@ -63,7 +63,6 @@ Heddle.Tests.GenericTypeResolutionTests
 Heddle.Tests.HeddleTemplateDisposalTests
 Heddle.Tests.HeddleTemplateModelTypeGuardTests
 Heddle.Tests.HeddleTemplateTests
-Heddle.Tests.HookProbeLockstepTests
 Heddle.Tests.HostedTemplateLoadTests
 Heddle.Tests.HostedTemplateResolverTests
 Heddle.Tests.HtmlContextLintTests
