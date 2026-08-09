@@ -1,1 +1,1 @@
-<span>@(mystery("marker"))</span>
+<span>@(mystery(other("marker") + "!"))</span>

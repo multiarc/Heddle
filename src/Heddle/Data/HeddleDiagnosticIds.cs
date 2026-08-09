@@ -247,8 +247,12 @@ namespace Heddle.Data
         /// <summary>The wrapper for a forwarded front-end <b>warning</b> carrying no id of its own.</summary>
         public const string BuildForwardedWarning = "HED7013";
 
-        /// <summary>A called function is delegate-only, so it is not representable in assembly metadata and
-        /// cannot be precompiled; the template renders through the dynamic path.</summary>
+        /// <summary>A called function no build-time registration binds, in a call shape that also cannot be
+        /// bound late: an argument whose static type has no build-time answer, or more arguments than a late-bound
+        /// site takes. The template renders through the dynamic path.
+        /// <para>The id is deliberately narrower than it was. A delegate-only registration alone no longer
+        /// reaches it — the call's shape is known even where its target is not, so it is emitted as a site that
+        /// resolves once at first render through the engine's own overload ranker.</para></summary>
         public const string BuildUnresolvableFunction = "HED7014";
 
         /// <summary>A bound extension overrides a compile-time hook the generator cannot evaluate.</summary>

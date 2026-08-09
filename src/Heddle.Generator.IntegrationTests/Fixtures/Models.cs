@@ -408,6 +408,15 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
     /// <summary>The allocation twin pair: a public and an internal member returning the SAME string, so a render
     /// through the direct plan and a render through the engine accessor produce identical output and identical
     /// baseline allocations — any delta isolates the escape's own per-render cost, which must be zero.</summary>
+    /// <summary>The late-bound function subject: one string member and one <c>int</c> member, which is the
+    /// smallest pair that makes an overload set's winner visible in the rendered bytes.</summary>
+    public sealed class LateBoundModel
+    {
+        public string Name { get; set; }
+
+        public int Stock { get; set; }
+    }
+
     public sealed class AccessorAllocationModel
     {
         public string Direct => "steady";

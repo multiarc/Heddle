@@ -267,9 +267,10 @@ A host that renders under more than one shape — two output profiles, or a requ
 `FunctionRegistry` — calls the pass once per shape. There is no parameterless overload, deliberately: a
 verdict with no options to scope it could only be misread.
 
-A `UnsupportedFunction` marker entry (`HED7014`, a delegate‑only function the build refused on purpose)
-is reported like any other failure. That is not noise: the entry is registered and will never render
-precompiled, and excluding it would make the pass quieter than the truth.
+A `UnsupportedFunction` failure is reported like any other. It arises two ways, and both are worth
+hearing: a marker entry (`HED7014` — a call the build refused on purpose, which will never render
+precompiled), and a **late‑bound** entry whose recorded function name the live registry does not know,
+which is a real configuration gap between the build and the deployment.
 
 ### The staleness identity
 
@@ -301,7 +302,7 @@ saw hides a packaging bug behind identical output. The classification:
 | --- | --- | --- |
 | `StaleContent` | legitimate fallback | The template changed on disk after the build — dynamic recompile is the correct semantics, and `EnableFileChangeCheck` exists to ask for exactly this tracking. |
 | `StaleImport` | legitimate fallback | The same, one hop out: an import changed under an unchanged root template. |
-| `UnsupportedFunction` | legitimate fallback | Not a run‑time discovery at all — the build refused *on purpose* (a delegate‑only function, warned `HED7014`) and recorded a marker entry. |
+| `UnsupportedFunction` | legitimate fallback *(marker)* / **must surface** *(late‑bound)* | Two causes under one reason. A marker entry is not a run‑time discovery at all — the build refused *on purpose* and warned `HED7014`. A **late‑bound** entry naming a function the live registry does not hold is the opposite: the build did its work and the deployment did not register what the template calls, so the fallback is hiding a configuration gap. The detail string separates them (`manifest=<late-bound> live=<unregistered>`). |
 | `OptionsMismatch` | legitimate fallback | Options are per‑request degrees of freedom a host legitimately exercises; the same template served `Text` for mail and `Html` precompiled is a designed miss of the fingerprinted point, not a defect. |
 | `ExtensionBindingMismatch` | **must surface** *(provisional)* | A residual mismatch means the deployed binding set genuinely differs from the one the build declared — rendering dynamically with *different bindings than the build recorded* is the hazard, not the cure. |
 | `FunctionBindingMismatch` | **must surface** *(provisional)* | Declaring‑type/overload drift under the default registry signals assembly skew. A per‑request export registry (`options.Functions`) diverging by host choice is the one arguable sub‑case. |
@@ -365,11 +366,31 @@ rescue is a build **error**, since it fails before any tier is chosen; the escap
 `Precompile="false"` on the item, which skips key derivation and emit entirely while keeping the
 template in the `@<<` import map.
 
-A function that *cannot* be expressed as an exported `public static` method (a
-`Register(string, Delegate)` closure) is not representable in assembly metadata: the template
-draws build warning `HED7014` and is left un‑precompiled (a fallback‑marker entry) — it
-compiles dynamically at run time. Wrap the closure in an exported static method to precompile
-it.
+### Functions the build cannot see
+
+A function registered only at run time — a `Register(string, Delegate)` closure — is not representable
+in assembly metadata, so the build cannot bind it. It does not have to: the **call's shape** is known
+even where its target is not, so the call is emitted as a *late‑bound site* that resolves **once, at
+first render**, through the engine's own overload ranker, and caches the bound delegate. The same
+overload wins on both tiers by construction, and steady‑state renders cost one delegate call and no
+allocation.
+
+Three consequences worth knowing:
+
+- **The manifest records the name with no target.** The gauntlet checks it per request and falls back
+  to the dynamic tier where the live registry cannot serve the name — unregistered, or registered as an
+  *extension*, whose render protocol a value site cannot reproduce. `ValidateAll(options)` reports both
+  before any render.
+- **Failure is the engine's failure.** A name nothing registers, an ambiguous call, and a call no
+  overload accepts each raise the engine's own positioned error (`HED1001`, `HED1013`, `HED1012`) from
+  the precompiled tier too, rather than rendering something the engine would not.
+- **The registry is part of the request.** A render under a different `TemplateOptions.Functions`
+  re‑binds, matching the dynamic tier, which compiles per options.
+
+`HED7014` still fires for the calls this cannot serve — chiefly an argument whose static type has no
+build‑time answer (an argument that is itself a call to an unknown function), so no overload can be
+selected against it. Exporting the function with `[ExportFunctions]` on a public static container binds
+it at build time and avoids the first‑render work entirely.
 
 ## Custom extensions in precompiled templates
 
@@ -435,7 +456,7 @@ their `.heddle` position; file/key/option‑level conditions report without a so
 | `HED7010` | Two keys sanitize to one generated class identifier. |
 | `HED7011` | An `@<<` import is not among the compilation's `.heddle` `AdditionalFiles`. The spelling is matched against the item's key, so it is case-sensitive; it is first reduced the way the engine's own `Path.GetFullPath` reduces it — `.` segments and repeated separators drop out, a `..` cancels the segment before it, and a trailing separator survives (so `lib.heddle/.` names the file and `lib.heddle/` names a directory neither tier can read). Which characters separate segments is the platform's answer: a backslash separates on Windows and is an ordinary file-name character elsewhere, on both tiers. A `..` that reaches above the template root names nothing on either tier. An import path is **not** a template key, so the key idioms are refused rather than applied: a leading `/` is an absolute path to `Path.Combine`, a leading `~/` is a literal `~` directory, and an extension-less name is a file without an extension — the precompiler declines each of the three rather than renaming the file the engine reads. |
 | `HED7012`/`HED7013` | A forwarded front‑end error/warning carrying no id. |
-| `HED7014` | A called function is delegate‑only (not precompilable) — the template falls back (warning). |
+| `HED7014` | A called function no build‑time registration binds, in a call shape a late‑bound site cannot serve either (chiefly an argument whose static type has no build‑time answer) — the template falls back (warning). A delegate‑only registration alone no longer reaches this: see *Functions the build cannot see*. |
 | `HED7015` | A bound extension overrides a compile‑time hook — unevaluable at build. |
 | `HED7016` | A branch continuation/terminal (`[BranchRole]`) omits `[ScopeChannel]`, so it can never read the branch state at run time (warning). |
 | `HED7017` | An extension declares a malformed `[Prop]` parameter — the build‑tier twin of the dynamic tier's declaration diagnostics. |

@@ -373,7 +373,7 @@ namespace Heddle.Runtime
                 else if (!nameIsExtension && functionCompatibleShape)
                 {
                     compileScope.CompileErrors.Add(
-                        $"Cannot find extension or registered function '{extensionItem.ExtensionName}'. Register it with TemplateOptions.Functions, or check the name."
+                        Expressions.FunctionCallMessages.UnknownFunction(extensionItem.ExtensionName)
                             .ToError(extensionItem.Position, HeddleDiagnosticIds.UnknownFunction));
                     return null;
                 }

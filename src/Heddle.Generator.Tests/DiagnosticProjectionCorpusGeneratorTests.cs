@@ -114,7 +114,12 @@ namespace Heddle.Generator.Tests
                 .OrderBy(n => n, StringComparer.Ordinal)
                 .ToList();
 
-            Assert.Equal(new[] { "orphanElse", "rangeStep", "unknownFunction", "unknownProfile" }, residue);
+            Assert.Equal(
+                new[]
+                {
+                    "orphanElse", "rangeStep", "unknownFunction", "unknownProfile", "unresolvableFunctionArgument"
+                },
+                residue);
         }
     }
 }

@@ -971,7 +971,8 @@ namespace Heddle.Generator.Emit
             {
                 var callNode = BuildFunctionCallNode(name, cp, item.Position);
                 var writer = new NativeExpressionWriter(_resolver, bctx.ModelSymbol, _modelSymbol, "m", _exports,
-                    TypeFacts, AllocateHopLocal, bctx.Props, _modelDeclaredDynamic);
+                    TypeFacts, AllocateHopLocal, bctx.Props, _modelDeclaredDynamic, AllocateFunctionSite);
+                writer.TopLevelCall = callNode;
                 var expr = writer.WriteRoot(callNode);
                 DrainUnresolvable(writer);
                 if (expr == null)
@@ -996,6 +997,29 @@ namespace Heddle.Generator.Emit
             {
                 reason = new Refusal(RefusalCategory.ExtensionBinding, unbindableReason, item.Position);
                 return null;
+            }
+
+            // LateBound: bodiless, function-shaped, and this compilation resolves the name to nothing at all —
+            // an ambient fill, a definition, a bound extension, an extension the runtime will find, and every
+            // build-visible function have each been ruled out above. The only registration left is one the host
+            // makes at run time, which is exactly what a late-bound site resolves at first render, through the
+            // engine's own ranker. An unregistered name still reproduces the engine's own compile error there.
+            if (callTarget == CallTargetKind.Unknown && string.IsNullOrEmpty(item.ParameterTemplate) &&
+                CallTargetRules.IsFunctionCompatibleShape(cp))
+            {
+                var lateNode = BuildFunctionCallNode(name, cp, item.Position);
+                var lateWriter = new NativeExpressionWriter(_resolver, bctx.ModelSymbol, _modelSymbol, "m",
+                    _exports, TypeFacts, AllocateHopLocal, bctx.Props, _modelDeclaredDynamic,
+                    AllocateFunctionSite);
+                lateWriter.TopLevelCall = lateNode;
+                var lateExpr = lateWriter.WriteRoot(lateNode);
+                DrainUnresolvable(lateWriter);
+                if (lateExpr != null)
+                {
+                    RecordFunctionUses(lateWriter);
+                    var lateField = AllocateEmptyExtension(item.Position);
+                    return MakeCall(lateField, "(object)(" + lateExpr + ")", lateWriter.UsedModel, item.Position);
+                }
             }
 
             // HED7006 — bodied call with no bound extension. Bodiless may be function-compatible (delegate registration).
@@ -2922,7 +2946,7 @@ namespace Heddle.Generator.Emit
             }
 
             var writer = new NativeExpressionWriter(_resolver, callerModel, _modelSymbol, "m", _exports, TypeFacts,
-                AllocateHopLocal, bctx.Props, _modelDeclaredDynamic);
+                AllocateHopLocal, bctx.Props, _modelDeclaredDynamic, AllocateFunctionSite);
             var body = writer.WriteRoot(arg.Value);
             DrainUnresolvable(writer);
             if (body == null)
@@ -3200,7 +3224,8 @@ namespace Heddle.Generator.Emit
                 // The writer is the gate instead: given no model type it refuses any path that reads one, which is
                 // the same answer by the same rule, and it never claims to use a model local it has not been given.
                 var writer = new NativeExpressionWriter(_resolver, bctx.ModelSymbol, _modelSymbol, "m",
-                    _exports, TypeFacts, AllocateHopLocal, bctx.Props, _modelDeclaredDynamic);
+                    _exports, TypeFacts, AllocateHopLocal, bctx.Props, _modelDeclaredDynamic,
+                    AllocateFunctionSite);
                 var expr = writer.WriteRoot(cp.NativeExpression);
                 if (expr == null)
                 {
@@ -3271,7 +3296,8 @@ namespace Heddle.Generator.Emit
                     return EmissionPlan.Stringified;
 
                 // Generic selector seam: an inference helper cannot carry a ref-like value either (CS9244).
-                // LateBound selector seam: nothing on a member path resolves later than the sink boxes.
+                // LateBound is not a member-path plan: what it defers is a call TARGET, and a member path has
+                // none — its selector lives where the calls are, in NativeExpressionWriter's WriteLateBoundCall.
                 // EngineAccessor selector seam: the engine's accessor returns object — the very box being refused.
                 return EmissionPlan.Refused(new Refusal(RefusalCategory.RefLikeSink,
                     RefStructSinkReason(pathKind, use), position));
@@ -3566,7 +3592,8 @@ namespace Heddle.Generator.Emit
             {
                 var callNode = BuildFunctionCallNode(name, inner.CallParameter, inner.Position);
                 var writer = new NativeExpressionWriter(_resolver, bctx.ModelSymbol, _modelSymbol, "m", _exports,
-                    TypeFacts, AllocateHopLocal, bctx.Props, _modelDeclaredDynamic);
+                    TypeFacts, AllocateHopLocal, bctx.Props, _modelDeclaredDynamic, AllocateFunctionSite);
+                writer.TopLevelCall = callNode;
                 var expr = writer.WriteRoot(callNode);
                 DrainUnresolvable(writer);
                 if (expr == null)
@@ -3584,12 +3611,27 @@ namespace Heddle.Generator.Emit
                 return true;
             }
 
-            // Delegate-only remainder — record so template degrades to HED7014 fallback marker.
-            // Function-shaped only: bodiless and not nested chain.
+            // LateBound: the delegate-only remainder — a bodiless, function-shaped call this compilation
+            // resolves to nothing, which is what a run-time-only registration looks like from here. The site
+            // resolves it at first render through the engine's own ranker; only where that cannot be emitted
+            // does the name still degrade the template to a HED7014 fallback marker.
             if (innerTarget == CallTargetKind.Unknown &&
                 CallTargetRules.IsFunctionCompatibleShape(inner.CallParameter))
             {
-                _unresolvableFunctions.Add((name, inner.Position));
+                var lateNode = BuildFunctionCallNode(name, inner.CallParameter, inner.Position);
+                var lateWriter = new NativeExpressionWriter(_resolver, bctx.ModelSymbol, _modelSymbol, "m",
+                    _exports, TypeFacts, AllocateHopLocal, bctx.Props, _modelDeclaredDynamic,
+                    AllocateFunctionSite);
+                lateWriter.TopLevelCall = lateNode;
+                var lateExpr = lateWriter.WriteRoot(lateNode);
+                DrainUnresolvable(lateWriter);
+                if (lateExpr != null)
+                {
+                    RecordFunctionUses(lateWriter);
+                    paramExpr = "(object)(" + lateExpr + ")";
+                    usesModel = lateWriter.UsedModel;
+                    return true;
+                }
             }
 
             reason = new Refusal(RefusalCategory.ChainCarrier, "chain item extension '" + name + "'",
@@ -3659,6 +3701,45 @@ namespace Heddle.Generator.Emit
                 html ? "Heddle.Extensions.EmptyHtmlExtension" : "Heddle.Extensions.EmptyExtension");
             return field;
         }
+
+        /// <summary>
+        /// The <see cref="EmissionPlanKind.LateBound"/> field for one call site: a
+        /// <c>PrecompiledFunctionSite</c> constructed at type-init, which resolves the call ONCE at first render
+        /// through the engine's own overload ranker and caches the bound delegate.
+        /// <para>Keyed on the call's own identity — name, null-literal mask and document position — so a body
+        /// emitted for two call sites shares one field and one bind, while two different calls on one name keep
+        /// the separate bindings their different argument shapes earn.</para>
+        /// <para>Also records the manifest's null-target <c>FunctionBindings</c> row for the name. That row is
+        /// what lets the gauntlet move a request whose live registry cannot serve the name — unregistered, or
+        /// registered as an extension — to the dynamic tier before any render, instead of the site meeting it.</para>
+        /// </summary>
+        private string AllocateFunctionSite(string name, int nullLiteralMask, bool inExpression,
+            BlockPosition position)
+        {
+            var key = name + "\u0000" + nullLiteralMask.ToString(System.Globalization.CultureInfo.InvariantCulture) +
+                      "\u0000" + (inExpression ? "e" : "t") + "\u0000" + position.StartIndex + ":" + position.Length;
+            if (_functionSiteFields.TryGetValue(key, out var existing))
+                return existing;
+
+            var field = "FN" + _functionSiteCounter++;
+            _fieldDecls.Append("        private static readonly global::Heddle.Precompiled.PrecompiledFunctionSite ")
+                .Append(field).Append(" =\n");
+            _fieldDecls.Append("            new global::Heddle.Precompiled.PrecompiledFunctionSite(")
+                .Append(CSharpEscape.StringLiteral(name)).Append(", ")
+                .Append(nullLiteralMask.ToString(System.Globalization.CultureInfo.InvariantCulture)).Append(", ")
+                .Append(inExpression ? "true" : "false").Append(", ")
+                .Append(_parse.DefenitionExists(name) ? "true" : "false").Append(", ")
+                .Append(position.StartIndex).Append(", ").Append(position.Length).Append(");\n");
+
+            _functionSiteFields[key] = field;
+            return field;
+        }
+
+        /// <summary>Late-bound site fields already emitted in this file, keyed by call identity.</summary>
+        private readonly Dictionary<string, string> _functionSiteFields =
+            new Dictionary<string, string>(System.StringComparer.Ordinal);
+
+        private int _functionSiteCounter;
 
         private string AllocateBodyExtension(string callName, string fqn, string typeName, string bodyName,
             bool needsLocals, BlockPosition position, string assembly = "Heddle")
@@ -3941,9 +4022,12 @@ namespace Heddle.Generator.Emit
             return _dedupedUnresolvable = result;
         }
 
-        /// <summary>Records manifest <c>FunctionBindings</c> rows for bound default/exported functions.</summary>
+        /// <summary>Records manifest <c>FunctionBindings</c> rows for bound default/exported functions, and the
+        /// null-target row every late-bound name needs so the gauntlet can check the live registry for it.</summary>
         private void RecordFunctionUses(NativeExpressionWriter writer)
         {
+            foreach (var late in writer.LateBoundFunctions)
+                RecordFunctionBinding(late.Name, null, 0);
             foreach (var fn in writer.UsedDefaultFunctions)
                 RecordFunctionBinding(fn, DefaultFunctionTable.ShimTargetTypeName,
                     NativeExpressionWriter.DefaultOverloadCount(fn));
@@ -4290,7 +4374,12 @@ namespace Heddle.Generator.Emit
             sb.Append(string.Join(", ", _functionBindings
                 .OrderBy(b => b.Name, System.StringComparer.Ordinal)
                 .ThenBy(b => b.Target, System.StringComparer.Ordinal)
-                .Select(b => $"new global::Heddle.Precompiled.PrecompiledFunctionBinding({CSharpEscape.StringLiteral(b.Name)}, {CSharpEscape.StringLiteral(b.Target)}, {b.OverloadCount})")));
+                .Select(b => "new global::Heddle.Precompiled.PrecompiledFunctionBinding(" +
+                             CSharpEscape.StringLiteral(b.Name) + ", " +
+                             // A late-bound site records no target: the build knew the call shape and not the
+                             // registration, which is exactly what a null target means to the gauntlet.
+                             (b.Target == null ? "null" : CSharpEscape.StringLiteral(b.Target)) + ", " +
+                             b.OverloadCount + ")")));
             sb.Append(" }");
             return sb.ToString();
         }

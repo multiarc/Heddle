@@ -333,9 +333,9 @@ namespace Heddle.Runtime.Expressions
             {
                 if (TemplateFactory.Exists(call.Name) || _parseContext.DefenitionExists(call.Name))
                     return Fail(call.Position, HeddleDiagnosticIds.ExtensionCalledAsFunction,
-                        $"'{call.Name}' is an extension, not a registered function — extensions cannot be called inside a native expression. Use a call chain, or register a function with TemplateOptions.Functions.");
+                        FunctionCallMessages.ExtensionCalledAsFunction(call.Name));
                 return Fail(call.Position, HeddleDiagnosticIds.UnknownFunction,
-                    $"Cannot find extension or registered function '{call.Name}'. Register it with TemplateOptions.Functions, or check the name.");
+                    FunctionCallMessages.UnknownFunction(call.Name));
             }
 
             var argExprs = new Expression[call.Arguments.Count];
@@ -349,17 +349,15 @@ namespace Heddle.Runtime.Expressions
             var bind = BindOverload(overloads, argExprs, out var chosen, out var expanded);
             if (bind == BindOutcome.Ambiguous)
             {
-                var candidates = string.Join(", ", overloads.Select(o => o.ToSignatureString()));
                 return Fail(call.Position, HeddleDiagnosticIds.AmbiguousFunctionCall,
-                    $"The call to function '{call.Name}' is ambiguous between: {candidates}.");
+                    FunctionCallMessages.AmbiguousFunctionCall(call.Name, overloads));
             }
 
             if (bind == BindOutcome.None)
             {
                 var argTypes = string.Join(", ", argExprs.Select(a => FriendlyName(a.Type)));
-                var candidates = string.Join(", ", overloads.Select(o => o.ToSignatureString()));
                 return Fail(call.Position, HeddleDiagnosticIds.NoFunctionOverload,
-                    $"No overload of function '{call.Name}' takes ({argTypes}). Candidates: {candidates}.");
+                    FunctionCallMessages.NoFunctionOverload(call.Name, argTypes, overloads));
             }
 
             if (IsCompositeFormat(chosen))
@@ -422,12 +420,21 @@ namespace Heddle.Runtime.Expressions
         private static BindOutcome BindOverload(IReadOnlyList<FunctionEntry> overloads, Expression[] args,
             out FunctionEntry chosen, out bool expanded)
         {
-            var candidates = new RankCandidate<Type>[overloads.Count];
-            for (int i = 0; i < overloads.Count; i++)
-                candidates[i] = ToRankCandidate(overloads[i]);
             var rankArgs = new RankArgument<Type>[args.Length];
             for (int i = 0; i < args.Length; i++)
                 rankArgs[i] = ToRankArgument(args[i]);
+            return BindOverload(overloads, rankArgs, out chosen, out expanded);
+        }
+
+        /// <summary>The rank-argument form of the bind, shared with the precompiled tier's late-bound call site
+        /// (<see cref="Precompiled.PrecompiledFunctionSite"/>) so both tiers select the SAME overload through the
+        /// SAME <see cref="OverloadRank"/> tiers over the same reflection rank model.</summary>
+        internal static BindOutcome BindOverload(IReadOnlyList<FunctionEntry> overloads,
+            IReadOnlyList<RankArgument<Type>> rankArgs, out FunctionEntry chosen, out bool expanded)
+        {
+            var candidates = new RankCandidate<Type>[overloads.Count];
+            for (int i = 0; i < overloads.Count; i++)
+                candidates[i] = ToRankCandidate(overloads[i]);
 
             var binding = OverloadRank.Bind(ReflectionRankModel.Instance, candidates, rankArgs);
             expanded = binding.Expanded;
@@ -446,7 +453,7 @@ namespace Heddle.Runtime.Expressions
             return ConversionRank(arg, parameterType) >= 0;
         }
 
-        private static Expression[] BuildCallArguments(FunctionEntry entry, Expression[] args, bool expanded)
+        internal static Expression[] BuildCallArguments(FunctionEntry entry, Expression[] args, bool expanded)
         {
             if (!expanded)
             {
@@ -1127,7 +1134,7 @@ namespace Heddle.Runtime.Expressions
             return "the two arms";
         }
 
-        private static string FriendlyName(Type type)
+        internal static string FriendlyName(Type type)
         {
             if (type == typeof(int)) return "int";
             if (type == typeof(uint)) return "uint";

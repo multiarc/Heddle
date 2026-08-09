@@ -7,17 +7,23 @@ using Xunit;
 namespace Heddle.Generator.IntegrationTests
 {
     /// <summary>
-    /// Validates behavior for unresolvable functions: emits HED7014 warning and null-target manifest entry.
-    /// Generated source is omitted; runtime uses dynamic path.
+    /// What is left of the unresolvable-function channel now that a call the build cannot bind is emitted as a
+    /// late-bound site instead (<see cref="LateBoundFunctionTests"/>). <c>HED7014</c> still fires, and still
+    /// degrades the template to a marker entry, for the calls late binding genuinely cannot serve: the argument
+    /// whose static type has no build-time answer, so the outer call cannot be ranked against the type the engine
+    /// will rank it against. Generated source is omitted; the runtime uses the dynamic path.
     /// </summary>
     public class UnresolvableFunctionTests
     {
         private const string ProductType = "Heddle.Generator.IntegrationTests.Fixtures.Product";
 
+        /// <summary>The surviving HED7014 shape: the argument is itself a call no metadata carries, so its return
+        /// type is the value the build cannot know — and a late-bound site that guessed it would rank the outer
+        /// call against a type the engine never saw.</summary>
         [Fact]
         public void UnresolvableFunctionReportsPositionedHed7014AndNoSource()
         {
-            var t = "@model(){{" + ProductType + "}}@\\\n<span>@(mystery(Name))</span>\n";
+            var t = "@model(){{" + ProductType + "}}@\\\n<span>@(mystery(other(Name) + \"!\"))</span>\n";
             var gen = DifferentialHarness.Generate(new[] { ("views/label-fancy.heddle", t) });
 
             var hed7014 = gen.Diagnostics.Where(d => d.Id == "HED7014").ToList();
@@ -63,6 +69,21 @@ namespace Heddle.Generator.IntegrationTests
             Assert.Single(hed7014);
             Assert.Equal(DiagnosticSeverity.Warning, hed7014[0].Severity);
             Assert.Contains("mystery", hed7014[0].GetMessage());
+        }
+
+        /// <summary>The half that moved: a call whose ARGUMENT the build can type is no longer marked at all —
+        /// it precompiles as a late-bound site. Pinned here, beside the shape that still degrades, because what
+        /// separates the two is the argument and nothing else.</summary>
+        [Fact]
+        public void AnUnresolvableFunctionOverATypeableArgumentIsNoLongerMarked()
+        {
+            var t = "@model(){{" + ProductType + "}}@\\\n<span>@(mystery(Name))</span>\n";
+            var gen = DifferentialHarness.Generate(new[] { ("views/label-late.heddle", t) });
+
+            Assert.DoesNotContain(gen.Diagnostics, d => d.Id == "HED7014");
+            DifferentialHarness.ExpectPrecompiled(gen, "views/label-late.heddle");
+            Assert.Contains("new global::Heddle.Precompiled.PrecompiledFunctionBinding(\"mystery\", null, 0)",
+                gen.ManifestSource);
         }
 
         [Fact]

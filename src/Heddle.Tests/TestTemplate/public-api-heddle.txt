@@ -770,6 +770,18 @@ TYPE Heddle.Precompiled.PrecompiledFunctionBinding : System.ValueType
   PROP System.Int32 OverloadCount {get;}
   PROP System.String Name {get;}
   PROP System.String TargetTypeName {get;}
+TYPE Heddle.Precompiled.PrecompiledFunctionSite
+  CTOR(System.String, System.Int32, System.Boolean, System.Boolean, System.Int32, System.Int32)
+  FIELD System.Int32 MaxArgumentCount
+  METHOD System.Object Invoke()
+  METHOD System.Object Invoke(T0)
+  METHOD System.Object Invoke(T0, T1)
+  METHOD System.Object Invoke(T0, T1, T2)
+  METHOD System.Object Invoke(T0, T1, T2, T3)
+  METHOD System.Object Invoke(T0, T1, T2, T3, T4)
+  METHOD System.Object Invoke(T0, T1, T2, T3, T4, T5)
+  METHOD System.Object Invoke(T0, T1, T2, T3, T4, T5, T6)
+  METHOD System.Object Invoke(T0, T1, T2, T3, T4, T5, T6, T7)
 TYPE Heddle.Precompiled.PrecompiledFunctions
   METHOD Heddle.Models.Range Range(System.Int32, System.Int32)
   METHOD Heddle.Models.Range Range(System.Int32, System.Int32, System.Int32)
@@ -875,6 +887,8 @@ TYPE Heddle.Precompiled.PrecompiledRuntime
 TYPE Heddle.Precompiled.PrecompiledSchema
   FIELD System.Int32 CurrentSchemaVersion
   FIELD System.Int32 DynamicMemberRoutingSchemaVersion
+  FIELD System.Int32 LateBoundFunctionMaxArity
+  FIELD System.Int32 LateBoundFunctionSchemaVersion
   FIELD System.Int32 LinePathFormSchemaVersion
   FIELD System.Int32 MaxSupportedSchemaVersion
   FIELD System.Int32 MinSupportedSchemaVersion
@@ -885,6 +899,7 @@ TYPE Heddle.Precompiled.PrecompiledSchema
   METHOD System.Boolean IsSupported(System.Int32)
   METHOD System.String FormatEngineVersion(System.Version)
   PROP System.Boolean EmitsDynamicMemberRouting {get;}
+  PROP System.Boolean EmitsLateBoundFunctions {get;}
   PROP System.Boolean EmitsPerCarrierLocals {get;}
 TYPE Heddle.Precompiled.PrecompiledTemplateInfo
   CTOR(System.String, System.Type, System.Type, System.Boolean, System.String, System.Collections.Generic.IReadOnlyList<Heddle.Precompiled.PrecompiledImport>, Heddle.Precompiled.PrecompiledOptionsFingerprint, System.Collections.Generic.IReadOnlyList<Heddle.Precompiled.PrecompiledExtensionBinding>, System.Collections.Generic.IReadOnlyList<Heddle.Precompiled.PrecompiledFunctionBinding>, Heddle.Precompiled.PrecompiledCapabilities, Heddle.Runtime.IProcessStrategy)

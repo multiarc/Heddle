@@ -66,6 +66,27 @@ namespace Heddle.Precompiled
         public const int RegisteredNameSchemaVersion = 3;
 
         /// <summary>
+        /// The schema at which a generated call site may bind a function <b>late</b>, through
+        /// <c>PrecompiledFunctionSite</c>. Like <see cref="DynamicMemberRoutingSchemaVersion"/> this names a
+        /// runtime API that must exist where the generated assembly runs, so an older engine rejects the whole
+        /// assembly at registration (<c>PrecompiledFallbackReason.SchemaVersionUnsupported</c>) rather than
+        /// faulting with a <c>MissingMethodException</c> mid-render.
+        /// </summary>
+        public const int LateBoundFunctionSchemaVersion = 3;
+
+        /// <summary>
+        /// The widest call a generated site binds late — the arity list <c>PrecompiledFunctionSite</c> declares
+        /// and the gate the emitter applies before emitting one, stated once so the two cannot drift into a
+        /// missing-method fault. A wider call keeps the build tier's degrade.
+        /// </summary>
+        public const int LateBoundFunctionMaxArity = 8;
+
+        /// <summary>Whether the generator may emit a late-bound function site at the schema it is currently
+        /// emitting. Structurally unbuildable in the unsafe combination, as the routing gate is.</summary>
+        public static bool EmitsLateBoundFunctions =>
+            CurrentSchemaVersion >= LateBoundFunctionSchemaVersion;
+
+        /// <summary>
         /// The schema at which a template row records which form its generated <c>#line</c> file names are in
         /// (<c>PrecompiledTemplateInfo.LinePathForm</c>). Vacuous when absent: the value reads back as
         /// <c>PrecompiledLinePathForm.Unspecified</c>, which claims nothing.

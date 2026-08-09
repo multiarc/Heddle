@@ -307,9 +307,10 @@ namespace Heddle.Data
             Add(HeddleDiagnosticIds.BuildForwardedWarning, "Heddle template warning", warning, "{0}");
             Add(HeddleDiagnosticIds.BuildUnresolvableFunction, "Unresolvable function in precompiled template",
                 warning,
-                "Function '{0}' is neither a default built-in nor exported by a referenced assembly, so it cannot " +
-                "be precompiled (delegate-only registrations are not representable in metadata). Export it with " +
-                "[ExportFunctions] on a public static container to precompile it; otherwise this template renders " +
+                "Function '{0}' is neither a default built-in nor exported by a referenced assembly, and this " +
+                "call cannot be bound at first render either: an argument's static type has no build-time answer, " +
+                "so there is nothing to select an overload against. Export it with [ExportFunctions] on a public " +
+                "static container, or give the argument a type the build can see; otherwise this template renders " +
                 "through the dynamic path at run time.");
             Add(HeddleDiagnosticIds.BuildTemplateNotPrecompiled, "Template could not be precompiled", warning,
                 "This template could not be precompiled ({0}), so it renders through the dynamic path at run " +

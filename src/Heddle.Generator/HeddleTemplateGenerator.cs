@@ -398,7 +398,8 @@ namespace Heddle.Generator
                     }
                     else if (result.IsMarker)
                     {
-                        // HED7014: delegate-only functions are un-precompilable; fallback marker routes to dynamic path.
+                        // HED7014: a call no build-time registration binds AND no late-bound site can serve;
+                        // fallback marker routes to the dynamic path.
                         var sourceText = template.Text.GetText();
                         foreach (var fn in result.UnresolvableFunctions)
                         {

@@ -35,7 +35,7 @@ namespace Heddle.Generator.Emit
         /// <summary>An embedded C# expression the compiled-fragment path cannot carry.</summary>
         EmbeddedCSharp,
 
-        /// <summary>A function call no build-time registration binds — delegate-only registrations and calls the
+        /// <summary>A function call no build-time registration binds, and no late-bound site can serve — calls the
         /// shared ranker refuses.</summary>
         FunctionBinding,
 

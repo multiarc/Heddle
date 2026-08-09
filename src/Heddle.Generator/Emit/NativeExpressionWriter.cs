@@ -72,7 +72,8 @@ namespace Heddle.Generator.Emit
         public NativeExpressionWriter(SymbolTypeResolver resolver, ITypeSymbol modelType, ITypeSymbol rootModelType,
             string modelLocal, FunctionExportResolver exports, SymbolTypeFacts typeFacts,
             Func<string> allocateHopLocal, PropLayoutInfo props = null,
-            bool modelDeclaredDynamic = false)
+            bool modelDeclaredDynamic = false,
+            Func<string, int, bool, Heddle.Strings.Core.BlockPosition, string> allocateFunctionSite = null)
         {
             _resolver = resolver;
             _modelType = modelType;
@@ -91,10 +92,31 @@ namespace Heddle.Generator.Emit
             // Shared with the emitter that made this writer, so the names cannot collide with the ones it allocates
             // for paths of its own in the same block.
             _allocateHopLocal = allocateHopLocal;
+            _allocateFunctionSite = allocateFunctionSite;
         }
 
         private readonly Func<string> _allocateHopLocal;
         private readonly bool _modelDeclaredDynamic;
+
+        /// <summary>Allocates the generated <c>PrecompiledFunctionSite</c> field for a late-bound call —
+        /// <c>(name, nullLiteralMask, inExpression, position) =&gt; field name</c>. Null where the caller has no
+        /// field to allocate into, which keeps the pre-existing refusal.</summary>
+        private readonly Func<string, int, bool, Heddle.Strings.Core.BlockPosition, string> _allocateFunctionSite;
+
+        /// <summary>The one call node this writer was built to emit as a <b>top-level</b> call item rather than as
+        /// part of an expression, or null. It decides only which of the engine's two unknown-name sentences a
+        /// late bind reproduces, and it is deliberately identity-scoped: a call nested in this one's arguments is
+        /// an expression call on both tiers.</summary>
+        public CallNode TopLevelCall { get; set; }
+
+        /// <summary>Late-bound names called in this expression, each with its <c>.heddle</c> position. The emitter
+        /// records one null-target manifest <c>FunctionBindings</c> row per name, which is what lets the gauntlet
+        /// move a request whose live registry cannot serve the name to the dynamic tier.</summary>
+        public IReadOnlyList<(string Name, Heddle.Strings.Core.BlockPosition Position)> LateBoundFunctions =>
+            _lateBoundFunctions;
+
+        private readonly List<(string Name, Heddle.Strings.Core.BlockPosition Position)> _lateBoundFunctions =
+            new List<(string, Heddle.Strings.Core.BlockPosition)>();
 
         public bool UsedModel => _usedModel;
 
@@ -338,11 +360,7 @@ namespace Heddle.Generator.Emit
             bool hasExport = _exports != null && _exports.TryGet(call.Name, out export);
 
             if (!isDefault && !hasExport)
-            {
-                _unresolvableFunctions.Add((call.Name, call.Position));
-                return Refuse("a call to '" + call.Name + "', which is neither a built-in nor an export",
-                    RefusalCategory.FunctionBinding);
-            }
+                return WriteLateBoundCall(call);
 
             var args = new string[call.Arguments.Count];
             for (int i = 0; i < args.Length; i++)
@@ -395,6 +413,85 @@ namespace Heddle.Generator.Emit
             _usedDefaultFunctions.Add(call.Name);
             return "global::Heddle.Precompiled.PrecompiledFunctions." + shim + "(" + string.Join(", ", args) + ")";
         }
+
+        /// <summary>
+        /// The <c>LateBound</c> plan for a call the build cannot bind: the name is neither a built-in nor an
+        /// export, so the only registration that can supply it is one the host makes at run time, which no
+        /// metadata carries. The call SHAPE is fully known here, and it is exactly the input the engine's own
+        /// overload selection takes — so the site is emitted and resolves once, at first render, through the
+        /// engine's ranker (<c>PrecompiledFunctionSite</c>), instead of costing the whole template its tier.
+        /// <para>Argument types ride the site's generic parameters, inferred by the consumer's compiler from the
+        /// emitted argument expressions — the same static types the engine's compiled arguments carry. The
+        /// <c>null</c> literal is the one shape inference cannot serve, so it is spelled <c>(object)null</c> and
+        /// its position travels in the mask, which is what the engine's ranker gives the null literal anyway.</para>
+        /// <para>Three exits keep the old refusal, and with it the marker tier: no allocator (a caller with no
+        /// field to emit into), a call wider than the site's widest arity, and an argument whose static type
+        /// nothing here can pin down — inference would either fail to compile or infer a type the engine's ranker
+        /// never saw. An argument that <b>refuses on its own account</b> keeps its own refusal instead: the value
+        /// is unplannable, which is a different verdict from the target being unknowable.</para>
+        /// </summary>
+        private string WriteLateBoundCall(CallNode call)
+        {
+            if (_allocateFunctionSite == null ||
+                call.Arguments.Count > PrecompiledSchema.LateBoundFunctionMaxArity)
+                return RefuseUnresolvable(call);
+
+            var args = new string[call.Arguments.Count];
+            int nullMask = 0;
+            for (int i = 0; i < args.Length; i++)
+            {
+                var argument = call.Arguments[i];
+                if (IsNullLiteral(argument))
+                {
+                    // object is what the engine's ConstantExpression for a null literal carries too, so the
+                    // ranker sees the same argument on both tiers — flagged, not merely typed, because a null
+                    // literal converts to parameters a plain object does not.
+                    nullMask |= 1 << i;
+                    args[i] = "(object)null";
+                    continue;
+                }
+
+                if (!HasInferableArgumentType(argument))
+                    return RefuseUnresolvable(call);
+
+                _functionArgDepth++;
+                args[i] = Write(argument);
+                _functionArgDepth--;
+                if (args[i] == null)
+                    return null;   // the argument's own refusal is the story; do not overwrite it
+            }
+
+            var field = _allocateFunctionSite(call.Name, nullMask, !ReferenceEquals(call, TopLevelCall),
+                call.Position);
+            if (field == null)
+                return RefuseUnresolvable(call);
+
+            _lateBoundFunctions.Add((call.Name, call.Position));
+            return field + ".Invoke(" + string.Join(", ", args) + ")";
+        }
+
+        /// <summary>The pre-<c>LateBound</c> verdict, still the last exit: the name resolves to nothing this
+        /// compilation can see, so the template degrades to a <c>HED7014</c> fallback-marker entry.</summary>
+        private string RefuseUnresolvable(CallNode call)
+        {
+            _unresolvableFunctions.Add((call.Name, call.Position));
+            return Refuse("a call to '" + call.Name + "', which is neither a built-in nor an export",
+                RefusalCategory.FunctionBinding);
+        }
+
+        private static bool IsNullLiteral(ExprNode node) =>
+            node is LiteralNode literal && literal.LiteralError == null && literal.Value == null;
+
+        /// <summary>
+        /// Whether the consumer's compiler will infer, for this argument, the same static type the engine's
+        /// compiled argument expression carries. True on two independent grounds: this writer resolved an actual
+        /// symbol for it (a path, a bound call's declared return, <c>this</c>, an indexer), or the shared operand
+        /// descriptor names its type — which covers literals and every operator result the writer is allowed to
+        /// emit verbatim, since <see cref="NativeOperatorRules"/> is what licenses that emission precisely where
+        /// C# and the native tier agree on the result type.
+        /// </summary>
+        private bool HasInferableArgumentType(ExprNode node)
+            => ArgumentType(node) != null || Estimate(node).Category != OperandCategory.Unknown;
 
         /// <summary>Emits a call to a collided name — the registry's own merge replayed by
         /// <see cref="MergedFunctionBinder"/> — spelling the winner's ordinary call target. The manifest gets one

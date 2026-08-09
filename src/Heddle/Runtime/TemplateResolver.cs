@@ -277,7 +277,7 @@ namespace Heddle.Runtime {
 
             // Carry the request's output encoder and render budget onto the precompiled-adapter render (the
             // adapter has no CompileContext to read options from at render time).
-            result = new HeddleTemplate(entry.Strategy, options.Encoder, options.RenderBudget);
+            result = new HeddleTemplate(entry.Strategy, options.Encoder, options.RenderBudget, options);
             return true;
         }
 
