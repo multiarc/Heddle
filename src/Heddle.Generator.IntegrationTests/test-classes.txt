@@ -23,6 +23,7 @@ Heddle.Generator.IntegrationTests.CorpusRenderParityTests
 Heddle.Generator.IntegrationTests.CorpusResolverSweepTests
 Heddle.Generator.IntegrationTests.CustomExtensionTests
 Heddle.Generator.IntegrationTests.DeepNestingGeneratorTests
+Heddle.Generator.IntegrationTests.DefinitionLayeringTests
 Heddle.Generator.IntegrationTests.DefinitionTests
 Heddle.Generator.IntegrationTests.DegradeReasonTests
 Heddle.Generator.IntegrationTests.DeprecatedExportTests

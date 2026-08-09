@@ -104,10 +104,10 @@ namespace Heddle.Generator.IntegrationTests
             Assert.Contains(gen.Diagnostics, d => d.Severity == DiagnosticSeverity.Error);
         }
 
-        /// <summary>The importer itself must still build cleanly. It degrades here for a reason of its own — a
-        /// partial override is a shape the emitter refuses whether or not it arrived through an import — so the tier
-        /// is declared rather than asserted; what this row is about is that no error reaches the consumer's build.
-        /// The byte-for-byte claim belongs to the library row below, whose importer does precompile.</summary>
+        /// <summary>The importer itself must still build cleanly. It used to degrade for a reason of its own — the
+        /// override the fragment carries — and now precompiles, because layering an imported definition is layering
+        /// like any other: the import is expanded into this document before the parse that builds the layers. What
+        /// this row is about either way is that no error reaches the consumer's build.</summary>
         [Fact]
         public void TheImporterStillBuildsWithoutAnError()
         {
@@ -122,7 +122,7 @@ namespace Heddle.Generator.IntegrationTests
 
             var gen = DifferentialHarness.Generate(OnDisk(corpus));
             Assert.DoesNotContain(gen.Diagnostics, d => d.Severity == DiagnosticSeverity.Error);
-            DifferentialHarness.ExpectDegrade(gen, importerKey);
+            DifferentialHarness.ExpectPrecompiled(gen, importerKey);
         }
 
         /// <summary>A library that <b>does</b> stand alone keeps its own precompiled entry: the fix withholds an
