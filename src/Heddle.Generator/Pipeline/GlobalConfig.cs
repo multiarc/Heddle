@@ -14,7 +14,7 @@ namespace Heddle.Generator.Pipeline
     {
         public GlobalConfig(OutputProfile outputProfile, ExpressionMode expressionMode, bool trimDirectiveLines,
             int maxRecursionCount, string templateRoot, string generatedNamespace, bool emitUtf8Pieces,
-            bool nodeFallback)
+            bool nodeFallback, bool probeExtensionHooks, string packageFolders)
         {
             OutputProfile = outputProfile;
             ExpressionMode = expressionMode;
@@ -24,6 +24,8 @@ namespace Heddle.Generator.Pipeline
             GeneratedNamespace = generatedNamespace;
             EmitUtf8Pieces = emitUtf8Pieces;
             NodeFallback = nodeFallback;
+            ProbeExtensionHooks = probeExtensionHooks;
+            PackageFolders = packageFolders;
         }
 
         public OutputProfile OutputProfile { get; }
@@ -38,6 +40,16 @@ namespace Heddle.Generator.Pipeline
         /// precompiles, never a rendered byte, so it is not a fingerprint input.</summary>
         public bool NodeFallback { get; }
 
+        /// <summary>Extension hook probing (<c>HeddleProbeExtensionHooks</c>), off by default. Like
+        /// <see cref="NodeFallback"/> it decides whether a template precompiles, never a rendered byte, so it is
+        /// not a fingerprint input — but unlike it, turning it on makes the answer depend on the behaviour of a
+        /// referenced assembly rather than only on its metadata.</summary>
+        public bool ProbeExtensionHooks { get; }
+
+        /// <summary>The restore's <c>$(NuGetPackageFolders)</c>, verbatim. The only directories
+        /// <see cref="Probe.ProbeAssemblyLoader"/> may load from; empty means no probing at all.</summary>
+        public string PackageFolders { get; }
+
         public bool Equals(GlobalConfig other)
         {
             if (other is null) return false;
@@ -48,7 +60,9 @@ namespace Heddle.Generator.Pipeline
                    && string.Equals(TemplateRoot, other.TemplateRoot, StringComparison.Ordinal)
                    && string.Equals(GeneratedNamespace, other.GeneratedNamespace, StringComparison.Ordinal)
                    && EmitUtf8Pieces == other.EmitUtf8Pieces
-                   && NodeFallback == other.NodeFallback;
+                   && NodeFallback == other.NodeFallback
+                   && ProbeExtensionHooks == other.ProbeExtensionHooks
+                   && string.Equals(PackageFolders, other.PackageFolders, StringComparison.Ordinal);
         }
 
         public override bool Equals(object obj) => Equals(obj as GlobalConfig);
@@ -66,6 +80,8 @@ namespace Heddle.Generator.Pipeline
                 hash = hash * 31 + (GeneratedNamespace?.GetHashCode() ?? 0);
                 hash = hash * 31 + EmitUtf8Pieces.GetHashCode();
                 hash = hash * 31 + NodeFallback.GetHashCode();
+                hash = hash * 31 + ProbeExtensionHooks.GetHashCode();
+                hash = hash * 31 + (PackageFolders?.GetHashCode() ?? 0);
                 return hash;
             }
         }

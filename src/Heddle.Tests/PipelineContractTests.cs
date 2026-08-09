@@ -234,6 +234,8 @@ namespace Heddle.Tests
                 props[HeddleBuildOptions.EmitUtf8PiecesProperty]);
             Assert.Equal(HeddleBuildOptions.DefaultNodeFallback ? "true" : "false",
                 props[HeddleBuildOptions.NodeFallbackProperty]);
+            Assert.Equal(HeddleBuildOptions.DefaultProbeExtensionHooks ? "true" : "false",
+                props[HeddleBuildOptions.ProbeExtensionHooksProperty]);
 
             // HeddleTemplateRoot's default is MSBuild-only; assert it is still stated, not its C# twin.
             Assert.Equal("$(MSBuildProjectDirectory)", props[HeddleBuildOptions.TemplateRootProperty]);
@@ -256,6 +258,10 @@ namespace Heddle.Tests
             Assert.Equal(100, HeddleBuildOptions.DefaultMaxRecursionCount);
             Assert.False(HeddleBuildOptions.DefaultEmitUtf8Pieces);
             Assert.True(HeddleBuildOptions.DefaultNodeFallback);
+
+            // Off, and the one default whose value is a policy rather than a convenience: on, generated output
+            // depends on the BEHAVIOUR of a referenced assembly and not only on its metadata.
+            Assert.False(HeddleBuildOptions.DefaultProbeExtensionHooks);
         }
 
         /// <summary>Both <see cref="TemplateOptions"/> constructors used to state the defaults independently; the
@@ -430,6 +436,50 @@ namespace Heddle.Tests
                 Assert.Contains("@(" + name + ")", docs, StringComparison.Ordinal);
         }
 
+        /// <summary>
+        /// <para>The compilation-wide half of the wiring gate the per-item metadata test above is for items. A
+        /// <c>build_property.X</c> reaches a generator only if <c>Heddle.Generator.props</c> declares
+        /// <c>X</c> a <c>CompilerVisibleProperty</c>, and it means something only if <c>ConfigReader</c> reads it:
+        /// a name in one place and not the other is silently inert, which is exactly how <c>Name</c> spent a
+        /// release doing nothing.</para>
+        /// <para>Set equality both ways, never a count, and stated through the shared name constants rather than
+        /// through string literals — so a renamed property has to be renamed in the one place that owns it. The
+        /// one non-Heddle name in the set, <c>NuGetPackageFolders</c>, is NuGet's own property, read and never
+        /// declared: it is what bounds where the hook probe may load an assembly from, and inventing a Heddle
+        /// alias for it would let a project state a root the restore does not have.</para>
+        /// </summary>
+        [Fact]
+        public void EveryCompilerVisiblePropertyIsReadByTheConfigReader()
+        {
+            var propsXml = File.ReadAllText(FindRepoFile(
+                Path.Combine("src", "Heddle.Generator", "build", "Heddle.Generator.props")));
+            var configCs = File.ReadAllText(FindRepoFile(
+                Path.Combine("src", "Heddle.Generator", "Pipeline", "ConfigReader.cs")));
+
+            var declared = new SortedSet<string>(StringComparer.Ordinal);
+            foreach (Match m in Regex.Matches(propsXml, @"<CompilerVisibleProperty\s+Include=""(?<name>\w+)"""))
+                declared.Add(m.Groups["name"].Value);
+
+            var constants = typeof(HeddleBuildOptions)
+                .GetFields(BindingFlags.Public | BindingFlags.Static)
+                .Where(f => f.IsLiteral && f.FieldType == typeof(string) && f.Name.EndsWith("Property",
+                    StringComparison.Ordinal))
+                .ToDictionary(f => f.Name, f => (string)f.GetRawConstantValue(), StringComparer.Ordinal);
+
+            var read = new SortedSet<string>(StringComparer.Ordinal);
+            foreach (Match m in Regex.Matches(configCs, @"HeddleBuildOptions\.(?<name>\w+Property)\b"))
+                if (constants.TryGetValue(m.Groups["name"].Value, out var value))
+                    read.Add(value);
+
+            Assert.Equal(new[]
+            {
+                "HeddleEmitUtf8Pieces", "HeddleExpressionMode", "HeddleGeneratedNamespace", "HeddleMaxRecursionCount",
+                "HeddleNodeFallback", "HeddleOutputProfile", "HeddleProbeExtensionHooks", "HeddleTemplateRoot",
+                "HeddleTrimDirectiveLines", "NuGetPackageFolders"
+            }, declared.ToArray());
+            Assert.Equal(declared.ToArray(), read.ToArray());
+        }
+
         private static Dictionary<string, string> ReadPropsDefaults()
         {
             var path = FindRepoFile(Path.Combine("src", "Heddle.Generator", "build", "Heddle.Generator.props"));
@@ -439,7 +489,7 @@ namespace Heddle.Tests
                 defaults[match.Groups["name"].Value] = match.Groups["value"].Value;
 
             // Presence is part of the assertion: a structural change that breaks the parse must be a red test.
-            Assert.Equal(7, defaults.Count);
+            Assert.Equal(8, defaults.Count);
             return defaults;
         }
 
