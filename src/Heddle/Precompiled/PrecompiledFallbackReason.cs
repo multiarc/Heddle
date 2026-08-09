@@ -35,6 +35,19 @@ namespace Heddle.Precompiled
         /// other's bytes.
         /// <para>Appended rather than grouped with the other per-request reasons so that no existing member's
         /// numeric value moves.</para></summary>
-        ModelTypeMismatch
+        ModelTypeMismatch,
+
+        /// <summary>An extension's own compile-time hook, run at registration through
+        /// <see cref="PrecompiledRuntime.Init"/>, reported compile errors for one of the template's call sites. The
+        /// dynamic tier runs the same hook and would refuse the template too, so this costs the template rather than
+        /// the call site — the request compiles dynamically and gets the engine's own errors.
+        /// <para>Appended for the same reason as <see cref="ModelTypeMismatch"/>: no existing member's numeric value
+        /// moves.</para></summary>
+        ExtensionInitCompileError,
+
+        /// <summary>An extension's own compile-time hook handed its body a different model or chained type than the
+        /// build assumed when it emitted that body. The emitted casts are typed on the build's assumption, so
+        /// rendering them would produce bytes the engine does not; the template falls back instead.</summary>
+        ExtensionInitTypingMismatch
     }
 }

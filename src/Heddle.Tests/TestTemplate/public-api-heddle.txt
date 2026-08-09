@@ -739,6 +739,14 @@ TYPE Heddle.Precompiled.HeddleCompiledTemplatesAttribute : System.Attribute
   PROP System.Type ManifestType {get;}
 TYPE Heddle.Precompiled.IHeddleTemplateManifest
   METHOD System.Collections.Generic.IReadOnlyList<Heddle.Precompiled.PrecompiledTemplateInfo> GetTemplates()
+TYPE Heddle.Precompiled.PrecompiledCallShape : System.Enum
+  FIELD Heddle.Precompiled.PrecompiledCallShape CSharpExpression
+  FIELD Heddle.Precompiled.PrecompiledCallShape Chain
+  FIELD Heddle.Precompiled.PrecompiledCallShape ModelPath
+  FIELD Heddle.Precompiled.PrecompiledCallShape NativeExpression
+  FIELD Heddle.Precompiled.PrecompiledCallShape None
+  FIELD Heddle.Precompiled.PrecompiledCallShape PropArguments
+  FIELD System.Int32 value__
 TYPE Heddle.Precompiled.PrecompiledCapabilities : System.Enum
   FIELD Heddle.Precompiled.PrecompiledCapabilities None
   FIELD Heddle.Precompiled.PrecompiledCapabilities StringOutput
@@ -761,6 +769,8 @@ TYPE Heddle.Precompiled.PrecompiledFallbackReason : System.Enum
   FIELD Heddle.Precompiled.PrecompiledFallbackReason CaseMismatch
   FIELD Heddle.Precompiled.PrecompiledFallbackReason EngineVersionIncompatible
   FIELD Heddle.Precompiled.PrecompiledFallbackReason ExtensionBindingMismatch
+  FIELD Heddle.Precompiled.PrecompiledFallbackReason ExtensionInitCompileError
+  FIELD Heddle.Precompiled.PrecompiledFallbackReason ExtensionInitTypingMismatch
   FIELD Heddle.Precompiled.PrecompiledFallbackReason FunctionBindingMismatch
   FIELD Heddle.Precompiled.PrecompiledFallbackReason ModelTypeMismatch
   FIELD Heddle.Precompiled.PrecompiledFallbackReason OptionsMismatch
@@ -835,6 +845,52 @@ TYPE Heddle.Precompiled.PrecompiledImport : System.ValueType
   CTOR(System.String, System.String)
   PROP System.String ContentHash {get;}
   PROP System.String Key {get;}
+TYPE Heddle.Precompiled.PrecompiledInitBody
+  CTOR()
+  PROP System.Boolean NeedsLocals {get;set;}
+  PROP System.String RawText {get;set;}
+  PROP System.String ShapedText {get;set;}
+  PROP System.Type AssumedChainedType {get;set;}
+  PROP System.Type AssumedDataType {get;set;}
+TYPE Heddle.Precompiled.PrecompiledInitFault
+  PROP Heddle.Precompiled.PrecompiledInitFaultScope Scope {get;}
+  PROP System.Collections.Generic.IReadOnlyList<Heddle.Data.HeddleCompileError> Errors {get;}
+  PROP System.Exception Exception {get;}
+  PROP System.Nullable<Heddle.Precompiled.PrecompiledFallbackReason> Reason {get;}
+  PROP System.String Detail {get;}
+TYPE Heddle.Precompiled.PrecompiledInitFaultScope : System.Enum
+  FIELD Heddle.Precompiled.PrecompiledInitFaultScope CallSite
+  FIELD Heddle.Precompiled.PrecompiledInitFaultScope Template
+  FIELD System.Int32 value__
+TYPE Heddle.Precompiled.PrecompiledInitSite
+  CTOR()
+  PROP Heddle.Data.ExpressionMode ExpressionMode {get;set;}
+  PROP Heddle.Data.OutputProfile OutputProfile {get;set;}
+  PROP Heddle.Precompiled.PrecompiledCallShape CallShape {get;set;}
+  PROP Heddle.Precompiled.PrecompiledInitBody Body {get;set;}
+  PROP Heddle.Precompiled.PrecompiledInitBody DefinitionBody {get;set;}
+  PROP Heddle.Precompiled.PrecompiledInitFault Fault {get;set;}
+  PROP System.Boolean HasProducerToRight {get;set;}
+  PROP System.Boolean HasPropArguments {get;set;}
+  PROP System.Boolean InsideDefinition {get;set;}
+  PROP System.Boolean IsChainedConsumer {get;set;}
+  PROP System.Boolean RootReference {get;set;}
+  PROP System.Boolean TrimDirectiveLines {get;set;}
+  PROP System.Int32 DefinitionPositionLength {get;set;}
+  PROP System.Int32 DefinitionPositionStart {get;set;}
+  PROP System.Int32 MaxRecursionCount {get;set;}
+  PROP System.Int32 PositionLength {get;set;}
+  PROP System.Int32 PositionStart {get;set;}
+  PROP System.String ExtensionName {get;set;}
+  PROP System.String SourceText {get;set;}
+  PROP System.String[] Namespaces {get;set;}
+  PROP System.Type ChainedType {get;set;}
+  PROP System.Type DataType {get;set;}
+  PROP System.Type DefinitionSlotType {get;set;}
+  PROP System.Type ModelType {get;set;}
+  PROP System.Type ParentType {get;set;}
+  PROP System.Type RootModelType {get;set;}
+  PROP System.Type SlotType {get;set;}
 TYPE Heddle.Precompiled.PrecompiledLinePathForm : System.Enum
   FIELD Heddle.Precompiled.PrecompiledLinePathForm RootRelative
   FIELD Heddle.Precompiled.PrecompiledLinePathForm TemplatePath
@@ -871,6 +927,8 @@ TYPE Heddle.Precompiled.PrecompiledRuntime
   METHOD Heddle.Core.AbstractExtension BindDefinition(Heddle.Runtime.IProcessStrategy, Heddle.Runtime.IProcessStrategy, System.Object[], Heddle.Precompiled.PrecompiledPropSetter[], Heddle.Data.RenderType, System.Boolean, System.Boolean, System.Int32, System.Int32, System.Int32)
   METHOD Heddle.Core.AbstractExtension BindDefinition(Heddle.Runtime.IProcessStrategy, Heddle.Runtime.IProcessStrategy, System.Object[], Heddle.Precompiled.PrecompiledPropSetter[], Heddle.Data.RenderType, System.Boolean, System.Int32, System.Int32, System.Int32)
   METHOD Heddle.Core.AbstractExtension BindExtension(TExtension, System.Object[], Heddle.Precompiled.PrecompiledPropSetter[], System.String[], Heddle.Data.RenderType, System.Boolean, System.Int32, System.Int32)
+  METHOD Heddle.Core.AbstractExtension Init(System.Func<Heddle.Core.AbstractExtension>, Heddle.Precompiled.PrecompiledInitSite, Heddle.Runtime.IProcessStrategy)
+  METHOD Heddle.Core.AbstractExtension InitDefinition(Heddle.Precompiled.PrecompiledInitSite, Heddle.Runtime.IProcessStrategy, Heddle.Runtime.IProcessStrategy, System.Object[], Heddle.Precompiled.PrecompiledPropSetter[])
   METHOD Heddle.Extensions.OutExtension BindOut(Heddle.Extensions.OutExtension, System.Boolean, System.Int32, System.Int32)
   METHOD Heddle.Precompiled.PrecompiledPartialName EvaluatePartialName(Heddle.Runtime.IProcessStrategy, System.Int32, System.Int32)
   METHOD Heddle.Runtime.IProcessStrategy ResolvePartial(System.String)
