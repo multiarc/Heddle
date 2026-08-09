@@ -1,6 +1,7 @@
 extern alias generator;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using Heddle.TestCorpus;
 using Microsoft.CodeAnalysis;
@@ -37,7 +38,14 @@ namespace Heddle.Generator.IntegrationTests
         /// <summary>Templates whose generated source is allowed to differ between a probing and a non-probing
         /// build, each because the probe recovers a call site the emitter otherwise refuses. Names are the
         /// generated hint names' template keys.</summary>
-        private static readonly string[] DeclaredMovement = new string[0];
+        private static readonly string[] DeclaredMovement =
+        {
+            // The third-party case the probe exists for: a bodied call to a REFERENCED extension whose InitStart
+            // re-types its body against the caller's scope. Nothing in metadata says so, so a non-probing build
+            // degrades it under HED7015 and a probing one precompiles it. Its byte parity across the tiers is
+            // pinned by ProbedThirdPartyBodiedCallPrecompilesAndRendersIdentically below.
+            "Ext_bodied_custom.g.cs"
+        };
 
         /// <summary><b>The gate is not vacuous.</b> Asserted first and separately, because everything below it
         /// would pass trivially against a build where probing never engaged: with the property set, this
@@ -108,10 +116,42 @@ namespace Heddle.Generator.IntegrationTests
                 string.Join(", ", moved.Except(DeclaredMovement)) + "; and declared-but-unmoved: " +
                 string.Join(", ", DeclaredMovement.Except(moved)));
 
-            // The manifest is the second output and carries every binding row, so a changed render type or a
-            // changed bound type would show here even where the entry class did not move.
-            if (moved.Count == 0)
-                Assert.Equal(off.ManifestSource, on.ManifestSource);
+            // The manifest carries every binding row, so a changed render type or bound type shows there even
+            // where an entry class did not move. Compared over the corpus MINUS the recovered templates, because a
+            // recovered template legitimately gains a whole entry: what has to be identical is everything else.
+            var rest = templates.Where(t => !RecoveredKeys.Contains(Path.GetFileName(t.key))).ToList();
+            Assert.Equal(
+                DifferentialHarness.Generate(rest, globalOptions: null, extraReferences: extra).ManifestSource,
+                DifferentialHarness.Generate(rest, globalOptions: ProbingOn(), extraReferences: extra)
+                    .ManifestSource);
+        }
+
+        /// <summary>The corpus file names behind <see cref="DeclaredMovement"/>.</summary>
+        private static readonly HashSet<string> RecoveredKeys =
+            new HashSet<string>(new[] { "ext-bodied-custom.heddle" }, StringComparer.Ordinal);
+
+        /// <summary><b>The payoff, end to end.</b> A bodied call to a third-party extension in a REFERENCED
+        /// assembly — no attribute, no declaration, no name the build knows — precompiles because the build ran the
+        /// extension's own hook and read what it did with the body, and renders the same bytes as the engine.
+        /// The tier is asserted, because a fallback is byte-identical by design and a byte comparison alone would
+        /// prove nothing.</summary>
+        [Fact]
+        public void AProbedThirdPartyBodiedCallPrecompilesAndRendersIdentically()
+        {
+            const string key = "views/bellow.heddle";
+            const string template = "<p>@bellow(){{loud}}</p>\n";
+
+            var degraded = DifferentialHarness.Generate(new[] { (key, template) });
+            DifferentialHarness.ExpectDegrade(degraded, key);
+            Assert.Contains(degraded.Diagnostics, d => d.Id == "HED7015");
+
+            var probed = DifferentialHarness.Generate(new[] { (key, template) }, ProbingOn());
+            DifferentialHarness.ExpectPrecompiled(probed, key);
+            Assert.DoesNotContain(probed.Diagnostics, d => d.Id == "HED7015");
+
+            var (precompiled, dynamic) = DifferentialHarness.Render(key, template, null, null, ProbingOn());
+            Assert.Equal(dynamic, precompiled);
+            Assert.Equal("<p>LOUD</p>\n", precompiled);
         }
     }
 }

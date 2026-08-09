@@ -210,14 +210,20 @@ namespace Heddle.Generator.Tests
             Assert.DoesNotContain(run.GeneratedSourceTexts, s => s.Contains("class Body1"));
         }
 
-        /// <summary>The table's key set is the emitter's pinned-host set: exactly the names whose bodies the emitter
-        /// emits from a row. A row added without an emission arm (or an arm added without a row) shows up here
-        /// rather than as a degraded template nobody noticed.</summary>
+        /// <summary>The table's key set, spelled out. It is what a build that is not probing knows about
+        /// extension hooks, so a row appearing or disappearing changes which templates precompile by default and
+        /// must be a reviewed change rather than a diff nobody read. The nine step-back encoders joined the four
+        /// the emitter used to name in a private list: they share one hook body, and five of them were absent from
+        /// that list for no reason but its length.</summary>
         [Fact]
         public void TheTablePinsExactlyTheNamesTheEmitterEmitsBodiesFor()
         {
             Assert.Equal(
-                new[] { "elif", "else", "elseif", "for", "if", "ifnot", "list" },
+                new[]
+                {
+                    "attr", "date", "elif", "else", "elseif", "for", "guid", "if", "ifnot", "int", "js", "list",
+                    "money", "string", "time", "url"
+                },
                 BodyModelRules.PinnedNames.OrderBy(n => n, System.StringComparer.Ordinal).ToArray());
         }
 

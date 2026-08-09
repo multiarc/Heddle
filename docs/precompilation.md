@@ -518,10 +518,12 @@ it at build time and avoids the first‑render work entirely.
 Custom `[ExtensionName]` extensions bind **from the referenced assembly, never inlined** — a
 security or logic patch reaches precompiled templates by updating the package. See
 [custom‑extensions.md](custom-extensions.md#precompiled-mode) for the requirements
-(parameterless ctor; no reliance on runtime registry mutation; a `InitStart`/`CompleteInit`
-override costs the call site its tier under the `HED7015` **warning** — the build does not fail, the
-template renders through the dynamic path — **except** for a `[BranchRole]` custom branch extension,
-whose `InitStart` override is its canonical shape and degrades with no diagnostic at all).
+(parameterless ctor; no reliance on runtime registry mutation; an `InitStart`/`CompleteInit`
+override the build has not read costs the call site its tier under the `HED7015` **warning** — the build
+does not fail, the template renders through the dynamic path — **except** for a `[BranchRole]` custom
+branch extension, whose `InitStart` override is its canonical shape and degrades with no diagnostic at
+all). [Hook probing](#hook-probing-opt-in) is what lets the build read such an override instead of
+refusing it.
 
 ### Startup order: a suggestion, not a rule
 

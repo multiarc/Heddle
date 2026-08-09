@@ -11,11 +11,11 @@ namespace Heddle.Generator.Emit
     /// <c>[Heddle.Attributes.ExtensionName]</c> types deriving from <c>AbstractExtension</c>, mapping each name to
     /// the concrete type the generated code constructs. Extensions are <b>bound, never inlined</b> — a logic or
     /// security fix in the extension package reaches precompiled templates by updating the reference, no regeneration.
-    /// <para>Two refusals are recorded: a bound extension <b>outside the engine assembly</b> that overrides
-    /// the compile-time hooks <c>InitStart</c>/<c>CompleteInit</c> cannot be reproduced by <c>Bind</c> (which
-    /// reproduces the <i>base</i> behavior only) → a dynamic fallback under the <c>HED7015</c> <b>warning</b>; and an
-    /// engine-assembly extension with such an override that the emitter has no pinned knowledge of stays a safe
-    /// dynamic fallback with no diagnostic at all (never a mis-emit).</para>
+    /// <para>The binder reports what an extension <i>is</i>, never what the emitter may do with it: whether it
+    /// overrides the compile-time hooks <c>InitStart</c>/<c>CompleteInit</c>, what encoding attributes it carries,
+    /// what it declares it accepts. Whether an override can be reproduced is the emitter's question, answered by
+    /// what the hook probe observed or by the shared table's row — never by a name list here, which was both
+    /// hardcoded and, for five of the nine extensions that share one hook body, silently incomplete.</para>
     /// </summary>
     internal sealed class ExtensionBinder
     {
@@ -55,16 +55,6 @@ namespace Heddle.Generator.Emit
 
         private static readonly IReadOnlyList<PropParameter> EmptyParameters = new PropParameter[0];
 
-        /// <summary>The audited step-back encoder set behind <see cref="Info.HasPinnedStepBackHook"/>. Adding a
-        /// name here asserts its <c>InitStart</c> is exactly the step-back shape and nothing more — audit the
-        /// extension source before extending the set; the differential suite proves each member byte-identical.</summary>
-        private static readonly HashSet<string> StepBackEncoders = new HashSet<string>(System.StringComparer.Ordinal)
-        {
-            "Heddle.Extensions.StringExtension",
-            "Heddle.Extensions.AttrExtension",
-            "Heddle.Extensions.UrlExtension",
-            "Heddle.Extensions.JsExtension",
-        };
         private static readonly IReadOnlyList<ITypeSymbol> EmptyDataTypes = new ITypeSymbol[0];
 
         internal readonly struct Info
@@ -118,17 +108,6 @@ namespace Heddle.Generator.Emit
 
             /// <summary>The type (or a base below <c>AbstractExtension</c>) overrides <c>InitStart</c>/<c>CompleteInit</c>.</summary>
             public bool OverridesHook { get; }
-
-            /// <summary>The emitter's pinned knowledge of the engine's step-back encoders
-            /// (<c>@string</c>/<c>@attr</c>/<c>@url</c>/<c>@js</c>): their one hook override is the documented
-            /// step-back shape — <c>base.InitStart(ctx, parent, chainedType, null)</c> — which re-types only the
-            /// DEFAULT BODY (compiled against the caller's scope, not the call value) and changes nothing else the
-            /// base bind carries. A BODILESS call has no body for the hook to re-type, so binding it exactly like a
-            /// plain custom extension reproduces the dynamic tier; a bodied call's typing is the hook's business and
-            /// stays a dynamic fallback. Membership is by exact engine type name: a non-engine subclass, or a future
-            /// engine encoder this table has not been audited for, keeps the conservative refusal.</summary>
-            public bool HasPinnedStepBackHook =>
-                IsEngineAssembly && OverridesHook && StepBackEncoders.Contains(BareTypeName);
 
             public bool IsEngineAssembly { get; }
 
