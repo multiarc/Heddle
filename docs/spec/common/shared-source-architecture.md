@@ -88,11 +88,34 @@ rendering tests that read each column, so a wrong row reddens instead of staying
 incl. `TypeNameIndex` behind `ITypeNameMaps<TType>`, the one type-name ladder both tiers resolve
 `@model` spellings through); precompiled-contract helpers under `src/Heddle/Precompiled/` (`AqnFormatter`,
 `ContentHash`, `PrecompiledSchema`, `TemplateKey` + `TryMakeRelative`/`ToPath`/
-`TemplateExtension`, `HeddleBuildOptions`); data tables under `src/Heddle/Data/`
+`TemplateExtension`, `HeddleBuildOptions`, `PrecompiledCallShape`, `ObserveMode`); data tables under `src/Heddle/Data/`
 (`HeddleDiagnosticCatalog`, `LineIndex`, `OutputProfileRules`, `RenderTypeRules`); and
 `src/Heddle/Helpers/CSharpTypeNames.cs`. Shared test-input wiring:
 `src/TestCorpus/TestCorpus.props` + `TestCorpusIndex` + `CorpusIntent.cs` (wiring only; the
 templates stay in `src/Heddle.Tests/TestTemplate/`).
+
+## The binding seam is emitted text, not shared source
+
+The generator does not run an extension's compile-time hook; it emits a **call** that runs it, inside
+the consumer's assembly, at that assembly's type init. The two halves of that seam live on opposite
+sides of the "the generator never references `Heddle.dll`" rule and are joined by generated source:
+
+- `PrecompiledRuntime.Init`/`InitDefinition`/`InitExtension`/`SiteFallback` and `PrecompiledInitSite`
+  live **only** in `Heddle.dll`. They are not linked into the generator, and they could not be: they
+  reach the engine's `internal` compile pipeline, which is the whole reason the seam is possible at
+  all — generated code in a consumer's assembly has no such access, and `PrecompiledRuntime` does.
+- `PrecompiledBodySupply` (`src/Heddle/Core/`) is the one-shot supply in front of
+  `AbstractExtension.InitStart`'s body compile: when armed, the hook takes the generated strategy
+  instead of compiling one, and everything else in the hook runs for real. Engine-only, engine-owned.
+- The generator's side of the contract is a **string it writes**: field declarations naming those
+  members and an object-initializer over `PrecompiledInitSite`'s properties. Nothing type-checks it at
+  generator-build time, so it is held by the differential suites, which compile the generated source
+  against the real `Heddle.dll` and render both tiers — a renamed member or a moved property is a
+  compile failure inside the harness rather than a silent divergence.
+
+The two enums the *build* has to agree with the engine about — `PrecompiledCallShape` and `ObserveMode`
+— are linked shared source instead, because they are values the generator itself branches on rather
+than names it merely writes.
 
 ## Diagnostic catalog and projection — single source
 

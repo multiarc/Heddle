@@ -15,7 +15,10 @@ namespace Heddle.Generator.IntegrationTests
     /// engine's member resolution), so byte parity holds by construction. Every case here pins the tier: an
     /// unpinned parity test proves nothing, since the degrade is byte-identical by design. The escape is for
     /// values only — bodies, branches, lists and definition invocations still degrade whole-template — and
-    /// <c>HeddleNodeFallback=false</c> restores the pre-fallback degrade, pinned by category.
+    /// <c>HeddleNodeFallback=false</c> restores the pre-fallback degrade for the nodes it governs, pinned by
+    /// category. What it governs is the whole of its meaning: it is the choice between naming a member in generated
+    /// C# and computing it through the engine, so it never reaches a type-agnostic body, where nothing could have
+    /// been named in the first place.
     /// </summary>
     public class EngineAccessorFallbackTests
     {
@@ -78,6 +81,28 @@ namespace Heddle.Generator.IntegrationTests
             Assert.Empty(gen.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
             DifferentialHarness.ExpectDegrade(gen, key,
                 generator::Heddle.Generator.Emit.RefusalCategory.MemberAccess, reason);
+        }
+
+        /// <summary>
+        /// The opt-out's <b>scope</b>, pinned rather than assumed. <c>PrecompiledRuntime.MemberAccessor</c> /
+        /// <c>NativeAccessor</c> stopped being a per-node nicety when a type-agnostic body's every read started
+        /// binding through them, so it would be easy to read <c>HeddleNodeFallback=false</c> as now taking those
+        /// bodies off the tier too. It does not, and must not: the property chooses between <i>naming</i> a member
+        /// in generated C# and computing it through the engine, and inside a body whose model type the build never
+        /// resolved there is no such choice — nothing could be named, so the accessor is the only emission there is
+        /// rather than an escape from a spelling the compilation refuses.
+        /// </summary>
+        [Fact]
+        public void WithNodeFallbackOffATypeAgnosticBodyStillPrecompiles()
+        {
+            const string key = "views/accessor-late-optout.heddle";
+            const string template = "@model(){{" + Fixtures + "Product}}@\\\n" +
+                                    "<x>@bellow(Description){{@(Name)}}</x>\n";
+            var gen = DifferentialHarness.Generate(new[] { (key, template) }, FallbackOff);
+
+            Assert.Empty(gen.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
+            DifferentialHarness.ExpectPrecompiled(gen, key);
+            Assert.Contains("PrecompiledLateAccessor(", Assert.Single(gen.TemplateSources).Value);
         }
 
         /// <summary>A <c>::</c>-rooted path to the internal member — the root-member-path site escapes over the

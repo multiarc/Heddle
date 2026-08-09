@@ -185,9 +185,10 @@ mismatch (HED5003), duplicate argument (HED5004). Named arguments on an extensio
 **no** `[Prop]` remain an error (HED5005). `[Prop]` is inherited by subclasses; a subclass may
 re‑declare an inherited parameter with an assignable (narrowing) type and a new default. Values are
 bound once at compile — an all‑constant call site shares one frozen array across renders (no
-per‑render allocation). Parameter‑declaring extensions precompile on the bodiless path exactly as
-definitions with props do; a bodied call precompiles too once the build has read the extension's
-`InitStart` — see [Precompiled mode](#precompiled-mode).
+per‑render allocation). Parameter‑declaring extensions precompile exactly as definitions with props do, on the bodiless and
+the bodied path alike: the `[Prop]` layout is frozen at build and the carrier that installs it wraps
+the extension *after* its own hook has run, which is the order the engine's compiler uses — see
+[Precompiled mode](#precompiled-mode).
 
 ---
 
@@ -592,9 +593,13 @@ incumbent of the same name, and two unrelated types claiming one name throw
 
 When you [pre‑compile templates](precompilation.md) at build time, a custom extension is
 **bound from its referenced assembly, never inlined** — a security or logic patch reaches
-precompiled templates by updating the package, no regeneration. For a template that uses your
-extension to precompile, the extension must satisfy the same contract precompiled binding
-reproduces:
+precompiled templates by updating the package, no regeneration.
+
+**Your extension precompiles.** Bodied, hook‑overriding, `[Prop]`‑declaring, `[BranchRole]`‑carrying —
+in a default build, with no property to set and no name list to be on. It needs a parameterless
+constructor. If its compile‑time behaviour genuinely cannot be reproduced from a static initializer, it
+declares `[PrecompileUnsupported]` and the calls to it fall back **one call site at a time**, never
+taking the template with them. The rest of this section is those three sentences with their reasons:
 
 - **A parameterless constructor.** The generator constructs one shared, pre‑built instance per
   call site (`new YourExtension()`); no `Activator`, no registry lookup at run time.
@@ -630,13 +635,10 @@ reproduces:
   there, so a template calling that extension quietly runs on the dynamic tier instead. Make the enum
   `public` if such templates must precompile.
 
-**Bodied calls bind when the build knows how the body is typed.** A bodiless value transform (`@ext(x)`)
-binds directly. A call carrying a `{{ … }}` body needs one more fact — which scope the body is compiled
-against — and that is your `InitStart`'s decision. The build has that fact for the built‑ins, from its own
-table, and for nothing else, so a bodied call to your extension falls back for that call site. Among the
-built‑ins two roles are emittable today: a body typed by the **caller's** scope (what every built‑in
-encoder does) and a body typed by the **element** of a sequence (what `@list` does). Either way the
-rendered bytes are the same — falling back costs speed, never correctness.
+**There is no list of supported body shapes, and no name on it.** What a `{{ … }}` body is typed against
+is your `InitStart`'s decision, so the build stopped keeping an answer of its own — a bodiless value
+transform and a bodied call bind by the same route, and a body the build cannot type is written so that
+it does not need to be typed. Nothing about your extension has to be recognised for this to work.
 
 > **`[EncodeOutput]` / `AbstractHtmlExtension` encoding is reproduced on both tiers.** Precompiled binding
 > derives the render type from the extension's own `[EncodeOutput]`/`[NotEncode]` attributes — the same
