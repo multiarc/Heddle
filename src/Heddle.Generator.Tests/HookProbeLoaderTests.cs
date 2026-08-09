@@ -132,6 +132,36 @@ namespace Heddle.Generator.Tests
             Assert.Equal(zeroOutput, result.ZeroOutput);
         }
 
+        /// <summary><b>The shadow-mode half that lives on this side.</b> For every name
+        /// <c>BodyModelRules</c> pins, the reflection driver must produce that exact row. The engine-side lockstep
+        /// suite proves the same thing for every registered extension against the engine it is compiled with; this
+        /// proves the reading survives the assembly boundary, which is the only new thing the build tier adds.
+        /// <para>The probe is ground truth, not the table. Adjusting one until it agreed with the other would
+        /// invert the point: the table is the artifact under suspicion, and it was already caught wrong once.</para>
+        /// </summary>
+        [Fact]
+        public void TheProbeAgreesWithEveryPinnedTableRow()
+        {
+            var probe = CreateProbe();
+            var disagreements = new List<string>();
+            foreach (var name in gen::Heddle.Language.BodyModelRules.PinnedNames)
+            {
+                Assert.True(gen::Heddle.Language.BodyModelRules.TryGet(name, out var body, out var chained));
+                if (!probe.TryProbe(name, out var observed))
+                {
+                    disagreements.Add("@" + name + ": the table has a row and the probe has no answer");
+                    continue;
+                }
+
+                if (observed.Outcome != HookProbeOutcome.Classified || !Equals(observed.Body, body) ||
+                    !Equals(observed.Chained, chained))
+                    disagreements.Add("@" + name + ": table says (" + body + ", " + chained + "), probe says (" +
+                                      observed.Outcome + ", " + observed.Body + ", " + observed.Chained + ")");
+            }
+
+            Assert.True(disagreements.Count == 0, string.Join("; ", disagreements));
+        }
+
         /// <summary>An extension that compiles no body is a shape, not a failure: the driver says so rather than
         /// inventing a body typing for it.</summary>
         [Fact]

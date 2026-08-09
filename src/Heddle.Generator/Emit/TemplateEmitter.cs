@@ -90,6 +90,7 @@ namespace Heddle.Generator.Emit
         private readonly CSharpExpressionTyper _csharpTyper;
         private readonly FunctionExportResolver _exports;
         private readonly ExtensionBinder _extensionBinder;
+        private readonly Probe.HookOracle _hooks;
 
         private string _modelTypeText;
         private BlockPosition _modelDirectivePosition;
@@ -206,6 +207,31 @@ namespace Heddle.Generator.Emit
             _csharpTyper = new CSharpExpressionTyper(compilation);
             _exports = exports ?? FunctionExportResolver.Build(compilation);
             _extensionBinder = ExtensionBinder.Build(compilation);
+            _hooks = Probe.HookOracle.For(compilation, config, _extensionBinder.ExtensionAssemblies);
+        }
+
+        /// <summary>
+        /// The body/chained roles for a body-hosting call, <b>observed</b> where the build can observe them and
+        /// read off <see cref="BodyModelRules"/> where it cannot.
+        /// <para>The probe wins when it has an answer, because it is the extension speaking rather than a
+        /// prediction about it — a distinction the table itself proved worth making, having carried a wrong
+        /// <c>@list</c> row for as long as it existed. The table survives as the answer for a build that is not
+        /// probing (which is every build by default) and for an extension whose assembly cannot be reached; every
+        /// row in it is held equal to the probe's answer by the engine-side lockstep suite, so the two orders of
+        /// preference agree on every name the table names.</para>
+        /// </summary>
+        private bool TryBodyRoles(string name, out BodyModelSource body, out ChainedModelSource chained)
+        {
+            if (_hooks.Enabled && _extensionBinder.TryResolve(name, out var info) &&
+                _hooks.TryGet(name, info.BareTypeName, info.AssemblyName, out var observed) &&
+                observed.Outcome == HookProbeOutcome.Classified)
+            {
+                body = observed.Body;
+                chained = observed.Chained;
+                return true;
+            }
+
+            return BodyModelRules.TryGet(name, out body, out chained);
         }
 
         internal sealed class Result
@@ -878,8 +904,10 @@ namespace Heddle.Generator.Emit
             if (_extensionBinder.TryResolve(name, out var branchInfo) && branchInfo.Role.HasValue &&
                 branchInfo.IsEngineAssembly)
             {
-                // Body model: the rule is BodyModelRules' row and it is consumed, not asserted.
-                if (!BodyTypingRules.TryNestedBodyContext(name, bctx, null, out var branchBodyCtx))
+                // Body model: the role is consumed, not asserted — observed off the extension where the build can
+                // observe it, and read off the shared table where it cannot.
+                if (!TryBodyRoles(name, out var branchSource, out _) ||
+                    !BodyTypingRules.TryNestedBodyContext(branchSource, bctx, null, out var branchBodyCtx))
                 {
                     reason = new Refusal(RefusalCategory.HookBehavior,
                         "no pinned body model-typing row for branch '" + name + "'", item.Position);
@@ -899,14 +927,20 @@ namespace Heddle.Generator.Emit
 
                 bool needsLocals = branchBody != null && branchBody.HostsParticipant;
                 // Use binder's BareTypeName (handles nested types with +) and AssemblyName; don't parse display name.
-                var field = AllocateBodyExtension(name, branchInfo.GlobalName, branchInfo.BareTypeName,
-                    branchBody?.Name, needsLocals, item.Position, branchInfo.AssemblyName);
+                var field = AllocateBodyExtension(name, branchInfo, branchBody?.Name, needsLocals, item.Position);
                 var call = MakeCall(field, bParam, bUses, item.Position);
                 return call;
             }
 
             if (name == "list")
             {
+                if (!_extensionBinder.TryResolve(name, out var listInfo))
+                {
+                    reason = new Refusal(RefusalCategory.ExtensionBinding, "named extension '" + name + "'",
+                        item.Position);
+                    return null;
+                }
+
                 // Element body typed by the element type — the type the engine compiles it against; the enclosing
                 // prop layout, slot mode and fill scope propagate, and BodyModelRules' ElementOfData row decides
                 // the context.
@@ -925,7 +959,8 @@ namespace Heddle.Generator.Emit
                     !CanWriteTypeName(elementModel, item.Position, out reason))
                     return null;
 
-                if (!BodyTypingRules.TryNestedBodyContext("list", bctx, elementModel, out var itemCtx))
+                if (!TryBodyRoles("list", out var listSource, out _) ||
+                    !BodyTypingRules.TryNestedBodyContext(listSource, bctx, elementModel, out var itemCtx))
                 {
                     reason = new Refusal(RefusalCategory.HookBehavior,
                         "no pinned body model-typing row for 'list'", item.Position);
@@ -944,15 +979,23 @@ namespace Heddle.Generator.Emit
                 }
 
                 bool listNeedsLocals = itemBody != null && itemBody.HostsParticipant;
-                var listField = AllocateBodyExtension("list", "global::Heddle.Extensions.ListExtension",
-                    "Heddle.Extensions.ListExtension", itemBody?.Name, listNeedsLocals, item.Position);
+                var listField = AllocateBodyExtension("list", listInfo, itemBody?.Name, listNeedsLocals,
+                    item.Position);
                 return MakeCall(listField, lParam, lUses, item.Position);
             }
 
             if (name == "for")
             {
+                if (!_extensionBinder.TryResolve(name, out var forInfo))
+                {
+                    reason = new Refusal(RefusalCategory.ExtensionBinding, "named extension '" + name + "'",
+                        item.Position);
+                    return null;
+                }
+
                 // Body typed by enclosing model; @out() splices the boxed index (BodyModelRules row).
-                if (!BodyTypingRules.TryNestedBodyContext("for", bctx, null, out var forBodyCtx))
+                if (!TryBodyRoles("for", out var forSource, out _) ||
+                    !BodyTypingRules.TryNestedBodyContext(forSource, bctx, null, out var forBodyCtx))
                 {
                     reason = new Refusal(RefusalCategory.HookBehavior,
                         "no pinned body model-typing row for 'for'", item.Position);
@@ -971,8 +1014,7 @@ namespace Heddle.Generator.Emit
                 }
 
                 bool forNeedsLocals = forBody != null && forBody.HostsParticipant;
-                var forField = AllocateBodyExtension("for", "global::Heddle.Extensions.ForIndexExtension",
-                    "Heddle.Extensions.ForIndexExtension", forBody?.Name, forNeedsLocals, item.Position);
+                var forField = AllocateBodyExtension("for", forInfo, forBody?.Name, forNeedsLocals, item.Position);
                 return MakeCall(forField, fParam, fUses, item.Position);
             }
 
@@ -3757,20 +3799,25 @@ namespace Heddle.Generator.Emit
 
         private int _functionSiteCounter;
 
-        private string AllocateBodyExtension(string callName, string fqn, string typeName, string bodyName,
-            bool needsLocals, BlockPosition position, string assembly = "Heddle")
+        /// <summary>Allocates a body-hosting extension's call site. The render type is <b>derived</b> from the
+        /// bound extension's own <c>[EncodeOutput]</c>/<c>[NotEncode]</c> symbols, exactly as every other bind on
+        /// this side does: a hard-coded <c>Raw</c> is invisible for <c>@if</c>/<c>@for</c>/<c>@list</c>, which carry
+        /// neither attribute, and becomes a silent encoding divergence — output escaped on the dynamic tier and raw
+        /// on the precompiled one — the moment an <c>[EncodeOutput]</c> extension hosts a body through here.</summary>
+        private string AllocateBodyExtension(string callName, ExtensionBinder.Info info, string bodyName,
+            bool needsLocals, BlockPosition position)
         {
             var field = "E" + _extensionCounter++;
             var (line, col) = _map.Map(position.StartIndex);
             var bodyArg = bodyName != null ? "new " + bodyName + "()" : "null";
-            _fieldDecls.Append("        private static readonly ").Append(fqn).Append(' ').Append(field)
+            _fieldDecls.Append("        private static readonly ").Append(info.GlobalName).Append(' ').Append(field)
                 .Append(" = global::Heddle.Precompiled.PrecompiledRuntime.Bind(\n");
-            _fieldDecls.Append("            new ").Append(fqn).Append("(), body: ").Append(bodyArg)
-                .Append(", global::Heddle.Data.RenderType.Raw, needsLocals: ")
+            _fieldDecls.Append("            new ").Append(info.GlobalName).Append("(), body: ").Append(bodyArg)
+                .Append(", ").Append(DerivedRenderTypeLiteral(info)).Append(", needsLocals: ")
                 .Append(needsLocals ? "true" : "false")
                 .Append(", line: ").Append(line).Append(", column: ").Append(col).Append(");\n");
             _extensionFields.Add(field);
-            RecordExtensionBinding(callName, typeName, assembly);
+            RecordExtensionBinding(callName, info.BareTypeName, info.AssemblyName);
             return field;
         }
 
