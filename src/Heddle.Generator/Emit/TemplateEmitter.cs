@@ -2726,8 +2726,11 @@ namespace Heddle.Generator.Emit
         }
 
         /// <summary>True when this definition participates in a full override (<c>&lt;name:name&gt;</c>) — the same
-        /// name re-declared over a base layer. The emitter refuses these (document-order layering, above);
-        /// name-differing inheritance (<c>&lt;child:base&gt;</c>) is not an override and stays precompilable.</summary>
+        /// name re-declared over a base layer. The emitter refuses these
+        /// (<see cref="RefusalCategory.DefinitionLayering"/>): it resolves definitions flatly, always to the
+        /// most-derived layer, so an override calling itself would recurse. Layering is control flow rather than a
+        /// value, so it sits outside the per-node escape boundary and needs its own design pass.
+        /// Name-differing inheritance (<c>&lt;child:base&gt;</c>) is not an override and stays precompilable.</summary>
         private static bool DefinitionInvolvesOverride(DefinitionItem def)
             => AnyLayer(def, d => d.FullOverride ||
                                   (d.BaseDefinition != null &&

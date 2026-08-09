@@ -186,7 +186,8 @@ mismatch (HED5003), duplicate argument (HED5004). Named arguments on an extensio
 re‑declare an inherited parameter with an assignable (narrowing) type and a new default. Values are
 bound once at compile — an all‑constant call site shares one frozen array across renders (no
 per‑render allocation). Parameter‑declaring extensions precompile on the bodiless path exactly as
-definitions with props do; bodied calls fall back to the dynamic tier as all bodied custom calls do.
+definitions with props do; a bodied call precompiles too once the build has read the extension's
+`InitStart` — see [Precompiled mode](#precompiled-mode).
 
 ---
 
@@ -496,8 +497,8 @@ Usage in a template: `@upper(Name)`.
 > [Precompiled mode](#precompiled-mode). If such templates must precompile, omit the `InitStart` override
 > (accepting the default typing).
 >
-> The example also derives from `AbstractHtmlExtension`/`[EncodeOutput]`, whose HTML encoding is **not**
-> reproduced by precompiled binding (see the warning under [Precompiled mode](#precompiled-mode)).
+> The example also derives from `AbstractHtmlExtension`/`[EncodeOutput]`; that encoding **is** reproduced
+> by precompiled binding, on the bodiless and the bodied path alike (see [Precompiled mode](#precompiled-mode)).
 
 Compare with the real [`StringExtension`](../src/Heddle/Extensions/StringExtension.cs) and
 [`DateExtension`](../src/Heddle/Extensions/DateExtension.cs), which follow the same shape.
