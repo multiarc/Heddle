@@ -1,4 +1,4 @@
-using Heddle.Generator.Binding;
+﻿using Heddle.Generator.Binding;
 using Heddle.Language;
 using Heddle.Language.Expressions;
 using Microsoft.CodeAnalysis;
@@ -55,6 +55,11 @@ namespace Heddle.Generator.Typing
             if (source == BodyModelSource.Parent)
                 return true;
 
+            // The host's own data value IS the body's model, so the type handed in is the whole answer — the same
+            // shape the element role takes, from a different question.
+            if (source == BodyModelSource.Data)
+                return TryDataValueBodyContext(elementModel, bctx, out nested);
+
             if (source == BodyModelSource.ElementOfData)
             {
                 var elementCtx = elementModel == null || elementModel.TypeKind == TypeKind.Dynamic
@@ -71,11 +76,11 @@ namespace Heddle.Generator.Typing
             return false;
         }
 
-        /// <summary>The typing environment of a computed <c>@partial</c> name body — the engine compiles it against
-        /// the call value's type (<c>InitSubTemplate</c> receives <c>dataType</c>), dynamic where that scope is
-        /// dynamic. False when the caller is typed but the value's type cannot be said, where a guess could change
-        /// what the null-scope evaluation does.</summary>
-        internal static bool TryPartialNameBodyContext(ITypeSymbol childModel, BodyContext bctx, out BodyContext nameCtx)
+        /// <summary>The typing environment of a body the host compiles against its own data value — the engine
+        /// hands <c>InitSubTemplate</c> the call's <c>dataType</c> — dynamic where that scope is dynamic. False
+        /// when the caller is typed but the value's type cannot be said, where a guess could change what the body
+        /// evaluates to.</summary>
+        internal static bool TryDataValueBodyContext(ITypeSymbol childModel, BodyContext bctx, out BodyContext nameCtx)
         {
             if (childModel == null && !bctx.IsDynamic)
             {

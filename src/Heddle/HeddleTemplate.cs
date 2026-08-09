@@ -81,8 +81,9 @@ namespace Heddle
             CompileResult = Compile(new CompileScope(context ?? new CompileContext()), document);
         }
 
-        // Precompiled adapter mode: resolvers bind a strategy directly (no parse/compile).
-        private readonly bool _precompiled;
+        // Precompiled adapter mode: resolvers bind a strategy directly (no parse/compile). Not readonly: the
+        // precompiled child seam below puts an instance the engine's own compile path created into this mode.
+        private bool _precompiled;
 
         // The request options a precompiled-adapter render runs under. Only late-bound function sites read them
         // (through PrecompiledRuntime's ambient), and only the adapter needs to carry them: every other
@@ -344,6 +345,18 @@ namespace Heddle
         {
             if (_runtimeDocument != null)
                 throw new TemplateInitException("Template already compiled.");
+
+            // The child-template seam. Named compiles are the only ones that reach here, so this is the door a
+            // [ChildTemplateHost] hook walks through when it compiles the template its body named; when a
+            // precompiled call site has armed the supply, the child is bound the precompiled way instead of being
+            // read off disk. Nothing is armed on the dynamic tier, so that path pays one thread-static read.
+            if (context != null && Core.PrecompiledChildSupply.TryConsume(context, out var suppliedChild))
+            {
+                _processStrategy = suppliedChild;
+                _precompiled = true;
+                CompileResult = new HeddleCompileResult(true, null, null);
+                return CompileResult;
+            }
 
             string document = null;
             try

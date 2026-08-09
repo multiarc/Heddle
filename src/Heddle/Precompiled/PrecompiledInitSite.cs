@@ -121,6 +121,15 @@ namespace Heddle.Precompiled
         /// selects which of <c>@out</c>'s two "value without a slot" sentences the engine writes.</summary>
         public bool InsideDefinition { get; set; }
 
+        /// <summary>Whether the extension bound at this call declares the child-template-host role
+        /// (<c>[ChildTemplateHost]</c>) — its body names a second template it compiles and hosts.
+        /// <see cref="PrecompiledRuntime.Init"/> reads it twice: it arms the child-template supply for the length
+        /// of this site's delayed-queue drain, so the hook's own child compile is served the precompiled way
+        /// rather than off disk, and it turns on <c>ProvideLanguageFeatures</c> on the synthesized compile scope,
+        /// which is what a hook reads to decide whether to stamp its child's errors with an
+        /// <c>ImportOrigin</c>.</summary>
+        public bool HostsChildTemplate { get; set; }
+
         /// <summary>The member reads of a <b>type-agnostic</b> body — one whose model type the build could not
         /// resolve, because the extension hosting it decides that type in its own hook.
         /// <see cref="PrecompiledRuntime.Init"/> binds every one of them against the type the hook answered with,

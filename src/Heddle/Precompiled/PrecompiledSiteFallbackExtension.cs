@@ -68,7 +68,7 @@ namespace Heddle.Precompiled
                     new CompileContext(Options(), _site.ModelType == null ? ExType.Dynamic : new ExType(_site.ModelType)));
                 if (result.Success)
                     return template;
-                return ToArray(result.Errors);
+                return Anchored(ToArray(result.Errors));
             }
             catch (Exception e)
             {
@@ -90,6 +90,22 @@ namespace Heddle.Precompiled
                 TrimDirectiveLines = _site.TrimDirectiveLines,
                 MaxRecursionCount = _site.MaxRecursionCount
             };
+        }
+
+        /// <summary>Moves the fragment compile's errors onto the call's own position in the enclosing document.
+        /// Their own offsets are into a document that exists nowhere — the fragment is compiled as its own — so
+        /// reporting them unmoved points a template author at a coordinate in their file that has nothing to do
+        /// with the fault. The call is the smallest span that is genuinely theirs, and it is where the engine
+        /// itself reports a fault raised while compiling this item.</summary>
+        private HeddleCompileError[] Anchored(HeddleCompileError[] errors)
+        {
+            for (int i = 0; i < errors.Length; i++)
+            {
+                if (errors[i] != null)
+                    errors[i].Position = Position;
+            }
+
+            return errors;
         }
 
         private static HeddleCompileError[] ToArray(List<HeddleCompileError> errors)

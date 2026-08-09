@@ -1,4 +1,4 @@
-extern alias gen;
+﻿extern alias gen;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -128,44 +128,44 @@ namespace Heddle.Generator.Tests
             Assert.False(BodyTypingRules.TryNestedBodyContext("frobnicate", TypedContext(Person), null, out _));
         }
 
-        // ---- TryPartialNameBodyContext: the name body is typed by the call value (the engine's dataType) ----
+        // ---- TryDataValueBodyContext: a data-role body is typed by the call value (the engine's dataType) ----
 
         [Fact]
-        public void APartialNameBodyIsTypedByTheCallValue()
+        public void ADataValueBodyIsTypedByTheCallValue()
         {
-            Assert.True(BodyTypingRules.TryPartialNameBodyContext(StringType, TypedContext(Person), out var nameCtx));
+            Assert.True(BodyTypingRules.TryDataValueBodyContext(StringType, TypedContext(Person), out var nameCtx));
             Assert.False(nameCtx.IsDynamic);
             Assert.Same(StringType, nameCtx.ModelSymbol);
             Assert.Same(StringType, nameCtx.DynamicBodyModel);
         }
 
         [Fact]
-        public void APartialNameBodyOverADynamicValueIsUntyped()
+        public void ADataValueBodyOverADynamicValueIsUntyped()
         {
-            Assert.True(BodyTypingRules.TryPartialNameBodyContext(DynamicType, TypedContext(Person), out var nameCtx));
+            Assert.True(BodyTypingRules.TryDataValueBodyContext(DynamicType, TypedContext(Person), out var nameCtx));
             Assert.True(nameCtx.IsDynamic);
             Assert.Null(nameCtx.ModelSymbol);
             Assert.Same(DynamicType, nameCtx.DynamicBodyModel);
         }
 
         [Fact]
-        public void ATypedCallerWhoseValueCannotBeTypedRefusesTheNameBody()
+        public void ATypedCallerWhoseValueCannotBeTypedRefusesTheDataValueBody()
         {
-            Assert.False(BodyTypingRules.TryPartialNameBodyContext(null, TypedContext(Person), out _));
+            Assert.False(BodyTypingRules.TryDataValueBodyContext(null, TypedContext(Person), out _));
         }
 
         [Fact]
-        public void ADynamicCallerWithNoValueTypeKeepsAnUntypedNameBody()
+        public void ADynamicCallerWithNoValueTypeKeepsAnUntypedDataValueBody()
         {
-            Assert.True(BodyTypingRules.TryPartialNameBodyContext(null, DynamicContext(), out var nameCtx));
+            Assert.True(BodyTypingRules.TryDataValueBodyContext(null, DynamicContext(), out var nameCtx));
             Assert.True(nameCtx.IsDynamic);
         }
 
         [Fact]
-        public void SlotModePropagatesIntoAPartialNameBody()
+        public void SlotModePropagatesIntoADataValueBody()
         {
             var bctx = TypedContext(Person).AsSlot(IntType);
-            Assert.True(BodyTypingRules.TryPartialNameBodyContext(StringType, bctx, out var nameCtx));
+            Assert.True(BodyTypingRules.TryDataValueBodyContext(StringType, bctx, out var nameCtx));
             Assert.Same(IntType, nameCtx.SlotType);
         }
 

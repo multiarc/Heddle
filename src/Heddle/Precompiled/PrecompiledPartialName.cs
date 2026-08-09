@@ -4,10 +4,14 @@ using Heddle.Exceptions;
 namespace Heddle.Precompiled
 {
     /// <summary>
-    /// The once-evaluated name of a computed-name <c>@partial</c> in a precompiled template. The dynamic engine
+    /// <b>Retired in place</b>: the generator no longer emits a field of this type, because a precompiled
+    /// child-template host evaluates its own name in its own <c>InitStart</c>. It stays, and keeps working,
+    /// because it is public and generated code from earlier generator versions holds it — removing it would
+    /// fault every such assembly. Removal is a next-window candidate.
+    /// <para>The once-evaluated name of a computed-name <c>@partial</c> in a precompiled template. The dynamic engine
     /// evaluates such a name body a single time, at its compile time, against <see cref="Scope.Null"/>
     /// (<c>PartialExtension.InitStart</c>); generated code reproduces that with a static field initialized through
-    /// <see cref="PrecompiledRuntime.EvaluatePartialName"/> and reads it here on every render.
+    /// <see cref="PrecompiledRuntime.EvaluatePartialName"/> and reads it here on every render.</para>
     /// <para>An evaluation that threw is the engine's compile fault for the call, and the engine surfaces a failed
     /// compile as a <see cref="TemplateCompileException"/> from every <c>Generate</c> — so <see cref="Get"/>
     /// re-raises the recorded fault on every read, at the precompiled tier's first observable moment.</para>

@@ -1,4 +1,4 @@
-extern alias gen;
+﻿extern alias gen;
 using System.Linq;
 using System.Reflection;
 using Xunit;
@@ -58,7 +58,7 @@ namespace Heddle.Generator.Tests
                 s.Contains("ParticipantScan.") || s.Contains("DocumentShaper.Shape("),
                 "The scope-channel predicate is consumed by something other than the shared scan — a private "
                 + "participant scan has come back (under any name). Statement: " + s.Trim()));
-            Assert.Equal(4, consumers.Count);   // 2 shared-scan call sites + 2 DocumentShaper hand-offs (bodies, @partial name fold)
+            Assert.Equal(3, consumers.Count);   // 2 shared-scan call sites + 1 DocumentShaper hand-off (bodies)
 
             Assert.NotNull(typeof(ParticipantScan).GetMethod("BodyHostsParticipant",
                 BindingFlags.Static | BindingFlags.NonPublic));

@@ -2,6 +2,7 @@ using Heddle.Attributes;
 using Heddle.Core;
 using Heddle.Data;
 using Heddle.Language;
+using Heddle.Runtime;
 
 namespace Heddle.Generator.IntegrationTests.Fixtures
 {
@@ -100,6 +101,66 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
         public override void RenderData(in Scope scope)
         {
             scope.Renderer.Render((string) ProcessData(scope));
+        }
+    }
+
+    /// <summary>
+    /// A third-party <b>child-template host</b>: not derived from the engine's own, not named after it, and
+    /// written the way a package author would write one — the role is the <c>[ChildTemplateHost]</c> declaration
+    /// and nothing else. It evaluates its body once at compile time to get the child's name, queues the child's
+    /// compile on the enclosing context, takes delivery in <c>CompleteInit</c>, and renders the child in place of
+    /// its own body.
+    /// <para>What it proves is that the precompiled tier reaches the same machinery for it as for the built-in:
+    /// the call precompiles in a default build, the hook runs at static init, and the child arrives through the
+    /// engine's child supply — from the registry when it is precompiled, from disk when it is not.</para>
+    /// <para>It renders through <c>Generate</c> rather than streaming, because <c>HeddleTemplate.Render</c> into a
+    /// caller's renderer is engine-internal. That is the shape a third party actually has, so it is the shape the
+    /// fixture uses.</para>
+    /// </summary>
+    [ExtensionName("include")]
+    [ChildTemplateHost]
+    public sealed class IncludeExtension : AbstractExtension
+    {
+        private HeddleTemplate _child;
+
+        public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType, ExType parent)
+        {
+            base.InitStart(initContext, dataType, chainedType, parent);
+            initContext.ParameterTemplate = GetInnerResult(Scope.Null);
+            var name = initContext.ParameterTemplate?.Trim();
+            if (!string.IsNullOrEmpty(name))
+            {
+                initContext.CompileScope.CompileContext.AddDelayedCompileTemplate(
+                    new CompileScope(
+                        new CompileContext(initContext.CompileScope.CompileContext, dataType, name),
+                        initContext.CompileScope.CSharpContext),
+                    initContext.ParseContext, this);
+            }
+
+            return typeof(string);
+        }
+
+        public override void CompleteInit(CompileScope newScope, ParseContext parseContext)
+        {
+            _child = new HeddleTemplate();
+            var result = _child.Compile(newScope.CompileContext);
+            if (!result.Success)
+                newScope.CompileErrors.AddRange(result.Errors);
+        }
+
+        public override object ProcessData(in Scope scope)
+            => _child?.Generate(scope.ModelData, scope.ChainedData);
+
+        public override void RenderData(in Scope scope)
+        {
+            if (_child != null)
+                scope.Renderer.Render(_child.Generate(scope.ModelData, scope.ChainedData));
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            base.Dispose(disposing);
+            _child?.Dispose();
         }
     }
 }
