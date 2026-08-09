@@ -23,6 +23,7 @@ Heddle.Generator.Tests.ExportExtensionsScopeTests
 Heddle.Generator.Tests.ExtensionAgnosticismTests
 Heddle.Generator.Tests.ExtensionBinderRoleTests
 Heddle.Generator.Tests.ExtensionDiscoveryTests
+Heddle.Generator.Tests.ExtensionRoleDispatchTests
 Heddle.Generator.Tests.ForwardedDiagnosticTests
 Heddle.Generator.Tests.GeneratorNumericTableAdoptionTests
 Heddle.Generator.Tests.GeneratorSnapshotTests

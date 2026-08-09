@@ -131,10 +131,6 @@ namespace Heddle.Generator.Tests
                 "a C# type keyword the emitter spells; permanent"),
             ("src/Heddle.Generator/Emit/TemplateEmitter.cs", "object", "call:Equals", 1,
                 "a C# type keyword the emitter spells; permanent"),
-            ("src/Heddle.Generator/Emit/TemplateEmitter.cs", "out", "equality", 1,
-                "the slot-channel keyword a def header already reserves; grammar keyword, permanent"),
-            ("src/Heddle.Generator/Emit/TemplateEmitter.cs", "partial", "equality", 1,
-                "the call whose own body is evaluated at compile time to name a template; permanent"),
 
             // src/Heddle/Data/HeddleDiagnosticCatalog.cs
             ("src/Heddle/Data/HeddleDiagnosticCatalog.cs", "out", "initializer", 1,

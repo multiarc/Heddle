@@ -67,6 +67,7 @@ namespace Heddle.Generator.Emit
             public Info(string globalName, string bareTypeName, string aqnSansVersion, string assemblyName,
                 bool overridesHook,
                 bool isEngineAssembly, BranchRole? role, bool hasScopeChannel,
+                bool hasSlotProjection, bool hasChildTemplateHost,
                 bool hasEncodeOutput = false, bool hasNotEncode = false, bool isZeroOutput = false,
                 IReadOnlyList<PropParameter> parameters = null, INamedTypeSymbol typeSymbol = null,
                 IReadOnlyList<ITypeSymbol> acceptedDataTypes = null, string precompileUnsupportedReason = null)
@@ -82,6 +83,8 @@ namespace Heddle.Generator.Emit
                 IsEngineAssembly = isEngineAssembly;
                 Role = role;
                 HasScopeChannel = hasScopeChannel;
+                HasSlotProjection = hasSlotProjection;
+                HasChildTemplateHost = hasChildTemplateHost;
                 HasEncodeOutput = hasEncodeOutput;
                 HasNotEncode = hasNotEncode;
                 IsZeroOutput = isZeroOutput;
@@ -122,6 +125,20 @@ namespace Heddle.Generator.Emit
 
             /// <summary>The type (or a base) carries <c>[ScopeChannel]</c>.</summary>
             public bool HasScopeChannel { get; }
+
+            /// <summary>The type (or a base) carries <c>[SlotProjection]</c> — it consumes the enclosing
+            /// definition's slot parameter and projects the caller's content. The emitter dispatches the slot
+            /// channel on this, not on the name the extension is called by. False against an older engine
+            /// reference that predates the attribute, which takes the call down the ordinary bound-extension
+            /// route.</summary>
+            public bool HasSlotProjection { get; }
+
+            /// <summary>The type (or a base) carries <c>[ChildTemplateHost]</c> — its body names a second
+            /// template, which it resolves and compiles at compile time and hosts at render. The emitter
+            /// dispatches the child-template route on this, not on the name the extension is called by. False
+            /// against an older engine reference that predates the attribute, which takes the call down the
+            /// ordinary bound-extension route.</summary>
+            public bool HasChildTemplateHost { get; }
 
             /// <summary>The type (or a base) carries <c>[EncodeOutput]</c> — the symbolic
             /// mirror of <c>InitializeTemplate</c>'s <c>IsHaveAttribute&lt;EncodeOutputAttribute&gt;(true)</c>.
@@ -257,6 +274,9 @@ namespace Heddle.Generator.Emit
                 PrecompileUnsupportedAttr =
                     compilation.GetTypeByMetadataName("Heddle.Attributes.PrecompileUnsupportedAttribute"),
                 ScopeChannelAttr = compilation.GetTypeByMetadataName("Heddle.Attributes.ScopeChannelAttribute"),
+                SlotProjectionAttr = compilation.GetTypeByMetadataName("Heddle.Attributes.SlotProjectionAttribute"),
+                ChildTemplateHostAttr =
+                    compilation.GetTypeByMetadataName("Heddle.Attributes.ChildTemplateHostAttribute"),
                 EncodeOutputAttr = compilation.GetTypeByMetadataName("Heddle.Attributes.EncodeOutputAttribute"),
                 NotEncodeAttr = compilation.GetTypeByMetadataName("Heddle.Attributes.NotEncodeAttribute"),
                 ZeroOutputAttr = compilation.GetTypeByMetadataName("Heddle.Attributes.ZeroOutputAttribute"),
@@ -376,6 +396,8 @@ namespace Heddle.Generator.Emit
             public INamedTypeSymbol ChainedTypeAttr;
             public INamedTypeSymbol RoleAttr;
             public INamedTypeSymbol ScopeChannelAttr;
+            public INamedTypeSymbol SlotProjectionAttr;
+            public INamedTypeSymbol ChildTemplateHostAttr;
             public INamedTypeSymbol EncodeOutputAttr;
             public INamedTypeSymbol NotEncodeAttr;
             public INamedTypeSymbol ZeroOutputAttr;
@@ -506,6 +528,8 @@ namespace Heddle.Generator.Emit
                     type.ContainingAssembly, symbols.AbstractExtension.ContainingAssembly),
                 ReadBranchRole(type, symbols.RoleAttr),
                 HasAttribute(type, symbols.ScopeChannelAttr),
+                HasAttribute(type, symbols.SlotProjectionAttr),
+                HasAttribute(type, symbols.ChildTemplateHostAttr),
                 HasAttribute(type, symbols.EncodeOutputAttr),
                 HasAttribute(type, symbols.NotEncodeAttr),
                 HasAttribute(type, symbols.ZeroOutputAttr),

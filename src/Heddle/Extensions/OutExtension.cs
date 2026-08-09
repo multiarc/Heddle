@@ -9,6 +9,7 @@ using Heddle.Strings.Core;
 namespace Heddle.Extensions
 {
     [ExtensionName("out")]
+    [SlotProjection]
     public class OutExtension : AbstractExtension
     {
         private bool _slotMode;

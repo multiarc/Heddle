@@ -913,11 +913,30 @@ namespace Heddle.Generator.Emit
             if (callTarget == CallTargetKind.Definition)
                 return BuildDefinitionCall(definitionItem, chain, item, cp, bctx, isFill: false, out reason);
 
-            if (name == "out")
-                return BuildOutCall(name, chain, item, cp, bctx, out reason);
+            // The two routes below are declared roles read off the extension's own type, never names this
+            // compiler knows: an extension that consumes the enclosing definition's slot parameter, and one whose
+            // body names a child template it compiles and hosts, are each served here whoever wrote them. A
+            // chained call, an ambient fill and a definition have all returned above, so a role is only ever read
+            // for a call the extension tier owns.
+            if (_extensionBinder.TryResolve(name, out var roleInfo) &&
+                (roleInfo.HasSlotProjection || roleInfo.HasChildTemplateHost))
+            {
+                // Two roles on one type describe two incompatible call shapes — a projection takes no body and
+                // the host's body is its child's name — so there is nothing to pick between and the template
+                // keeps the tier whose extension declared it.
+                if (roleInfo.HasSlotProjection && roleInfo.HasChildTemplateHost)
+                {
+                    reason = new Refusal(RefusalCategory.ExtensionBinding,
+                        "extension '" + name + "' declares both the slot-projection and the child-template-host role",
+                        item.Position);
+                    return null;
+                }
 
-            if (name == "partial")
+                if (roleInfo.HasSlotProjection)
+                    return BuildOutCall(name, roleInfo, chain, item, cp, bctx, out reason);
+
                 return BuildPartialCall(item, cp, bctx, out reason);
+            }
 
             // Every route below spells the bound extension's own type into the consumer's assembly, so the one
             // question that decides whether the generated file compiles at all is asked once, here, before any of
@@ -2024,8 +2043,8 @@ namespace Heddle.Generator.Emit
         }
 
         /// <summary>The bodiless caller-content splice. Non-slot: passes current model. Slot mode: value becomes projection model.</summary>
-        private Call BuildOutCall(string name, OutputChain chain, OutputItem item, CallParameter cp,
-            BodyContext bctx, out Refusal reason)
+        private Call BuildOutCall(string name, ExtensionBinder.Info info, OutputChain chain, OutputItem item,
+            CallParameter cp, BodyContext bctx, out Refusal reason)
         {
             reason = null;
             if (!string.IsNullOrEmpty(item.ParameterTemplate))
@@ -2055,7 +2074,7 @@ namespace Heddle.Generator.Emit
                     return null;
                 if (!BuildParamExpr(cp, bctx, RefStructUse.Boxed, out var vParam, out var vUses, out reason, item.Position))
                     return null;
-                var slotField = AllocateOutExtension(name, chain, item, cp, bctx, out reason);
+                var slotField = AllocateOutExtension(name, info, chain, item, cp, bctx, out reason);
                 if (slotField == null)
                     return null;
                 return MakeCall(slotField, vParam, vUses, item.Position);
@@ -2068,7 +2087,7 @@ namespace Heddle.Generator.Emit
                 return null;
             }
 
-            var field = AllocateOutExtension(name, chain, item, cp, bctx, out reason);
+            var field = AllocateOutExtension(name, info, chain, item, cp, bctx, out reason);
             if (field == null)
                 return null;
             return MakeCall(field, "scope.ModelData", false, item.Position);
@@ -3522,16 +3541,9 @@ namespace Heddle.Generator.Emit
         /// <c>[EncodeOutput]</c> added to it, or a sixth diagnostic, reaches this tier without a second
         /// implementation of it existing here to be updated.
         /// </summary>
-        private string AllocateOutExtension(string name, OutputChain chain, OutputItem item, CallParameter cp,
-            BodyContext bctx, out Refusal reason)
+        private string AllocateOutExtension(string name, ExtensionBinder.Info info, OutputChain chain,
+            OutputItem item, CallParameter cp, BodyContext bctx, out Refusal reason)
         {
-            if (!_extensionBinder.TryResolve(name, out var info))
-            {
-                reason = new Refusal(RefusalCategory.ExtensionBinding,
-                    "no extension is registered for the slot projection", item.Position);
-                return null;
-            }
-
             if (!CanWriteExtensionTypeName(info.TypeSymbol, item.Position, out reason))
                 return null;
             if (!TryPlanSite(name, chain, item, cp, bctx, out var plan, out reason))
