@@ -53,6 +53,11 @@ namespace Heddle.Generator.Emit
             public int Level;
         }
 
+        /// <summary>The metadata name of the base type every Heddle extension derives from — what the engine
+        /// assembly is identified <i>by</i>. It is a type name, not an extension name: nothing here decides
+        /// whether a particular extension exists.</summary>
+        private const string AbstractExtensionMetadataName = "Heddle.Core.AbstractExtension";
+
         private static readonly IReadOnlyList<PropParameter> EmptyParameters = new PropParameter[0];
 
         private static readonly IReadOnlyList<ITypeSymbol> EmptyDataTypes = new ITypeSymbol[0];
@@ -148,13 +153,27 @@ namespace Heddle.Generator.Emit
         private readonly List<IAssemblySymbol> _extensionAssemblies;
 
         private ExtensionBinder(Dictionary<string, Info> byName, Dictionary<string, string> unbindable,
-            List<string> driftTypes, List<IAssemblySymbol> extensionAssemblies = null)
+            List<string> driftTypes, IAssemblySymbol engineAssembly = null,
+            List<IAssemblySymbol> extensionAssemblies = null)
         {
             _byName = byName;
             _unbindable = unbindable;
             _driftTypes = driftTypes;
+            EngineAssemblyName = engineAssembly?.Identity.Name ?? string.Empty;
             _extensionAssemblies = extensionAssemblies ?? new List<IAssemblySymbol>();
         }
+
+        /// <summary>Simple name of the assembly the engine <i>is</i> — the one declaring
+        /// <c>AbstractExtension</c>, resolved by <see cref="EngineAssemblyOf"/> rather than spelled — for the
+        /// manifest rows whose bound type the emitter names itself. Empty when no engine is referenced, which is
+        /// also the state in which no such row can be written.</summary>
+        public string EngineAssemblyName { get; }
+
+        /// <summary>The engine assembly of a compilation: the one declaring <c>AbstractExtension</c>. An assembly
+        /// <i>name</i> answers this question wrongly under ILMerge, an extern alias and a rename alike; the
+        /// declaring symbol answers it correctly under all three.</summary>
+        public static IAssemblySymbol EngineAssemblyOf(Compilation compilation) =>
+            compilation?.GetTypeByMetadataName(AbstractExtensionMetadataName)?.ContainingAssembly;
 
         /// <summary>Every assembly this compilation found an extension in, in discovery order. The hook probe needs
         /// them by name — the loaded engine only answers for extensions it has been told about.</summary>
@@ -203,7 +222,7 @@ namespace Heddle.Generator.Emit
                 return new ExtensionBinder(byName, unbindable, driftTypes);
 
             var nameAttr = compilation.GetTypeByMetadataName("Heddle.Attributes.ExtensionNameAttribute");
-            var abstractExtension = compilation.GetTypeByMetadataName("Heddle.Core.AbstractExtension");
+            var abstractExtension = compilation.GetTypeByMetadataName(AbstractExtensionMetadataName);
             if (nameAttr == null || abstractExtension == null)
                 return new ExtensionBinder(byName, unbindable, driftTypes);
 
@@ -251,7 +270,7 @@ namespace Heddle.Generator.Emit
             foreach (var candidate in StableOrderBy(candidates, c => c.Replaces ? 1 : 0))
                 Register(candidate, symbols, byName, unbindable, driftTypes);
 
-            return new ExtensionBinder(byName, unbindable, driftTypes, extensionAssemblies);
+            return new ExtensionBinder(byName, unbindable, driftTypes, engine, extensionAssemblies);
         }
 
         /// <summary>Stable order by a small integer key — <c>List.Sort</c> is unstable and LINQ is not
@@ -466,7 +485,8 @@ namespace Heddle.Generator.Emit
             return new Info(global, SymbolTypeIdentity.FullName(type), SymbolTypeIdentity.AqnSansVersion(type),
                 assemblyName,
                 OverridesCompileTimeHook(type, symbols.AbstractExtension),
-                string.Equals(assemblyName, "Heddle", System.StringComparison.Ordinal),
+                SymbolEqualityComparer.Default.Equals(
+                    type.ContainingAssembly, symbols.AbstractExtension.ContainingAssembly),
                 ReadBranchRole(type, symbols.RoleAttr),
                 HasAttribute(type, symbols.ScopeChannelAttr),
                 HasAttribute(type, symbols.EncodeOutputAttr),

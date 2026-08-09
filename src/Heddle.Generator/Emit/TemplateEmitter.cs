@@ -3030,7 +3030,7 @@ namespace Heddle.Generator.Emit
                 .Append(slotMode ? "true" : "false")
                 .Append(", line: ").Append(line).Append(", column: ").Append(col).Append(");\n");
             _extensionFields.Add(field);
-            RecordExtensionBinding("out", "Heddle.Extensions.OutExtension");
+            RecordExtensionBinding("out", "Heddle.Extensions.OutExtension", _extensionBinder.EngineAssemblyName);
             return field;
         }
 
@@ -3694,7 +3694,8 @@ namespace Heddle.Generator.Emit
             _extensionFields.Add(field);
             // Manifest binding name must resolve to bound type: Html redirects to "html" (EmptyHtmlExtension), Text to "" (EmptyExtension).
             RecordExtensionBinding(OutputProfileRules.CarrierRegistryName(carrierKind),
-                html ? "Heddle.Extensions.EmptyHtmlExtension" : "Heddle.Extensions.EmptyExtension");
+                html ? "Heddle.Extensions.EmptyHtmlExtension" : "Heddle.Extensions.EmptyExtension",
+                _extensionBinder.EngineAssemblyName);
             return field;
         }
 
@@ -3773,7 +3774,7 @@ namespace Heddle.Generator.Emit
         }
 
         /// <summary>Records manifest <c>ExtensionBindings</c> row (at most once per name/type).</summary>
-        private void RecordExtensionBinding(string name, string type, string assembly = "Heddle",
+        private void RecordExtensionBinding(string name, string type, string assembly,
             string propLayoutFingerprint = null)
         {
             if (!_extensionBindings.Any(b => b.Name == name && b.Type == type))
