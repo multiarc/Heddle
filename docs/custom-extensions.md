@@ -449,6 +449,81 @@ nothing about it costs a tier.
 
 ---
 
+## Building your own slot projection
+
+A definition that declares a slot parameter — `<card(out:: Photo)>` — does not pre‑render the content
+its call site passed it. The engine installs that content on the scope as an
+[`ISlotContent`](../src/Heddle/Data/ISlotContent.cs) and lets each `[SlotProjection]` extension in the
+body render it, once per projection, against a model the projection chooses. That is what lets one
+caller body be rendered per element of a loop.
+
+Everything the built‑in `@out` reads to do this is public, so a projection of your own is a normal
+extension:
+
+```csharp
+using Heddle.Attributes;
+using Heddle.Core;
+using Heddle.Data;
+using Heddle.Exceptions;
+
+[ExtensionName("project")]
+[SlotProjection]
+public class ProjectExtension : AbstractExtension
+{
+    private bool _slotMode;
+    private bool _composed;
+
+    public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType, ExType parent)
+    {
+        // The slot type of the definition body being compiled — null anywhere else.
+        var slotType = initContext.CompileScope.CompileContext.SlotParameterType;
+        if (slotType != null)
+        {
+            _slotMode = true;
+            _composed = initContext.IsChainedConsumer;
+            if (!initContext.CallCarriesValue)
+                initContext.CompileScope.CompileErrors.Add(/* your own positioned diagnostic */);
+            base.InitStart(initContext, chainedType, parent, null);
+            return typeof(string);
+        }
+
+        base.InitStart(initContext, chainedType, parent, null);
+        return chainedType;
+    }
+
+    public override void RenderData(in Scope scope)
+    {
+        if (!_slotMode) { RenderInnerResult(scope); return; }
+        var carrier = scope.SlotCarrier;
+        if (_composed || carrier == null)
+            throw new TemplateProcessingException("'@project' has no caller content to project here.");
+        carrier.RenderCallerContentInto(carrier.InvocationScope.Model(scope.ModelData));
+    }
+}
+```
+
+Three things are load‑bearing:
+
+- **Re‑model the invocation scope, don't render against it.** `InvocationScope.Model(value)` pairs the
+  value the projection was passed with the props and caller frame of the definition's *invocation
+  site*, which is what lets the caller's content see the value it was written for while its `::`‑rooted
+  and prop references still resolve where it was written.
+- **Prefer `RenderCallerContentInto`.** It writes straight into the scope's renderer;
+  `RenderCallerContent` materialises a string and is only worth it when `ProcessData` needs the content
+  as a value.
+- **Refuse composition.** `InitContext.IsChainedConsumer` is true when the call has a producer to its
+  right (`@wrap():project()`), which means the content arrived on the chained channel and there is no
+  caller content to project.
+
+`ISlotContent` and `Scope` are both confined to one render lineage — consume them in the call that
+received them and never store them.
+
+**Precompilation.** A slot projection precompiles: the generator dispatches on the declaration rather
+than on a name, constructs your extension, and runs the `InitStart` above inside your own assembly, so
+the slot state is decided by your hook rather than predicted.
+
+---
+
 ## A minimal example
 
 A `@upper(...)` extension that uppercases a string and HTML‑encodes the result:

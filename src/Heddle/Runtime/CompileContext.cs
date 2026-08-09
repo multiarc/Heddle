@@ -90,10 +90,16 @@ namespace Heddle.Runtime {
         internal PropLayout ActivePropLayout { get; set; }
 
         /// <summary>
-        /// The active slot parameter type while compiling a slot-declaring definition body. <c>null</c>
-        /// otherwise. Same threading rules as <see cref="ActivePropLayout"/>.
+        /// <para>The slot parameter type of the definition whose body is being compiled — the <c>T</c> of
+        /// <c>&lt;name(out:: T)&gt;</c> — and <c>null</c> anywhere else. A <c>[SlotProjection]</c> extension reads
+        /// it in its own <c>InitStart</c>: non-<c>null</c> means the call is projecting this definition's slot and
+        /// the value it was passed must satisfy <c>T</c>; <c>null</c> means there is no slot here.</para>
+        /// <para>Set by the engine around each definition-body compile and read-only from outside it — an
+        /// extension that installed its own would be telling every later call in the body that a slot it does not
+        /// have is open. Same threading rules as <see cref="ActivePropLayout"/>: compile-time state on a
+        /// single-threaded compile, copied to child contexts, never read at render.</para>
         /// </summary>
-        internal ExType SlotParameterType { get; set; }
+        public ExType SlotParameterType { get; internal set; }
 
         /// <summary>
         /// The call-scoped region fill scope active while compiling a definition body whose call site

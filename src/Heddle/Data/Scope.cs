@@ -27,15 +27,16 @@ namespace Heddle.Data
         internal readonly object[] PropsData;
 
         /// <summary>
-        /// <para>The projected-content carrier of a slot-declaring definition body (a
-        /// <c>SlotContent</c>, typed <see cref="object"/> here to avoid a Core→Data dependency cycle). <c>null</c>
-        /// for every non-slot execution. Preserved by all transforms so a slot-mode <c>@out(expr)</c> nested in a
-        /// body (e.g. inside <c>@list</c>) can still reach it; installed only by <see cref="WithSlot"/>.</para>
+        /// <para>The caller content of the enclosing slot-declaring definition body, which a
+        /// <c>[SlotProjection]</c> extension renders through instead of through its own body. <c>null</c> for every
+        /// non-slot execution, and a projection that finds it <c>null</c> has no slot to project into. Preserved by
+        /// all transforms so a projection nested in a body (e.g. inside <c>@list</c>) can still reach it; installed
+        /// by the engine at the definition invocation and never by an extension.</para>
         /// <para>A dedicated field rather than the chained channel: the chained channel is overwritten by
-        /// looping extensions (<c>@list</c>/<c>@for</c> thread the index there), so it cannot reach an
-        /// <c>@out</c> nested in a loop body; a preserved field can.</para>
+        /// looping extensions (<c>@list</c>/<c>@for</c> thread the index there), so it cannot reach a
+        /// projection nested in a loop body; a preserved field can.</para>
         /// </summary>
-        internal readonly object SlotCarrier;
+        public readonly ISlotContent SlotCarrier;
 
         /// <summary>
         /// <para>The per-invocation bound values of a parameter-declaring extension's <c>[Prop]</c>
@@ -58,7 +59,7 @@ namespace Heddle.Data
             "provisions one for bodies that contain it.";
 
         internal Scope(object root, object data, object model, object chained, IScopeRenderer renderer,
-            object parent = null, ScopeLocals locals = null, object[] props = null, object slot = null,
+            object parent = null, ScopeLocals locals = null, object[] props = null, ISlotContent slot = null,
             object[] extensionParameterValues = null, ExtensionParameterMap extensionParameters = null)
         {
             RootData = root;
@@ -125,7 +126,7 @@ namespace Heddle.Data
 
         /// <summary>Returns a copy with only the slot carrier replaced.</summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal readonly Scope WithSlot(object slot)
+        internal readonly Scope WithSlot(ISlotContent slot)
         {
             return new Scope(RootData, CallerData, ModelData, ChainedData, Renderer, ParentModelData, Locals, PropsData, slot, ExtensionParameterValues, ExtensionParameters);
         }
