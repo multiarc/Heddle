@@ -43,6 +43,26 @@ HeddleTemplate.Register(typeof(Program).GetTypeInfo().Assembly);
 HeddleTemplate.Register(typeof(SomeLibrary.WidgetExtension).GetTypeInfo().Assembly);
 ```
 
+#### Declaring model assemblies: `[HeddleModelAssembly]`
+
+`Register` also reads the registering assembly's assembly‑level
+`Heddle.Attributes.HeddleModelAssemblyAttribute` and registers each named type's **assembly**:
+
+```csharp
+[assembly: Heddle.Attributes.HeddleModelAssembly(typeof(Acme.Models.Invoice))]
+```
+
+The `typeof` is what makes this stronger than the equivalent `Register` call. A type cannot be named
+from a project that does not reference its assembly, so a missing reference is **CS0246 in your own
+source** rather than a model that fails to resolve at first render — and the reference it forces is
+exactly what the [build tier](precompilation.md#assemblies-the-build-must-see) needs to resolve the
+same `@model` spelling. One declaration configures both tiers; there is no `HED` id for it because
+the C# compiler already owns the diagnostic.
+
+`AllowMultiple`, so declare as many as you have. Only the assembly each type comes from is used, so
+any public type in it will do. A declared assembly is registered for the life of the process and is
+never removed by an editor‑style workspace reload, which withdraws only what the workspace loaded.
+
 ### Constructors
 
 | Constructor | Use |

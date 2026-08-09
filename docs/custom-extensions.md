@@ -530,7 +530,7 @@ carries `[ExtensionReplace]`; otherwise registration throws `TemplateOverrideExc
 
 ## Registering your extensions
 
-Two steps:
+Two steps to register, and a third if you pre‑compile:
 
 1. **Export** the extension(s) from the assembly with the assembly‑level attribute
    [`ExportExtensions`](../src/Heddle/Attributes/ExportExtensionsAttribute.cs):
@@ -551,6 +551,23 @@ Two steps:
    HeddleTemplate.Register(typeof(Program).GetTypeInfo().Assembly);
    HeddleTemplate.Register(typeof(SomeLibrary.WidgetExtension).GetTypeInfo().Assembly);
    ```
+
+3. **If you pre‑compile**, make sure the build sees the assembly too. The build tier resolves
+   extension and model types over the **compilation's reference closure**, not over what is loaded, so
+   an extension library you already reference needs nothing — but a project that does not reference it
+   can put it in front of the compiler with the escape‑hatch item:
+
+   ```xml
+   <ItemGroup>
+     <HeddleExtensionAssembly Include="$(SomeDir)Acme.Extensions.dll" />
+   </ItemGroup>
+   ```
+
+   Model assemblies have the stronger declarative form, `[assembly: HeddleModelAssembly(typeof(T))]`,
+   which configures both tiers at once. See
+   [Assemblies the build must see](precompilation.md#assemblies-the-build-must-see). An unseen
+   extension assembly is never an error — the templates that call it simply degrade to the dynamic
+   tier, where step 2's registration still serves them.
 
 Registration is per assembly and is **not** transitive: the engine loads nothing and scans nothing on
 its own, so an extension library you merely *reference* is not discovered — register it too. This is

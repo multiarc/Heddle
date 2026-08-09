@@ -177,7 +177,8 @@ namespace Heddle.Native
 
         /// <summary>
         /// Registers an assembly the engine would not otherwise see, and offers its assembly-level
-        /// <c>[ExportExtensions]</c> to the extension registry. Idempotent per assembly; repeatable.
+        /// <c>[ExportExtensions]</c> to the extension registry and its <c>[HeddleModelAssembly]</c> declarations to
+        /// type resolution. Idempotent per assembly; repeatable.
         /// </summary>
         public static void Register(Assembly assembly)
         {
@@ -194,7 +195,33 @@ namespace Heddle.Native
             }
 
             Runtime.TemplateFactory.RegisterExportedExtensions(assembly);
+
+            // Untracked on purpose. What a `[HeddleModelAssembly]` names is a compile-time reference of the
+            // declaring assembly, so it is neither collectible nor reloadable; putting it on the unregister list
+            // would let an editor reload — which unregisters what the *workspace* loaded — silently un-resolve the
+            // host's statically declared models as a side effect of collecting something else entirely.
+            AddAssemblies(DeclaredModelAssemblies(assembly), trackForUnregister: false);
+
             ReflectionHelper.Reconfigure();
+        }
+
+        /// <summary>The distinct assemblies an assembly's <c>[HeddleModelAssembly]</c> declarations name. The
+        /// attribute carries <c>typeof(T)</c> rather than a name, so reading it is what loads them.</summary>
+        private static List<Assembly> DeclaredModelAssemblies(Assembly assembly)
+        {
+            var declared = new List<Assembly>();
+            foreach (var attribute in assembly.GetCustomAttributes<Attributes.HeddleModelAssemblyAttribute>())
+            {
+                if (attribute?.ModelTypes == null)
+                    continue;
+                foreach (var modelType in attribute.ModelTypes)
+                {
+                    if (modelType != null)
+                        declared.Add(modelType.Assembly);
+                }
+            }
+
+            return declared;
         }
 
         /// <summary>The former name of <see cref="Register"/>, kept so existing callers keep compiling — the same
@@ -212,6 +239,23 @@ namespace Heddle.Native
             if (assemblies == null)
                 throw new ArgumentNullException(nameof(assemblies));
 
+            AddAssemblies(assemblies, trackForUnregister: true);
+            ReflectionHelper.Reconfigure();
+        }
+
+        /// <summary>
+        /// The shared body of every model-assembly registration. <paramref name="trackForUnregister"/> decides
+        /// whether the entry joins the list <see cref="UnregisterModelAssemblies"/> removes: a workspace load is
+        /// tracked, because the whole point is that its collectible context can be let go; a
+        /// <c>[HeddleModelAssembly]</c> declaration is not, because removing it would un-resolve models the host
+        /// declared statically and never asked to have taken away. Reconfiguration is the caller's, so a caller
+        /// that adds from two sources rebuilds the name maps once.
+        /// </summary>
+        private static void AddAssemblies(IReadOnlyList<Assembly> assemblies, bool trackForUnregister)
+        {
+            if (assemblies == null || assemblies.Count == 0)
+                return;
+
             lock (Assemblies)
             {
                 foreach (var assembly in assemblies)
@@ -222,13 +266,15 @@ namespace Heddle.Native
                     if (!AssemblyCache.TryAdd(name, assembly))
                         continue;
                     Assemblies.Add(assembly);
-                    ModelAssemblies.Add(assembly);
-                    ModelNames.Add(name);
+                    if (trackForUnregister)
+                    {
+                        ModelAssemblies.Add(assembly);
+                        ModelNames.Add(name);
+                    }
+
                     Interlocked.Increment(ref _generation);
                 }
             }
-
-            ReflectionHelper.Reconfigure();
         }
 
         /// <summary>

@@ -43,6 +43,14 @@ namespace Heddle.Generator.IntegrationTests
             var id = Guid.NewGuid().ToString("N");
             assemblyName = "HeddleLateBoundModels" + id;
             modelNamespace = "LateBoundModels" + id;
+            return BuildModelAssembly(assemblyName, modelNamespace);
+        }
+
+        /// <summary>The same probe with both names supplied, so a caller can build <b>two</b> assemblies declaring
+        /// one spelling — which is the only way to reach an ambiguity, and the ambiguity is a property worth
+        /// pinning rather than a mistake to avoid.</summary>
+        private static string BuildModelAssembly(string assemblyName, string modelNamespace)
+        {
             var references = (Heddle.Generator.Tests.HostAssemblies.TrustedOrLoaded())
                 .Split(Path.PathSeparator)
                 .Where(p => !string.IsNullOrEmpty(p) && File.Exists(p))
@@ -131,6 +139,78 @@ namespace Heddle.Generator.IntegrationTests
 
             Assert.Equal("<p>late</p>\n", dynamic);
             Assert.Equal(dynamic, DifferentialHarness.RenderGenerated(gen, Key, model));
+        }
+
+        /// <summary>
+        /// <b>The negative control.</b> Its sibling above pins the two tiers agreeing in <i>success</i> once the
+        /// model assembly is both referenced and loaded. Agreement in success is the easy half: a build that
+        /// precompiles nothing and a run tier that renders everything dynamically also agree, byte for byte. The
+        /// half that says the design is right is agreement in <b>refusal</b> — configure neither tier, and neither
+        /// tier may claim the template.
+        /// <para>Configuration is the whole variable. Nothing here is a metadata reference the generator can bind
+        /// from and nothing here is loaded into the process, so the build tier resolves no symbol for the spelling
+        /// and the run tier resolves no <c>Type</c> for it, and both say so — the generator declining to emit and
+        /// reporting <c>HED7007</c>, the engine failing to compile at all.</para>
+        /// <para>Between these two tests sits the case the assembly attribute exists to remove: referenced but not
+        /// loaded, where the build precompiles a template the engine refuses. That case is pinned above as the
+        /// divergence it is; a host that writes <c>[HeddleModelAssembly(typeof(T))]</c> cannot enter it, because the
+        /// one declaration is simultaneously the reference the build resolves against and the registration the
+        /// engine reads.</para>
+        /// </summary>
+        [Fact]
+        public void WithNeitherTierConfiguredTheTwoTiersAgreeInRefusal()
+        {
+            BuildUnloadedModelAssembly(out var assemblyName, out var ns);
+            var template = TemplateFor(ns);
+            Assert.Null(Loaded(assemblyName));
+
+            var run = new HeddleTemplate(template, new CompileContext(new TemplateOptions(), ExType.Dynamic));
+            Assert.False(run.CompileResult.Success);
+            Assert.Contains(run.CompileResult.Errors, e => e.Error.Contains(ns + ".Doc"));
+
+            // No extraReferences: the generator is handed exactly what an unconfigured project would hand it.
+            var gen = DifferentialHarness.Generate(new[] { (Key, template) });
+            DifferentialHarness.ExpectDegrade(gen, Key);
+            Assert.Contains(gen.Diagnostics,
+                d => d.Id == HeddleDiagnosticIds.BuildUnresolvableModelType);
+
+            // And the build tier did not reach for the assembly on its own to close the gap it just reported.
+            Assert.Null(Loaded(assemblyName));
+        }
+
+        /// <summary>
+        /// Ambiguity that configuration <b>creates</b> is not a regression, and this is the shape of the argument:
+        /// two assemblies declare one spelling, and both tiers refuse the same input for the same reason — the build
+        /// with <c>HED7023</c>, the engine with its "the type name is ambigous" throw. A host that registers both
+        /// assemblies gets exactly what a build that references both gets.
+        /// <para>Which is why widening what the build can see cannot make a template <i>worse</i> off than the
+        /// runtime it has to match: the two tiers were already answering this question the same way, and parity
+        /// preserved in the failure is stronger evidence than parity in the success, because a failure has many more
+        /// ways to differ.</para>
+        /// </summary>
+        [Fact]
+        public void AmbiguityThatConfigurationCreatesIsRefusedByBothTiersForTheSameInput()
+        {
+            var id = Guid.NewGuid().ToString("N");
+            var ns = "AmbiguousModels" + id;
+            var first = BuildModelAssembly("HeddleAmbiguousModelsA" + id, ns);
+            var second = BuildModelAssembly("HeddleAmbiguousModelsB" + id, ns);
+            var template = TemplateFor(ns);
+
+            // Build tier: two references, one spelling. The harness loads what it is handed, so this also puts both
+            // assemblies in the process — which is the run tier's half of the same configuration.
+            var gen = DifferentialHarness.Generate(new[] { (Key, template) },
+                extraReferences: new[]
+                {
+                    MetadataReference.CreateFromFile(first), MetadataReference.CreateFromFile(second)
+                });
+
+            DifferentialHarness.ExpectDegrade(gen, Key);
+            Assert.Contains(gen.Diagnostics, d => d.Id == HeddleDiagnosticIds.BuildAmbiguousTypeName);
+
+            var run = new HeddleTemplate(template, new CompileContext(new TemplateOptions(), ExType.Dynamic));
+            Assert.False(run.CompileResult.Success);
+            Assert.Contains(run.CompileResult.Errors, e => e.Error.Contains("ambigous"));
         }
 
         /// <summary>

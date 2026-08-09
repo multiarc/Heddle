@@ -369,6 +369,67 @@ namespace Heddle.Tests
                 "outside a target that evaluates to \"\" and deletes the value: " + string.Join(", ", nulled));
         }
 
+        /// <summary>
+        /// <para>The build tier's assembly-configuration surface, gated the way the item metadata above is. The
+        /// primary form is <c>[assembly: HeddleModelAssembly(typeof(T))]</c>, which needs no wiring at all — a
+        /// <c>typeof</c> cannot be spelled without a reference, so the C# compiler is the gate. These items are the
+        /// escape hatch for the projects that cannot carry one, and an escape hatch has exactly the failure mode the
+        /// metadata gate exists for: declared in XML, wired nowhere, silently inert.</para>
+        /// <para><b>What is asserted, and why each half matters.</b> Every item the targets declare is appended to
+        /// <c>@(ReferencePath)</c> — that, and only that, is how the assembly reaches the compiler, and through the
+        /// compiler the generator's reference closure. No <c>CompilerVisibleItem</c> exists for either: the generator
+        /// deliberately reads nothing here and loads nothing, so build output stays a function of the compilation's
+        /// declared inputs rather than of a path something read mid-build. Neither name gains a property default, so
+        /// the props-defaults count above is untouched and absent items are byte-identical output. And the generator
+        /// sources never name them, which is the same claim stated where it could regress.</para>
+        /// <para>Set equality, not a count, for the reason the metadata gate gives: a count is made green by editing
+        /// one digit. The behavioural half is <c>samples/precompiled-app</c>, whose model assembly is reachable only
+        /// through <c>@(HeddleModelAssembly)</c> — stop appending it and that sample fails to build.</para>
+        /// </summary>
+        [Fact]
+        public void EveryDeclaredAssemblyItemReachesTheCompilerThroughReferencePath()
+        {
+            var propsPath = FindRepoFile(Path.Combine("src", "Heddle.Generator", "build", "Heddle.Generator.props"));
+            var targetsPath = FindRepoFile(
+                Path.Combine("src", "Heddle.Generator", "build", "Heddle.Generator.targets"));
+            var propsXml = File.ReadAllText(propsPath);
+            var targetsXml = File.ReadAllText(targetsPath);
+            var withoutComments = Regex.Replace(targetsXml, @"<!--.*?-->", string.Empty, RegexOptions.Singleline);
+
+            var appended = new SortedSet<string>(StringComparer.Ordinal);
+            foreach (Match m in Regex.Matches(withoutComments,
+                @"<ReferencePath\s+Include=""@\((?<name>\w+)\)""\s*/>"))
+                appended.Add(m.Groups["name"].Value);
+
+            Assert.Equal(new[] { "HeddleExtensionAssembly", "HeddleModelAssembly" }, appended.ToArray());
+
+            // The item's job is to reach the compiler, not the generator. A CompilerVisibleItem would hand the
+            // generator a path to read, which is exactly the determinism the ReferencePath route preserves.
+            Assert.DoesNotContain("<CompilerVisibleItem ", propsXml, StringComparison.Ordinal);
+            Assert.DoesNotContain("<CompilerVisibleItem ", targetsXml, StringComparison.Ordinal);
+
+            // Items with no default, not properties with one — so ReadPropsDefaults' count literal, the assertion
+            // easiest to make green wrongly, is not touched by this surface at all.
+            foreach (var name in appended)
+            {
+                Assert.DoesNotContain("<" + name + " Condition=", propsXml, StringComparison.Ordinal);
+                Assert.DoesNotContain("<CompilerVisibleProperty Include=\"" + name + "\"", propsXml,
+                    StringComparison.Ordinal);
+            }
+
+            // The generator loads nothing: it never names these items, because it never has to.
+            var generatorCs = File.ReadAllText(FindRepoFile(
+                Path.Combine("src", "Heddle.Generator", "HeddleTemplateGenerator.cs")));
+            foreach (var name in appended)
+                Assert.DoesNotContain(name, generatorCs, StringComparison.Ordinal);
+
+            // Documented where the rest of the build surface is documented; an undocumented escape hatch is one
+            // nobody can use and nobody can review.
+            var docs = File.ReadAllText(FindRepoFile(Path.Combine("docs", "precompilation.md")));
+            foreach (var name in appended)
+                Assert.Contains("@(" + name + ")", docs, StringComparison.Ordinal);
+        }
+
         private static Dictionary<string, string> ReadPropsDefaults()
         {
             var path = FindRepoFile(Path.Combine("src", "Heddle.Generator", "build", "Heddle.Generator.props"));

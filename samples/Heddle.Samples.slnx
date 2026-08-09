@@ -19,6 +19,7 @@
   </Folder>
   <Folder Name="/precompiled-app/">
     <Project Path="precompiled-app/PrecompiledApp.csproj" />
+    <Project Path="precompiled-app/external-models/ExternalModels.csproj" />
   </Folder>
   <Folder Name="/sandboxed-user-templates/">
     <Project Path="sandboxed-user-templates/SandboxedUserTemplates.csproj" />

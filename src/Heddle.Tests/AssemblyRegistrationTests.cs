@@ -217,6 +217,71 @@ namespace Heddle.Tests
         }
 
         /// <summary>
+        /// The declaration seam, end to end. <c>[HeddleModelAssembly(typeof(T))]</c> names an assembly the host never
+        /// loads and the engine can never observe: the leaf is on disk, reached only through the declaring assembly's
+        /// attribute blob, and provably unloaded when the test begins. One
+        /// <see cref="HeddleTemplate.Register(Assembly)"/> call on the <b>declaring</b> assembly is what puts the
+        /// leaf's types in front of type resolution — so the host configures the run tier with the same declaration
+        /// that made the build tier's reference exist, rather than saying the same thing twice.
+        /// <para>Registering an assembly used to offer only its <c>[ExportExtensions]</c>, which materializes no
+        /// other assembly's types, so before the attribute existed this leaf stayed unloaded and its spelling stayed
+        /// unresolvable however the host registered.</para>
+        /// </summary>
+        [Fact]
+        public void ADeclaredModelAssemblyResolvesOnceItsDeclaringAssemblyIsRegistered()
+        {
+            var suffix = Guid.NewGuid().ToString("N").Substring(0, 12);
+            var leafPath = WriteProbe(LeafSource(suffix), out var leafName);
+            var declarer = Assembly.LoadFrom(WriteProbeDeclaringModelAssembly(suffix, leafPath));
+
+            Assert.DoesNotContain(leafName, LoadedNames());
+            Assert.Throws<InvalidOperationException>(
+                () => ReflectionHelper.ResolveType($"LeafNamespace{suffix}.Leaf{suffix}"));
+
+            HeddleTemplate.Register(declarer);
+
+            Assert.Contains(leafName, LoadedNames());
+            Assert.Equal($"LeafNamespace{suffix}.Leaf{suffix}",
+                ReflectionHelper.ResolveType($"LeafNamespace{suffix}.Leaf{suffix}").FullName);
+        }
+
+        /// <summary>
+        /// The one subtle correctness point in the declaration. A <b>workspace</b> model registration is tracked so
+        /// that <see cref="AssemblyHelper.UnregisterModelAssemblies"/> removes exactly those entries and a collectible
+        /// context can then collect; a <b>declared</b> one is a compile-time reference of an assembly the host loaded
+        /// statically, is not collectible, and must not be removable — otherwise an editor reload, which withdraws
+        /// what the <i>workspace</i> loaded, would silently un-resolve models nobody asked to withdraw.
+        /// <para>Asserted against the tracking list rather than against behaviour on purpose. By the time the leaf is
+        /// registered it is also loaded into the default context, so observation would put it back after an
+        /// unregistration whatever the tracking said — a test written on "does it still resolve" passes with the
+        /// tracking wrong, which is the same as not testing it. The second assertion keeps this one from being
+        /// vacuous: the registration it declines to track is a registration that happened.</para>
+        /// </summary>
+        [Fact]
+        public void ADeclaredModelAssemblyIsNotAddedToTheUnregisterList()
+        {
+            var suffix = Guid.NewGuid().ToString("N").Substring(0, 12);
+            var leafPath = WriteProbe(LeafSource(suffix), out _);
+            var declarer = Assembly.LoadFrom(WriteProbeDeclaringModelAssembly(suffix, leafPath));
+
+            var tracked = TrackedForUnregister();
+            var before = tracked.Count;
+
+            HeddleTemplate.Register(declarer);
+
+            Assert.Equal(before, tracked.Count);
+            Assert.NotNull(ReflectionHelper.ResolveType($"LeafNamespace{suffix}.Leaf{suffix}"));
+        }
+
+        /// <summary>The list <see cref="AssemblyHelper.UnregisterModelAssemblies"/> empties. Private, and reached by
+        /// reflection because there is no public shape for "what a reload would take away" and inventing one to make
+        /// this assertable would be a wider API than the property is worth.</summary>
+        private static System.Collections.ICollection TrackedForUnregister() =>
+            (System.Collections.ICollection) typeof(AssemblyHelper)
+                .GetField("ModelAssemblies", BindingFlags.NonPublic | BindingFlags.Static)
+                .GetValue(null);
+
+        /// <summary>
         /// Two assemblies with one identity: one registered by a host out of a context of its own, one the host later
         /// loads normally. The registered one holds the name, so the loaded one is passed over — deliberately, and
         /// without being written off, because the name may be given back.
@@ -305,6 +370,23 @@ namespace LeafNamespace{suffix}
 {{
     public class Leaf{suffix} {{ public int Value {{ get; set; }} }}
 }}";
+
+        /// <summary>Emits an assembly whose <b>only</b> use of the leaf is the attribute's <c>typeof</c> — the shape
+        /// the declaration takes in a host. No member of the leaf is touched, so nothing except reading the attribute
+        /// can be what loads it.</summary>
+        private static string WriteProbeDeclaringModelAssembly(string suffix, string leafPath)
+        {
+            var source = $@"
+[assembly: Heddle.Attributes.HeddleModelAssembly(typeof(LeafNamespace{suffix}.Leaf{suffix}))]
+
+namespace DeclarerNamespace{suffix}
+{{
+    public class Declarer{suffix} {{ }}
+}}";
+            var references = AssemblyHelper.GetApplicationReferences();
+            references.Add(MetadataReference.CreateFromFile(leafPath));
+            return WriteBytes(Compile(source, references, out var name), name);
+        }
 
         /// <summary>Emits an assembly whose public surface uses the leaf's type, so the reference is real and the
         /// runtime still has no reason to load it until something touches that type.</summary>

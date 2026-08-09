@@ -69,6 +69,67 @@ A template whose path is **not** under `HeddleTemplateRoot` and that carries no 
 registers under its bare filename — the directory is dropped — and the build reports `HED7018`
 naming the file, the root, and the flattened key it used.
 
+### Assemblies the build must see
+
+A `@model` spelling is resolved at **compile** time by both tiers, so both tiers have to be able to see the
+assembly it names — and neither finds it by magic. The engine [loads nothing on its own](csharp-api.md#registration-register)
+and takes an assembly only by registration; the generator resolves over the **compilation's reference closure**
+and loads nothing either. The two questions have one answer:
+
+```csharp
+// in the consuming project — ONE declaration, read by both tiers
+[assembly: Heddle.Attributes.HeddleModelAssembly(typeof(Acme.Models.Invoice))]
+```
+
+The `typeof` is the point. You cannot spell a type in a project that does not reference its assembly, so
+"referenced at build, registered at run" stops being a rule your project can quietly violate and becomes
+**CS0246 in your own source**. There is no `HED` id for a missing reference because the C# compiler already
+owns that diagnostic. The reference then reaches the compiler, the generator indexes it with everything else the
+compilation references, and `HeddleTemplate.Register` reads the same attribute at startup and registers the
+assembly for engine type resolution. One declaration, both tiers, no way to configure one and forget the other.
+
+**The escape hatch, for projects that cannot carry a `typeof`** — a templates-only project that must not take a
+source dependency, or a model assembly with no compile-time-nameable public type:
+
+```xml
+<ItemGroup>
+  <HeddleModelAssembly Include="$(SomeDir)Acme.Models.dll" />
+  <HeddleExtensionAssembly Include="$(SomeDir)Acme.Extensions.dll" />
+</ItemGroup>
+```
+
+The targets append `@(HeddleModelAssembly)` and `@(HeddleExtensionAssembly)` to `@(ReferencePath)`, so the item's
+job is to reach the **compiler** — not the generator. An item carries an obligation the attribute discharges for
+you: **it configures the build only**, so the host still makes its own `HeddleTemplate.Register` call, and, not
+being an ordinary reference, the file is absent from the deps file and deployment still has to put it where the
+process can load it.
+
+> **Configuration is an input, not a discovery.** The item deliberately does not name a path for the generator to
+> read. Build output has to be a function of the compilation's declared inputs — a generator that opened files
+> mid-build would make the output depend on when it looked, and would break incrementality, which is why there is
+> no `CompilerVisibleItem` here and none is needed. Routing through `@(ReferencePath)` means MSBuild's own
+> `ResolveAssemblyReferences` stays the loader and `SymbolTypeIndex` indexes the result with zero extra machinery.
+> For the same reason **assembly configuration is not part of the options fingerprint**: it changes *whether* a
+> template precompiles, never a rendered byte, so adding or removing a declaration can never produce an
+> `OptionsMismatch` and never changes what a template renders.
+
+Two consequences worth stating plainly:
+
+- **The run-tier fallback taxonomy does not change.** No new `PrecompiledFallbackReason`, no new `HED` id.
+  Configuring the build can move a template from "degraded at build" to "precompiled"; it cannot invent a way for
+  a registered template to fail at run time that did not already exist.
+- **Ambiguity that configuration creates is not a regression.** Making a second assembly visible that declares the
+  same type spelling is `HED7023` at build — and a runtime with both assemblies registered raises its own
+  "the type name is ambigous" error for the same input. The tiers agree in the failure, which is the same
+  agreement they have in the success.
+
+What this does *not* reach: types that do not exist at build time (`TypeBuilder`, scripting hosts); collectible or
+reloadable model contexts, which have deliberately **no** build-time twin — baking one generation of a reloadable
+type into IL that the next reload invalidates is worse than degrading; types your compilation may not *name*
+(`HED7030` — the remedy is `[InternalsVisibleTo]`, not a Heddle setting); `@model dynamic`; assembly-qualified
+spellings whose version a reference does not carry; and registration that is imperative by nature
+(`TemplateFactory.AddExtensions` over live `Type`s, `FunctionRegistry.Register` over a delegate).
+
 ## Compile options (MSBuild properties)
 
 These mirror `TemplateOptions` and are baked into the generated artifact; a mismatch against
@@ -81,16 +142,26 @@ baked against what the request carries, so a host that sets a non‑default `Out
 `OptionsMismatch` and a per‑request degrade. Set the property to match the host, or leave both at
 their defaults.
 
-| Property | Values / default | Effect |
-| --- | --- | --- |
-| `HeddleOutputProfile` | `Html` (default) \| `Text` | Output encoding profile (part of the options fingerprint). |
-| `HeddleExpressionMode` | `MemberPathsOnly` \| `Native` (default) \| `FullCSharp` | Expression tier. `FullCSharp` is the build‑time equivalent of `AllowCSharp`. |
-| `HeddleTrimDirectiveLines` | `true` (default) \| `false` | Trim directive‑only lines (part of the fingerprint). |
-| `HeddleMaxRecursionCount` | positive int, default `100` | Definition‑carrier recursion limit, baked at build. |
-| `HeddleTemplateRoot` | dir, default `$(MSBuildProjectDirectory)` | Root the template key is made relative to. |
-| `HeddleGeneratedNamespace` | default `Heddle.Generated` | Namespace of the generated entry classes. |
-| `HeddleEmitUtf8Pieces` | `false` (default) \| `true` | Emit pre‑encoded `"…"u8` static pieces for the byte sink. |
-| `HeddleNodeFallback` | `true` (default) \| `false` | Per‑node fallback: a member path the engine resolves but generated C# cannot name (e.g. a referenced assembly's `internal` member without `[InternalsVisibleTo]`) is computed by the engine's own accessor instead of degrading the whole template. Never changes rendered bytes, so it is not part of the options fingerprint; `false` restores the whole‑template degrade. |
+The **runtime counterpart** column is the option the request has to carry to match. Where it says *(build only)*
+there is nothing to match: the property decides how the artifact is emitted, not what a render produces.
+
+| Property | Values / default | Runtime counterpart | Effect |
+| --- | --- | --- | --- |
+| `HeddleOutputProfile` | `Html` (default) \| `Text` | `TemplateOptions.OutputProfile` | Output encoding profile (part of the options fingerprint). |
+| `HeddleExpressionMode` | `MemberPathsOnly` \| `Native` (default) \| `FullCSharp` | `TemplateOptions.ExpressionMode` | Expression tier. `FullCSharp` is the build‑time equivalent of `AllowCSharp`. |
+| `HeddleTrimDirectiveLines` | `true` (default) \| `false` | `TemplateOptions.TrimDirectiveLines` | Trim directive‑only lines (part of the fingerprint). |
+| `HeddleMaxRecursionCount` | positive int, default `100` | `TemplateOptions.MaxRecursionCount` | Definition‑carrier recursion limit, baked at build. |
+| `HeddleTemplateRoot` | dir, default `$(MSBuildProjectDirectory)` | `TemplateOptions.RootPath` | Root the template key is made relative to. |
+| `HeddleGeneratedNamespace` | default `Heddle.Generated` | *(build only)* | Namespace of the generated entry classes. |
+| `HeddleEmitUtf8Pieces` | `false` (default) \| `true` | *(build only)* | Emit pre‑encoded `"…"u8` static pieces for the byte sink. |
+| `HeddleNodeFallback` | `true` (default) \| `false` | *(build only)* | Per‑node fallback: a member path the engine resolves but generated C# cannot name (e.g. a referenced assembly's `internal` member without `[InternalsVisibleTo]`) is computed by the engine's own accessor instead of degrading the whole template. Never changes rendered bytes, so it is not part of the options fingerprint; `false` restores the whole‑template degrade. |
+
+The same mapping is what the editor uses: each of the first five has a `.heddle-lsp.json` key spelled as the
+camelCased **runtime** name (`outputProfile`, `expressionMode`, …), so the three tiers name one option three ways
+and mean the same thing. See [editor‑support.md](editor-support.md#configuring).
+
+Assembly configuration is deliberately **not** in this table — it is not an option, it is a reference. See
+[Assemblies the build must see](#assemblies-the-build-must-see).
 
 ---
 
@@ -445,6 +516,32 @@ if (!report.PassedForValidatedOptions)
 Registering an extension assembly *after* a template has already rendered is legal and takes effect,
 but anything rendered in between degraded to the dynamic tier and said so through `OnFallback`. Step 4
 is what turns "said so, per request, in production" into "failed at startup, once".
+
+**The build‑side mirror.** Each of the first three steps has a build‑time counterpart, and a template only
+precompiles when the build's answer is at least as complete as the run tier's — so it is worth reading the two
+side by side:
+
+```xml
+<!-- 1. Extensions: a reference is what the build binds from. Add an item only for an assembly this project
+        does not reference (see "Assemblies the build must see"). -->
+<ItemGroup>
+  <HeddleExtensionAssembly Include="$(SomeDir)SomeLibrary.dll" />
+</ItemGroup>
+```
+```csharp
+// 2. Functions: the build reads [ExportFunctions] off the reference closure — the same declaration
+//    RegisterFrom reads at run time, so exporting rather than registering imperatively is what makes a
+//    function-calling template precompile.
+[assembly: ExportFunctions(typeof(MyApp.TemplateFunctions))]
+
+// 3. Models: one declaration for both tiers — the typeof forces the reference the build resolves against,
+//    and HeddleTemplate.Register reads the same attribute at startup (step 1 above already makes that call).
+[assembly: Heddle.Attributes.HeddleModelAssembly(typeof(Acme.Models.Invoice))]
+```
+
+Step 4 has no build twin, and deliberately so: `ValidateAll` proves what *this process* is configured to serve,
+which is the question the build cannot answer. What the build does instead is refuse to claim a template it
+could not fully bind — the degrade — so the two never disagree about a template they both accepted.
 
 ---
 
