@@ -96,7 +96,10 @@ Behavior notes:
   throws `TemplateProcessingException` on a mismatch — once per `Generate` call, in every build
   configuration. Without the check a wrong‑typed model would escape as a raw
   `InvalidCastException` from the compiled accessor. A `null` model is legal and skips the
-  check, as does the precompiled adapter (it has no compile‑time model type to check against).
+  check. **A precompiled template resolved from the registry is checked the same way**, against
+  the model type its manifest entry records (`PrecompiledTemplateInfo.ModelType`); an untyped
+  entry records `object` and so admits every value. The fault, and its message, are the same on
+  both tiers.
 - The output buffer auto‑sizes: each call grows an internal capacity estimate (with ~10 %
   margin) so repeated renders avoid reallocations.
 

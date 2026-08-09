@@ -15,8 +15,14 @@ namespace Heddle.Generator.Emit
         /// (<c>value is string s ? s : value.ToString()</c>) never needs the boxed value.</summary>
         Stringified,
 
-        /// <summary>Route through an inference helper so an awkward type is never spelled. Declared for the
-        /// selector a later stage adds; no selector chooses it yet.</summary>
+        /// <summary>Route through an inference helper — or a generic entry point — so an awkward type is never
+        /// spelled. Still without a selector, and the stage that went looking for one found out why: the types this
+        /// plan would hide are the types the dynamic tier cannot serve either. An open generic model is refused by
+        /// the engine's own render-time model gate for every value a caller could pass, and by its expression-tree
+        /// model accessor before that, so hiding it behind a type parameter would render where the engine refuses;
+        /// a type this compilation merely may not name is already served by <see cref="EngineAccessor"/>, which
+        /// computes it the engine's way instead of spelling it. Kept as the ladder's declared rung so the next
+        /// candidate joins it rather than growing a fourth mechanism.</summary>
         Generic,
 
         /// <summary>Resolve once at first use, then cache. Chosen for a function call whose target only a

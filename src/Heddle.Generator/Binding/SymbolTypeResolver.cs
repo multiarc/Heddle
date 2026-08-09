@@ -616,6 +616,11 @@ namespace Heddle.Generator.Binding
 
             if (type is INamedTypeSymbol named)
             {
+                // True of generated code as written today, and it is not the whole story where the type is a
+                // MODEL: the emitter could give itself a generic context by declaring type parameters on the entry
+                // point, and does not, because the dynamic tier serves no such template at all. That position
+                // re-categorizes the refusal on its way out — see TemplateEmitter.OpenGenericModelRefusal — while
+                // the sentence here stays the one every other position needs.
                 if (ContainsTypeParameter(named))
                     return Unusable(type, "is an open generic type, and generated code has no generic context to " +
                                           "bind its type parameters in", out reason);
