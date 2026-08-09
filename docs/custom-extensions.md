@@ -440,11 +440,11 @@ Because a custom terminal's render‑time orphan message is yours to phrase, thr
 only the statically visible case.
 
 **Precompilation.** Custom branch sets are fully functional on the runtime (dynamic) tier — the
-set‑*structuring* rules above apply on both tiers because classification is role‑based everywhere.
-Only the pinned branch *emission* is reserved for the engine's own built‑ins; a bodied call to a
-custom branch extension simply falls back quietly to the dynamic tier (no `HED7015` at all — the
-`InitStart` override is the canonical shape here, not a mistake), and renders identically with full
-role semantics.
+set‑*structuring* rules above apply on both tiers because classification is role‑based everywhere. On
+the build tier a custom branch extension precompiles once the build has read its `InitStart`, which is
+what [hook probing](precompilation.md#hook-probing-opt-in) does; without probing it falls back quietly to
+the dynamic tier (no `HED7015` at all — the override is the canonical shape here, not a mistake) and
+renders identically with full role semantics.
 
 ---
 
@@ -601,16 +601,21 @@ reproduces:
 - **No reliance on runtime registry mutation.** The instance is built once and never mutated
   after binding; extensions that expect to be re‑registered or reconfigured per render are not
   supported.
-- **No `InitStart`/`CompleteInit` override** *(outside the engine assembly)*. Those are
-  compile‑time hooks the build‑time backend runs the *base* behavior of; an override could run
-  arbitrary compile‑time logic the generator cannot evaluate, so a template binding such an
-  extension **falls back to the dynamic tier** and reports the `HED7015` warning naming the extension
-  and the hook. It is deliberately not an error: an extension the generator cannot reason about should
-  cost its call site the precompiled tier, not fail your build. **Exception:** a `[BranchRole]` custom
-  branch extension is expected to override `InitStart` (its canonical parent‑model shape), so it draws
-  no `HED7015` at all — a bodied call to it degrades silently (see
-  [Building your own branch set](#building-your-own-branch-set)). Keep custom logic in `ProcessData`/`RenderData` — the
-  render‑time methods both backends share. A plain, non‑encoding extension (the common case) needs no changes.
+- **No `InitStart`/`CompleteInit` override the build has not read** *(outside the engine assembly)*.
+  Those are compile‑time hooks; the build runs the *base* behavior of them, so an override it cannot
+  evaluate makes a template binding your extension **fall back to the dynamic tier** under the
+  `HED7015` warning, naming the extension and the hook. It is deliberately not an error: an extension
+  the generator cannot reason about should cost its call site the precompiled tier, not fail your
+  build. **Exception:** a `[BranchRole]` custom branch extension is expected to override `InitStart`
+  (its canonical parent‑model shape), so it draws no `HED7015` at all — a call to it degrades silently
+  (see [Building your own branch set](#building-your-own-branch-set)).
+  **This is what [hook probing](precompilation.md#hook-probing-opt-in) removes.** With
+  `HeddleProbeExtensionHooks=true`, a consumer's build loads your package out of the NuGet cache and
+  runs the hook to see what it does with the body — no attribute, no declaration, no name list — and a
+  call it can reproduce precompiles instead of degrading. Two conditions: your extension has to reach
+  the build as a *package* reference (a project reference has no assembly on disk at generation time),
+  and the hook has to be deterministic — it is run twice and refused if the two runs disagree. Keeping
+  custom logic in `ProcessData`/`RenderData` remains the way to need none of this.
 - **A `[Prop]` default whose type generated code can name.** Defaults are frozen into the generated
   source as the exact boxed value the runtime would build from the attribute, so a default of an `enum`
   type — including on an `object`‑typed prop, where the box keeps the enum, not its underlying number —
@@ -618,23 +623,23 @@ reproduces:
   there, so a template calling that extension quietly runs on the dynamic tier instead. Make the enum
   `public` if such templates must precompile.
 
-**Build‑time binding covers only bodiless custom calls.** A bodiless value transform (`@ext(x)`) binds
-directly to your extension at build time; a call that carries a `{{ … }}` body falls back to the dynamic
-tier for that call site (a bodied body's model‑typing is extension‑specific, so the generator cannot bind
-it conservatively). Bodied calls therefore run identically to the dynamic path.
+**Bodied calls bind when the build knows how the body is typed.** A bodiless value transform (`@ext(x)`)
+binds directly. A call carrying a `{{ … }}` body needs one more fact — which scope the body is compiled
+against — and that is your `InitStart`'s decision. The build gets it from
+[hook probing](precompilation.md#hook-probing-opt-in) where probing is on, and from its own table for the
+built‑ins; without either it falls back for that call site. Two roles are emittable today: a body typed by
+the **caller's** scope (what every built‑in encoder does, and the shape to copy) and a body typed by the
+**element** of a sequence (what `@list` does). A body typed by the call value itself still falls back.
+Either way the rendered bytes are the same — falling back costs speed, never correctness.
 
-> **Warning — precompiled binding does NOT reproduce `[EncodeOutput]` / `AbstractHtmlExtension` encoding.**
-> On the dynamic tier, an extension deriving from `AbstractHtmlExtension` and marked `[EncodeOutput]`
-> HTML‑encodes its output. Precompiled binding hard‑codes `RenderType.Raw` for every custom extension and
-> never reads `[EncodeOutput]`, so the *same* extension renders its output **unencoded** once its template
-> is precompiled — a silent loss of HTML encoding, i.e. an XSS vector for untrusted data. There is **no
-> build‑time diagnostic** for this. If you rely on `[EncodeOutput]`/`AbstractHtmlExtension` for encoding,
-> either **encode explicitly inside your `ProcessDataInternal`/`RenderDataInternal` override** (so output is
-> safe on both tiers) or **exclude such templates from precompilation**. The same gap affects the built‑in
-> `@html`. (Scope: the unsafe path is a *bodiless* call — a `{{ … }}` body falls back to the encoding
-> dynamic tier — with *no* `InitStart`/`CompleteInit` override, since an override takes the call site off
-> the precompiled tier under `HED7015`. Built‑ins `@string`/`@money`/`@date`/`@time`/`@int` are unaffected
-> because they override a compile‑time hook and fall back to the dynamic tier.)
+> **`[EncodeOutput]` / `AbstractHtmlExtension` encoding is reproduced on both tiers.** Precompiled binding
+> derives the render type from the extension's own `[EncodeOutput]`/`[NotEncode]` attributes — the same
+> two‑bool decision the dynamic tier evaluates over the live instance — for bodiless calls and, since the
+> body‑hosting bind stopped hard‑coding `RenderType.Raw`, for bodied ones too. This paragraph used to warn
+> that it did not, and that warning outlived the code it described; the hard‑coded value that was still
+> left had no reachable call site until an encoding extension could host a body, which is exactly what
+> made fixing it urgent rather than cosmetic. Both halves are pinned by differential tests that render the
+> same template on both tiers and compare bytes.
 
 An extension name that resolves to no `[ExtensionName]` type in any referenced assembly is a
 build error (`HED7006`) **when the call carries a `{{ … }}` body**; a bodiless unresolvable call falls back

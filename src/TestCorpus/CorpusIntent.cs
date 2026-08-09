@@ -95,7 +95,7 @@ namespace Heddle.TestCorpus
     {
         /// <summary>Exact row count (not floor): makes "this stage added N entries" a reviewable one-line diff
         /// the reviewer can check against scope, not a silent overshoot.</summary>
-        public const int DeclaredRowCount = 65;
+        public const int DeclaredRowCount = 67;
 
         private static Dictionary<string, CorpusIntentRow> _byName;
 
@@ -207,8 +207,12 @@ namespace Heddle.TestCorpus
                 "The HTML-context lint corpus: its subject is parse-time HED4xxx classification, and it needs the lint suite's host setup to render."),
             new CorpusIntentRow("ctx-encoding.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
                 "Context-encoding golden fixture: every call is a BODILESS step-back encoder (@url/@attr/@js), which the emitter now binds from pinned knowledge — the hook re-types only a default body these calls do not have. ContextEncodingFallbackTests proves tier parity; the bodied form still falls back."),
-            new CorpusIntentRow("ctx-encoding-bodied.heddle", CorpusTier.FallsBackSafely, CorpusRender.Standalone,
-                "The bodied twin of ctx-encoding, and the row that could not exist before: a step-back encoder's default body is exactly what its InitStart re-types, so the emitter has no pinned knowledge for the bodied form and refuses it — 'bodied step-back encoder <name>'. It is here to be flipped: the hook probe reads that typing off the extension instead of predicting it, and when the emitter consumes the probe this row moves to Precompiles in one reviewable line. Until then the blocker it pins is the emitter's, not the language's."),
+            new CorpusIntentRow("ctx-encoding-bodied.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
+                "The bodied twin of ctx-encoding, flipped. A step-back encoder's hook re-types its default body against the CALLER's scope and does nothing else — one hook body shared verbatim by nine built-ins — and that role is now an observation the probe makes and the shared table records, rather than a four-name list the emitter carried privately and had five names missing from. The body is emitted in the enclosing model's context, exactly as an @if body is."),
+            new CorpusIntentRow("ext-bodied-custom.heddle", CorpusTier.FallsBackSafely, CorpusRender.Standalone,
+                "A bodied call to a REFERENCED third-party extension whose InitStart has the step-back shape — the case hook probing exists for, and the row that makes the opt-in visible. This sweep builds with HeddleProbeExtensionHooks off (the default), so the build has not read that hook, cannot reproduce it, and degrades under the HED7015 warning; with probing on the same template precompiles and renders byte-identically, which HookProbeShadowTests pins as its one declared byte movement. Nothing about the language blocks it — only what this build was allowed to observe."),
+            new CorpusIntentRow("ext-bodied-unemittable.heddle", CorpusTier.FallsBackSafely, CorpusRender.Standalone,
+                "The boundary beside it: a bodied call to a referenced extension whose hook the probe reads perfectly well and whose answer is a body typed by the call VALUE, a role the emitter has no emission for. It degrades whichever way the property is set, which is the point — observing a hook is not a licence to emit one, and an unemittable role costs the template its tier rather than being guessed into something emittable."),
             new CorpusIntentRow("dynamic-recursion.heddle", CorpusTier.FallsBackSafely, CorpusRender.WithModel,
                 "Its embedded C# now compiles as fragments — under a FullCSharp build the whole document precompiles byte-identically (EmbeddedCSharpFragmentTests) — but this sweep builds with the default Native mode, where 'embedded C# outside FullCSharp mode' degrades it, exactly as the engine refuses the same template without FullCSharp options.",
                 bom: true),
@@ -219,8 +223,8 @@ namespace Heddle.TestCorpus
                 "Native-expression flagship: HED1004 requires a typed model, so it cannot render model-less; NativeExpressionGoldenTests owns its bytes."),
             new CorpusIntentRow("expr-functions.heddle", CorpusTier.FallsBackSafely, CorpusRender.WithModel,
                 "Native-expression function fixture: typed-model-only (HED1004), same owner as expr-flagship."),
-            new CorpusIntentRow("partial.heddle", CorpusTier.FallsBackSafely, CorpusRender.Standalone,
-                "A @partial call site the emitter cannot bind; renders model-less on the dynamic tier.",
+            new CorpusIntentRow("partial.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
+                "An HTML row fragment, named for what it is rather than for the @partial extension its Why used to blame. Its one blocker was @money(Cost){{@(Locale)}} — a bodied step-back encoder, the same refusal ctx-encoding-bodied pins — and @money was not even in the private four-name list that would have let its bodiless form bind. Both facts fell out together when the roles became an observation.",
                 bom: true),
             new CorpusIntentRow("props-card.heddle", CorpusTier.FallsBackSafely, CorpusRender.WithModel,
                 "Props card fixture whose model member the emitter cannot type; PropsGoldenTests owns its bytes."),

@@ -210,30 +210,6 @@ namespace Heddle.Generator.Emit
             _hooks = Probe.HookOracle.For(compilation, config, _extensionBinder.ExtensionAssemblies);
         }
 
-        /// <summary>
-        /// The body/chained roles for a body-hosting call, <b>observed</b> where the build can observe them and
-        /// read off <see cref="BodyModelRules"/> where it cannot.
-        /// <para>The probe wins when it has an answer, because it is the extension speaking rather than a
-        /// prediction about it — a distinction the table itself proved worth making, having carried a wrong
-        /// <c>@list</c> row for as long as it existed. The table survives as the answer for a build that is not
-        /// probing (which is every build by default) and for an extension whose assembly cannot be reached; every
-        /// row in it is held equal to the probe's answer by the engine-side lockstep suite, so the two orders of
-        /// preference agree on every name the table names.</para>
-        /// </summary>
-        private bool TryBodyRoles(string name, out BodyModelSource body, out ChainedModelSource chained)
-        {
-            if (_hooks.Enabled && _extensionBinder.TryResolve(name, out var info) &&
-                _hooks.TryGet(name, info.BareTypeName, info.AssemblyName, out var observed) &&
-                observed.Outcome == HookProbeOutcome.Classified)
-            {
-                body = observed.Body;
-                chained = observed.Chained;
-                return true;
-            }
-
-            return BodyModelRules.TryGet(name, out body, out chained);
-        }
-
         internal sealed class Result
         {
             public bool Emitted { get; set; }
@@ -898,125 +874,13 @@ namespace Heddle.Generator.Emit
                 return null;
             }
 
-            // Engine-assembly branch-role extensions (@if/@ifnot/@elif/@elseif/@else) use pinned branch emission:
-            // the emitter's parent-model body typing is the built-ins' verified contract, so bytes are unchanged.
-            // Non-engine role extensions deliberately fall through to the generic custom path.
-            if (_extensionBinder.TryResolve(name, out var branchInfo) && branchInfo.Role.HasValue &&
-                branchInfo.IsEngineAssembly)
-            {
-                // Body model: the role is consumed, not asserted — observed off the extension where the build can
-                // observe it, and read off the shared table where it cannot.
-                if (!TryBodyRoles(name, out var branchSource, out _) ||
-                    !BodyTypingRules.TryNestedBodyContext(branchSource, bctx, null, out var branchBodyCtx))
-                {
-                    reason = new Refusal(RefusalCategory.HookBehavior,
-                        "no pinned body model-typing row for branch '" + name + "'", item.Position);
-                    return null;
-                }
-
-                if (!BuildParamExpr(cp, bctx, RefStructUse.Model, out var bParam, out var bUses, out reason, item.Position))
-                    return null;
-
-                BodyClass branchBody = null;
-                if (!string.IsNullOrEmpty(item.ParameterTemplate) && item.Context != null)
-                {
-                    branchBody = BuildBody(item.ParameterTemplate, item.Context, branchBodyCtx, out reason);
-                    if (branchBody == null)
-                        return null;
-                }
-
-                bool needsLocals = branchBody != null && branchBody.HostsParticipant;
-                // Use binder's BareTypeName (handles nested types with +) and AssemblyName; don't parse display name.
-                var field = AllocateBodyExtension(name, branchInfo, branchBody?.Name, needsLocals, item.Position);
-                var call = MakeCall(field, bParam, bUses, item.Position);
-                return call;
-            }
-
-            if (name == "list")
-            {
-                if (!_extensionBinder.TryResolve(name, out var listInfo))
-                {
-                    reason = new Refusal(RefusalCategory.ExtensionBinding, "named extension '" + name + "'",
-                        item.Position);
-                    return null;
-                }
-
-                // Element body typed by the element type — the type the engine compiles it against; the enclosing
-                // prop layout, slot mode and fill scope propagate, and BodyModelRules' ElementOfData row decides
-                // the context.
-                var elementModel = ListElementModel(cp, bctx, out var elementAmbiguous);
-                if (elementAmbiguous)
-                {
-                    reason = new Refusal(RefusalCategory.UnknowableValue,
-                        "collection reaches IEnumerable<T> at more than one element type", item.Position);
-                    return null;
-                }
-
-                // The element type is now written into the body's own `(T)scope.ModelData`, so it passes the gate
-                // every other spelled name passes before it reaches the file. It is a model position: the host hands
-                // each element to `scope.Model(item, index)` boxed, which a ref struct cannot be.
-                if (elementModel != null && elementModel.TypeKind != TypeKind.Dynamic &&
-                    !CanWriteTypeName(elementModel, item.Position, out reason))
-                    return null;
-
-                if (!TryBodyRoles("list", out var listSource, out _) ||
-                    !BodyTypingRules.TryNestedBodyContext(listSource, bctx, elementModel, out var itemCtx))
-                {
-                    reason = new Refusal(RefusalCategory.HookBehavior,
-                        "no pinned body model-typing row for 'list'", item.Position);
-                    return null;
-                }
-
-                if (!BuildParamExpr(cp, bctx, RefStructUse.Model, out var lParam, out var lUses, out reason, item.Position))
-                    return null;
-
-                BodyClass itemBody = null;
-                if (!string.IsNullOrEmpty(item.ParameterTemplate) && item.Context != null)
-                {
-                    itemBody = BuildBody(item.ParameterTemplate, item.Context, itemCtx, out reason);
-                    if (itemBody == null)
-                        return null;
-                }
-
-                bool listNeedsLocals = itemBody != null && itemBody.HostsParticipant;
-                var listField = AllocateBodyExtension("list", listInfo, itemBody?.Name, listNeedsLocals,
-                    item.Position);
-                return MakeCall(listField, lParam, lUses, item.Position);
-            }
-
-            if (name == "for")
-            {
-                if (!_extensionBinder.TryResolve(name, out var forInfo))
-                {
-                    reason = new Refusal(RefusalCategory.ExtensionBinding, "named extension '" + name + "'",
-                        item.Position);
-                    return null;
-                }
-
-                // Body typed by enclosing model; @out() splices the boxed index (BodyModelRules row).
-                if (!TryBodyRoles("for", out var forSource, out _) ||
-                    !BodyTypingRules.TryNestedBodyContext(forSource, bctx, null, out var forBodyCtx))
-                {
-                    reason = new Refusal(RefusalCategory.HookBehavior,
-                        "no pinned body model-typing row for 'for'", item.Position);
-                    return null;
-                }
-
-                if (!BuildParamExpr(cp, bctx, RefStructUse.Model, out var fParam, out var fUses, out reason, item.Position))
-                    return null;
-
-                BodyClass forBody = null;
-                if (!string.IsNullOrEmpty(item.ParameterTemplate) && item.Context != null)
-                {
-                    forBody = BuildBody(item.ParameterTemplate, item.Context, forBodyCtx, out reason);
-                    if (forBody == null)
-                        return null;
-                }
-
-                bool forNeedsLocals = forBody != null && forBody.HostsParticipant;
-                var forField = AllocateBodyExtension("for", forInfo, forBody?.Name, forNeedsLocals, item.Position);
-                return MakeCall(forField, fParam, fUses, item.Position);
-            }
+            // ONE arm for every bound extension. What stood here were three near-identical name-keyed arms — the
+            // engine branch trio, @list, @for — and a fourth, generic one further down for everything else. They
+            // differed in exactly two things: the body's model role, which is an answer now rather than a name
+            // lookup, and @list's element-type ambiguity check, which follows from the ElementOfData role rather
+            // than from the name. All four already emitted the same shape.
+            if (_extensionBinder.TryResolve(name, out var bound))
+                return BuildBoundExtensionCall(name, bound, item, cp, bctx, out reason);
 
             // Reached only when the shared classifier picked the function tier.
             if (callTarget == CallTargetKind.Function && string.IsNullOrEmpty(item.ParameterTemplate))
@@ -1040,9 +904,6 @@ namespace Heddle.Generator.Emit
                 var fField = AllocateEmptyExtension(item.Position);
                 return MakeCall(fField, "(object)(" + expr + ")", writer.UsedModel, item.Position);
             }
-
-            if (_extensionBinder.TryResolve(name, out var extInfo))
-                return BuildCustomExtensionCall(name, extInfo, item, cp, bctx, out reason);
 
             // Runtime will find it but emitter cannot reproduce render protocol — must not fire HED7006.
             if (_extensionBinder.TryGetUnbindableReason(name, out var unbindableReason))
@@ -1083,58 +944,49 @@ namespace Heddle.Generator.Emit
             return null;
         }
 
-        /// <summary>Binds a custom <c>[ExtensionName]</c> extension resolved from a referenced assembly. A plain
-        /// extension (no <c>InitStart</c>/<c>CompleteInit</c> override) carries exactly the base behavior
-        /// <c>PrecompiledRuntime.Bind</c> reproduces, so it renders byte-identically. A non-engine hook override
-        /// degrades under the <c>HED7015</c> warning; an engine-assembly hook override the emitter has no pinned
-        /// knowledge of, and a bodied custom call whose body model-typing is extension-specific, degrade silently.
-        /// The exception is a BODILESS call to a pinned step-back encoder
-        /// (<see cref="ExtensionBinder.Info.HasPinnedStepBackHook"/>), which binds like a plain extension.</summary>
-        private Call BuildCustomExtensionCall(string name, ExtensionBinder.Info info, OutputItem item,
+        /// <summary>
+        /// <para>The single arm for every bound <c>[ExtensionName]</c> extension, built in or referenced, bodied or
+        /// not. Its one question is whether the build knows what this extension's compile-time hook does; everything
+        /// after that is the same emission the engine branch trio, <c>@list</c>, <c>@for</c> and a plain custom
+        /// extension all reached separately before.</para>
+        /// <para>The hook is known when the probe observed it, or when the shared table carries a row for an engine
+        /// extension — a row now held equal to the probe's own answer for every registered extension. An extension
+        /// that overrides a hook the build has not read degrades exactly as it did before, under the
+        /// <c>HED7015</c> warning where the author can act on it and silently where the shape is canonical: an
+        /// unread hook is someone else's package behaving in a way this build cannot reproduce, never an authoring
+        /// error and never a build failure.</para>
+        /// </summary>
+        private Call BuildBoundExtensionCall(string name, ExtensionBinder.Info info, OutputItem item,
             CallParameter cp, BodyContext bctx, out Refusal reason)
         {
             reason = null;
+            bool bodied = !string.IsNullOrEmpty(item.ParameterTemplate);
+            bool known = TryHookRoles(name, info, out var bodySource);
 
-            if (info.OverridesHook && !info.IsEngineAssembly && !info.Role.HasValue)
+            if (info.OverridesHook && !known)
             {
-                // HED7015: resolvable but unevaluable — reported at the call, and a WARNING that accompanies the
-                // degrade below rather than an error that fails the consumer's build. A third-party extension the
-                // generator cannot reason about is not an authoring error: it costs this call site its tier, which
-                // is the same answer HED7014 and HED7030 give for their causes. Still said out loud, and more
-                // precisely than the template-level HED7031, because "your extension's hook is why" is the one fact
-                // the author can act on.
-                // Suppressed for role extensions: a custom branch trio's InitStart override is the canonical shape,
-                // so it degrades with no diagnostic at all.
-                _diagnostics.Add(new EmitDiagnostic(GeneratorDiagnostics.ExtensionOverridesHook,
-                    item.Position, name, info.AqnSansVersion, "InitStart/CompleteInit"));
-                reason = new Refusal(RefusalCategory.HookBehavior,
-                    "extension <" + name + "> overrides a compile-time hook", item.Position);
-                return null;
-            }
+                if (!info.IsEngineAssembly && !info.Role.HasValue)
+                {
+                    // HED7015: resolvable but unevaluable — reported at the call, and a WARNING that accompanies the
+                    // degrade rather than an error that fails the consumer's build. Said out loud, and more
+                    // precisely than the template-level HED7031, because "your extension's hook is why, and probing
+                    // would read it" is the one fact the author can act on. Suppressed for role extensions: a custom
+                    // branch trio's InitStart override is the canonical shape, so it degrades with no diagnostic.
+                    _diagnostics.Add(new EmitDiagnostic(GeneratorDiagnostics.ExtensionOverridesHook,
+                        item.Position, name, info.AqnSansVersion, "InitStart/CompleteInit"));
+                    reason = new Refusal(RefusalCategory.HookBehavior,
+                        "extension <" + name + "> overrides a compile-time hook", item.Position);
+                    return null;
+                }
 
-            // A pinned step-back encoder's hook re-types only its DEFAULT BODY; a bodiless call has no body for
-            // the hook to touch, so it binds below exactly like a plain custom extension (its [EncodeOutput]
-            // render type included). A bodied call's typing IS the hook's business — that stays a dynamic
-            // fallback, through the bodied-custom refusal just after this one.
-            if (info.OverridesHook && !(info.HasPinnedStepBackHook && string.IsNullOrEmpty(item.ParameterTemplate)))
-            {
                 reason = new Refusal(RefusalCategory.HookBehavior, info.Role.HasValue
                     ? "custom branch extension <" + name + ">"
-                    : info.HasPinnedStepBackHook
-                        ? "bodied step-back encoder <" + name + ">"
-                        : "engine extension <" + name + "> with a compile-time hook (no pinned knowledge)",
-                    item.Position);
+                    : "engine extension <" + name + "> with an unread compile-time hook", item.Position);
                 return null;
             }
 
-            // A bodied custom extension's body model-typing is extension-specific (its InitStart would decide it) —
-            // conservatively fall back rather than guess. Bodiless value transformers (@ext(x)) bind directly.
-            if (!string.IsNullOrEmpty(item.ParameterTemplate))
-            {
-                reason = new Refusal(RefusalCategory.HookBehavior, "bodied custom extension <" + name + ">",
-                    item.Position);
-                return null;
-            }
+            if (bodied)
+                return BuildExtensionBodyCall(name, info, known, bodySource, item, cp, bctx, out reason);
 
             // Named arguments on a PARAMETER-LESS extension must not be silently dropped — the dynamic tier
             // hard-errors HED5005 for that call, so the precompiled tier degrades and lets the dynamic tier govern
@@ -1179,6 +1031,89 @@ namespace Heddle.Generator.Emit
 
             var field = AllocateCustomExtension(name, info, item.Position);
             return MakeCall(field, paramExpr, uses, item.Position);
+        }
+
+        /// <summary>
+        /// The bodied half of the bound-extension arm. Everything here used to be written three times, once per
+        /// name the emitter recognised.
+        /// <para>The body's role decides its typing environment: <see cref="BodyModelSource.Parent"/> keeps the
+        /// caller's, which is the branch trio, <c>@for</c> and every step-back encoder; ElementOfData types it by
+        /// the collection's element, which is <c>@list</c> and the one place the element-type ambiguity check
+        /// belongs — it is a consequence of that role, not of the name. A role the emitter has no emission for
+        /// costs the template its tier, which is the safe direction.</para>
+        /// </summary>
+        private Call BuildExtensionBodyCall(string name, ExtensionBinder.Info info, bool known,
+            BodyModelSource bodySource, OutputItem item, CallParameter cp, BodyContext bctx, out Refusal reason)
+        {
+            reason = null;
+            if (!known)
+            {
+                reason = new Refusal(RefusalCategory.HookBehavior,
+                    "no body model-typing for a body on <" + name + ">", item.Position);
+                return null;
+            }
+
+            ITypeSymbol elementModel = null;
+            if (bodySource == BodyModelSource.ElementOfData)
+            {
+                elementModel = ListElementModel(cp, bctx, out var elementAmbiguous);
+                if (elementAmbiguous)
+                {
+                    reason = new Refusal(RefusalCategory.UnknowableValue,
+                        "collection reaches IEnumerable<T> at more than one element type", item.Position);
+                    return null;
+                }
+
+                // The element type is written into the body's own `(T)scope.ModelData`, so it passes the gate every
+                // other spelled name passes. It is a model position: the host hands each element to
+                // `scope.Model(item, index)` boxed, which a ref struct cannot be.
+                if (elementModel != null && elementModel.TypeKind != TypeKind.Dynamic &&
+                    !CanWriteTypeName(elementModel, item.Position, out reason))
+                    return null;
+            }
+
+            if (!BodyTypingRules.TryNestedBodyContext(bodySource, bctx, elementModel, out var bodyCtx))
+            {
+                reason = new Refusal(RefusalCategory.HookBehavior,
+                    "body model role " + bodySource + " on <" + name + "> has no emission", item.Position);
+                return null;
+            }
+
+            if (!BuildParamExpr(cp, bctx, RefStructUse.Model, out var paramExpr, out var uses, out reason,
+                    item.Position))
+                return null;
+
+            BodyClass body = null;
+            if (item.Context != null)
+            {
+                body = BuildBody(item.ParameterTemplate, item.Context, bodyCtx, out reason);
+                if (body == null)
+                    return null;
+            }
+
+            var field = AllocateBodyExtension(name, info, body?.Name, body != null && body.HostsParticipant,
+                item.Position);
+            return MakeCall(field, paramExpr, uses, item.Position);
+        }
+
+        /// <summary>What the build knows about one extension's hook: the probe's answer where it has one, the shared
+        /// table's row for an engine extension otherwise. The assembly test on the table is not decoration — a row
+        /// describes an engine extension, and a package that registers its own <c>@list</c> must not inherit
+        /// <c>ListExtension</c>'s typing.</summary>
+        private bool TryHookRoles(string name, ExtensionBinder.Info info, out BodyModelSource body)
+        {
+            if (_hooks.Enabled && _hooks.TryGet(name, info.BareTypeName, info.AssemblyName, out var observed) &&
+                observed.Outcome == HookProbeOutcome.Classified)
+            {
+                body = observed.Body;
+                return true;
+            }
+
+            if (info.IsEngineAssembly)
+                return BodyModelRules.TryGet(name, out body, out _);
+
+            body = default;
+            return false;
         }
 
         private string AllocateCustomExtension(string name, ExtensionBinder.Info info, BlockPosition position)

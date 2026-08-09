@@ -41,4 +41,29 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
                 scope.Renderer.Render(scope.ModelData.ToString());
         }
     }
+
+    /// <summary>A referenced third-party extension with the step-back hook shape: its <c>InitStart</c> re-types the
+    /// default body against the CALLER's scope and does nothing else, exactly as the engine's own encoders do. The
+    /// build cannot read that out of metadata, so without hook probing a bodied call degrades under HED7015; with
+    /// probing it precompiles, and this fixture is the third-party case the whole probe exists for.</summary>
+    [ExtensionName("bellow")]
+    public sealed class BellowExtension : AbstractExtension
+    {
+        public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType, ExType parent)
+        {
+            return base.InitStart(initContext, parent, chainedType, null);
+        }
+
+        public override object ProcessData(in Scope scope)
+        {
+            var model = scope.ModelData;
+            var text = model == null ? GetInnerResult(scope.Parent())?.ToString() : model.ToString();
+            return (text ?? string.Empty).ToUpperInvariant();
+        }
+
+        public override void RenderData(in Scope scope)
+        {
+            scope.Renderer.Render((string) ProcessData(scope));
+        }
+    }
 }
