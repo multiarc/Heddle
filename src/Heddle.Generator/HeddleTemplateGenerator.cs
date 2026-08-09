@@ -934,14 +934,15 @@ namespace Heddle.Generator
             return null;
         }
 
-        /// <summary>Returns Heddle assembly version for manifest, or own version if Heddle is not visible (HED7019).</summary>
+        /// <summary>Returns the engine assembly's version for the manifest, or own version if the engine is not
+        /// visible (HED7019). The engine is the assembly that <i>declares</i> <c>AbstractExtension</c>, not the one
+        /// whose name happens to be spelled a particular way — the two differ under ILMerge, an extern alias and a
+        /// rename.</summary>
         private static string ResolveEngineVersion(SourceProductionContext spc, Compilation compilation)
         {
-            foreach (var reference in compilation.SourceModule.ReferencedAssemblySymbols)
-            {
-                if (string.Equals(reference.Identity.Name, "Heddle", StringComparison.Ordinal))
-                    return PrecompiledSchema.FormatEngineVersion(reference.Identity.Version);
-            }
+            var engine = ExtensionBinder.EngineAssemblyOf(compilation);
+            if (engine != null)
+                return PrecompiledSchema.FormatEngineVersion(engine.Identity.Version);
 
             var self = PrecompiledSchema.FormatEngineVersion(
                 typeof(HeddleTemplateGenerator).Assembly.GetName().Version ?? new Version(0, 0, 0));

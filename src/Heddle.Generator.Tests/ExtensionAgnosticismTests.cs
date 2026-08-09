@@ -121,16 +121,12 @@ namespace Heddle.Generator.Tests
                 "AbstractExtension's compile-time hook name, read off the base type; permanent"),
             ("src/Heddle.Generator/Emit/ExtensionBinder.cs", "Default", "equality", 1,
                 "a [Prop] named argument; permanent"),
-            ("src/Heddle.Generator/Emit/ExtensionBinder.cs", "Heddle", "call:Equals", 1,
-                "THE ENGINE ASSEMBLY NAME, compared as a string; retires in Stage 3"),
             ("src/Heddle.Generator/Emit/ExtensionBinder.cs", "InitStart", "equality", 1,
                 "AbstractExtension's compile-time hook name, read off the base type; permanent"),
             ("src/Heddle.Generator/Emit/ExtensionBinder.cs", "Optional", "equality", 1,
                 "a [Prop] named argument; permanent"),
 
             // src/Heddle.Generator/Emit/TemplateEmitter.cs
-            ("src/Heddle.Generator/Emit/TemplateEmitter.cs", "Heddle", "default-parameter", 1,
-                "the manifest row's default binding assembly, as a default parameter value; retires in Stage 3"),
             ("src/Heddle.Generator/Emit/TemplateEmitter.cs", "dynamic", "call:Equals", 3,
                 "a C# type keyword the emitter spells; permanent"),
             ("src/Heddle.Generator/Emit/TemplateEmitter.cs", "import", "equality", 1,
@@ -147,10 +143,6 @@ namespace Heddle.Generator.Tests
                 "the @profile directive: IsDirectiveName plus the running-profile flip; retires in Stage 5"),
             ("src/Heddle.Generator/Emit/TemplateEmitter.cs", "using", "equality", 2,
                 "the @using directive: IsDirectiveName plus the emitter's own handling of it; retires in Stage 5"),
-
-            // src/Heddle.Generator/HeddleTemplateGenerator.cs
-            ("src/Heddle.Generator/HeddleTemplateGenerator.cs", "Heddle", "call:Equals", 1,
-                "THE ENGINE ASSEMBLY NAME, compared as a string; retires in Stage 3"),
 
             // src/Heddle.Generator/Probe/ProbeAssemblyLoader.cs
             ("src/Heddle.Generator/Probe/ProbeAssemblyLoader.cs", "bin", "initializer", 1,
