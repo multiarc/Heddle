@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Heddle.Attributes;
@@ -669,14 +669,8 @@ namespace Heddle.Generator.Emit
                     }
 
                     body.Segments.Add(seg);
-                    if (seg is Call call)
-                    {
-                        if (call.UsesModelLocal) body.NeedsModelLocal = true;
-                    }
-                    else if (seg is Partial partial)
-                    {
-                        if (partial.UsesModelLocal) body.NeedsModelLocal = true;
-                    }
+                    if (seg is Call call && call.UsesModelLocal)
+                        body.NeedsModelLocal = true;
 
                     return true;
                 });
@@ -840,27 +834,6 @@ namespace Heddle.Generator.Emit
         private bool HasScopeChannel(string name)
             => _extensionBinder.TryResolve(name, out var i) && i.HasScopeChannel;
 
-        private sealed class Partial
-        {
-            public string FieldName;
-
-            /// <summary>The static, normalized key — null for a computed name, which lives in
-            /// <see cref="NameField"/> instead. Exactly one of the two is set.</summary>
-            public string Key;
-
-            /// <summary>The generated <c>PrecompiledPartialName</c> field holding the name the engine evaluates
-            /// once, at compile time, against <c>Scope.Null</c> — evaluated here at static init. Null for a static
-            /// name.</summary>
-            public string NameField;
-
-            public string ModelExpr;
-            public string CallerModelTypeFq;   // fully-qualified child model type for a dynamic-compiled child (the engine's dataType); null = dynamic tier
-            public bool UsesModelLocal;
-            public int SpanStartLine, SpanStartCol, SpanEndLine, SpanEndCol;
-        }
-
-        private int _partialCounter;
-
         private object BuildCall(OutputChain chain, ParseContext ctx, BodyContext bctx, out Refusal reason)
         {
             reason = null;
@@ -913,6 +886,25 @@ namespace Heddle.Generator.Emit
             if (callTarget == CallTargetKind.Definition)
                 return BuildDefinitionCall(definitionItem, chain, item, cp, bctx, isFill: false, out reason);
 
+            // Every route below spells the bound extension's own type into the consumer's assembly, so the one
+            // question that decides whether the generated file compiles at all is asked once, here, before any of
+            // them allocates a field. The engine asks it nowhere: its discovery filters on the interface and the
+            // name attribute alone, and Activator.CreateInstance is indifferent to accessibility and [Obsolete].
+            if (_extensionBinder.TryResolve(name, out var boundInfo) &&
+                !CanWriteExtensionTypeName(boundInfo.TypeSymbol, item.Position, out reason))
+                return null;
+
+            // The engine checks the call value against every type the extension declares it accepts, before it
+            // compiles the call, and refuses the whole template when a statically-typed value fits none of them.
+            // Without the same check here a template the engine will not compile precompiled and rendered.
+            if (_extensionBinder.TryResolve(name, out var acceptInfo) &&
+                !AcceptedTypeSatisfied(acceptInfo, CallSiteValueType(cp, bctx), out var acceptReason))
+            {
+                reason = new Refusal(RefusalCategory.EngineParity, "'" + name + "' " + acceptReason,
+                    item.Position);
+                return null;
+            }
+
             // The two routes below are declared roles read off the extension's own type, never names this
             // compiler knows: an extension that consumes the enclosing definition's slot parameter, and one whose
             // body names a child template it compiles and hosts, are each served here whoever wrote them. A
@@ -935,26 +927,7 @@ namespace Heddle.Generator.Emit
                 if (roleInfo.HasSlotProjection)
                     return BuildOutCall(name, roleInfo, chain, item, cp, bctx, out reason);
 
-                return BuildPartialCall(item, cp, bctx, out reason);
-            }
-
-            // Every route below spells the bound extension's own type into the consumer's assembly, so the one
-            // question that decides whether the generated file compiles at all is asked once, here, before any of
-            // them allocates a field. The engine asks it nowhere: its discovery filters on the interface and the
-            // name attribute alone, and Activator.CreateInstance is indifferent to accessibility and [Obsolete].
-            if (_extensionBinder.TryResolve(name, out var boundInfo) &&
-                !CanWriteExtensionTypeName(boundInfo.TypeSymbol, item.Position, out reason))
-                return null;
-
-            // The engine checks the call value against every type the extension declares it accepts, before it
-            // compiles the call, and refuses the whole template when a statically-typed value fits none of them.
-            // Without the same check here a template the engine will not compile precompiled and rendered.
-            if (_extensionBinder.TryResolve(name, out var acceptInfo) &&
-                !AcceptedTypeSatisfied(acceptInfo, CallSiteValueType(cp, bctx), out var acceptReason))
-            {
-                reason = new Refusal(RefusalCategory.EngineParity, "'" + name + "' " + acceptReason,
-                    item.Position);
-                return null;
+                return BuildChildTemplateCall(name, roleInfo, chain, item, cp, bctx, out reason);
             }
 
             // ONE arm for every bound extension. What stood here were three near-identical name-keyed arms — the
@@ -1044,11 +1017,22 @@ namespace Heddle.Generator.Emit
         /// anything, and they cost that one call site through the substitute.</para>
         /// </summary>
         private Call BuildBoundExtensionCall(string name, ExtensionBinder.Info info, OutputChain chain,
-            OutputItem item, CallParameter cp, BodyContext bctx, out Refusal reason)
+            OutputItem item, CallParameter cp, BodyContext bctx, out Refusal reason,
+            bool hostsChildTemplate = false)
         {
             reason = null;
             bool bodied = !string.IsNullOrEmpty(item.ParameterTemplate);
             bool known = TryHookRoles(name, info, out var bodySource);
+
+            // The child-template-host role declares its own body typing: the attribute obliges the extension to
+            // evaluate its body — the child's name — against the call value, which is the same value it obliges the
+            // child itself to be compiled against. That is a declaration by the extension's author, not a table
+            // this compiler keeps, and the hook contradicts it at registration like any other assumption.
+            if (!known && hostsChildTemplate)
+            {
+                bodySource = BodyModelSource.Data;
+                known = true;
+            }
 
             // Observation is consulted only where the build has no typing of its own, so it can only ever ADD a
             // typed body — which is what makes coverage monotone and byte identity a property of the design rather
@@ -1101,6 +1085,7 @@ namespace Heddle.Generator.Emit
                 return null;
             if (!TryPlanSite(name, chain, item, cp, bctx, out var plan, out reason))
                 return null;
+            plan.HostsChildTemplate = hostsChildTemplate;
 
             BodyClass body = null;
             if (bodied)
@@ -1218,6 +1203,22 @@ namespace Heddle.Generator.Emit
             // construction below does with a type — so it takes that arm rather than needing one of its own.
             if (observedModel != null)
                 bodySource = BodyModelSource.ElementOfData;
+            else if (bodySource == BodyModelSource.Data)
+            {
+                // The host's own data value. A caller that IS typed but whose value's type cannot be said is the
+                // one shape this role cannot carry: a guess there changes what the body evaluates to.
+                elementModel = CallSiteValueType(cp, bctx);
+                if (elementModel == null && !bctx.IsDynamic)
+                {
+                    reason = new Refusal(RefusalCategory.UnknowableValue,
+                        "'" + name + "' body over a call value with no static type", item.Position);
+                    return false;
+                }
+
+                if (elementModel != null && elementModel.TypeKind != TypeKind.Dynamic &&
+                    !CanWriteTypeName(elementModel, item.Position, out reason))
+                    return false;
+            }
             else if (bodySource == BodyModelSource.ElementOfData)
             {
                 elementModel = ListElementModel(cp, bctx, out var elementAmbiguous);
@@ -1395,6 +1396,12 @@ namespace Heddle.Generator.Emit
             public bool HasPropArguments;
             public bool RootReference;
             public bool InsideDefinition;
+
+            /// <summary>The extension bound here declares <c>[ChildTemplateHost]</c>; the runtime arms its child
+            /// supply for this site's drain and gives the synthesized scope the option the hook reads to stamp
+            /// its child's errors with an import origin.</summary>
+            public bool HostsChildTemplate;
+
             public LateBodySink Late;
 
             /// <summary>The sink of the type-agnostic body this call sits <b>inside</b>, if any; the site registers
@@ -1493,7 +1500,11 @@ namespace Heddle.Generator.Emit
                 Owner = bctx.Late,
                 DataTypePath = dataPath,
                 Name = name,
-                Position = chain != null ? chain.BlockPosition : item.Position,
+                // The engine's own position for this call, which is what it puts on the extension, on the witness
+                // source item, and on any fault raised while compiling the item. The chain's span is a different
+                // coordinate — it indexes the shaped working document, which is where the call's source text has
+                // to be sliced from and nowhere a hook or a diagnostic should ever be pointed.
+                Position = item.Position,
                 SourceText = SourceTextAt(chain != null ? chain.BlockPosition : item.Position),
                 BodyRaw = item.ParameterTemplate,
                 DataTypeExpr = dataExpr,
@@ -1571,6 +1582,8 @@ namespace Heddle.Generator.Emit
                 .Append(", HasPropArguments = ").Append(plan.HasPropArguments ? "true" : "false").Append(",\n");
             w.Append("            RootReference = ").Append(plan.RootReference ? "true" : "false")
                 .Append(", InsideDefinition = ").Append(plan.InsideDefinition ? "true" : "false");
+            if (plan.HostsChildTemplate)
+                w.Append(",\n            HostsChildTemplate = true");
             if (plan.Late != null && plan.Late.Accessors.Count != 0)
                 w.Append(",\n            BodyAccessors = new global::Heddle.Precompiled.PrecompiledLateAccessor[] { ")
                     .Append(string.Join(", ", plan.Late.Accessors)).Append(" }");
@@ -2607,131 +2620,29 @@ namespace Heddle.Generator.Emit
             return resolution.Kind == SymbolTypeResolver.PathKind.Resolved ? resolution.ResultType : null;
         }
 
-        /// <summary>Renders the named template with the parameter as its model. Strategy resolved lazily on first
-        /// render (registry first, dynamic compile second) and memoized. The engine resolves the name by compiling
-        /// the name body and executing it once, at compile time, against <c>Scope.Null</c>
-        /// (<c>PartialExtension.InitStart</c>): a chain-free body folds to its shaped text here — raw-output escapes
-        /// collapsed, definitions stripped, exactly the text the engine's evaluation yields — and a body with output
-        /// chains compiles like any other body and evaluates at static init of the generated class
-        /// (<c>PrecompiledRuntime.EvaluatePartialName</c>), failure captured and re-raised the engine's way.</summary>
-        private Partial BuildPartialCall(OutputItem item, CallParameter cp, BodyContext bctx, out Refusal reason)
+        /// <summary>
+        /// A call to an extension declaring the child-template-host role: its body names a second template, which
+        /// it compiles and hosts. Nothing about that is reproduced here — the call takes the same route every
+        /// other bound extension takes, so the name evaluation, the delayed-queue scheduling, the child's model
+        /// typing and the error marking are all the hook's own, run at static init through
+        /// <c>PrecompiledRuntime.Init</c>. The site is marked as hosting a child template, which is what arms the
+        /// engine's child supply for the length of that call's drain.
+        /// <para>The one thing decided here is the shape the role cannot carry: a call whose body names no
+        /// template at all. The engine schedules no child for it either, but the whole point of the role is the
+        /// child, so the template keeps the tier that has one.</para>
+        /// </summary>
+        private Call BuildChildTemplateCall(string name, ExtensionBinder.Info info, OutputChain chain,
+            OutputItem item, CallParameter cp, BodyContext bctx, out Refusal reason)
         {
             reason = null;
-            var name = item.ParameterTemplate;
-            if (string.IsNullOrWhiteSpace(name))
+            if (string.IsNullOrWhiteSpace(item.ParameterTemplate))
             {
-                reason = new Refusal(RefusalCategory.PartialName, "empty @partial name", item.Position);
+                reason = new Refusal(RefusalCategory.PartialName, "empty @" + name + " name", item.Position);
                 return null;
             }
 
-            var ctx = item.Context;
-            bool hasChains = ctx != null && ctx.OutputChains != null && ctx.OutputChains.Count != 0;
-            bool hasShapedText = ctx != null && !hasChains &&
-                ((ctx.RawOutputItems != null && ctx.RawOutputItems.Count != 0) ||
-                 (ctx.DefinitionsBlock != null && ctx.DefinitionsBlock.Positions != null &&
-                  ctx.DefinitionsBlock.Positions.Count != 0));
-
-            // The engine's dataType for this call — the type it compiles the name body against and hands the
-            // dynamically-compiled child (CompileItem passes the call value's type; an empty parameter passes the
-            // scope type). The old code passed the CALLER's model here, which typed a child of `@partial(Member)`
-            // by the wrong model whenever the member's type differs.
-            var childModel = CallSiteValueType(cp, bctx);
-
-            BodyClass nameBody = null;
-            if (hasChains)
-            {
-                if (!BodyTypingRules.TryPartialNameBodyContext(childModel, bctx, out var nameCtx))
-                {
-                    reason = new Refusal(RefusalCategory.PartialName,
-                        "computed @partial name over a call value with no static type", item.Position);
-                    return null;
-                }
-
-                nameBody = BuildBody(name, ctx, nameCtx, out reason);
-                if (nameBody == null)
-                    return null;
-            }
-            else if (hasShapedText)
-            {
-                name = ShapedPartialNameText(name, ctx, out reason);
-                if (name == null)
-                    return null;
-            }
-
-            string key = null;
-            if (nameBody == null && !TemplateKey.TryNormalize(name.Trim(), out key))
-            {
-                reason = new Refusal(RefusalCategory.PartialName,
-                    "unnormalizable @partial name '" + name.Trim() + "'", item.Position);
-                return null;
-            }
-
-            string callerModelFq = null;
-            if (childModel != null && childModel.TypeKind != TypeKind.Dynamic)
-            {
-                if (_resolver.ClassifyModelType(childModel, out _) != SymbolTypeResolver.NameFault.None)
-                {
-                    reason = new Refusal(RefusalCategory.UnnameableType,
-                        "@partial call value of a type generated code cannot name", item.Position);
-                    return null;
-                }
-
-                callerModelFq = SymbolTypeResolver.FullyQualified(childModel);
-            }
-
-            if (!BuildParamExpr(cp, bctx, RefStructUse.Model, out var modelExpr, out var usesModel, out reason,
-                    item.Position))
-                return null;
-
-            var field = "_partial" + _partialCounter++;
-            _fieldDecls.Append("        private static global::Heddle.Runtime.IProcessStrategy ").Append(field)
-                .Append(";\n");
-
-            string nameField = null;
-            if (nameBody != null)
-            {
-                nameField = field + "Name";
-                var bodyExpr = nameBody.HostsParticipant
-                    ? "global::Heddle.Precompiled.PrecompiledRuntime.WithLocalsFrame(new " + nameBody.Name + "())"
-                    : "new " + nameBody.Name + "()";
-                _fieldDecls.Append("        private static readonly global::Heddle.Precompiled.PrecompiledPartialName ")
-                    .Append(nameField).Append(" =\n")
-                    .Append("            global::Heddle.Precompiled.PrecompiledRuntime.EvaluatePartialName(")
-                    .Append(bodyExpr).Append(", ").Append(item.Position.StartIndex).Append(", ")
-                    .Append(item.Position.Length).Append(");\n");
-            }
-
-            var (sl, sc) = _map.Map(item.Position.StartIndex);
-            var (el, ec) = _map.Map(item.Position.StartIndex + item.Position.Length);
-            return new Partial
-            {
-                FieldName = field, Key = key, NameField = nameField, ModelExpr = modelExpr,
-                CallerModelTypeFq = callerModelFq, UsesModelLocal = usesModel,
-                SpanStartLine = sl, SpanStartCol = sc, SpanEndLine = el, SpanEndCol = ec
-            };
-        }
-
-        /// <summary>The engine's name for a chain-free body that still shapes — raw-output escapes (<c>@@</c>)
-        /// collapsed and definition blocks stripped: the same shared shaping passes the engine's sub-compile runs,
-        /// so the folded text is the document its evaluation renders. Null (with a reason) when the shaping lints
-        /// refuse the body.</summary>
-        private string ShapedPartialNameText(string doc, ParseContext ctx, out Refusal reason)
-        {
-            reason = null;
-            var shape = DocumentShaper.Shape(doc, ctx, _config.TrimDirectiveLines, chain => IsZeroOutput(chain),
-                ctx.DefenitionExists, RoleOf, HasScopeChannel, _lints, chain => _profileHtml, _lintErrors);
-            DrainLints();
-            var lintRefusal = TakeLintRefusal();
-            if (lintRefusal != null)
-            {
-                reason = new Refusal(RefusalCategory.EngineParity, lintRefusal);
-                return null;
-            }
-
-            var sb = new StringBuilder();
-            DocumentShaping.SlicePieces(shape.Elements, element => element.Position, shape.WorkingDocument,
-                piece => sb.Append(piece), element => true);
-            return sb.ToString();
+            return BuildBoundExtensionCall(name, info, chain, item, cp, bctx, out reason,
+                hostsChildTemplate: true);
         }
 
         /// <summary>
@@ -4715,26 +4626,6 @@ namespace Heddle.Generator.Emit
                     else
                         w.Line($"scope.Renderer.Render(P{p.Index});");
                 }
-                else if (seg is Partial pt)
-                {
-                    EmitLineSpanRaw(w, pt.SpanStartLine, pt.SpanStartCol, pt.SpanEndLine, pt.SpanEndCol);
-                    if (pt.NameField != null)
-                    {
-                        // The engine schedules no child for a name that evaluated empty; a faulted evaluation
-                        // throws from Get() on every render, the way the engine's Generate throws for the compile
-                        // this fault failed.
-                        w.Line($"if ({pt.NameField}.Get().Length != 0)");
-                        w.Line("{");
-                        w.Indent();
-                        w.Line($"scope.Renderer.Render(global::Heddle.Precompiled.PrecompiledRuntime.GenerateString({PartialResolveExpr(pt)}, {pt.ModelExpr}, scope.ChainedData, null));");
-                        w.Outdent();
-                        w.Line("}");
-                    }
-                    else
-                    {
-                        w.Line($"scope.Renderer.Render(global::Heddle.Precompiled.PrecompiledRuntime.GenerateString({PartialResolveExpr(pt)}, {pt.ModelExpr}, scope.ChainedData, null));");
-                    }
-                }
                 else
                 {
                     var c = (Call) seg;
@@ -4760,16 +4651,6 @@ namespace Heddle.Generator.Emit
                 {
                     concatParts.Add("P" + p.Index);
                 }
-                else if (seg is Partial pt)
-                {
-                    var v = "v" + vIndex++;
-                    EmitLineSpanRaw(w, pt.SpanStartLine, pt.SpanStartCol, pt.SpanEndLine, pt.SpanEndCol);
-                    if (pt.NameField != null)
-                        w.Line($"var {v} = {pt.NameField}.Get().Length == 0 ? string.Empty : global::Heddle.Precompiled.PrecompiledRuntime.GenerateString({PartialResolveExpr(pt)}, {pt.ModelExpr}, scope.ChainedData, null) ?? string.Empty;");
-                    else
-                        w.Line($"var {v} = global::Heddle.Precompiled.PrecompiledRuntime.GenerateString({PartialResolveExpr(pt)}, {pt.ModelExpr}, scope.ChainedData, null) ?? string.Empty;");
-                    concatParts.Add(v);
-                }
                 else
                 {
                     var c = (Call) seg;
@@ -4793,20 +4674,6 @@ namespace Heddle.Generator.Emit
 
             w.Outdent();
             w.Line("}");
-        }
-
-        /// <summary>Lazily-memoized partial-strategy resolution via <c>LazyInitializer.EnsureInitialized</c>. A
-        /// computed name reads its once-evaluated field; the lambda captures only statics, so no closure is
-        /// allocated per render.</summary>
-        private static string PartialResolveExpr(Partial pt)
-        {
-            var nameExpr = pt.Key != null ? CSharpEscape.StringLiteral(pt.Key) : pt.NameField + ".Get()";
-            var resolve = pt.CallerModelTypeFq == null
-                ? "global::Heddle.Precompiled.PrecompiledRuntime.ResolvePartial(" + nameExpr + ")"
-                : "global::Heddle.Precompiled.PrecompiledRuntime.ResolvePartial(" + nameExpr +
-                  ", typeof(" + pt.CallerModelTypeFq + "))";
-            return "global::System.Threading.LazyInitializer.EnsureInitialized(ref " + pt.FieldName +
-                   ", () => " + resolve + ")";
         }
 
         /// <summary>The line terminators C# recognises, which end a <c>#line</c> file name early, together with the

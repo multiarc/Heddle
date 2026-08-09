@@ -28,7 +28,7 @@ namespace Heddle.Generated
         internal static readonly global::Heddle.Precompiled.PrecompiledInitSite S0 = new global::Heddle.Precompiled.PrecompiledInitSite
         {
             ExtensionName = "if",
-            PositionStart = 0, PositionLength = 20,
+            PositionStart = 30, PositionLength = 13,
             SourceText = "@if(Major >0){{big}}",
             Body = new global::Heddle.Precompiled.PrecompiledInitBody { RawText = "big", ShapedText = "big", NeedsLocals = false, TypeAgnostic = false, AssumedDataType = typeof(global::System.Version), AssumedChainedType = null },
             DefinitionSlotType = null,
@@ -45,7 +45,7 @@ namespace Heddle.Generated
         internal static readonly global::Heddle.Precompiled.PrecompiledInitSite S1 = new global::Heddle.Precompiled.PrecompiledInitSite
         {
             ExtensionName = "else",
-            PositionStart = 20, PositionLength = 16,
+            PositionStart = 51, PositionLength = 6,
             SourceText = "@else(){{small}}",
             Body = new global::Heddle.Precompiled.PrecompiledInitBody { RawText = "small", ShapedText = "small", NeedsLocals = false, TypeAgnostic = false, AssumedDataType = typeof(global::System.Version), AssumedChainedType = null },
             DefinitionSlotType = null,

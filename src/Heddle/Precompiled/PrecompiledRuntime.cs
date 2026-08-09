@@ -397,12 +397,32 @@ namespace Heddle.Precompiled
         }
 
         /// <summary>Drains the delayed-template queue the way <c>HeddleTemplate.Compile</c> does, after the hook has
-        /// run and the supply is disarmed. <c>PartialExtension</c> is the engine's own user of that queue.</summary>
+        /// run and the body supply is disarmed. <c>PartialExtension</c> is the engine's own user of that queue.
+        /// <para>A site whose extension declares the child-template-host role runs that drain with the
+        /// <b>child</b> supply armed, so the <c>CompleteInit</c> the drain calls compiles its child the precompiled
+        /// way instead of reading it off disk. Arming is scoped to this one drain and cleared in a
+        /// <c>finally</c>: a child compiled here must not have its own children served from the parent's
+        /// arming.</para></summary>
         private static InitOutcome Drain(PrecompiledInitSite site, CompileScope scope)
         {
             try
             {
-                scope.Compile();
+                if (!site.HostsChildTemplate)
+                {
+                    scope.Compile();
+                }
+                else
+                {
+                    PrecompiledChildSupply.Arm();
+                    try
+                    {
+                        scope.Compile();
+                    }
+                    finally
+                    {
+                        PrecompiledChildSupply.Disarm();
+                    }
+                }
             }
             catch (Exception e)
             {
@@ -578,7 +598,12 @@ namespace Heddle.Precompiled
                 OutputProfile = site.OutputProfile,
                 ExpressionMode = site.ExpressionMode,
                 TrimDirectiveLines = site.TrimDirectiveLines,
-                MaxRecursionCount = site.MaxRecursionCount
+                MaxRecursionCount = site.MaxRecursionCount,
+                // A child-template host reads this to decide whether to stamp its child's compile errors with an
+                // ImportOrigin (PartialExtension.CompleteInit); off, the facade's re-anchoring silently stops.
+                // Set only for those sites, because the flag also buys the context a ScopeMap nothing else here
+                // reads.
+                ProvideLanguageFeatures = site.HostsChildTemplate
             };
             var context = new CompileContext(options, ToExType(site.ModelType))
             {
@@ -718,12 +743,12 @@ namespace Heddle.Precompiled
             => GenerateString(root, model, chained, callerData, null);
 
         /// <summary>Options-carrying overload. Establishes the ambient
-        /// <see cref="TemplateOptions"/> that generated <c>@partial</c> code consults through
-        /// <see cref="ResolvePartial(string)"/> for its registry-then-dynamic-compile resolution. A <c>null</c>
+        /// <see cref="TemplateOptions"/> a precompiled child template binds under — the request's own options,
+        /// which is what a child the registry does not hold is compiled from. A <c>null</c>
         /// <paramref name="options"/> inherits the current ambient (so a partial rendered inside this render keeps the
         /// outermost options); the resolver adapter passes the request's options, the typed entry passes <c>null</c>
         /// (ambient defaults to a fresh <see cref="TemplateOptions"/>). Setting the ambient never changes the dynamic
-        /// path — it is only read by <see cref="ResolvePartial(string)"/>.</summary>
+        /// path — nothing outside the precompiled tier reads it.</summary>
         public static string GenerateString(IProcessStrategy root, object model, object chained, object callerData,
             TemplateOptions options)
         {
@@ -882,7 +907,7 @@ namespace Heddle.Precompiled
         /// initializer. Reproduces <c>PartialExtension.InitStart</c>: the name body renders against
         /// <see cref="Scope.Null"/> and the trimmed result is the resolved name — a fault during that render is the
         /// engine's HED0005 compile fault for the call, captured here (never thrown, so type initialization always
-        /// succeeds) and re-raised by <see cref="PrecompiledPartialName.Get"/> at render.
+        /// succeeds) and re-raised by <see cref="PrecompiledPartialName.Get"/> at render.</para>
         /// </summary>
         /// <param name="nameBody">The compiled name-body strategy (wrapped in a locals frame when it needs one).</param>
         /// <param name="positionStart">The <c>@partial</c> call's start offset in the template document.</param>
@@ -912,12 +937,13 @@ namespace Heddle.Precompiled
             }
         }
 
-        /// <summary>Registry-then-dynamic-compile partial resolution: a registered precompiled entry wins
+        /// <summary><b>Retired in place</b>; see <see cref="ResolvePartial(string)"/> for why it stays.
+        /// <para>Registry-then-dynamic-compile partial resolution: a registered precompiled entry wins
         /// (mixed mode — a precompiled template renders a precompiled partial); otherwise the named template compiles
         /// dynamically under <paramref name="options"/> against the dynamic tier (a precompiled template renders a
         /// runtime-compiled partial). Thread-safe; generated call sites memoize the result. Returns a strategy whose
         /// render appends the partial's output — byte-identical to the runtime <c>PartialExtension</c>'s
-        /// <c>InnerTemplate.Generate</c> splice.</summary>
+        /// <c>InnerTemplate.Generate</c> splice.</para></summary>
         public static IProcessStrategy ResolvePartial(string key, TemplateOptions options)
             => ResolvePartialCore(key, options ?? new TemplateOptions(), null);
 

@@ -894,6 +894,7 @@ TYPE Heddle.Precompiled.PrecompiledInitSite
   PROP Heddle.Precompiled.PrecompiledLateAccessor[] BodyAccessors {get;set;}
   PROP System.Boolean HasProducerToRight {get;set;}
   PROP System.Boolean HasPropArguments {get;set;}
+  PROP System.Boolean HostsChildTemplate {get;set;}
   PROP System.Boolean InsideDefinition {get;set;}
   PROP System.Boolean IsChainedConsumer {get;set;}
   PROP System.Boolean RootReference {get;set;}

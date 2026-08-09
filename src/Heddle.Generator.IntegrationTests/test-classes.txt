@@ -12,6 +12,7 @@ Heddle.Generator.IntegrationTests.BranchTests
 Heddle.Generator.IntegrationTests.CSharpVerbatimTests
 Heddle.Generator.IntegrationTests.ChainedDefinitionFallbackTests
 Heddle.Generator.IntegrationTests.CheckedOverflowContextTests
+Heddle.Generator.IntegrationTests.ChildTemplateHostTests
 Heddle.Generator.IntegrationTests.CollisionDispatchDifferentialTests
 Heddle.Generator.IntegrationTests.CompileChannelDrainTests
 Heddle.Generator.IntegrationTests.CompositionTests

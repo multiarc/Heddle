@@ -31,7 +31,7 @@ namespace Heddle.Generated
         internal static readonly global::Heddle.Precompiled.PrecompiledInitSite S0 = new global::Heddle.Precompiled.PrecompiledInitSite
         {
             ExtensionName = "tag",
-            PositionStart = 0, PositionLength = 10,
+            PositionStart = 66, PositionLength = 9,
             DefinitionPositionStart = 2, DefinitionPositionLength = 60,
             SourceText = "@tag(\"hi\")",
             DefinitionBody = new global::Heddle.Precompiled.PrecompiledInitBody { RawText = "[@(label)]", ShapedText = "[@(label)]", NeedsLocals = false, AssumedDataType = typeof(string) },
