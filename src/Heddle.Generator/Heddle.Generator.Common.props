@@ -99,4 +99,55 @@
     <Compile Include="$(MSBuildThisFileDirectory)..\Heddle\Attributes\BranchRole.cs" Link="Shared\Attributes\BranchRole.cs" />
   </ItemGroup>
 
+  <!-- The compile-input manifest. What ends up in Heddle.Generator.dll is the sources in this directory PLUS
+       every linked file above, so a gate that walks the directory sees about a third of the assembly and misses
+       the largest name table in it. The list of files the compiler is actually given is written here and embedded,
+       so the gate reads it off the built assembly instead of guessing at a directory. Written and added to
+       @(EmbeddedResource) in one target, hooked ahead of AssignTargetPaths: a resource added later than
+       _GenerateCompileInputs (which itself runs before BeforeCompile) never reaches csc. Not the PDB document
+       table: documents are emitted per sequence point, so a file carrying only constants and no method body need
+       not appear, and a hole in the enumerator is worse than no enumerator. -->
+  <UsingTask TaskName="HeddleWriteSortedRelativePaths" TaskFactory="RoslynCodeTaskFactory"
+             AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <Paths ParameterType="System.String[]" Required="true" />
+      <RepoRoot ParameterType="System.String" Required="true" />
+      <Destination ParameterType="System.String" Required="true" />
+    </ParameterGroup>
+    <Task>
+      <Code Type="Fragment" Language="cs"><![CDATA[
+        var root = RepoRoot.Replace('\\', '/');
+        if (!root.EndsWith("/", StringComparison.Ordinal))
+            root += "/";
+        var relative = new SortedSet<string>(StringComparer.Ordinal);
+        foreach (var path in Paths)
+        {
+            var full = Path.GetFullPath(path).Replace('\\', '/');
+            relative.Add(full.StartsWith(root, StringComparison.OrdinalIgnoreCase)
+                ? full.Substring(root.Length)
+                : full);
+        }
+
+        var text = string.Join("\n", relative.ToArray()) + "\n";
+        var destination = Path.GetFullPath(Destination);
+        Directory.CreateDirectory(Path.GetDirectoryName(destination));
+        if (!System.IO.File.Exists(destination) || System.IO.File.ReadAllText(destination) != text)
+            System.IO.File.WriteAllText(destination, text);
+      ]]></Code>
+    </Task>
+  </UsingTask>
+
+  <Target Name="HeddleWriteCompileManifest" BeforeTargets="AssignTargetPaths">
+    <PropertyGroup>
+      <HeddleCompileManifestPath>$([System.IO.Path]::Combine('$(MSBuildProjectDirectory)', '$(IntermediateOutputPath)', 'Heddle.Generator.CompileInputs.txt'))</HeddleCompileManifestPath>
+    </PropertyGroup>
+    <HeddleWriteSortedRelativePaths Paths="@(Compile->'%(FullPath)')"
+                                    RepoRoot="$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../..'))"
+                                    Destination="$(HeddleCompileManifestPath)" />
+    <ItemGroup>
+      <EmbeddedResource Include="$(HeddleCompileManifestPath)" LogicalName="Heddle.Generator.CompileInputs.txt" />
+      <FileWrites Include="$(HeddleCompileManifestPath)" />
+    </ItemGroup>
+  </Target>
+
 </Project>

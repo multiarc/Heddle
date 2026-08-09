@@ -49,10 +49,16 @@ A built-in's name, type or assembly is knowledge to **read**, never to restate. 
 through `ExtensionBinder`'s `Info` (global name, bare type name, assembly, attributes), types a body
 from the role its hook reports (probed, or the lockstep-held `BodyModelRules` row), and derives a
 render type from `[EncodeOutput]`/`[NotEncode]` — so a name-keyed arm is a prediction the engine can
-falsify. `ExtensionAgnosticismTests` gates this by source text over `src/Heddle.Generator/**`: no
-`name == "…"` compare against a built-in, no `Heddle.Extensions.` type literal, no `"Heddle"`
-assembly-name compare, no pinned name list on the binder. Both allow-lists are declared, and every
-entry carries the reason it is allowed; adding one is the reviewable act.
+falsify. `ExtensionAgnosticismTests` gates this over the **compile-input manifest** the generator
+embeds — every file the compiler is given, linked shared sources included, rather than the
+generator's own directory, which is a third of the assembly and excludes `BodyModelRules`: no
+identifier-shaped string literal in a name-ish position (`==`/`!=`, `case`, a constant pattern, an
+`Equals`/`Contains`/`TryGetValue`/`StartsWith` argument, an initializer element, an element-access
+key, a `const string`, a default parameter value), no type in a namespace the engine declares an
+`[ExtensionName]` in, no static string table whose contents hold a built-in's name — read by value
+off the built assembly, so a renamed or moved table is the same table — and no pinned name list on
+the binder. The allow-lists are declared, and every entry carries the reason it is allowed and
+either `permanent` or the stage that retires it; adding one is the reviewable act.
 
 ## Linked-`Compile` placement conventions
 
