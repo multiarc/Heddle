@@ -13,8 +13,9 @@ namespace Heddle.Generator.Emit
     /// security fix in the extension package reaches precompiled templates by updating the reference, no regeneration.
     /// <para>Two refusals are recorded: a bound extension <b>outside the engine assembly</b> that overrides
     /// the compile-time hooks <c>InitStart</c>/<c>CompleteInit</c> cannot be reproduced by <c>Bind</c> (which
-    /// reproduces the <i>base</i> behavior only) → <c>HED7015</c>; and an engine-assembly extension with such an
-    /// override that the emitter has no pinned knowledge of stays a safe dynamic fallback (never a mis-emit).</para>
+    /// reproduces the <i>base</i> behavior only) → a dynamic fallback under the <c>HED7015</c> <b>warning</b>; and an
+    /// engine-assembly extension with such an override that the emitter has no pinned knowledge of stays a safe
+    /// dynamic fallback with no diagnostic at all (never a mis-emit).</para>
     /// </summary>
     internal sealed class ExtensionBinder
     {

@@ -318,10 +318,10 @@ namespace Heddle.Data
                 "build-time work is not being done for this template. Where precompilation is a requirement " +
                 "rather than an optimisation, make this fatal with " +
                 "<WarningsAsErrors>HED7031</WarningsAsErrors>.");
-            Add(HeddleDiagnosticIds.BuildExtensionOverridesHook, "Extension overrides a compile-time hook", error,
+            Add(HeddleDiagnosticIds.BuildExtensionOverridesHook, "Extension overrides a compile-time hook", warning,
                 "Extension <{0}> ({1}) overrides {2}, which runs compile-time logic the generator cannot evaluate " +
-                "at build time; precompiled binding would silently skip it. Exclude this template from " +
-                "pre-compilation (Precompile=\"false\" or <HeddleTemplate Remove=\"…\" />), or keep the " +
+                "at build time; precompiled binding would silently skip it, so this template renders through the " +
+                "dynamic path at run time instead. The output is identical either way. To pre-compile it, keep the " +
                 "extension's compile-time behavior in the base implementation.");
             Add(HeddleDiagnosticIds.BuildBranchRoleMissingScopeChannel, "Branch role without scope channel",
                 warning,

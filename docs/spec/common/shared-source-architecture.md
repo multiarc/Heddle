@@ -64,8 +64,10 @@ Rule cores and tables under `src/Heddle/Language/**` (`ParticipantScan`, `SlotRu
 `RegionFillResolver`, `BranchSetLint`, `OutputLints`, `CompileWarningFactory`,
 `HeddleDiagnosticProjection`, `Expressions/**` incl. `EmbeddedCSharpNames`, the
 `NumericKind`/conversion tables, `NativeOperatorRules`, `OverloadRank`, `LiteralFormatter`,
-`CSharpEscape`, `Members/**` incl. `MemberPathWalk`, `MemberVisibility`, `MemberHopRule`, and
-`Binding/**`); precompiled-contract helpers under `src/Heddle/Precompiled/` (`AqnFormatter`,
+`CSharpEscape`, `Members/**` incl. `MemberPathWalk`, `MemberVisibility`, `MemberHopRule`,
+`HookProbeProtocol` — the hook probe's sentinel types, probe documents and decode function, data
+plus a pure decode with the drivers per tier (an in-process one on the engine side, a reflection
+one over a loaded engine on the build side) and the lockstep test between them — and `Binding/**`); precompiled-contract helpers under `src/Heddle/Precompiled/` (`AqnFormatter`,
 `ContentHash`, `PrecompiledSchema`, `TemplateKey` + `TryMakeRelative`/`ToPath`/
 `TemplateExtension`, `HeddleBuildOptions`); data tables under `src/Heddle/Data/`
 (`HeddleDiagnosticCatalog`, `LineIndex`, `OutputProfileRules`, `RenderTypeRules`); and

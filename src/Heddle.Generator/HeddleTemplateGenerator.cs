@@ -353,9 +353,9 @@ namespace Heddle.Generator
                         modelType: template.ModelType);
                     var result = emitter.Emit(ContentHash.HashText(template.Content));
 
-                    // Emitter diagnostics (HED7006, HED7015). An error here is as unreachable for an import-only
-                    // fragment as a parse error is — a bodied call to a definition the importer supplies is one of
-                    // the shapes that only fails standalone — so errors join the same held channel.
+                    // Emitter diagnostics (HED7006 error, HED7015 warning). An error here is as unreachable for an
+                    // import-only fragment as a parse error is — a bodied call to a definition the importer supplies
+                    // is one of the shapes that only fails standalone — so errors join the same held channel.
                     if (result.Diagnostics != null)
                     {
                         var text = template.Text.GetText();

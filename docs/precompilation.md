@@ -481,8 +481,9 @@ Custom `[ExtensionName]` extensions bind **from the referenced assembly, never i
 security or logic patch reaches precompiled templates by updating the package. See
 [custom‑extensions.md](custom-extensions.md#precompiled-mode) for the requirements
 (parameterless ctor; no reliance on runtime registry mutation; a `InitStart`/`CompleteInit`
-override is refused as `HED7015` — **except** for a `[BranchRole]` custom branch extension, whose
-`InitStart` override is its canonical shape and instead degrades quietly to the dynamic tier).
+override costs the call site its tier under the `HED7015` **warning** — the build does not fail, the
+template renders through the dynamic path — **except** for a `[BranchRole]` custom branch extension,
+whose `InitStart` override is its canonical shape and degrades with no diagnostic at all).
 
 ### Startup order: a suggestion, not a rule
 
@@ -566,7 +567,7 @@ their `.heddle` position; file/key/option‑level conditions report without a so
 | `HED7011` | An `@<<` import is not among the compilation's `.heddle` `AdditionalFiles`. The spelling is matched against the item's key, so it is case-sensitive; it is first reduced the way the engine's own `Path.GetFullPath` reduces it — `.` segments and repeated separators drop out, a `..` cancels the segment before it, and a trailing separator survives (so `lib.heddle/.` names the file and `lib.heddle/` names a directory neither tier can read). Which characters separate segments is the platform's answer: a backslash separates on Windows and is an ordinary file-name character elsewhere, on both tiers. A `..` that reaches above the template root names nothing on either tier. An import path is **not** a template key, so the key idioms are refused rather than applied: a leading `/` is an absolute path to `Path.Combine`, a leading `~/` is a literal `~` directory, and an extension-less name is a file without an extension — the precompiler declines each of the three rather than renaming the file the engine reads. |
 | `HED7012`/`HED7013` | A forwarded front‑end error/warning carrying no id. |
 | `HED7014` | A called function no build‑time registration binds, in a call shape a late‑bound site cannot serve either (chiefly an argument whose static type has no build‑time answer) — the template falls back (warning). A delegate‑only registration alone no longer reaches this: see *Functions the build cannot see*. |
-| `HED7015` | A bound extension overrides a compile‑time hook — unevaluable at build. |
+| `HED7015` | A bound extension outside the engine assembly overrides a compile‑time hook — unevaluable at build, so the template falls back to the dynamic tier (warning). It was an **error** until the hook‑probing work: a third‑party extension the generator cannot reason about should cost its call site the precompiled tier, not fail the consumer's build. The id is kept rather than folded into `HED7031`, because naming the extension and the hook is the one fact the author can act on. |
 | `HED7016` | A branch continuation/terminal (`[BranchRole]`) omits `[ScopeChannel]`, so it can never read the branch state at run time (warning). |
 | `HED7017` | An extension declares a malformed `[Prop]` parameter — the build‑tier twin of the dynamic tier's declaration diagnostics. |
 | `HED7018` | A template is outside `HeddleTemplateRoot` and has no explicit `Key`, so its directory is dropped and it registers under a flattened filename key (warning). Only `Key` suppresses it: a `Name` is additive and leaves the flattened key in place, so the warning is still about something real. |

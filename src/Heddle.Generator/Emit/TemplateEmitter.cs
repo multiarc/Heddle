@@ -1043,9 +1043,9 @@ namespace Heddle.Generator.Emit
 
         /// <summary>Binds a custom <c>[ExtensionName]</c> extension resolved from a referenced assembly. A plain
         /// extension (no <c>InitStart</c>/<c>CompleteInit</c> override) carries exactly the base behavior
-        /// <c>PrecompiledRuntime.Bind</c> reproduces, so it renders byte-identically. A non-engine hook override is
-        /// refused as <c>HED7015</c>; an engine-assembly hook override the emitter has no pinned knowledge of, and a
-        /// bodied custom call whose body model-typing is extension-specific, degrade to a safe dynamic fallback.
+        /// <c>PrecompiledRuntime.Bind</c> reproduces, so it renders byte-identically. A non-engine hook override
+        /// degrades under the <c>HED7015</c> warning; an engine-assembly hook override the emitter has no pinned
+        /// knowledge of, and a bodied custom call whose body model-typing is extension-specific, degrade silently.
         /// The exception is a BODILESS call to a pinned step-back encoder
         /// (<see cref="ExtensionBinder.Info.HasPinnedStepBackHook"/>), which binds like a plain extension.</summary>
         private Call BuildCustomExtensionCall(string name, ExtensionBinder.Info info, OutputItem item,
@@ -1055,9 +1055,14 @@ namespace Heddle.Generator.Emit
 
             if (info.OverridesHook && !info.IsEngineAssembly && !info.Role.HasValue)
             {
-                // HED7015: resolvable but unevaluable — a build error, not a silent degrade (contrast HED7014).
+                // HED7015: resolvable but unevaluable — reported at the call, and a WARNING that accompanies the
+                // degrade below rather than an error that fails the consumer's build. A third-party extension the
+                // generator cannot reason about is not an authoring error: it costs this call site its tier, which
+                // is the same answer HED7014 and HED7030 give for their causes. Still said out loud, and more
+                // precisely than the template-level HED7031, because "your extension's hook is why" is the one fact
+                // the author can act on.
                 // Suppressed for role extensions: a custom branch trio's InitStart override is the canonical shape,
-                // not an authoring error — it degrades quietly to the dynamic tier instead.
+                // so it degrades with no diagnostic at all.
                 _diagnostics.Add(new EmitDiagnostic(GeneratorDiagnostics.ExtensionOverridesHook,
                     item.Position, name, info.AqnSansVersion, "InitStart/CompleteInit"));
                 reason = new Refusal(RefusalCategory.HookBehavior,
@@ -1106,8 +1111,9 @@ namespace Heddle.Generator.Emit
                 var extLayout = ResolveExtensionPropLayout(name, info, item.Position);
                 if (extLayout == null)
                 {
-                    // Malformed [Prop] declaration — HED7017 recorded (once per extension type); refuse, the
-                    // build fails like HED7015 rather than silently degrading.
+                    // Malformed [Prop] declaration — HED7017 recorded (once per extension type); refuse. HED7017 is
+                    // an error, so the build fails rather than silently degrading: a malformed declaration is an
+                    // authoring fault, unlike the hook override HED7015 now merely warns about.
                     reason = new Refusal(RefusalCategory.ExtensionBinding,
                         "malformed [Prop] declaration on extension <" + name + ">", item.Position);
                     return null;

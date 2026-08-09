@@ -442,7 +442,7 @@ only the statically visible case.
 **Precompilation.** Custom branch sets are fully functional on the runtime (dynamic) tier — the
 set‑*structuring* rules above apply on both tiers because classification is role‑based everywhere.
 Only the pinned branch *emission* is reserved for the engine's own built‑ins; a bodied call to a
-custom branch extension simply falls back quietly to the dynamic tier (no `HED7015` error — the
+custom branch extension simply falls back quietly to the dynamic tier (no `HED7015` at all — the
 `InitStart` override is the canonical shape here, not a mistake), and renders identically with full
 role semantics.
 
@@ -491,9 +491,10 @@ Usage in a template: `@upper(Name)`.
 
 > **Precompilation note.** This example overrides `InitStart` (to type the body against the parent
 > model), which is a **runtime‑tier** shape. Because `UpperExtension` is not a `[BranchRole]` extension,
-> a *precompiled* template calling `@upper(...)` draws a build error (`HED7015`) — see
-> [Precompiled mode](#precompiled-mode). If your templates must precompile, omit the `InitStart` override
-> (accepting the default typing) or keep such templates on the dynamic tier.
+> a *precompiled* template calling `@upper(...)` falls back to the dynamic tier and says so with the
+> `HED7015` **warning** — your build still succeeds and the page still renders — see
+> [Precompiled mode](#precompiled-mode). If such templates must precompile, omit the `InitStart` override
+> (accepting the default typing).
 >
 > The example also derives from `AbstractHtmlExtension`/`[EncodeOutput]`, whose HTML encoding is **not**
 > reproduced by precompiled binding (see the warning under [Precompiled mode](#precompiled-mode)).
@@ -603,9 +604,11 @@ reproduces:
 - **No `InitStart`/`CompleteInit` override** *(outside the engine assembly)*. Those are
   compile‑time hooks the build‑time backend runs the *base* behavior of; an override could run
   arbitrary compile‑time logic the generator cannot evaluate, so a template binding such an
-  extension is a build error (`HED7015`). **Exception:** a `[BranchRole]` custom branch extension
-  is expected to override `InitStart` (its canonical parent‑model shape), so it is *not* a
-  `HED7015` error — a bodied call to it degrades quietly to the dynamic tier instead (see
+  extension **falls back to the dynamic tier** and reports the `HED7015` warning naming the extension
+  and the hook. It is deliberately not an error: an extension the generator cannot reason about should
+  cost its call site the precompiled tier, not fail your build. **Exception:** a `[BranchRole]` custom
+  branch extension is expected to override `InitStart` (its canonical parent‑model shape), so it draws
+  no `HED7015` at all — a bodied call to it degrades silently (see
   [Building your own branch set](#building-your-own-branch-set)). Keep custom logic in `ProcessData`/`RenderData` — the
   render‑time methods both backends share. A plain, non‑encoding extension (the common case) needs no changes.
 - **A `[Prop]` default whose type generated code can name.** Defaults are frozen into the generated
@@ -629,9 +632,9 @@ it conservatively). Bodied calls therefore run identically to the dynamic path.
 > either **encode explicitly inside your `ProcessDataInternal`/`RenderDataInternal` override** (so output is
 > safe on both tiers) or **exclude such templates from precompilation**. The same gap affects the built‑in
 > `@html`. (Scope: the unsafe path is a *bodiless* call — a `{{ … }}` body falls back to the encoding
-> dynamic tier — with *no* `InitStart`/`CompleteInit` override, since an override is caught loudly as
-> `HED7015`. Built‑ins `@string`/`@money`/`@date`/`@time`/`@int` are unaffected because they override a
-> compile‑time hook and fall back to the dynamic tier.)
+> dynamic tier — with *no* `InitStart`/`CompleteInit` override, since an override takes the call site off
+> the precompiled tier under `HED7015`. Built‑ins `@string`/`@money`/`@date`/`@time`/`@int` are unaffected
+> because they override a compile‑time hook and fall back to the dynamic tier.)
 
 An extension name that resolves to no `[ExtensionName]` type in any referenced assembly is a
 build error (`HED7006`) **when the call carries a `{{ … }}` body**; a bodiless unresolvable call falls back
