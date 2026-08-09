@@ -16,7 +16,8 @@
     <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
     <CompilerGeneratedFilesOutputPath>generated</CompilerGeneratedFilesOutputPath>
     <EnableDefaultHeddleTemplates>false</EnableDefaultHeddleTemplates>
-    <!-- receipt.heddle stays dynamic (mixed mode) — precompiled invoice + dynamic receipt. -->
+    <!-- The three templates below are named explicitly rather than globbed; all three precompile, which
+         golden/discovery.txt pins. -->
   </PropertyGroup>
 
   <ItemGroup>

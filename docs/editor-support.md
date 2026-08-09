@@ -148,6 +148,14 @@ which model assemblies to load; the build tier is told by a reference, which
 `HeddleTemplate.Register` reads at startup. Declaring it once covers the run and build tiers; point
 `assemblies` at the same DLLs and all three agree about what `@model Foo` names.
 
+**The editor does not probe.** [Hook probing](precompilation.md#hook-probing-opt-in) is a **build‑tier**
+mechanism — the generator loading a referenced extension and interrogating its compile‑time hook so it can
+emit that call site instead of degrading. The language server has no equivalent switch and runs no probe: it
+hosts the dynamic engine, which calls every hook the ordinary way while compiling the buffer you are editing,
+and it loads the assemblies `assemblies` names only to read their types, exports and extension names. So
+`HeddleProbeExtensionHooks` changes what a build emits and changes nothing you see in the editor, in either
+direction.
+
 **The scan is one‑shot per server process.** A new export, a changed extension body, or an
 `assemblies` change after load requires a **server restart** (VS Code: *Heddle: Restart Language
 Server*). Consider a dedicated export assembly so an extension/function export never pulls model

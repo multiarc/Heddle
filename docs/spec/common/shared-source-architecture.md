@@ -43,6 +43,17 @@ moves, or edits shared source follows these rules.
   **linked data plus a lockstep test** (the `DefaultFunctionLockstepTests` pattern), so a
   unilateral change turns a silent byte divergence into a red test naming the rule.
 
+## The generator names no extension
+
+A built-in's name, type or assembly is knowledge to **read**, never to restate. The generator binds
+through `ExtensionBinder`'s `Info` (global name, bare type name, assembly, attributes), types a body
+from the role its hook reports (probed, or the lockstep-held `BodyModelRules` row), and derives a
+render type from `[EncodeOutput]`/`[NotEncode]` — so a name-keyed arm is a prediction the engine can
+falsify. `ExtensionAgnosticismTests` gates this by source text over `src/Heddle.Generator/**`: no
+`name == "…"` compare against a built-in, no `Heddle.Extensions.` type literal, no `"Heddle"`
+assembly-name compare, no pinned name list on the binder. Both allow-lists are declared, and every
+entry carries the reason it is allowed; adding one is the reviewable act.
+
 ## Linked-`Compile` placement conventions
 
 - Files under `src/Heddle/Language/**` are auto-linked into the generator by the existing
@@ -60,14 +71,18 @@ moves, or edits shared source follows these rules.
 ## The shared surface (as landed)
 
 Rule cores and tables under `src/Heddle/Language/**` (`ParticipantScan`, `SlotRules`,
-`CallTargetRules`, `BodyModelRules`, `DocumentShaping` incl. `SlicePieces<T>`,
+`CallTargetRules`, `BodyModelRules` (whose rows are held equal to the extensions' own `InitStart`
+by the hook-probe lockstep, so the table is an observation the build falls back on rather than a
+prediction), `DocumentShaping` incl. `SlicePieces<T>`,
 `RegionFillResolver`, `BranchSetLint`, `OutputLints`, `CompileWarningFactory`,
 `HeddleDiagnosticProjection`, `Expressions/**` incl. `EmbeddedCSharpNames`, the
 `NumericKind`/conversion tables, `NativeOperatorRules`, `OverloadRank`, `LiteralFormatter`,
 `CSharpEscape`, `Members/**` incl. `MemberPathWalk`, `MemberVisibility`, `MemberHopRule`,
-`HookProbeProtocol` — the hook probe's sentinel types, probe documents and decode function, data
-plus a pure decode with the drivers per tier (an in-process one on the engine side, a reflection
-one over a loaded engine on the build side) and the lockstep test between them — and `Binding/**`); precompiled-contract helpers under `src/Heddle/Precompiled/` (`AqnFormatter`,
+`HookProbeProtocol` — the hook probe's sentinel types, probe documents and decode function: data
+plus a pure decode, with the drivers per tier (an in-process one on the engine side, a reflection
+one over a loaded engine on the build side) and the lockstep test between them — and `Binding/**`
+incl. `TypeNameIndex` behind `ITypeNameMaps<TType>`, the one type-name ladder both tiers resolve
+`@model` spellings through); precompiled-contract helpers under `src/Heddle/Precompiled/` (`AqnFormatter`,
 `ContentHash`, `PrecompiledSchema`, `TemplateKey` + `TryMakeRelative`/`ToPath`/
 `TemplateExtension`, `HeddleBuildOptions`); data tables under `src/Heddle/Data/`
 (`HeddleDiagnosticCatalog`, `LineIndex`, `OutputProfileRules`, `RenderTypeRules`); and
