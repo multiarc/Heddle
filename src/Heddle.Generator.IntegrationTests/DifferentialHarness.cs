@@ -716,7 +716,7 @@ namespace Heddle.Generator.IntegrationTests
             }
         }
 
-        private static Type FindEntryTypeByKey(Assembly assembly, string key)
+        internal static Type FindEntryTypeByKey(Assembly assembly, string key)
         {
             var sanitized = SanitizeKey(key);
             foreach (var type in assembly.GetTypes())

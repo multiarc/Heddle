@@ -43,8 +43,10 @@ namespace Heddle.Generator.Pipeline
                 HeddleBuildOptions.DefaultGeneratedNamespace);
             var emitU8 = ReadBool(lookup, HeddleBuildOptions.EmitUtf8PiecesProperty,
                 HeddleBuildOptions.DefaultEmitUtf8Pieces, errors);
+            var nodeFallback = ReadBool(lookup, HeddleBuildOptions.NodeFallbackProperty,
+                HeddleBuildOptions.DefaultNodeFallback, errors);
 
-            return new GlobalConfig(profile, mode, trim, maxRecursion, root, ns, emitU8);
+            return new GlobalConfig(profile, mode, trim, maxRecursion, root, ns, emitU8, nodeFallback);
         }
 
         private static TEnum ReadEnum<TEnum>(Func<string, string> lookup, string name, TEnum fallback,

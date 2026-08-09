@@ -23,8 +23,10 @@ namespace Heddle.Generator.Emit
         /// for the selector a later stage adds; no selector chooses it yet.</summary>
         LateBound,
 
-        /// <summary>Compute the value the way the engine computes it, once, into a static accessor delegate.
-        /// Declared for the selector a later stage adds; no selector chooses it yet.</summary>
+        /// <summary>Compute the value the way the engine computes it: a static accessor delegate built once at
+        /// type-init from the engine's own member resolution, called once per render. Chosen for a member-path
+        /// value the engine resolves but generated C# cannot spell — never for control flow, which stays fully
+        /// precompiled or degrades the template.</summary>
         EngineAccessor,
 
         /// <summary>No plan produces the engine's bytes; carries a categorized <see cref="Refusal"/>.</summary>
@@ -49,6 +51,8 @@ namespace Heddle.Generator.Emit
         public static EmissionPlan Direct => new EmissionPlan(EmissionPlanKind.Direct, null);
 
         public static EmissionPlan Stringified => new EmissionPlan(EmissionPlanKind.Stringified, null);
+
+        public static EmissionPlan EngineAccessor => new EmissionPlan(EmissionPlanKind.EngineAccessor, null);
 
         public static EmissionPlan Refused(Refusal refusal) => new EmissionPlan(EmissionPlanKind.Refuse, refusal);
     }

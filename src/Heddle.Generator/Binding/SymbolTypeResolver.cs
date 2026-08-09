@@ -745,6 +745,72 @@ namespace Heddle.Generator.Binding
         }
 
         /// <summary>
+        /// Whether the <b>engine</b> resolves the whole of <paramref name="segments"/> off <paramref name="start"/>
+        /// <i>and</i> the accessor it compiles for the path is constructible — the per-node fallback's selection
+        /// question. Byte parity comes from the engine's own accessor, so the only thing to prove at build time is
+        /// that the engine succeeds: each hop must bind under the shared walk (consulted over the full-metadata
+        /// view where the ordinary symbol model hides a member this compilation may not name), must not be dynamic
+        /// or indexed, and must not read or produce a pointer or by-ref-like value — the shapes the engine's own
+        /// expression trees refuse at its compile, where the degrade already reproduces its refusal.
+        /// </summary>
+        internal bool EngineViewResolves(ITypeSymbol start, IReadOnlyList<string> segments)
+        {
+            if (start == null || segments == null || segments.Count == 0)
+                return false;
+            if (start.TypeKind == TypeKind.Dynamic || IsRefLikeOrRestricted(start))
+                return false;
+
+            var current = start;
+            for (int i = 0; i < segments.Count; i++)
+            {
+                if (current == null || current.TypeKind == TypeKind.Dynamic)
+                    return false;
+                var prop = FindProperty(current, segments[i]) ?? FindPropertyInEngineView(current, segments[i]);
+                if (prop == null || !prop.Parameters.IsEmpty)
+                    return false;
+                var propertyType = prop.Type;
+                if (propertyType == null ||
+                    propertyType.TypeKind == TypeKind.Pointer ||
+                    propertyType.TypeKind == TypeKind.FunctionPointer ||
+                    IsRefLikeOrRestricted(propertyType))
+                    return false;
+                current = propertyType;
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// The engine's answer for a hop the ordinary symbol model reports absent: Roslyn imports from a metadata
+        /// reference only the members this compilation could legally name, so a referenced assembly's
+        /// <c>internal</c> property is not <i>inaccessible</i> in the symbol model, it is missing from it. The
+        /// full-metadata view carries it, and the shared walk over that view — pinned to the receiver's own
+        /// assembly, so a same-named type in another reference cannot answer for it — is the engine's view.
+        /// Source receivers are answered by the ordinary model (a compilation shows every member of its own types),
+        /// and constructed generics are declined: the full-metadata lookup answers with the open definition, whose
+        /// property types are type parameters the walk cannot continue from.
+        /// </summary>
+        private IPropertySymbol FindPropertyInEngineView(ITypeSymbol receiver, string name)
+        {
+            if (!(receiver is INamedTypeSymbol named) || named.IsGenericType || named.ContainingAssembly == null)
+                return null;
+            foreach (var location in named.Locations)
+                if (location.IsInSource)
+                    return null;
+
+            foreach (var candidate in MapToFullMetadataView(named))
+            {
+                if (candidate.ContainingAssembly == null ||
+                    !candidate.ContainingAssembly.Identity.Equals(named.ContainingAssembly.Identity))
+                    continue;
+                if (MemberPathWalk.TryFind(SymbolMemberModel.Instance, candidate, name, out var found))
+                    return found;
+            }
+
+            return null;
+        }
+
+        /// <summary>
         /// The same references opened with <see cref="MetadataImportOptions.All"/> — as close to reflection's view,
         /// and therefore the engine's, as the symbol model gets. Built per compilation and only on the path that is
         /// about to report a member failure, which is rare; held weakly against the compilation it describes so it

@@ -18,12 +18,17 @@ namespace Heddle.Precompiled
         public const string TemplateRootProperty = "HeddleTemplateRoot";
         public const string GeneratedNamespaceProperty = "HeddleGeneratedNamespace";
         public const string EmitUtf8PiecesProperty = "HeddleEmitUtf8Pieces";
+        public const string NodeFallbackProperty = "HeddleNodeFallback";
 
         public const OutputProfile DefaultOutputProfile = OutputProfile.Html;
         public const ExpressionMode DefaultExpressionMode = ExpressionMode.Native;
         public const bool DefaultTrimDirectiveLines = true;
         public const int DefaultMaxRecursionCount = 100;
         public const bool DefaultEmitUtf8Pieces = false;
+
+        /// <summary>Per-node engine-accessor fallback, on by default. Not identity-bearing and so not a
+        /// fingerprint input: it changes whether a template precompiles, never a rendered byte.</summary>
+        public const bool DefaultNodeFallback = true;
 
         /// <summary>The generator's blank fallback for the template root. The <i>effective</i> default is MSBuild's
         /// <c>$(MSBuildProjectDirectory)</c>; an empty root here means "no root", which flattens keys (and now draws

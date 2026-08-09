@@ -60,22 +60,25 @@ namespace Heddle.Generator.IntegrationTests
         }
 
         /// <summary>One member of a perfectly nameable type. The member tier accepts it — the engine's visibility
-        /// policy has nothing to say about deprecation — so only a rule at the member gate keeps the read out of the
-        /// generated body.</summary>
+        /// policy has nothing to say about deprecation, and reflection ignores <c>[Obsolete]</c> outright — so the
+        /// node escapes to the engine's accessor, which never spells the member, and the template precompiles
+        /// byte-identically with no HED7030. The whole-template degrade this used to pin survives under
+        /// <c>HeddleNodeFallback=false</c> in <c>EngineAccessorFallbackTests</c>.</summary>
         [Fact]
-        public void AnErrorObsoleteMemberDegradesRatherThanEmittingAReadTheConsumerCannotCompile()
+        public void AnErrorObsoleteMemberPrecompilesThroughTheEngineAccessor()
         {
             const string key = "views/obsolete-member.heddle";
             var template = "@model(){{" + ObsoleteMember + "}}@\\\n@(Bad)\n";
             var gen = DifferentialHarness.Generate(new[] { (key, template) });
 
             Assert.Empty(gen.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
-            var hed7030 = Assert.Single(gen.Diagnostics.Where(d => d.Id == "HED7030"));
-            Assert.Equal(DiagnosticSeverity.Warning, hed7030.Severity);
-            Assert.Contains("ObsoleteMemberModel.Bad", hed7030.GetMessage());
-            DifferentialHarness.ExpectDegrade(gen, key);
+            Assert.DoesNotContain(gen.Diagnostics, d => d.Id == "HED7030");
+            DifferentialHarness.ExpectPrecompiled(gen, key);
 
-            Assert.Equal("bad\n", Dynamic(template, typeof(ObsoleteMemberModel), new ObsoleteMemberModel()));
+            var (precompiled, dyn) = DifferentialHarness.Render(key, template,
+                typeof(ObsoleteMemberModel), new ObsoleteMemberModel());
+            Assert.Equal("bad\n", dyn);
+            Assert.Equal(dyn, precompiled);
         }
 
         /// <summary>
@@ -196,25 +199,17 @@ namespace Heddle.Generator.IntegrationTests
                     null },
                 { "tuple-of-ref-struct", "(System.Span<System.Char>, System.Int32)", "hello\n", false, null, null },
 
-                // Ordinary types this assembly is not allowed to mention. Author-fixable, so HED7030.
+                // Ordinary types this assembly is not allowed to mention, in the one position the accessor cannot
+                // reach: the MODEL type itself, which the entry point's parameter and the strategy's cast must
+                // spell. Author-fixable, so HED7030. The member-level shapes that used to sit beside these —
+                // an internal or error-obsolete member, an unnameable type mid-path — now precompile through the
+                // engine accessor and are pinned in EngineAccessorFallbackTests.
                 { "array-of-error-obsolete", Fixtures + "ObsoleteErrorModel[]", "hello\n", true, "hello\n", null },
                 { "error-obsolete-type", Fixtures + "ObsoleteErrorModel", "@(Title)\n", true, "obsolete\n",
                     "ObsoleteErrorModel" },
                 { "nested-under-error-obsolete", Fixtures + "ObsoleteOuterModel.Inner", "@(Title)\n", true, "inner\n",
                     "ObsoleteOuterModel+Inner" },
-                { "error-obsolete-property-type", Fixtures + "ObsoletePropertyTypeModel", "@(Balance.Amount)\n", true,
-                    "0\n", "ObsoletePropertyTypeModel" },
-                // The same fault one level further out: the property's type is nested inside a generic constructed
-                // over the unnameable name, so it carries no type argument of its own and nothing about it says so.
-                // Asking only a type's OWN arguments called this writable and the consumer's build died twice on
-                // CS0619 — off a property whose declaration carries nothing but a warning-level attribute.
-                { "error-obsolete-argument-of-containing-type", Fixtures + "ObsoleteContainerArgumentModel",
-                    "@(Balance.Amount)\n", true, "0\n", "ObsoleteContainerArgumentModel" },
-                { "error-obsolete-getter", Fixtures + "ObsoleteMemberModel", "@(Bad)\n", true, "bad\n",
-                    "ObsoleteMemberModel" },
                 { "internal-type", Fixtures + "InternalModel", "@(Title)\n", true, "hidden\n", "InternalModel" },
-                { "internal-member", Fixtures + "InternalMemberModel", "@(Secret)\n", true, "s3cret\n",
-                    "InternalMemberModel" },
             };
 
         /// <summary>
