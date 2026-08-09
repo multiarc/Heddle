@@ -11,6 +11,7 @@ namespace Heddle.Extensions {
     /// <para>Optional parameter is sub-template (fully inclusive)</para>
     /// </summary>
     [ExtensionName ("partial")]
+    [ChildTemplateHost]
     public class PartialExtension: AbstractExtension
     {
         protected HeddleTemplate InnerTemplate;

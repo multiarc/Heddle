@@ -173,5 +173,186 @@ namespace CustomBranch
             Assert.Null(weird.Role);
             Assert.False(weird.IsBranchParticipant);
         }
+
+        /// <summary>The two roles the emitter's slot-projection and child-template routes now dispatch on, read off
+        /// the built-ins that declare them rather than off the names they answer to. Every other built-in carries
+        /// neither, which is what makes the declaration — and not the name — the thing the routes are keyed by.
+        /// </summary>
+        [Theory]
+        [InlineData("out", true, false)]
+        [InlineData("partial", false, true)]
+        [InlineData("if", false, false)]
+        [InlineData("list", false, false)]
+        [InlineData("", false, false)]
+        public void ResolvesEngineBuiltInProjectionAndHostRoles(string name, bool projection, bool host)
+        {
+            var binder = Bind();
+
+            Assert.True(binder.TryResolve(name, out var info));
+            Assert.True(info.IsEngineAssembly);
+            Assert.Equal(projection, info.HasSlotProjection);
+            Assert.Equal(host, info.HasChildTemplateHost);
+        }
+
+        private static readonly string RoleSource = GeneratorHarness.WithAllExtensionsExported(@"
+using Heddle.Attributes;
+using Heddle.Core;
+using Heddle.Data;
+
+namespace CustomRoles
+{
+    [ExtensionName(""project"")]
+    [SlotProjection]
+    public class ProjectExtension : AbstractExtension
+    {
+        public override object ProcessData(in Scope scope) => string.Empty;
+        public override void RenderData(in Scope scope) { }
+    }
+
+    [ExtensionName(""include"")]
+    [ChildTemplateHost]
+    public class IncludeExtension : AbstractExtension
+    {
+        public override object ProcessData(in Scope scope) => string.Empty;
+        public override void RenderData(in Scope scope) { }
+    }
+
+    [ExtensionName(""both"")]
+    [SlotProjection]
+    [ChildTemplateHost]
+    public class BothExtension : AbstractExtension
+    {
+        public override object ProcessData(in Scope scope) => string.Empty;
+        public override void RenderData(in Scope scope) { }
+    }
+
+    [ExtensionName(""plain"")]
+    public class PlainExtension : AbstractExtension
+    {
+        public override object ProcessData(in Scope scope) => string.Empty;
+        public override void RenderData(in Scope scope) { }
+    }
+
+    // Neither re-declares its role: both attributes are Inherited = true, so the base-type-chain walk has to
+    // find them, exactly as it does for [ScopeChannel] and [BranchRole].
+    [ExtensionName(""myout"")]
+    public class MyOutExtension : Heddle.Extensions.OutExtension
+    {
+    }
+
+    [ExtensionName(""mypartial"")]
+    public class MyPartialExtension : Heddle.Extensions.PartialExtension
+    {
+    }
+}");
+
+        [Fact]
+        public void ResolvesSourceDeclaredProjectionAndHostRoles()
+        {
+            var binder = Bind(RoleSource);
+
+            Assert.True(binder.TryResolve("project", out var project));
+            Assert.False(project.IsEngineAssembly);
+            Assert.True(project.HasSlotProjection);
+            Assert.False(project.HasChildTemplateHost);
+
+            Assert.True(binder.TryResolve("include", out var include));
+            Assert.False(include.HasSlotProjection);
+            Assert.True(include.HasChildTemplateHost);
+
+            Assert.True(binder.TryResolve("plain", out var plain));
+            Assert.False(plain.HasSlotProjection);
+            Assert.False(plain.HasChildTemplateHost);
+        }
+
+        /// <summary>Both roles on one type is reported as both, not silently narrowed to one: the binder says what
+        /// the type declares and the emitter decides what to do about it (it refuses — the two roles describe two
+        /// incompatible call shapes).</summary>
+        [Fact]
+        public void BothRolesOnOneTypeAreBothReported()
+        {
+            var binder = Bind(RoleSource);
+
+            Assert.True(binder.TryResolve("both", out var both));
+            Assert.True(both.HasSlotProjection);
+            Assert.True(both.HasChildTemplateHost);
+        }
+
+        [Fact]
+        public void InheritanceWalkResolvesBaseProjectionAndHostRoles()
+        {
+            var binder = Bind(RoleSource);
+
+            Assert.True(binder.TryResolve("myout", out var myOut));
+            Assert.True(myOut.HasSlotProjection);
+            Assert.False(myOut.HasChildTemplateHost);
+
+            Assert.True(binder.TryResolve("mypartial", out var myPartial));
+            Assert.True(myPartial.HasChildTemplateHost);
+            Assert.False(myPartial.HasSlotProjection);
+        }
+
+        /// <summary>A compilation whose engine declares <c>AbstractExtension</c> and <c>[ExtensionName]</c> but
+        /// neither role attribute — the shape a consumer referencing a Heddle older than the roles is in.
+        /// <c>GetTypeByMetadataName</c> answers <c>null</c> for both attribute symbols there.</summary>
+        private static ExtensionBinder BindAgainstEngineWithoutRoleAttributes()
+        {
+            const string olderEngine = @"
+namespace Heddle.Attributes
+{
+    [System.AttributeUsage(System.AttributeTargets.Class, Inherited = true, AllowMultiple = true)]
+    public sealed class ExtensionNameAttribute : System.Attribute
+    {
+        public ExtensionNameAttribute(string name) { Name = name; }
+        public string Name { get; }
+    }
+}
+
+namespace Heddle.Core
+{
+    public abstract class AbstractExtension
+    {
+    }
+}
+
+namespace OlderEngine
+{
+    [Heddle.Attributes.ExtensionName(""out"")]
+    public class OlderOutExtension : Heddle.Core.AbstractExtension
+    {
+    }
+
+    [Heddle.Attributes.ExtensionName(""partial"")]
+    public class OlderPartialExtension : Heddle.Core.AbstractExtension
+    {
+    }
+}";
+            var references = References
+                .Where(r => !(r.Display ?? string.Empty).EndsWith("Heddle.dll", StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            var compilation = CSharpCompilation.Create("BinderRoleOlderEngine",
+                new[] { CSharpSyntaxTree.ParseText(olderEngine) },
+                references,
+                new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+            return ExtensionBinder.Build(compilation);
+        }
+
+        /// <summary>The unresolvable-symbol degrade, which is the whole reason the roles are read through the
+        /// guarded attribute walk: against an engine that predates them nothing carries either role, the reads
+        /// answer false instead of throwing, and the call falls to the ordinary bound-extension route — the name
+        /// it happens to answer to buys it nothing.</summary>
+        [Fact]
+        public void AnEngineWithoutTheRoleAttributesResolvesBothRolesAsFalse()
+        {
+            var binder = BindAgainstEngineWithoutRoleAttributes();
+
+            Assert.True(binder.TryResolve("out", out var outInfo));
+            Assert.False(outInfo.HasSlotProjection);
+            Assert.False(outInfo.HasChildTemplateHost);
+
+            Assert.True(binder.TryResolve("partial", out var partialInfo));
+            Assert.False(partialInfo.HasSlotProjection);
+            Assert.False(partialInfo.HasChildTemplateHost);
+        }
     }
 }

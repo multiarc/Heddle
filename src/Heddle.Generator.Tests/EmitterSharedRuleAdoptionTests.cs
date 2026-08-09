@@ -78,8 +78,10 @@ namespace Heddle.Generator.Tests
             var source = EmitterSource();
 
             // Reading the declared slot type off a layer is what the walk does; the shared rule is the only reader.
-            Assert.Equal(CountOf(source, "SlotRules.SlotTypeName"), CountOf(source, "SlotTypeName"));
-            Assert.Equal(CountOf(source, "SlotRules.HasSlot"), CountOf(source, "HasSlot"));
+            // Counted as whole identifiers: a member whose name merely BEGINS with one of these tokens
+            // (Info.HasSlotProjection) is a different name, and a substring count would read it as a private walk.
+            Assert.Equal(CountOf(source, "SlotRules.SlotTypeName"), CountIdentifier(source, "SlotTypeName"));
+            Assert.Equal(CountOf(source, "SlotRules.HasSlot"), CountIdentifier(source, "HasSlot"));
 
             // No statement may combine IsModelTypeParameter with the other four out-value carriers — that
             // conjunction IS the approximation SlotRules.HasOutValue replaced.
@@ -116,6 +118,14 @@ namespace Heddle.Generator.Tests
                 n++;
             return n;
         }
+
+        /// <summary>Whole-identifier occurrences: the token neither continues nor is continued by an identifier
+        /// character. A plain substring count answers "is this name written here" with yes for every longer name
+        /// that starts the same way, which is a different member and not the re-implementation being pinned.</summary>
+        private static int CountIdentifier(string text, string identifier) =>
+            System.Text.RegularExpressions.Regex.Matches(text,
+                "(?<![A-Za-z0-9_])" + System.Text.RegularExpressions.Regex.Escape(identifier) +
+                "(?![A-Za-z0-9_])").Count;
 
         /// <summary>The precedence classifier is linked into the generator and reachable from it — the
         /// no-Roslyn/netstandard2.0 constraint is enforced by this project compiling at all.</summary>

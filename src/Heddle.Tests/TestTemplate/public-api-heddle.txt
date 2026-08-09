@@ -9,6 +9,8 @@ TYPE Heddle.Attributes.BranchRoleAttribute : System.Attribute
 TYPE Heddle.Attributes.ChainedTypeAttribute : System.Attribute
   CTOR(System.Type)
   PROP System.Type DataType {get;}
+TYPE Heddle.Attributes.ChildTemplateHostAttribute : System.Attribute
+  CTOR()
 TYPE Heddle.Attributes.DataTypeAttribute : System.Attribute
   CTOR(System.Type)
   PROP System.Type DataType {get;}
@@ -50,6 +52,8 @@ TYPE Heddle.Attributes.PropAttribute : System.Attribute
   PROP System.String Name {get;}
   PROP System.Type Type {get;}
 TYPE Heddle.Attributes.ScopeChannelAttribute : System.Attribute
+  CTOR()
+TYPE Heddle.Attributes.SlotProjectionAttribute : System.Attribute
   CTOR()
 TYPE Heddle.Attributes.ZeroOutputAttribute : System.Attribute
   CTOR()
