@@ -70,6 +70,7 @@ Heddle.Tests.HtmlEncodedRendererSpanParityTests
 Heddle.Tests.ImportCycleTests
 Heddle.Tests.ImportFormsPinningTests
 Heddle.Tests.ImportOriginTests
+Heddle.Tests.InitSynthesisFidelityTests
 Heddle.Tests.IntegralRoundingBuiltInTests
 Heddle.Tests.LayoutDefinitionCompositionTests
 Heddle.Tests.LegacyImportRemovalTests

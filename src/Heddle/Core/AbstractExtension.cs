@@ -121,6 +121,18 @@ namespace Heddle.Core
         {
             if (initContext.CompileScope == null)
                 throw new ArgumentNullException(nameof(initContext.CompileScope));
+            if (PrecompiledBodySupply.TryConsume(dataType, chainedType, ref initContext.ParameterTemplate,
+                out var supplied))
+            {
+                if (supplied.AssignInnerResult)
+                    _innerResult = supplied.InnerResult;
+                _subTemplate = null;
+                _processStrategy = supplied.Strategy;
+                _needsLocals = supplied.NeedsLocals;
+                _hasPrecompiledBody = supplied.Strategy != null;
+                return typeof(string);
+            }
+
             var type = InitSubTemplate(ref initContext.ParameterTemplate, dataType, chainedType, initContext.CompileScope,
                 initContext.ParseContext, out var subTemplate);
             if (subTemplate == null)

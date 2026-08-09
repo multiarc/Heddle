@@ -2,9 +2,13 @@ using System;
 using System.Buffers;
 using System.IO;
 using System.Runtime.CompilerServices;
+using Heddle.Attributes;
 using Heddle.Core;
 using Heddle.Data;
 using Heddle.Exceptions;
+using Heddle.Helpers;
+using Heddle.Language;
+using Heddle.Language.Expressions;
 using Heddle.Runtime;
 using Heddle.Strings.Core;
 
@@ -112,6 +116,360 @@ namespace Heddle.Precompiled
             if (slotMode)
                 extension.SetPrecompiledSlotMode();
             return extension;
+        }
+
+        /// <summary>
+        /// Constructs the extension and runs its <b>real</b> compile-time hook against a synthesized compile
+        /// scope, supplying the generated body instead of compiling one. Everything <c>InitStart</c> decides is
+        /// decided by the extension itself — <c>ListExtension</c>'s count reader, <c>OutExtension</c>'s slot mode and
+        /// its five diagnostics, <c>DefinitionBaseExtension</c>'s recursion limit, the render type — rather than being
+        /// re-derived at build time. Reproduces <c>HeddleCompiler.InitializeTemplate</c>: the render type comes from
+        /// <see cref="RenderTypeRules.Derive"/> over the <b>live</b> type's attributes, <c>SetUpRenderType</c> runs
+        /// before the hook, and the delayed-template queue the hook may have appended to is drained exactly as the
+        /// engine drains it.
+        /// <para><b>A factory, not an instance.</b> <c>new Foo.Bar()</c> written as an argument would run outside
+        /// this method's <c>try</c>, so an extension assembly that moved would fault the calling type initializer
+        /// before anything could catch it.</para>
+        /// <para><b>This method throws only for a null argument.</b> The manifest touches <c>strategy:</c>, so every
+        /// call site's initializer runs at registration, and a throwing type initializer is a
+        /// <see cref="TypeInitializationException"/> on every later use of that type forever. Every other failure is
+        /// recorded on <see cref="PrecompiledInitSite.Fault"/> and answered by the returned object: a hook that threw
+        /// or an extension that would not construct costs <b>that call site</b> — the returned substitute renders the
+        /// call by compiling its own source text — while compile errors the hook reported, or a hook answer about
+        /// body typing that contradicts what the build assumed, cost the <b>template</b>, which belongs on the
+        /// dynamic tier.</para>
+        /// <para>Cost lands entirely at type-init: one <c>TemplateOptions</c>, one <c>CompileContext</c>, one
+        /// <c>CompileScope</c>, one <c>ParseContext</c> and one witness <c>OutputItem</c> per call site, plus
+        /// whatever the hook itself allocates. Nothing here is reachable from a render.</para>
+        /// <para><b>Two things around <c>InitializeTemplate</c> are deliberately not reproduced here.</b> The
+        /// <c>[DataType]</c>/<c>[ChainedType]</c> checks the compiler runs just before it are omitted: they need the
+        /// chain's "no producer to the right" state, which a call site records as a type and cannot distinguish from
+        /// <see cref="object"/>, and they add only diagnostics. And a parameter-declaring extension's
+        /// <c>ExtensionParameterCarrier</c> wrap, which the compiler applies just after, stays with
+        /// <see cref="BindExtension"/>.</para>
+        /// </summary>
+        /// <param name="factory">Constructs the extension. Runs inside the fault capture.</param>
+        /// <param name="site">Everything the engine's compiler knew at this call site.</param>
+        /// <param name="body">The generated body strategy, or <c>null</c> when the call's body compiled to no
+        /// processors or the call has no body.</param>
+        /// <returns>The initialized extension, or a substitute for this call site when the hook did not succeed.
+        /// Never <c>null</c>.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="factory"/> or <paramref name="site"/> is null.</exception>
+        public static AbstractExtension Init(Func<AbstractExtension> factory, PrecompiledInitSite site,
+            IProcessStrategy body)
+        {
+            if (factory == null)
+                throw new ArgumentNullException(nameof(factory));
+            if (site == null)
+                throw new ArgumentNullException(nameof(site));
+
+            try
+            {
+                var extension = factory();
+                if (extension == null)
+                    return Faulted(site, PrecompiledInitFaultScope.CallSite,
+                        "The factory for '" + Describe(site) + "' returned null.", null, null, null);
+
+                var scope = BuildScope(site, site.SlotType);
+                var run = RunInit(extension, site, scope, BuildParseContext(site), BuildSourceItem(site),
+                    site.Body, body, ToExType(site.DataType), ToExType(site.ChainedType), ToExType(site.ParentType),
+                    new BlockPosition(site.PositionStart, site.PositionLength));
+                if (run != null)
+                    return Faulted(site, run.Scope, run.Detail, run.Exception, run.Errors, run.Reason);
+
+                var drained = Drain(site, scope);
+                if (drained != null)
+                    return Faulted(site, drained.Scope, drained.Detail, drained.Exception, drained.Errors,
+                        drained.Reason);
+                return extension;
+            }
+            catch (Exception e)
+            {
+                return Faulted(site, PrecompiledInitFaultScope.CallSite,
+                    "Initializing '" + Describe(site) + "' threw " + e.GetType().Name + ": " + e.Message, e, null,
+                    null);
+            }
+        }
+
+        /// <summary>
+        /// The definition-invocation form: <b>two</b> <c>InitStart</c> runs, as
+        /// <c>HeddleCompiler.CreateExtension</c> does them. The outer carrier hosts the invocation's caller content
+        /// and is typed by the definition's slot type when it declares one, otherwise by the call's model type; the
+        /// inner carrier hosts the definition's own body and is typed by the call's model type, with the definition's
+        /// slot type installed on the compile context for the length of that run. Both carriers take their recursion
+        /// limit from the hook rather than from a baked constant.
+        /// </summary>
+        /// <param name="site">The call site; <see cref="PrecompiledInitSite.Body"/> is the caller content and
+        /// <see cref="PrecompiledInitSite.DefinitionBody"/> the definition body.</param>
+        /// <param name="body">The definition body's strategy.</param>
+        /// <param name="callerContent">The invocation's caller-content strategy.</param>
+        /// <param name="props">The frozen prop prototype, or <c>null</c>.</param>
+        /// <param name="dynamicSetters">Per-invocation prop setters, or <c>null</c>.</param>
+        /// <returns>The outer carrier, or a substitute for this call site when either hook run did not succeed.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="site"/> is null.</exception>
+        public static AbstractExtension InitDefinition(PrecompiledInitSite site, IProcessStrategy body,
+            IProcessStrategy callerContent, object[] props, PrecompiledPropSetter[] dynamicSetters)
+        {
+            if (site == null)
+                throw new ArgumentNullException(nameof(site));
+
+            try
+            {
+                // Both carriers are positioned at the definition's declaration, as CompileFromDefenition does it.
+                var position = new BlockPosition(site.DefinitionPositionStart, site.DefinitionPositionLength);
+                var parseContext = BuildParseContext(site);
+                var sourceItem = BuildSourceItem(site);
+                var dataType = ToExType(site.DataType);
+                var chainedType = ToExType(site.ChainedType);
+                var parentType = ToExType(site.ParentType);
+                var slotType = site.DefinitionSlotType == null ? null : new ExType(site.DefinitionSlotType);
+
+                var inner = new DefinitionBaseExtension { Position = position };
+                var outer = new DefinitionBaseExtension { Position = position, DefinitionParameterTemplate = inner };
+                outer.SlotMode = slotType != null;
+                outer.ReceivesChainedValue = site.HasProducerToRight && (site.Body == null || site.Body.RawText == null);
+
+                // Caller content compiles under the enclosing slot type, against the slot type when the definition
+                // declares one and the call's model type otherwise.
+                var outerScope = BuildScope(site, site.SlotType);
+                var outerRun = RunInit(outer, site, outerScope, parseContext, sourceItem, site.Body, callerContent,
+                    slotType ?? dataType, chainedType, parentType, position);
+                if (outerRun != null)
+                    return Faulted(site, outerRun.Scope, outerRun.Detail, outerRun.Exception, outerRun.Errors,
+                        outerRun.Reason);
+
+                // The definition body compiles under the definition's own slot type.
+                var innerScope = BuildScope(site, site.DefinitionSlotType);
+                var innerRun = RunInit(inner, site, innerScope, parseContext, sourceItem, site.DefinitionBody, body,
+                    dataType, chainedType, parentType, position);
+                if (innerRun != null)
+                    return Faulted(site, innerRun.Scope, innerRun.Detail, innerRun.Exception, innerRun.Errors,
+                        innerRun.Reason);
+
+                var drained = Drain(site, outerScope) ?? Drain(site, innerScope);
+                if (drained != null)
+                    return Faulted(site, drained.Scope, drained.Detail, drained.Exception, drained.Errors,
+                        drained.Reason);
+
+                if (props != null || (dynamicSetters != null && dynamicSetters.Length != 0))
+                    outer.SetPrecompiledProps(props, dynamicSetters);
+                return outer;
+            }
+            catch (Exception e)
+            {
+                return Faulted(site, PrecompiledInitFaultScope.CallSite,
+                    "Initializing definition call '" + Describe(site) + "' threw " + e.GetType().Name + ": " +
+                    e.Message, e, null, null);
+            }
+        }
+
+        /// <summary>One <c>InitializeTemplate</c> run with the body supplied rather than compiled. Returns
+        /// <c>null</c> on success, or the fault to record.</summary>
+        private static InitOutcome RunInit(AbstractExtension extension, PrecompiledInitSite site, CompileScope scope,
+            ParseContext parseContext, OutputItem sourceItem, PrecompiledInitBody bodyText, IProcessStrategy body,
+            ExType dataType, ExType chainedType, ExType parentType, BlockPosition position)
+        {
+            var raw = bodyText?.RawText;
+            var extensionType = extension.GetType();
+            extension.Position = position;
+            extension.SetUpRenderType(RenderTypeRules.Derive(
+                extensionType.IsHaveAttribute<EncodeOutputAttribute>(true),
+                extensionType.IsHaveAttribute<NotEncodeAttribute>(true)));
+
+            var initContext = new InitContext(raw, scope, parseContext) { SourceItem = sourceItem };
+            var frame = new PrecompiledBodyFrame(body, raw, bodyText?.ShapedText, bodyText?.NeedsLocals ?? false);
+
+            PrecompiledBodySupply.Arm(frame);
+            try
+            {
+                extension.InitStart(initContext, dataType ?? ExType.Dynamic, chainedType ?? ExType.Dynamic, parentType);
+            }
+            catch (Exception e)
+            {
+                return new InitOutcome(PrecompiledInitFaultScope.CallSite,
+                    "'" + Describe(site) + "' threw from its compile-time hook: " + e.Message, e, null, null);
+            }
+            finally
+            {
+                // Disarmed before anything else runs: draining the delayed-template queue compiles whole child
+                // documents, and an armed frame would hand this call's body to the first extension in one of them.
+                PrecompiledBodySupply.Disarm();
+            }
+
+            if (frame.ConsumeCount > 1)
+                return new InitOutcome(PrecompiledInitFaultScope.CallSite,
+                    "'" + Describe(site) + "' compiled " + frame.ConsumeCount +
+                    " bodies; a precompiled call site supplies exactly one.", null, null, null);
+
+            if (frame.ConsumeCount == 0)
+            {
+                if (body != null || !string.IsNullOrEmpty(raw))
+                    return new InitOutcome(PrecompiledInitFaultScope.CallSite,
+                        "'" + Describe(site) + "' never compiled the body it was given, so the generated body would " +
+                        "never render.", null, null, null);
+                return null;   // A bodiless call whose hook does not delegate: nothing was assumed, nothing to check.
+            }
+
+            var errors = Collected(scope);
+            if (errors != null)
+                return new InitOutcome(PrecompiledInitFaultScope.Template,
+                    "'" + Describe(site) + "' reported " + errors.Length + " compile error(s); the dynamic tier " +
+                    "would refuse this template too.", null, errors,
+                    PrecompiledFallbackReason.ExtensionInitCompileError);
+
+            var assumedData = ToExType(bodyText?.AssumedDataType);
+            var assumedChained = ToExType(bodyText?.AssumedChainedType);
+            if (!ExType.Equals(assumedData, frame.ConsumedDataType) ||
+                !ExType.Equals(assumedChained, frame.ConsumedChainedType))
+                return new InitOutcome(PrecompiledInitFaultScope.Template,
+                    "'" + Describe(site) + "' compiled its body against (" + Name(frame.ConsumedDataType) + ", " +
+                    Name(frame.ConsumedChainedType) + ") but the build assumed (" + Name(assumedData) + ", " +
+                    Name(assumedChained) + "); the emitted casts would render bytes the engine does not.", null, null,
+                    PrecompiledFallbackReason.ExtensionInitTypingMismatch);
+
+            return null;
+        }
+
+        /// <summary>Drains the delayed-template queue the way <c>HeddleTemplate.Compile</c> does, after the hook has
+        /// run and the supply is disarmed. <c>PartialExtension</c> is the engine's own user of that queue.</summary>
+        private static InitOutcome Drain(PrecompiledInitSite site, CompileScope scope)
+        {
+            try
+            {
+                scope.Compile();
+            }
+            catch (Exception e)
+            {
+                return new InitOutcome(PrecompiledInitFaultScope.CallSite,
+                    "Completing '" + Describe(site) + "' threw " + e.GetType().Name + ": " + e.Message, e, null, null);
+            }
+
+            var errors = Collected(scope);
+            if (errors == null)
+                return null;
+            return new InitOutcome(PrecompiledInitFaultScope.Template,
+                "Completing '" + Describe(site) + "' reported " + errors.Length + " compile error(s).", null, errors,
+                PrecompiledFallbackReason.ExtensionInitCompileError);
+        }
+
+        private static HeddleCompileError[] Collected(CompileScope scope)
+            => scope.CompileErrors.Count == 0 ? null : scope.CompileErrors.ToArray();
+
+        private static AbstractExtension Faulted(PrecompiledInitSite site, PrecompiledInitFaultScope faultScope,
+            string detail, Exception exception, HeddleCompileError[] errors, PrecompiledFallbackReason? reason)
+        {
+            site.Fault = new PrecompiledInitFault(faultScope, detail, exception, errors, reason);
+            return new PrecompiledSiteFallbackExtension(site);
+        }
+
+        private static string Describe(PrecompiledInitSite site)
+            => (string.IsNullOrEmpty(site.ExtensionName) ? "@()" : "@" + site.ExtensionName) + " at " +
+               site.PositionStart + ":" + site.PositionLength;
+
+        private static string Name(ExType type) => type == null ? "dynamic" : type.ToString();
+
+        private static ExType ToExType(Type type) => type == null ? ExType.Dynamic : new ExType(type);
+
+        /// <summary>The engine's compile scope for one call site, rebuilt from what the site records.</summary>
+        private static CompileScope BuildScope(PrecompiledInitSite site, Type slotType)
+        {
+            var options = new TemplateOptions
+            {
+                OutputProfile = site.OutputProfile,
+                ExpressionMode = site.ExpressionMode,
+                TrimDirectiveLines = site.TrimDirectiveLines,
+                MaxRecursionCount = site.MaxRecursionCount
+            };
+            var context = new CompileContext(options, ToExType(site.ModelType))
+            {
+                OutputProfile = site.OutputProfile,
+                RootScopeType = ToExType(site.RootModelType),
+                SlotParameterType = slotType == null ? null : new ExType(slotType)
+            };
+            var csharpContext = new CSharpContext();
+            if (site.Namespaces != null)
+            {
+                foreach (var ns in site.Namespaces)
+                {
+                    if (!string.IsNullOrEmpty(ns))
+                        csharpContext.Namespaces.Add(ns);
+                }
+            }
+
+            return new CompileScope(context, csharpContext);
+        }
+
+        /// <summary>
+        /// A parse context carrying the one thing a hook reads off it: whether the call sits inside a definition
+        /// body. Its token stream and sub-contexts are empty and cannot be otherwise — the token stream <i>is</i> the
+        /// parse tree of the enclosing document, and no call site can carry one.
+        /// </summary>
+        private static ParseContext BuildParseContext(PrecompiledInitSite site)
+        {
+            if (!site.InsideDefinition)
+                return new ParseContext(null, site.PositionStart);
+            var enclosing = new ParseContext(null, site.PositionStart) { InDefinition = true };
+            return new ParseContext(enclosing, site.PositionStart);
+        }
+
+        /// <summary>
+        /// The witness <c>OutputItem</c> for <c>InitContext.SourceItem</c>. The engine's whole read closure over
+        /// that field is <c>SlotRules.HasOutValue</c>'s collapse to a bool, <c>IsChainedConsumer</c> and
+        /// <c>Position</c> — so the call parameter here is built to answer that five-way test and nothing else, and
+        /// <c>InitSynthesisFidelityTests</c> reads the engine's source to keep the claim true.
+        /// </summary>
+        private static OutputItem BuildSourceItem(PrecompiledInitSite site)
+        {
+            var item = new OutputItem(site.ExtensionName ?? string.Empty,
+                new BlockPosition(site.PositionStart, site.PositionLength), site.Body?.RawText)
+            {
+                IsChainedConsumer = site.IsChainedConsumer
+            };
+            var call = item.CallParameter;
+            call.RootReference = site.RootReference;
+            switch (site.CallShape)
+            {
+                case PrecompiledCallShape.NativeExpression:
+                    call.NativeExpression = new LiteralNode(null, item.Position);
+                    break;
+                case PrecompiledCallShape.Chain:
+                    call.ChainParameter = new System.Collections.Generic.List<OutputItem>();
+                    break;
+                case PrecompiledCallShape.CSharpExpression:
+                    call.CSharpExpression = site.SourceText ?? "?";
+                    break;
+                case PrecompiledCallShape.ModelPath:
+                    call.ModelParameter = ModelPathWitness;
+                    break;
+            }
+
+            if (site.HasPropArguments || site.CallShape == PrecompiledCallShape.PropArguments)
+                call.PropArguments = NoPropArguments;
+            return item;
+        }
+
+        private static readonly string[] ModelPathWitness = { "?" };
+
+        private static readonly Heddle.Language.NamedArgument[] NoPropArguments = new Heddle.Language.NamedArgument[0];
+
+        /// <summary>The outcome of one hook run: <c>null</c> for success, otherwise what to record.</summary>
+        private sealed class InitOutcome
+        {
+            internal InitOutcome(PrecompiledInitFaultScope scope, string detail, Exception exception,
+                HeddleCompileError[] errors, PrecompiledFallbackReason? reason)
+            {
+                Scope = scope;
+                Detail = detail;
+                Exception = exception;
+                Errors = errors;
+                Reason = reason;
+            }
+
+            internal PrecompiledInitFaultScope Scope { get; }
+            internal string Detail { get; }
+            internal Exception Exception { get; }
+            internal HeddleCompileError[] Errors { get; }
+            internal PrecompiledFallbackReason? Reason { get; }
         }
 
         /// <summary>The engine's <c>ScopeLocals</c>-provisioning decorator, for the one body <c>Bind</c>
@@ -299,6 +657,11 @@ namespace Heddle.Precompiled
 
         /// <summary>Restores the ambient request <see cref="EnterAmbient"/> displaced.</summary>
         internal static void LeaveAmbient(TemplateOptions previous) => _ambientOptions = previous;
+
+        /// <summary>The render currently in flight on this thread, or <c>null</c> outside a render. Read by
+        /// <see cref="PrecompiledSiteFallbackExtension"/>, which cannot compile before there is a request to compile
+        /// under.</summary>
+        internal static TemplateOptions AmbientOptions => _ambientOptions;
 
         /// <summary>Registry-then-dynamic-compile partial resolution against the ambient options, dynamic child
         /// model. Called from generated <c>@partial</c> code in a dynamic-tier body, memoized once via
