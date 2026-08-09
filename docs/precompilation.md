@@ -155,6 +155,7 @@ there is nothing to match: the property decides how the artifact is emitted, not
 | `HeddleGeneratedNamespace` | default `Heddle.Generated` | *(build only)* | Namespace of the generated entry classes. |
 | `HeddleEmitUtf8Pieces` | `false` (default) \| `true` | *(build only)* | Emit pre‑encoded `"…"u8` static pieces for the byte sink. |
 | `HeddleNodeFallback` | `true` (default) \| `false` | *(build only)* | Per‑node fallback: a member path the engine resolves but generated C# cannot name (e.g. a referenced assembly's `internal` member without `[InternalsVisibleTo]`) is computed by the engine's own accessor instead of degrading the whole template. Never changes rendered bytes, so it is not part of the options fingerprint; `false` restores the whole‑template degrade. |
+| `HeddleProbeExtensionHooks` | `false` (default) \| `true` | *(build only)* | Hook probing: the build runs a referenced extension's compile‑time hook to learn what it does with its body, instead of refusing every call it has no pinned knowledge of. Never changes rendered bytes, so it is not part of the fingerprint — but it does change what the build's answer is a function of. See [Hook probing](#hook-probing-opt-in). |
 
 The same mapping is what the editor uses: each of the first five has a `.heddle-lsp.json` key spelled as the
 camelCased **runtime** name (`outputProfile`, `expressionMode`, …), so the three tiers name one option three ways
@@ -162,6 +163,43 @@ and mean the same thing. See [editor‑support.md](editor-support.md#configuring
 
 Assembly configuration is deliberately **not** in this table — it is not an option, it is a reference. See
 [Assemblies the build must see](#assemblies-the-build-must-see).
+
+### Hook probing (opt‑in)
+
+Most built‑in extensions, and many third‑party ones, override a compile‑time hook that decides how the extension's
+**body** is typed. The build cannot read an override out of metadata, so without help it refuses those call sites and
+the whole template degrades. `HeddleProbeExtensionHooks=true` lets the build ask the extension directly: it loads the
+referenced engine, compiles three tiny synthetic documents against sentinel types, and reads back which sentinel the
+hook handed to the body compile. The answer is a **role** — "the body sees the caller's model", "…the call value's
+element type" — never a type; the actual type is still computed symbolically from the call site.
+
+Three properties of this are worth stating plainly before you turn it on.
+
+**Reproducibility changes shape.** With probing off, generated output is a function of the compilation's inputs: the
+template text, the options, and the *metadata* of every reference. With probing on, it is also a function of the
+**behaviour** of referenced extension assemblies — code runs at build time and its answers steer emission. Two
+restores of byte-identical packages still produce byte-identical output, and every answer is double-checked (each
+extension is probed twice, on fresh instances, and refused if the two runs disagree), so this is determinism, not a
+coin flip. But an extension package that changes what its hook does changes what your build emits, without its public
+API having moved.
+
+**Only immutable roots are loaded.** The build loads an assembly only from this restore's package folders
+(`$(NuGetPackageFolders)`) — never from `bin/`, never from `obj/`, and never from a project reference, which has no
+assembly on disk at all. This is not caution for its own sake: `Assembly.LoadFrom` holds the file open for the life
+of the compiler process, and the compiler is a persistent server, so loading a build output would break the *next*
+build of that project. A project-to-project reference to an extension is therefore never probed; package it, or let
+the call site degrade.
+
+**There is no sandbox, and the build does not pretend there is one.** The generator targets `netstandard2.0` and runs
+inside both a .NET Framework compiler host (Visual Studio) and a .NET one (`dotnet build`), which leaves neither
+`AssemblyLoadContext` nor `AppDomain` available. A probed extension's hook runs in the compiler's own process, with
+the compiler's privileges, and cannot be unloaded afterwards. What the build does bound is its **wait**: probing
+happens on a background thread and is abandoned after a timeout, after which nothing further is probed for that
+compilation. Turn probing on for dependencies you would already trust to run code in your build — which is every
+package that ships an MSBuild task or a source generator, and not necessarily every package you reference.
+
+A hook the build cannot evaluate — unloadable, unreadable, timed out, or answering something the protocol has no role
+for — costs that call site the precompiled tier and nothing else. Probing never fails a build.
 
 ---
 

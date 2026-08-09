@@ -166,14 +166,20 @@ namespace Heddle.Generator.Emit
         private readonly Dictionary<string, Info> _byName;
         private readonly Dictionary<string, string> _unbindable;
         private readonly List<string> _driftTypes;
+        private readonly List<IAssemblySymbol> _extensionAssemblies;
 
         private ExtensionBinder(Dictionary<string, Info> byName, Dictionary<string, string> unbindable,
-            List<string> driftTypes)
+            List<string> driftTypes, List<IAssemblySymbol> extensionAssemblies = null)
         {
             _byName = byName;
             _unbindable = unbindable;
             _driftTypes = driftTypes;
+            _extensionAssemblies = extensionAssemblies ?? new List<IAssemblySymbol>();
         }
+
+        /// <summary>Every assembly this compilation found an extension in, in discovery order. The hook probe needs
+        /// them by name — the loaded engine only answers for extensions it has been told about.</summary>
+        public IReadOnlyList<IAssemblySymbol> ExtensionAssemblies => _extensionAssemblies;
 
         public bool TryResolve(string name, out Info info) => _byName.TryGetValue(name, out info);
 
@@ -252,18 +258,21 @@ namespace Heddle.Generator.Emit
 
             var exportAttr = compilation.GetTypeByMetadataName("Heddle.Attributes.ExportExtensionsAttribute");
             var candidates = new List<Candidate>();
+            var extensionAssemblies = new List<IAssemblySymbol>();
             foreach (var assembly in assemblies)
             {
                 var perAssembly = new List<Candidate>();
                 CollectExported(assembly, SymbolEqualityComparer.Default.Equals(assembly, engine), exportAttr,
                     symbols, perAssembly);
+                if (perAssembly.Count != 0)
+                    extensionAssemblies.Add(assembly);
                 candidates.AddRange(StableOrderBy(perAssembly, c => c.OrderingKey));
             }
 
             foreach (var candidate in StableOrderBy(candidates, c => c.Replaces ? 1 : 0))
                 Register(candidate, symbols, byName, unbindable, driftTypes);
 
-            return new ExtensionBinder(byName, unbindable, driftTypes);
+            return new ExtensionBinder(byName, unbindable, driftTypes, extensionAssemblies);
         }
 
         /// <summary>Stable order by a small integer key — <c>List.Sort</c> is unstable and LINQ is not

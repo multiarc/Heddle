@@ -46,7 +46,13 @@ namespace Heddle.Generator.Pipeline
             var nodeFallback = ReadBool(lookup, HeddleBuildOptions.NodeFallbackProperty,
                 HeddleBuildOptions.DefaultNodeFallback, errors);
 
-            return new GlobalConfig(profile, mode, trim, maxRecursion, root, ns, emitU8, nodeFallback);
+            var probeHooks = ReadBool(lookup, HeddleBuildOptions.ProbeExtensionHooksProperty,
+                HeddleBuildOptions.DefaultProbeExtensionHooks, errors);
+            var packageFolders = HeddleBuildOptions.ReadString(
+                lookup(HeddleBuildOptions.PackageFoldersProperty), string.Empty);
+
+            return new GlobalConfig(profile, mode, trim, maxRecursion, root, ns, emitU8, nodeFallback,
+                probeHooks, packageFolders);
         }
 
         private static TEnum ReadEnum<TEnum>(Func<string, string> lookup, string name, TEnum fallback,

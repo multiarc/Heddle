@@ -10,6 +10,13 @@
     <CompilerVisibleProperty Include="HeddleGeneratedNamespace" />
     <CompilerVisibleProperty Include="HeddleEmitUtf8Pieces" />
     <CompilerVisibleProperty Include="HeddleNodeFallback" />
+    <CompilerVisibleProperty Include="HeddleProbeExtensionHooks" />
+    <!-- Not a Heddle option and deliberately given no default here: NuGet's own restore writes it, and it names
+         the ONLY directories the hook probe may load an assembly from. Reading it as a build property rather than
+         as an environment variable is not a style choice — RS1035 bans System.Environment in an analyzer, and an
+         environment variable is not a compilation input, so build output would stop being a function of the
+         project. An unrestored project has no value here, which correctly means no probing at all. -->
+    <CompilerVisibleProperty Include="NuGetPackageFolders" />
   </ItemGroup>
 
   <!-- Per-item metadata surfaced as build_metadata.AdditionalFiles.*.
@@ -47,6 +54,7 @@
     <HeddleTemplateRoot Condition="'$(HeddleTemplateRoot)' == ''">$(MSBuildProjectDirectory)</HeddleTemplateRoot>
     <HeddleEmitUtf8Pieces Condition="'$(HeddleEmitUtf8Pieces)' == ''">false</HeddleEmitUtf8Pieces>
     <HeddleNodeFallback Condition="'$(HeddleNodeFallback)' == ''">true</HeddleNodeFallback>
+    <HeddleProbeExtensionHooks Condition="'$(HeddleProbeExtensionHooks)' == ''">false</HeddleProbeExtensionHooks>
   </PropertyGroup>
 
 </Project>
