@@ -110,7 +110,8 @@ namespace Heddle.Generated
                     capabilities: global::Heddle.Precompiled.PrecompiledCapabilities.StringOutput,
                     strategy: global::Heddle.Generated.Tag.Root,
                     registeredName: null,
-                    linePathForm: global::Heddle.Precompiled.PrecompiledLinePathForm.TemplatePath)
+                    linePathForm: global::Heddle.Precompiled.PrecompiledLinePathForm.TemplatePath,
+                    modelTypeIsAmbient: true)
                 ,
             };
         }

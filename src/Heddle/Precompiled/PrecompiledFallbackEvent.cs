@@ -101,6 +101,7 @@ namespace Heddle.Precompiled
                 case PrecompiledFallbackReason.StaleContent:
                 case PrecompiledFallbackReason.StaleImport:
                 case PrecompiledFallbackReason.CaseMismatch:
+                case PrecompiledFallbackReason.ModelTypeMismatch:
                     return false;
 
                 default:

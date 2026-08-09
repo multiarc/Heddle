@@ -53,7 +53,32 @@ namespace Heddle.Precompiled
             IProcessStrategy strategy,
             string registeredName,
             PrecompiledLinePathForm linePathForm)
+            : this(key, entryPointType, modelType, isDynamic, contentHash, imports, optionsFingerprint,
+                extensionBindings, functionBindings, capabilities, strategy, registeredName, linePathForm,
+                modelTypeIsAmbient: false)
         {
+        }
+
+        /// <summary>The schema 3 shape plus <see cref="ModelTypeIsAmbient"/>. A real constructor rather than an
+        /// optional parameter on the shorter one, which would remove that one from metadata and fault every
+        /// already-built consumer assembly whose manifest calls it.</summary>
+        public PrecompiledTemplateInfo(
+            string key,
+            Type entryPointType,
+            Type modelType,
+            bool isDynamic,
+            string contentHash,
+            IReadOnlyList<PrecompiledImport> imports,
+            PrecompiledOptionsFingerprint optionsFingerprint,
+            IReadOnlyList<PrecompiledExtensionBinding> extensionBindings,
+            IReadOnlyList<PrecompiledFunctionBinding> functionBindings,
+            PrecompiledCapabilities capabilities,
+            IProcessStrategy strategy,
+            string registeredName,
+            PrecompiledLinePathForm linePathForm,
+            bool modelTypeIsAmbient)
+        {
+            ModelTypeIsAmbient = modelTypeIsAmbient;
             Key = key ?? throw new ArgumentNullException(nameof(key));
             RegisteredName = registeredName;
             LinePathForm = linePathForm;
@@ -84,8 +109,20 @@ namespace Heddle.Precompiled
         /// <summary>The generated static entry class; null iff <see cref="IsPrecompiled"/> is false.</summary>
         public Type EntryPointType { get; }
 
-        /// <summary>The declared <c>@model</c>/<c>::</c> type; null when the template reads no model.</summary>
+        /// <summary>The type the generated code was compiled against — the declared <c>@model</c>/<c>::</c> type, the
+        /// <c>ModelType</c> item metadata when the template declares neither, and <c>System.Object</c> when nothing
+        /// typed it. Null only in a hand-written manifest that declines to say.</summary>
         public Type ModelType { get; }
+
+        /// <summary>True when the template declares no <c>@model</c> directive, so <see cref="ModelType"/> is the
+        /// <b>build's</b> answer (the <c>ModelType</c> item metadata, else <c>System.Object</c>) rather than a type
+        /// the template pins on both tiers. The dynamic tier would type the same template from the requesting
+        /// <c>CompileContext</c>'s model type instead, so the gauntlet requires the two to agree before it will serve
+        /// such an entry, and reports <see cref="PrecompiledFallbackReason.ModelTypeMismatch"/> when they do not.
+        /// <para>False — the value every manifest written before this one existed reads back — means the template's
+        /// own directive decides the model type on both tiers and the host's context type does not participate.</para>
+        /// </summary>
+        public bool ModelTypeIsAmbient { get; }
 
         public bool IsDynamic { get; }
 

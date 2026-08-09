@@ -163,7 +163,7 @@ not, and the template is still reachable by its key.
 
 | Carrier | Populated for | Reasons |
 | --- | --- | --- |
-| `TemplateKey` | a per‑request event, which is about one resolved template | `UnsupportedFunction`, `OptionsMismatch`, `ExtensionBindingMismatch`, `FunctionBindingMismatch`, `StaleContent`, `StaleImport`, `CaseMismatch` |
+| `TemplateKey` | a per‑request event, which is about one resolved template | `UnsupportedFunction`, `OptionsMismatch`, `ModelTypeMismatch`, `ExtensionBindingMismatch`, `FunctionBindingMismatch`, `StaleContent`, `StaleImport`, `CaseMismatch` |
 | `AssemblyName` | a registration‑time event, which is about an assembly and has no one template to name | `SchemaVersionUnsupported`, `EngineVersionIncompatible`, `RegisteredNameUnavailable` |
 
 Branch on the carrier, not on the reason. The 2.0 event had a single `Key` property holding either
@@ -202,6 +202,12 @@ Before trusting a precompiled entry the resolver checks it is compatible with th
 
 - **Options fingerprint** — `(OutputProfile, ExpressionMode, TrimDirectiveLines)`. A template
   compiled under `Text` is not a valid answer for an `Html` request.
+- **Model type** — only for an entry whose model type is *ambient*
+  (`PrecompiledTemplateInfo.ModelTypeIsAmbient`), meaning the template declares no `@model` and the build
+  chose the type: the `ModelType` item metadatum, else `object`. The engine types such a template from the
+  requesting `CompileContext` instead, so the two answers have to be the same type or the entry is not an
+  answer to this request. A template that declares `@model` is typed by its directive on both tiers and
+  this step does not look at the request at all.
 - **Extension bindings** — the `[ExtensionName]` extensions the template bound at build vs.
   the live registry (catches `[ExtensionReplace]` overrides). Default match is
   assembly‑qualified type name *without* version; supply your own via
@@ -243,6 +249,10 @@ if (!report.PassedForValidatedOptions) {
 
 Each failure is an ordinary `PrecompiledFallbackEvent` carrying the same reason, `Detail` and
 `HED7101` id the per‑request gate produces, so existing logging handles it unchanged.
+
+**The model‑type step is skipped here**, and deliberately: it judges the requesting `CompileContext`'s
+model type, which `TemplateOptions` does not carry and a pre‑render pass does not have. An entry with
+`ModelTypeIsAmbient` set can therefore still fall back at a request this report passed.
 
 **It is a report, not a gate.** Nothing about per‑request behaviour changes: the gauntlet still runs
 where it ran before. The pass does not raise `OnFallback` — nothing degraded, because no render
@@ -304,6 +314,7 @@ saw hides a packaging bug behind identical output. The classification:
 | `StaleImport` | legitimate fallback | The same, one hop out: an import changed under an unchanged root template. |
 | `UnsupportedFunction` | legitimate fallback *(marker)* / **must surface** *(late‑bound)* | Two causes under one reason. A marker entry is not a run‑time discovery at all — the build refused *on purpose* and warned `HED7014`. A **late‑bound** entry naming a function the live registry does not hold is the opposite: the build did its work and the deployment did not register what the template calls, so the fallback is hiding a configuration gap. The detail string separates them (`manifest=<late-bound> live=<unregistered>`). |
 | `OptionsMismatch` | legitimate fallback | Options are per‑request degrees of freedom a host legitimately exercises; the same template served `Text` for mail and `Html` precompiled is a designed miss of the fingerprinted point, not a defect. |
+| `ModelTypeMismatch` | legitimate fallback | The host typed its `CompileContext` differently from the build's assumption for a template that names no model of its own. Both types are legitimate — one is the deployment's, one is the build's — and only the dynamic tier can honour the deployment's. Precompiling for that host is a *build configuration* opportunity (`ModelType` item metadata), not a run‑time defect. |
 | `ExtensionBindingMismatch` | **must surface** *(provisional)* | A residual mismatch means the deployed binding set genuinely differs from the one the build declared — rendering dynamically with *different bindings than the build recorded* is the hazard, not the cure. |
 | `FunctionBindingMismatch` | **must surface** *(provisional)* | Declaring‑type/overload drift under the default registry signals assembly skew. A per‑request export registry (`options.Functions`) diverging by host choice is the one arguable sub‑case. |
 | `SchemaVersionUnsupported` | **must surface** | A manifest outside the engine's schema window means the deployable pairs generator and engine packages out of contract — a packaging defect that today silently un‑precompiles an entire assembly. |
@@ -404,7 +415,7 @@ override is refused as `HED7015` — **except** for a `[BranchRole]` custom bran
 ### Startup order: a suggestion, not a rule
 
 The build tier binds every extension the compilation could see; the run tier holds only the ones you
-registered. So a precompiled template survives gauntlet step 2 exactly when the extension assemblies it
+registered. So a precompiled template survives the gauntlet's extension step exactly when the extension assemblies it
 was built against are registered **before** the template renders — and which assemblies those are, and
 when they load, is the host's decision. The engine does not make it: it will not load an assembly to
 satisfy a binding, and it will not defer a render waiting for one. It reports.
@@ -531,6 +542,6 @@ heddle render <template> [--model-json <file>] [--out <file>] [--root <dir>]
 *Verified against source at `6639f6f` (2026-07-26).* Claims marked ✓ are gated by a test:
 the `HED70xx`/`HED71xx` tables ✓ (descriptor ⇄ registry ⇄ this page, both directions); the
 fallback-reason taxonomy ✓ (an exhaustive classifier that throws on an unmapped reason); the
-gauntlet's four steps ✓ (`PrecompiledGauntletTests`); the schema support window ✓
+gauntlet's five steps ✓ (`PrecompiledGauntletTests`); the schema support window ✓
 (`OldSchemaManifestRejectionTests`, over both released schemas). The MSBuild option table and the
 startup-order guidance are dated-verified, not gated.

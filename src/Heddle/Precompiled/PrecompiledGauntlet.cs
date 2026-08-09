@@ -12,13 +12,18 @@ namespace Heddle.Precompiled
     /// <summary>The per-request validation gauntlet. Runs the pinned ordered checks against a
     /// resolved <see cref="PrecompiledTemplateInfo"/> and the request's effective <see cref="TemplateOptions"/>,
     /// returning the first failure as a <see cref="PrecompiledFallbackEvent"/> (with the pinned detail string) or
-    /// <c>null</c> when every check passes. Pure apart from the optional staleness step's file reads.</summary>
+    /// <c>null</c> when every check passes. Pure apart from the optional staleness step's file reads.
+    /// <para>Ordered: marker → options → model type → extensions → functions → staleness.</para></summary>
     internal static class PrecompiledGauntlet
     {
         internal const string Hed7101 = Data.HeddleDiagnosticIds.PrecompiledGauntletFallback;
 
+        /// <param name="requestModelType">The model type the request would compile the template against — the
+        /// requesting <see cref="Runtime.CompileContext.RootScopeType"/>'s <see cref="Type"/>. <c>null</c> means the
+        /// caller makes no claim (a diagnostic pass rather than a request), and the model-type step is then skipped
+        /// rather than guessed at.</param>
         internal static PrecompiledFallbackEvent? Validate(PrecompiledTemplateInfo entry, TemplateOptions options,
-            Func<PrecompiledExtensionBinding, Type, bool> bindingResolver)
+            Func<PrecompiledExtensionBinding, Type, bool> bindingResolver, Type requestModelType = null)
         {
             if (!entry.IsPrecompiled)
             {
@@ -30,6 +35,10 @@ namespace Heddle.Precompiled
             var optionsFailure = CheckOptions(entry, options);
             if (optionsFailure != null)
                 return optionsFailure;
+
+            var modelFailure = CheckModelType(entry, requestModelType);
+            if (modelFailure != null)
+                return modelFailure;
 
             var extensionFailure = CheckExtensions(entry, bindingResolver);
             if (extensionFailure != null)
@@ -62,6 +71,33 @@ namespace Heddle.Precompiled
                 return Fail(entry.Key, PrecompiledFallbackReason.OptionsMismatch,
                     $"TrimDirectiveLines: manifest={Lower(fp.TrimDirectiveLines)} request={Lower(options.TrimDirectiveLines)}");
             return null;
+        }
+
+        /// <summary>The model-type step, and the one check the request's <see cref="TemplateOptions"/> cannot
+        /// answer on their own.
+        /// <para>An entry whose model type is <b>not</b> ambient carries a type its own <c>@model</c> directive
+        /// pinned, and <c>ModelExtension.InitStart</c> pins the very same type on the dynamic tier whatever the host
+        /// asked for — so the request's model type does not participate and there is nothing here to compare.</para>
+        /// <para>An ambient entry is the opposite: the template names no model, so the build compiled it against its
+        /// own assumption while the dynamic tier would compile it against
+        /// <see cref="Runtime.CompileContext.RootScopeType"/>. Two different types there mean two different member
+        /// resolutions — an <c>internal</c> member, a native expression's start type, a <c>@list</c> element — so the
+        /// answer has to be identity rather than assignability. Assignability would let a derived request through on
+        /// the strength of the cast the generated code performs, and the cast is not what decides the bytes: the
+        /// typing done <em>before</em> it is.</para></summary>
+        private static PrecompiledFallbackEvent? CheckModelType(PrecompiledTemplateInfo entry, Type requestModelType)
+        {
+            if (!entry.ModelTypeIsAmbient || requestModelType == null)
+                return null;
+
+            // ExType.Dynamic's Type is System.Object, which is also what the build assumes for an untyped template,
+            // so a dynamic request and an untyped entry meet here as the same type rather than as two spellings.
+            var compiled = entry.ModelType ?? typeof(object);
+            if (compiled == requestModelType)
+                return null;
+
+            return Fail(entry.Key, PrecompiledFallbackReason.ModelTypeMismatch,
+                $"Model: manifest={AqnSansVersion(compiled)} request={AqnSansVersion(requestModelType)}");
         }
 
         private static PrecompiledFallbackEvent? CheckExtensions(PrecompiledTemplateInfo entry,

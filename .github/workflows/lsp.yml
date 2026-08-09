@@ -34,7 +34,7 @@ jobs:
       # Same floor guard the dotnet workflow uses; these two legs had none.
       # This runner is Windows, so Heddle.Tests also builds its net48 leg and runs every TFM.
       - name: Test engine suite
-        run: .github/scripts/dotnet-test-guarded.sh 2134 src/Heddle.Tests/Heddle.Tests.csproj -c Release --no-build
+        run: .github/scripts/dotnet-test-guarded.sh 2139 src/Heddle.Tests/Heddle.Tests.csproj -c Release --no-build
       - name: Test language services
         run: .github/scripts/dotnet-test-guarded.sh 205 src/Heddle.LanguageServices.Tests/Heddle.LanguageServices.Tests.csproj -c Release --no-build
       - uses: actions/setup-node@v7
