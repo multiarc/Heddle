@@ -14,8 +14,8 @@ namespace Heddle.Generator.IntegrationTests
     /// Named content regions across the generator/precompiled layers. The differential asserts NATIVE precompiled
     /// parity on region defaults AND on overridden region fills (never via fallback): pass fixtures must produce a
     /// generated source and match the dynamic tier byte-for-byte. Depth fixtures additionally pin the FILLED bytes
-    /// to ensure fills propagate. Erroring region templates and the plain sibling-override idiom are NOT precompiled —
-    /// the dynamic tier owns them.
+    /// to ensure fills propagate. Erroring region templates are NOT precompiled — the dynamic
+    /// tier owns them; the plain sibling-override idiom is precompiled and byte-pinned like the rest.
     /// </summary>
     public class RegionTests
     {
@@ -42,16 +42,6 @@ namespace Heddle.Generator.IntegrationTests
 
         private static (string precompiled, string dynamic) RenderBoth(string key, string content, object model)
             => DifferentialHarness.Render(key, content, typeof(RegionFeed), model);
-
-        /// <summary>Asserts the template was NOT precompiled (no generated template source) and returns the
-        /// dynamic-tier compile result for the caller's error assertions.</summary>
-        private static HeddleTemplate AssertNotPrecompiledAndCompileDynamic(string key, string content)
-        {
-            var gen = DifferentialHarness.Generate(new[] { (key, content) });
-            Assert.DoesNotContain(gen.Diagnostics, d => d.Severity == DiagnosticSeverity.Error);
-            Assert.Empty(gen.TemplateSources);
-            return new HeddleTemplate(content, new CompileContext(new TemplateOptions(), typeof(RegionFeed)));
-        }
 
         [Fact]
         public void RegionDefaultsPrecompileNativelyAndMatch()
@@ -226,29 +216,38 @@ namespace Heddle.Generator.IntegrationTests
             return offset;
         }
 
+        /// <summary>The sibling-override idiom: a second definition block layers over a name the first one declared,
+        /// and a call inside an unrelated definition's body reaches the layer that is most-derived at the end of the
+        /// document. It used to cost the template its tier; it is an ordinary definition call now, and the bytes
+        /// are the dynamic tier's.</summary>
         [Fact]
-        public void SiblingOverrideIdiomStaysUnprecompiledAndCorrectDynamically()
+        public void TheSiblingOverrideIdiomPrecompilesAndMatchesTheDynamicTier()
         {
+            const string key = "views/region-shell.heddle";
             var t = "@model(){{" + FeedType + "}}@\\\n" +
                     "@%<shell_header>{{<header>[default]</header>}}" +
                     "<page_shell>{{<body>@shell_header()<main>@out()</main></body>}}%@\n" +
                     "@%<shell_header:shell_header>{{<header class=\"hero\">[hero]</header>}}%@\n" +
                     "@page_shell(){{<article>x</article>}}";
-            var dynamic = AssertNotPrecompiledAndCompileDynamic("views/region-shell.heddle", t);
-            Assert.True(dynamic.CompileResult.Success, dynamic.CompileResult.ToString());
+            var (pre, dyn) = RenderBoth(key, t, Model());
             Assert.Equal(
                 "<body><header class=\"hero\">[hero]</header><main><article>x</article></main></body>",
-                dynamic.Generate(Model()).Trim());
+                dyn.Trim());
+            Assert.Equal(dyn, pre);
         }
 
+        /// <summary>The shape the layering refusal was written for: a full override whose body calls its own name.
+        /// It does not recurse — the parser froze the layer below at the override's declaration — so the call
+        /// reaches the base, on both tiers alike.</summary>
         [Fact]
-        public void SelfCallingSiblingOverrideIsNotPrecompiledAndTerminatesDynamically()
+        public void ASelfCallingSiblingOverrideReachesTheLayerBelowItOnBothTiers()
         {
+            const string key = "views/region-sibling-selfcall.heddle";
             var t = "@model(){{" + FeedType + "}}@\\\n" +
                     "@%<x>{{[base]}}%@\n@%<x:x>{{[over:@x()]}}%@\n@x()";
-            var dynamic = AssertNotPrecompiledAndCompileDynamic("views/region-sibling-selfcall.heddle", t);
-            Assert.True(dynamic.CompileResult.Success, dynamic.CompileResult.ToString());
-            Assert.Equal("[over:[base]]", dynamic.Generate(Model()).Trim());
+            var (pre, dyn) = RenderBoth(key, t, Model());
+            Assert.Equal("[over:[base]]", dyn.Trim());
+            Assert.Equal(dyn, pre);
         }
 
         [Fact]

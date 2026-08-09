@@ -1846,19 +1846,17 @@ namespace Heddle.Generator.Emit
 
         // ---- Definition invocation ----
 
+        /// <summary>
+        /// One call site of one definition. A layered definition needs nothing here: <paramref name="def"/> arrives
+        /// from the same <c>ParseContext</c> lookup the engine makes, and the parser resolved the layers into that
+        /// context already — a full override's body was isolated at its declaration, so a call to its own name in it
+        /// carries the layer below, while every other context holds the most-derived one. Materializing is what the
+        /// parser did; emitting the result is an ordinary definition call, its own body and its own position.
+        /// </summary>
         private Call BuildDefinitionCall(DefinitionItem def, OutputChain chain, OutputItem item, CallParameter cp,
             BodyContext bctx, bool isFill, out Refusal reason)
         {
             reason = null;
-
-            // Emitter resolves flatly (always most-derived), so overrides calling themselves would recurse.
-            // Lifted only for materialized region fills (fill scope carries self-call→base rebind).
-            if (!isFill && DefinitionInvolvesOverride(def))
-            {
-                reason = new Refusal(RefusalCategory.DefinitionLayering, "definition override/layering",
-                    item.Position);
-                return null;
-            }
 
             // Slot definitions bind through the slot-mode BindDefinition overload.
             bool slotMode = SlotRules.HasSlot(def);
@@ -1987,7 +1985,8 @@ namespace Heddle.Generator.Emit
             if (bodyInfo == null || bodyInfo.Failed)
             {
                 reason = reason ?? bodyInfo?.Reason ??
-                    new Refusal(RefusalCategory.DefinitionLayering, "definition body", item.Position);
+                    new Refusal(RefusalCategory.EngineParity, "definition body the shared piece walk abandoned",
+                        item.Position);
                 return null;
             }
 
@@ -3234,17 +3233,6 @@ namespace Heddle.Generator.Emit
                 default: return SpecialType.None;
             }
         }
-
-        /// <summary>True when this definition participates in a full override (<c>&lt;name:name&gt;</c>) — the same
-        /// name re-declared over a base layer. The emitter refuses these
-        /// (<see cref="RefusalCategory.DefinitionLayering"/>): it resolves definitions flatly, always to the
-        /// most-derived layer, so an override calling itself would recurse. Layering is control flow rather than a
-        /// value, so it sits outside the per-node escape boundary and needs its own design pass.
-        /// Name-differing inheritance (<c>&lt;child:base&gt;</c>) is not an override and stays precompilable.</summary>
-        private static bool DefinitionInvolvesOverride(DefinitionItem def)
-            => AnyLayer(def, d => d.FullOverride ||
-                                  (d.BaseDefinition != null &&
-                                   string.Equals(d.BaseDefinition.Name, d.Name, System.StringComparison.Ordinal)));
 
         private int _propsCounter;
 

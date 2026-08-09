@@ -25,7 +25,12 @@ namespace Heddle.Generator.Emit
         /// <summary>A chained call, bodied carrier or chain item the emitter cannot flatten.</summary>
         ChainCarrier,
 
-        /// <summary>Definition override/layering, a control-flow divergence outside the value-escape boundary.</summary>
+        /// <summary>Definition override/layering. Reached by nothing today: the emitter refused every
+        /// <c>&lt;name:name&gt;</c> on the belief that it resolved definitions flatly and so could only ever reach
+        /// the most-derived layer, and it never resolved them itself — it asks the same <c>ParseContext</c> the
+        /// engine asks, and the parser has already put the layer each call site sees in it. Declared and unreached,
+        /// as <see cref="ClrWall"/> is: the degrade-expectation seam pins these members by name, so a member is
+        /// retired in place rather than deleted.</summary>
         DefinitionLayering,
 
         /// <summary>A definition or extension prop prototype the emitter cannot freeze — unknown, duplicate,
