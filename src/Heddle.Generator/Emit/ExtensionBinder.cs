@@ -69,8 +69,9 @@ namespace Heddle.Generator.Emit
                 bool isEngineAssembly, BranchRole? role, bool hasScopeChannel,
                 bool hasEncodeOutput = false, bool hasNotEncode = false, bool isZeroOutput = false,
                 IReadOnlyList<PropParameter> parameters = null, INamedTypeSymbol typeSymbol = null,
-                IReadOnlyList<ITypeSymbol> acceptedDataTypes = null)
+                IReadOnlyList<ITypeSymbol> acceptedDataTypes = null, string precompileUnsupportedReason = null)
             {
+                PrecompileUnsupportedReason = precompileUnsupportedReason;
                 TypeSymbol = typeSymbol;
                 AcceptedDataTypes = acceptedDataTypes ?? EmptyDataTypes;
                 GlobalName = globalName;
@@ -141,6 +142,11 @@ namespace Heddle.Generator.Emit
             /// <summary>The decoded <c>[Prop]</c> declarations, base-chain outermost-first;
             /// empty for a parameter-less extension (or against an older engine reference).</summary>
             public IReadOnlyList<PropParameter> Parameters { get; }
+
+            /// <summary>The reason the type (or a base) declares with <c>[PrecompileUnsupported]</c>, or
+            /// <c>null</c>. An empty declared reason reads back as the empty string, which is still a declaration —
+            /// so the test is against <c>null</c>, never against emptiness.</summary>
+            public string PrecompileUnsupportedReason { get; }
 
             /// <summary>Reads the channel — hosting bodies must provision a locals frame.</summary>
             public bool IsBranchParticipant =>
@@ -229,6 +235,8 @@ namespace Heddle.Generator.Emit
                 DataTypeAttr = compilation.GetTypeByMetadataName("Heddle.Attributes.DataTypeAttribute"),
                 ChainedTypeAttr = compilation.GetTypeByMetadataName("Heddle.Attributes.ChainedTypeAttribute"),
                 RoleAttr = compilation.GetTypeByMetadataName("Heddle.Attributes.BranchRoleAttribute"),
+                PrecompileUnsupportedAttr =
+                    compilation.GetTypeByMetadataName("Heddle.Attributes.PrecompileUnsupportedAttribute"),
                 ScopeChannelAttr = compilation.GetTypeByMetadataName("Heddle.Attributes.ScopeChannelAttribute"),
                 EncodeOutputAttr = compilation.GetTypeByMetadataName("Heddle.Attributes.EncodeOutputAttribute"),
                 NotEncodeAttr = compilation.GetTypeByMetadataName("Heddle.Attributes.NotEncodeAttribute"),
@@ -290,9 +298,8 @@ namespace Heddle.Generator.Emit
 
             foreach (var name in candidate.Names)
             {
-                if (name.Length == 0)
-                    continue;
-
+                // The empty name is a name: it is what the unnamed carrier resolves under, and the emitter binds
+                // that carrier through the binder rather than spelling the engine's type for it.
                 if (!candidate.Bindable)
                 {
                     // Name must not reach HED7006 — runtime will find it.
@@ -354,6 +361,7 @@ namespace Heddle.Generator.Emit
             public INamedTypeSymbol NotEncodeAttr;
             public INamedTypeSymbol ZeroOutputAttr;
             public INamedTypeSymbol PropAttr;
+            public INamedTypeSymbol PrecompileUnsupportedAttr;
         }
 
         /// <summary>
@@ -484,7 +492,31 @@ namespace Heddle.Generator.Emit
                 HasAttribute(type, symbols.ZeroOutputAttr),
                 ReadPropParameters(type, symbols.PropAttr),
                 type,
-                ReadDataTypes(type, symbols.DataTypeAttr));
+                ReadDataTypes(type, symbols.DataTypeAttr),
+                ReadPrecompileUnsupported(type, symbols.PrecompileUnsupportedAttr));
+        }
+
+        /// <summary>Reads <c>[PrecompileUnsupported]</c> over the base-type chain — the attribute is
+        /// <c>Inherited = true</c> and the runtime reads it that way too, so a subclass of a disowned extension is
+        /// disowned. Returns the declared reason, the empty string for a declaration with none, or <c>null</c> when
+        /// there is no declaration at all.</summary>
+        private static string ReadPrecompileUnsupported(INamedTypeSymbol type, INamedTypeSymbol attrType)
+        {
+            if (attrType == null)
+                return null;
+            for (var t = type; t != null; t = t.BaseType)
+            {
+                foreach (var attr in t.GetAttributes())
+                {
+                    if (!SymbolEqualityComparer.Default.Equals(attr.AttributeClass, attrType))
+                        continue;
+                    return attr.ConstructorArguments.Length == 1
+                        ? attr.ConstructorArguments[0].Value as string ?? string.Empty
+                        : string.Empty;
+                }
+            }
+
+            return null;
         }
 
         /// <summary>Reads every <c>[DataType]</c> over the base-type chain — the attribute is repeatable and the

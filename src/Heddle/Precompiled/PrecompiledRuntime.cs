@@ -1,5 +1,6 @@
 using System;
 using System.Buffers;
+using System.Collections.Generic;
 using System.IO;
 using System.Runtime.CompilerServices;
 using Heddle.Attributes;
@@ -170,10 +171,17 @@ namespace Heddle.Precompiled
                     return Faulted(site, PrecompiledInitFaultScope.CallSite,
                         "The factory for '" + Describe(site) + "' returned null.", null, null, null);
 
+                // Read off the LIVE type, not off what the build saw: an extension package that took the
+                // declaration after this consumer's assembly was built must still fall back.
+                var disowned = DeclaredUnsupported(extension.GetType());
+                if (disowned != null)
+                    return Faulted(site, PrecompiledInitFaultScope.CallSite,
+                        "'" + Describe(site) + "' declares [PrecompileUnsupported]: " + disowned, null, null, null);
+
                 var scope = BuildScope(site, site.SlotType);
                 var run = RunInit(extension, site, scope, BuildParseContext(site), BuildSourceItem(site),
                     site.Body, body, ToExType(site.DataType), ToExType(site.ChainedType), ToExType(site.ParentType),
-                    new BlockPosition(site.PositionStart, site.PositionLength));
+                    new BlockPosition(site.PositionStart, site.PositionLength), publish: true);
                 if (run != null)
                     return Faulted(site, run.Scope, run.Detail, run.Exception, run.Errors, run.Reason);
 
@@ -181,6 +189,10 @@ namespace Heddle.Precompiled
                 if (drained != null)
                     return Faulted(site, drained.Scope, drained.Detail, drained.Exception, drained.Errors,
                         drained.Reason);
+
+                var wired = WireTypeAgnosticBody(site);
+                if (wired != null)
+                    return Faulted(site, wired.Scope, wired.Detail, wired.Exception, wired.Errors, wired.Reason);
                 return extension;
             }
             catch (Exception e)
@@ -233,7 +245,7 @@ namespace Heddle.Precompiled
                 // declares one and the call's model type otherwise.
                 var outerScope = BuildScope(site, site.SlotType);
                 var outerRun = RunInit(outer, site, outerScope, parseContext, sourceItem, site.Body, callerContent,
-                    slotType ?? dataType, chainedType, parentType, position);
+                    slotType ?? dataType, chainedType, parentType, position, publish: false);
                 if (outerRun != null)
                     return Faulted(site, outerRun.Scope, outerRun.Detail, outerRun.Exception, outerRun.Errors,
                         outerRun.Reason);
@@ -241,7 +253,7 @@ namespace Heddle.Precompiled
                 // The definition body compiles under the definition's own slot type.
                 var innerScope = BuildScope(site, site.DefinitionSlotType);
                 var innerRun = RunInit(inner, site, innerScope, parseContext, sourceItem, site.DefinitionBody, body,
-                    dataType, chainedType, parentType, position);
+                    dataType, chainedType, parentType, position, publish: true);
                 if (innerRun != null)
                     return Faulted(site, innerRun.Scope, innerRun.Detail, innerRun.Exception, innerRun.Errors,
                         innerRun.Reason);
@@ -263,11 +275,33 @@ namespace Heddle.Precompiled
             }
         }
 
+        /// <summary>
+        /// The parameter-declaring form: <see cref="Init"/>, then the <c>ExtensionParameterCarrier</c> wrap the
+        /// compiler applies immediately after <c>InitializeTemplate</c> — after it, so the render-type attributes
+        /// stay on the inner extension and the carrier is transparent to them, exactly as
+        /// <c>HeddleCompiler.CreateExtension</c> orders the two.
+        /// <para>A call whose hook did not succeed returns its substitute unwrapped: the substitute renders the
+        /// whole call from its own text, prop arguments included, so wrapping it would apply them twice.</para>
+        /// </summary>
+        /// <exception cref="ArgumentNullException">Any argument other than <paramref name="props"/> or
+        /// <paramref name="dynamicSetters"/> is null.</exception>
+        public static AbstractExtension InitExtension(Func<AbstractExtension> factory, PrecompiledInitSite site,
+            IProcessStrategy body, object[] props, PrecompiledPropSetter[] dynamicSetters, string[] parameterNames)
+        {
+            if (parameterNames == null)
+                throw new ArgumentNullException(nameof(parameterNames));
+            var extension = Init(factory, site, body);
+            if (site.Fault != null)
+                return extension;
+            return new ExtensionParameterCarrier(extension, props, dynamicSetters,
+                new ExtensionParameterMap(parameterNames));
+        }
+
         /// <summary>One <c>InitializeTemplate</c> run with the body supplied rather than compiled. Returns
         /// <c>null</c> on success, or the fault to record.</summary>
         private static InitOutcome RunInit(AbstractExtension extension, PrecompiledInitSite site, CompileScope scope,
             ParseContext parseContext, OutputItem sourceItem, PrecompiledInitBody bodyText, IProcessStrategy body,
-            ExType dataType, ExType chainedType, ExType parentType, BlockPosition position)
+            ExType dataType, ExType chainedType, ExType parentType, BlockPosition position, bool publish)
         {
             var raw = bodyText?.RawText;
             var extensionType = extension.GetType();
@@ -310,6 +344,24 @@ namespace Heddle.Precompiled
                 return null;   // A bodiless call whose hook does not delegate: nothing was assumed, nothing to check.
             }
 
+            if (string.IsNullOrEmpty(raw))
+            {
+                // A call with no body text installs no strategy and carries no emitted cast, so the type the hook
+                // would have compiled a body against is not a claim anything here made.
+                if (publish)
+                {
+                    site.ResolvedBodyDataType = Bare(frame.ConsumedDataType);
+                    site.ResolvedBodyChainedType = Bare(frame.ConsumedChainedType);
+                }
+
+                return Collected(scope) is HeddleCompileError[] bodilessErrors
+                    ? new InitOutcome(PrecompiledInitFaultScope.Template,
+                        "'" + Describe(site) + "' reported " + bodilessErrors.Length + " compile error(s); the " +
+                        "dynamic tier would refuse this template too.", null, bodilessErrors,
+                        PrecompiledFallbackReason.ExtensionInitCompileError)
+                    : null;
+            }
+
             var errors = Collected(scope);
             if (errors != null)
                 return new InitOutcome(PrecompiledInitFaultScope.Template,
@@ -317,14 +369,28 @@ namespace Heddle.Precompiled
                     "would refuse this template too.", null, errors,
                     PrecompiledFallbackReason.ExtensionInitCompileError);
 
+            if (publish)
+            {
+                site.ResolvedBodyDataType = Bare(frame.ConsumedDataType);
+                site.ResolvedBodyChainedType = Bare(frame.ConsumedChainedType);
+            }
+
+            // A type-agnostic body made no assumption to contradict: the build emitted it with no model cast
+            // precisely because it could not resolve what the hook would choose, and the answer just published is
+            // what binds its reads and types its nested calls.
+            if (bodyText != null && bodyText.TypeAgnostic)
+                return null;
+
             var assumedData = ToExType(bodyText?.AssumedDataType);
             var assumedChained = ToExType(bodyText?.AssumedChainedType);
-            if (!ExType.Equals(assumedData, frame.ConsumedDataType) ||
-                !ExType.Equals(assumedChained, frame.ConsumedChainedType))
+            bool chainedClaimed = bodyText != null && bodyText.AssumesChainedType;
+            if (Erase(assumedData) != Erase(frame.ConsumedDataType) ||
+                (chainedClaimed && Erase(assumedChained) != Erase(frame.ConsumedChainedType)))
                 return new InitOutcome(PrecompiledInitFaultScope.Template,
                     "'" + Describe(site) + "' compiled its body against (" + Name(frame.ConsumedDataType) + ", " +
                     Name(frame.ConsumedChainedType) + ") but the build assumed (" + Name(assumedData) + ", " +
-                    Name(assumedChained) + "); the emitted casts would render bytes the engine does not.", null, null,
+                    Name(chainedClaimed ? assumedChained : frame.ConsumedChainedType) +
+                    "); the emitted casts would render bytes the engine does not.", null, null,
                     PrecompiledFallbackReason.ExtensionInitTypingMismatch);
 
             return null;
@@ -354,6 +420,140 @@ namespace Heddle.Precompiled
 
         private static HeddleCompileError[] Collected(CompileScope scope)
             => scope.CompileErrors.Count == 0 ? null : scope.CompileErrors.ToArray();
+
+        /// <summary>The <c>ExType</c> the hook answered with, reduced to the <see cref="Type"/> a site carries —
+        /// <c>null</c> for dynamic, which is the same collapse <see cref="PrecompiledInitSite"/> documents.</summary>
+        private static Type Bare(ExType type) => type == null || type.IsDynamic ? null : type.Type;
+
+        /// <summary>The typing comparison's own view of a type: the <see cref="Type"/> it resolves to, with
+        /// <c>dynamic</c> read as <see cref="object"/> — which is the engine's own collapse
+        /// (<c>ExType.Dynamic.Type</c> <i>is</i> <see cref="object"/>).
+        /// <para>The two tiers reach that value by different routes and legitimately spell it differently: a
+        /// property declared <c>ICollection&lt;dynamic&gt;</c> is <c>ICollection&lt;object&gt;</c> plus a
+        /// <c>[Dynamic]</c> attribute in metadata, so Roslyn reports the element as <c>dynamic</c> where reflection
+        /// reports <c>object</c>. Neither spelling admits a typed member read, so no emitted cast can differ; every
+        /// other disagreement — a hook that re-types the body to a real type the build did not expect — still
+        /// costs the template its tier.</para></summary>
+        private static Type Erase(ExType type) => type == null || type.IsDynamic ? typeof(object) : type.Type;
+
+        /// <summary>The <c>[PrecompileUnsupported]</c> reason declared on <paramref name="extensionType"/> or one of
+        /// its bases, or <c>null</c>. Never throws: a reflection failure over a moved attribute assembly must cost
+        /// the call site, not the type initializer.</summary>
+        private static string DeclaredUnsupported(Type extensionType)
+        {
+            try
+            {
+                var declared = extensionType.GetAttributes<PrecompileUnsupportedAttribute>(true);
+                if (declared == null || declared.Length == 0)
+                    return null;
+                return string.IsNullOrEmpty(declared[0].Reason) ? "no reason stated" : declared[0].Reason;
+            }
+            catch (Exception e)
+            {
+                return "reading its declaration threw " + e.GetType().Name;
+            }
+        }
+
+        /// <summary>
+        /// Hands the hook's own answer to everything the build left type-agnostic: the body's member reads bind
+        /// against it through the engine's accessor, and every nested call site takes it as its <c>dataType</c> and
+        /// its enclosing model, which is why those sites cascade from here rather than standing as flat siblings.
+        /// <para>A read the engine's member walk does not resolve is the engine's own compile error for that body,
+        /// so it costs the <b>template</b> — the dynamic tier would refuse it too.</para>
+        /// </summary>
+        private static InitOutcome WireTypeAgnosticBody(PrecompiledInitSite site)
+        {
+            var model = site.ResolvedBodyDataType;
+            var accessors = site.BodyAccessors;
+            if (accessors != null)
+            {
+                for (int i = 0; i < accessors.Length; i++)
+                {
+                    if (accessors[i] == null)
+                        continue;
+                    var failure = accessors[i].Bind(model, site.RootModelType);
+                    if (failure != null)
+                        return new InitOutcome(PrecompiledInitFaultScope.Template,
+                            "The body of '" + Describe(site) + "' reads " + failure +
+                            "; the engine refuses the same read when it compiles this body.", null, null,
+                            PrecompiledFallbackReason.ExtensionInitCompileError);
+                }
+            }
+
+            var dependents = site.Dependents;
+            if (dependents != null)
+            {
+                for (int i = 0; i < dependents.Length; i++)
+                {
+                    var dependent = dependents[i];
+                    if (dependent == null)
+                        continue;
+                    dependent.ModelType = model;
+                    dependent.ParentType = model;
+                    if (dependent.DataTypePath != null)
+                    {
+                        if (model == null)
+                        {
+                            dependent.DataType = null;
+                        }
+                        else
+                        {
+                            var walk = Runtime.Expressions.MemberPathResolver.TryResolve(new ExType(model),
+                                dependent.DataTypePath);
+                            if (walk.Kind != Runtime.Expressions.MemberPathResolutionKind.Resolved)
+                                return new InitOutcome(PrecompiledInitFaultScope.Template,
+                                    "The body of '" + Describe(site) + "' reads '" +
+                                    string.Join(".", dependent.DataTypePath) + "' off '" + model.FullName +
+                                    "', which the engine's member walk does not resolve.", null, null,
+                                    PrecompiledFallbackReason.ExtensionInitCompileError);
+                            dependent.DataType = Bare(walk.ResultType);
+                        }
+                    }
+                    else if (dependent.CallShape == PrecompiledCallShape.None)
+                    {
+                        dependent.DataType = model;
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// The per-call-site substitute, written by the build rather than earned by a fault: the call renders by
+        /// compiling its own source text at first render while the rest of the template stays precompiled. The
+        /// build takes it where it knows the seam cannot serve the call — a <c>[PrecompileUnsupported]</c>
+        /// extension, or a body shape no type-agnostic emission reproduces — instead of costing the whole template
+        /// its tier.
+        /// </summary>
+        /// <param name="site">The call site; its <see cref="PrecompiledInitSite.SourceText"/> is what gets
+        /// compiled.</param>
+        /// <param name="detail">One sentence naming why the seam was not used, recorded on the site.</param>
+        /// <exception cref="ArgumentNullException"><paramref name="site"/> is null.</exception>
+        public static AbstractExtension SiteFallback(PrecompiledInitSite site, string detail)
+        {
+            if (site == null)
+                throw new ArgumentNullException(nameof(site));
+            return Faulted(site, PrecompiledInitFaultScope.CallSite,
+                detail ?? "The build did not bind '" + Describe(site) + "' through the compile-time seam.",
+                null, null, null);
+        }
+
+        /// <summary>The template-scope faults a manifest entry's call sites recorded at type-init, which the
+        /// gauntlet turns into a per-request fallback. <c>null</c> when every site bound.</summary>
+        internal static PrecompiledInitFault FirstTemplateFault(IReadOnlyList<PrecompiledInitSite> sites)
+        {
+            if (sites == null)
+                return null;
+            for (int i = 0; i < sites.Count; i++)
+            {
+                var fault = sites[i]?.Fault;
+                if (fault != null && fault.Scope == PrecompiledInitFaultScope.Template)
+                    return fault;
+            }
+
+            return null;
+        }
 
         private static AbstractExtension Faulted(PrecompiledInitSite site, PrecompiledInitFaultScope faultScope,
             string detail, Exception exception, HeddleCompileError[] errors, PrecompiledFallbackReason? reason)

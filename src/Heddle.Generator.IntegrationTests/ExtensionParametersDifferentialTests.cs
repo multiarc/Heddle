@@ -42,20 +42,21 @@ namespace Heddle.Generator.IntegrationTests
             Assert.Contains("cols=3:photos", dyn);
         }
 
+        /// <summary>A bodied call to a parameter-declaring custom extension precompiles: its own hook runs at
+        /// static-init through <c>InitExtension</c>, which wraps the initialized extension in the parameter carrier
+        /// afterwards — the order the engine's compiler uses — so the body and the props both arrive.</summary>
         [Fact]
-        public void BodiedParameterCallFallsBackAndDynamicRendersParameters()
+        public void BodiedParameterCallPrecompilesAndRendersParameters()
         {
-            // Bodied custom call: generator emits no entry class; dynamic tier renders with parameters.
             var t = "@model(){{System.String}}@\\\n@grid(this, columns: 4){{body}}\n";
             var gen = DifferentialHarness.Generate(new[] { ("views/gridbodied.heddle", t) });
             Assert.DoesNotContain(gen.Diagnostics, d => d.Severity == DiagnosticSeverity.Error);
-            Assert.Empty(gen.TemplateSources);   // degraded — no .g.cs
-            DifferentialHarness.ExpectDegrade(gen, "views/gridbodied.heddle");   // Declared fallback intent
+            DifferentialHarness.ExpectPrecompiled(gen, "views/gridbodied.heddle");
+            Assert.Contains("PrecompiledRuntime.InitExtension(", Assert.Single(gen.TemplateSources).Value);
 
-            var dynamicTemplate = new HeddleTemplate(t,
-                new Heddle.Runtime.CompileContext(new Heddle.Data.TemplateOptions(), typeof(string)));
-            Assert.True(dynamicTemplate.CompileResult.Success, dynamicTemplate.CompileResult.ToString());
-            Assert.Contains("cols=4:photos", dynamicTemplate.Generate("photos"));
+            var (pre, dyn) = DifferentialHarness.Render("views/gridbodied.heddle", t, typeof(string), "photos");
+            Assert.Equal(dyn, pre);
+            Assert.Contains("cols=4:photos", pre);
         }
 
         [Fact]
@@ -75,13 +76,13 @@ namespace Heddle.Generator.IntegrationTests
             // Derives Encode from [EncodeOutput] instead of hard-coding Raw; pre-fix would fail (tier divergence).
             var t = "@model(){{System.String}}@\\\n@encodedBare(this)\n";
 
-            // Non-vacuity: generated source binds via PrecompiledRuntime.Bind with derived RenderType.Encode (no fallback).
+            // Non-vacuity: the site runs the extension's own hook, which derives Encode off the live type — no
+            // render type is written into the generated file at all.
             var gen = DifferentialHarness.Generate(new[] { ("views/encbare.heddle", t) });
             Assert.DoesNotContain(gen.Diagnostics, d => d.Severity == DiagnosticSeverity.Error);
             var source = Assert.Single(gen.TemplateSources).Value;
-            Assert.Contains("PrecompiledRuntime.Bind(", source);
+            Assert.Contains("PrecompiledRuntime.Init(", source);
             Assert.Contains("EncodedBareExtension", source);
-            Assert.Contains("global::Heddle.Data.RenderType.Encode", source);
 
             var (pre, dyn) = DifferentialHarness.Render("views/encbare.heddle", t, typeof(string), "x&y");
             Assert.Equal(dyn, pre);
@@ -91,11 +92,12 @@ namespace Heddle.Generator.IntegrationTests
         [Fact]
         public void PlainCustomWithoutEncodeOutputStaysRaw()
         {
-            // Derivation touches only [EncodeOutput]; plain custom without it stays Raw (byte-identical).
+            // Derivation touches only [EncodeOutput]; a plain custom without it stays Raw. The derivation now runs
+            // at static-init off the live type, so the proof is the rendered bytes plus the seam being taken.
             var t = "@model(){{System.String}}@\\\n@yell(this)\n";
             var gen = DifferentialHarness.Generate(new[] { ("views/yellraw.heddle", t) });
             var source = Assert.Single(gen.TemplateSources).Value;
-            Assert.Contains("global::Heddle.Data.RenderType.Raw", source);
+            Assert.Contains("PrecompiledRuntime.Init(", source);
 
             var (pre, dyn) = DifferentialHarness.Render("views/yellraw.heddle", t, typeof(string), "<b>");
             Assert.Equal(dyn, pre);

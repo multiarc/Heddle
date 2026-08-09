@@ -121,6 +121,33 @@ namespace Heddle.Precompiled
         /// selects which of <c>@out</c>'s two "value without a slot" sentences the engine writes.</summary>
         public bool InsideDefinition { get; set; }
 
+        /// <summary>The member reads of a <b>type-agnostic</b> body — one whose model type the build could not
+        /// resolve, because the extension hosting it decides that type in its own hook.
+        /// <see cref="PrecompiledRuntime.Init"/> binds every one of them against the type the hook answered with,
+        /// so the reads are the engine's rather than a guess. <c>null</c> for a body the build typed itself.</summary>
+        public PrecompiledLateAccessor[] BodyAccessors { get; set; }
+
+        /// <summary>Call sites nested inside this call's type-agnostic body, whose own <c>dataType</c> is a
+        /// function of the model this hook hands the body. <see cref="PrecompiledRuntime.Init"/> writes that model
+        /// onto each of them before their own initializers run, which is what makes the typing cascade rather than
+        /// sit as a flat sibling. <c>null</c> when the body is typed by the build or hosts no further calls.</summary>
+        public PrecompiledInitSite[] Dependents { get; set; }
+
+        /// <summary>For a site nested in a type-agnostic body: the member path whose resolved type is this call's
+        /// <c>dataType</c>. The path is known at build; the type it resolves to is not, because it starts at the
+        /// model the enclosing hook chooses. <see cref="PrecompiledRuntime.Init"/> walks it with the engine's own
+        /// member resolution and writes <see cref="DataType"/>. <c>null</c> for every other site.</summary>
+        public string[] DataTypePath { get; set; }
+
+        /// <summary>The model type the hook actually handed this call's body compile, published by
+        /// <see cref="PrecompiledRuntime.Init"/>. <c>null</c> means the hook answered <c>dynamic</c>, or the hook has
+        /// not run yet.</summary>
+        public Type ResolvedBodyDataType { get; set; }
+
+        /// <summary>The chained type the hook handed this call's body compile; see
+        /// <see cref="ResolvedBodyDataType"/>.</summary>
+        public Type ResolvedBodyChainedType { get; set; }
+
         /// <summary>What <see cref="PrecompiledRuntime.Init"/> recorded when the hook did not succeed; <c>null</c>
         /// on the success path. Never thrown — see <see cref="PrecompiledInitFault"/> for why.</summary>
         public PrecompiledInitFault Fault { get; set; }

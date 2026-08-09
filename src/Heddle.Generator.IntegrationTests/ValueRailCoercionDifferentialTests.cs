@@ -111,19 +111,21 @@ namespace Heddle.Generator.IntegrationTests
 #endif
 
         /// <summary>
-        /// The other bound: an extension that consumes its own body's Execute result cannot be precompiled at all,
-        /// because a bodied custom call's body typing is the extension's to decide. The bodiless neighbour of the
-        /// very same call still precompiles and still renders the engine's bytes, so this is that call's body being
-        /// refused and not the extension being unbindable.
+        /// The bodied twin: an extension that consumes its own body's <c>Execute</c> result. Its body typing is the
+        /// extension's to decide, and the build no longer has to guess it — the body is emitted with no model cast
+        /// and the extension's own hook types it at static-init, so both this call and its bodiless neighbour
+        /// precompile and both render the engine's bytes.
         /// </summary>
         [Fact]
-        public void ABodiedCallToTheSameExtensionDegradesWhileItsBodilessNeighbourPrecompiles()
+        public void ABodiedCallToTheSameExtensionPrecompilesAlongsideItsBodilessNeighbour()
         {
             const string bodied = "views/value-rail-bodied.heddle";
             var bodiedTemplate = Header + "@tally(this){{x}}";
             var gen = Generate(bodied, bodiedTemplate);
-            DifferentialHarness.ExpectDegrade(gen, bodied);
-            Assert.Equal("4", RenderDynamic(bodiedTemplate));
+            DifferentialHarness.ExpectPrecompiled(gen, bodied);
+            var (bodiedPre, bodiedDyn) = DifferentialHarness.Render(bodied, bodiedTemplate, typeof(string), Model);
+            Assert.Equal(bodiedDyn, bodiedPre);
+            Assert.Equal("4", bodiedPre);
 
             var (precompiled, dyn) = DifferentialHarness.Render("views/value-rail-bodiless.heddle",
                 Header + "@tally(this)", typeof(string), Model);

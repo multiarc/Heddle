@@ -440,11 +440,11 @@ Because a custom terminal's render‑time orphan message is yours to phrase, thr
 `TemplateProcessingException` when the read misses (as `@finish` does) — the engine's HED3003 covers
 only the statically visible case.
 
-**Precompilation.** Custom branch sets are fully functional on the runtime (dynamic) tier — the
-set‑*structuring* rules above apply on both tiers because classification is role‑based everywhere. On
-the build tier a custom branch extension falls back quietly to the dynamic tier — the build has not read
-its `InitStart` (no `HED7015` at all: the override is the canonical shape here, not a mistake) — and
-renders identically with full role semantics.
+**Precompilation.** Custom branch sets are fully functional on both tiers, and they **precompile**: the
+set‑*structuring* rules above apply everywhere because classification is role‑based, and your
+`InitStart` override — the canonical shape for a branch extension — runs for real inside your own
+assembly when the generated template's type initializer runs. Nothing about it has to be predicted, so
+nothing about it costs a tier.
 
 ---
 
@@ -489,15 +489,15 @@ namespace MyApp.Extensions
 
 Usage in a template: `@upper(Name)`.
 
-> **Precompilation note.** This example overrides `InitStart` (to type the body against the parent
-> model), which is a **runtime‑tier** shape. Because `UpperExtension` is not a `[BranchRole]` extension,
-> a *precompiled* template calling `@upper(...)` falls back to the dynamic tier and says so with the
-> `HED7015` **warning** — your build still succeeds and the page still renders — see
-> [Precompiled mode](#precompiled-mode). If such templates must precompile, omit the `InitStart` override
-> (accepting the default typing).
+> **Precompilation note.** This example overrides `InitStart` to type the body against the parent model,
+> and a precompiled template calling `@upper(...)` **precompiles anyway**: the generated static
+> initializer constructs `UpperExtension` in your own assembly and calls this very method, handing it the
+> already‑generated body instead of letting it compile one. The typing decision below is therefore made
+> by your code, not guessed at by the build — see [Precompiled mode](#precompiled-mode).
 >
 > The example also derives from `AbstractHtmlExtension`/`[EncodeOutput]`; that encoding **is** reproduced
-> by precompiled binding, on the bodiless and the bodied path alike (see [Precompiled mode](#precompiled-mode)).
+> by precompiled binding, on the bodiless and the bodied path alike, and it is now *derived from the live
+> type* rather than written into the generated file, so it cannot drift.
 
 Compare with the real [`StringExtension`](../src/Heddle/Extensions/StringExtension.cs) and
 [`DateExtension`](../src/Heddle/Extensions/DateExtension.cs), which follow the same shape.
@@ -601,15 +601,28 @@ reproduces:
 - **No reliance on runtime registry mutation.** The instance is built once and never mutated
   after binding; extensions that expect to be re‑registered or reconfigured per render are not
   supported.
-- **No `InitStart`/`CompleteInit` override the build has not read** *(outside the engine assembly)*.
-  Those are compile‑time hooks; the build runs the *base* behavior of them, so an override it cannot
-  evaluate makes a template binding your extension **fall back to the dynamic tier** under the
-  `HED7015` warning, naming the extension and the hook. It is deliberately not an error: an extension
-  the generator cannot reason about should cost its call site the precompiled tier, not fail your
-  build. **Exception:** a `[BranchRole]` custom branch extension is expected to override `InitStart`
-  (its canonical parent‑model shape), so it draws no `HED7015` at all — a call to it degrades silently
-  (see [Building your own branch set](#building-your-own-branch-set)).
-  Keeping custom logic in `ProcessData`/`RenderData` is the way to need none of this.
+- **An `InitStart`/`CompleteInit` override is fine — it runs for real.** The generated static
+  initializer constructs your extension inside your own assembly and calls its actual hook, supplying
+  the already‑generated body in place of a body compile. Everything the hook decides is decided by your
+  code: the typing it hands the body, the state it caches, the diagnostics it raises. A bodied call to
+  your extension precompiles too. Where your hook chooses a model type the build could not resolve, the
+  body is emitted with **no model cast** and its member reads bind to the engine's own accessor once
+  your hook has answered — three shapes inside such a body still cost that one call site its tier (a
+  computed native expression, an embedded C# expression, and a nested call whose typing needs the same
+  answer), and the rest of the template is unaffected.
+  If your hook genuinely cannot survive this — the clear case being one that walks the enclosing
+  document through `InitContext.ParseContext.Tokens`/`SubContexts`, which a single call site cannot
+  carry — declare it and be taken at your word:
+
+  ```csharp
+  [ExtensionName("toc")]
+  [PrecompileUnsupported("reads the enclosing document's headings through InitContext.ParseContext")]
+  public sealed class TableOfContentsExtension : AbstractExtension { … }
+  ```
+
+  Every call to it binds dynamically and reports `HED7033` quoting your sentence verbatim; the rest of
+  the template still precompiles. The attribute is read at build time *and* off the live type at run
+  time, so adding it in a package update protects consumers who have already built.
 - **A `[Prop]` default whose type generated code can name.** Defaults are frozen into the generated
   source as the exact boxed value the runtime would build from the attribute, so a default of an `enum`
   type — including on an `object`‑typed prop, where the box keeps the enum, not its underlying number —

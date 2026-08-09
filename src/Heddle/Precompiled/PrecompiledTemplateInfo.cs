@@ -16,6 +16,8 @@ namespace Heddle.Precompiled
             Array.Empty<PrecompiledExtensionBinding>();
         private static readonly IReadOnlyList<PrecompiledFunctionBinding> NoFunctions =
             Array.Empty<PrecompiledFunctionBinding>();
+        private static readonly IReadOnlyList<PrecompiledInitSite> NoInitSites =
+            Array.Empty<PrecompiledInitSite>();
 
         /// <summary>The eleven-value shape. Retained as a real constructor to preserve the shorter signature in
         /// metadata (optional parameters remove it), which past versions relied on. Hand-written manifests use this.</summary>
@@ -77,7 +79,33 @@ namespace Heddle.Precompiled
             string registeredName,
             PrecompiledLinePathForm linePathForm,
             bool modelTypeIsAmbient)
+            : this(key, entryPointType, modelType, isDynamic, contentHash, imports, optionsFingerprint,
+                extensionBindings, functionBindings, capabilities, strategy, registeredName, linePathForm,
+                modelTypeIsAmbient, initSites: null)
         {
+        }
+
+        /// <summary>The shape carrying <see cref="InitSites"/>. A real constructor rather than an optional
+        /// parameter for the reason every widening here has been one: an optional parameter removes the narrower
+        /// signature from metadata and faults every already-built consumer assembly whose manifest calls it.</summary>
+        public PrecompiledTemplateInfo(
+            string key,
+            Type entryPointType,
+            Type modelType,
+            bool isDynamic,
+            string contentHash,
+            IReadOnlyList<PrecompiledImport> imports,
+            PrecompiledOptionsFingerprint optionsFingerprint,
+            IReadOnlyList<PrecompiledExtensionBinding> extensionBindings,
+            IReadOnlyList<PrecompiledFunctionBinding> functionBindings,
+            PrecompiledCapabilities capabilities,
+            IProcessStrategy strategy,
+            string registeredName,
+            PrecompiledLinePathForm linePathForm,
+            bool modelTypeIsAmbient,
+            IReadOnlyList<PrecompiledInitSite> initSites)
+        {
+            InitSites = initSites ?? NoInitSites;
             ModelTypeIsAmbient = modelTypeIsAmbient;
             Key = key ?? throw new ArgumentNullException(nameof(key));
             RegisteredName = registeredName;
@@ -141,6 +169,14 @@ namespace Heddle.Precompiled
         public IReadOnlyList<PrecompiledFunctionBinding> FunctionBindings { get; }
 
         public PrecompiledCapabilities Capabilities { get; }
+
+        /// <summary>The extension call sites this template binds through <see cref="PrecompiledRuntime.Init"/>,
+        /// carried so the gauntlet can read the answers those hooks gave at registration. A site whose
+        /// <see cref="PrecompiledInitSite.Fault"/> reaches template scope — the hook reported compile errors, or its
+        /// answer about body typing contradicts what the build assumed — takes the request to the dynamic tier
+        /// before any render. Empty for a template whose calls need no hook run, and for every manifest written
+        /// before the seam existed.</summary>
+        public IReadOnlyList<PrecompiledInitSite> InitSites { get; }
 
         /// <summary>The generated root body; null iff <see cref="IsPrecompiled"/> is false.</summary>
         public IProcessStrategy Strategy { get; }

@@ -78,6 +78,9 @@ namespace Heddle.Tests
                 "HED7031",
                 // HED7032: an @model directive and ModelType item metadata resolving to different types.
                 "HED7032",
+                // HED7033: an extension declaring [PrecompileUnsupported] -- the author's own statement that a
+                // static initializer cannot reproduce its hook, costing that call site and not the template.
+                "HED7033",
                 "HED7101", "HED7102", "HED7103",
                 // HED7104: registered name also answered by another template; runtime id due to cross-assembly collision.
                 "HED7104"

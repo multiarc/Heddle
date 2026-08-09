@@ -44,6 +44,10 @@ namespace Heddle.Precompiled
             if (extensionFailure != null)
                 return extensionFailure;
 
+            var initFailure = CheckInitSites(entry);
+            if (initFailure != null)
+                return initFailure;
+
             var functionFailure = CheckFunctions(entry, options);
             if (functionFailure != null)
                 return functionFailure;
@@ -257,6 +261,19 @@ namespace Heddle.Precompiled
         internal static string AqnSansVersion(Type type) => ReflectionTypeIdentity.AqnSansVersion(type);
 
         private static string Lower(bool value) => value ? "true" : "false";
+
+        /// <summary>The answers the template's own extensions gave when their hooks ran at registration. A
+        /// call-site fault costs nothing here — that call already renders through its substitute and the rest of the
+        /// template is precompiled — while a template-scope one is a refusal the dynamic tier would repeat, or a
+        /// typing answer the emitted casts contradict, and either takes the request off this tier.</summary>
+        private static PrecompiledFallbackEvent? CheckInitSites(PrecompiledTemplateInfo entry)
+        {
+            var fault = PrecompiledRuntime.FirstTemplateFault(entry.InitSites);
+            if (fault == null)
+                return null;
+            return Fail(entry.Key,
+                fault.Reason ?? PrecompiledFallbackReason.ExtensionInitCompileError, fault.Detail);
+        }
 
         private static PrecompiledFallbackEvent Fail(string key, PrecompiledFallbackReason reason, string detail)
         {

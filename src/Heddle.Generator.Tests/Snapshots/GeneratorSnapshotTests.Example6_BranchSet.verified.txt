@@ -25,10 +25,38 @@ namespace Heddle.Generated
         internal const string P1 = "small";
         internal const string P2 = "\n";
 
-        private static readonly global::Heddle.Extensions.IfExtension E0 = global::Heddle.Precompiled.PrecompiledRuntime.Bind(
-            new global::Heddle.Extensions.IfExtension(), body: new Body1(), global::Heddle.Data.RenderType.Raw, needsLocals: false, line: 2, column: 2);
-        private static readonly global::Heddle.Extensions.ElseExtension E1 = global::Heddle.Precompiled.PrecompiledRuntime.Bind(
-            new global::Heddle.Extensions.ElseExtension(), body: new Body2(), global::Heddle.Data.RenderType.Raw, needsLocals: false, line: 2, column: 23);
+        internal static readonly global::Heddle.Precompiled.PrecompiledInitSite S0 = new global::Heddle.Precompiled.PrecompiledInitSite
+        {
+            ExtensionName = "if",
+            PositionStart = 0, PositionLength = 20,
+            SourceText = "@if(Major >0){{big}}",
+            Body = new global::Heddle.Precompiled.PrecompiledInitBody { RawText = "big", ShapedText = "big", NeedsLocals = false, TypeAgnostic = false, AssumedDataType = typeof(global::System.Version), AssumedChainedType = null },
+            DataType = typeof(bool), ChainedType = null, ParentType = typeof(global::System.Version),
+            ModelType = typeof(global::System.Version), RootModelType = typeof(global::System.Version), SlotType = null,
+            OutputProfile = global::Heddle.Data.OutputProfile.Html, ExpressionMode = global::Heddle.Data.ExpressionMode.Native,
+            TrimDirectiveLines = true, MaxRecursionCount = 100,
+            Namespaces = null,
+            CallShape = global::Heddle.Precompiled.PrecompiledCallShape.NativeExpression, HasPropArguments = false,
+            RootReference = false, InsideDefinition = false
+        };
+        private static readonly global::Heddle.Core.AbstractExtension E0 = global::Heddle.Precompiled.PrecompiledRuntime.Init(
+            () => new global::Heddle.Extensions.IfExtension(), S0, new Body1());
+        internal static readonly global::Heddle.Precompiled.PrecompiledInitSite S1 = new global::Heddle.Precompiled.PrecompiledInitSite
+        {
+            ExtensionName = "else",
+            PositionStart = 20, PositionLength = 16,
+            SourceText = "@else(){{small}}",
+            Body = new global::Heddle.Precompiled.PrecompiledInitBody { RawText = "small", ShapedText = "small", NeedsLocals = false, TypeAgnostic = false, AssumedDataType = typeof(global::System.Version), AssumedChainedType = null },
+            DataType = typeof(global::System.Version), ChainedType = null, ParentType = typeof(global::System.Version),
+            ModelType = typeof(global::System.Version), RootModelType = typeof(global::System.Version), SlotType = null,
+            OutputProfile = global::Heddle.Data.OutputProfile.Html, ExpressionMode = global::Heddle.Data.ExpressionMode.Native,
+            TrimDirectiveLines = true, MaxRecursionCount = 100,
+            Namespaces = null,
+            CallShape = global::Heddle.Precompiled.PrecompiledCallShape.None, HasPropArguments = false,
+            RootReference = false, InsideDefinition = false
+        };
+        private static readonly global::Heddle.Core.AbstractExtension E1 = global::Heddle.Precompiled.PrecompiledRuntime.Init(
+            () => new global::Heddle.Extensions.ElseExtension(), S1, new Body2());
 
         private sealed class Body0 : global::Heddle.Runtime.IProcessStrategy
         {
@@ -126,7 +154,9 @@ namespace Heddle.Generated
                     capabilities: global::Heddle.Precompiled.PrecompiledCapabilities.StringOutput,
                     strategy: global::Heddle.Generated.Branch.Root,
                     registeredName: null,
-                    linePathForm: global::Heddle.Precompiled.PrecompiledLinePathForm.TemplatePath)
+                    linePathForm: global::Heddle.Precompiled.PrecompiledLinePathForm.TemplatePath,
+                    modelTypeIsAmbient: false,
+                    initSites: new global::Heddle.Precompiled.PrecompiledInitSite[] { global::Heddle.Generated.Branch.S0, global::Heddle.Generated.Branch.S1 })
                 ,
             };
         }

@@ -33,9 +33,12 @@ namespace Heddle.Generator.IntegrationTests
             yield return new object[] { null };
         }
 
+        /// <summary>A custom branch trio's <c>InitStart</c> override is its canonical shape, and the build has
+        /// never read it. It no longer has to: the override runs for real at static-init, the bodies are emitted
+        /// with no model cast, and the trio precompiles and renders the built-in trio's bytes.</summary>
         [Theory]
         [MemberData(nameof(CartModels))]
-        public void BodiedCustomTrio_FallsBackWithoutHed7015_DynamicRendersWithRoleSemantics(Cart model)
+        public void BodiedCustomTrio_PrecompilesWithoutHed7015_AndRendersTheBuiltinTriosBytes(Cart model)
         {
             var custom = "@model(){{" + CartType + "}}@\\\n" +
                          "@begin(IsFeatured){{ <b>Featured</b> }}\n" +
@@ -47,13 +50,15 @@ namespace Heddle.Generator.IntegrationTests
             Assert.DoesNotContain(gen.Diagnostics, d => d.Id == "HED7015");
             Assert.DoesNotContain(gen.Diagnostics, d => d.Severity == DiagnosticSeverity.Error);
 
-            DifferentialHarness.ExpectDegrade(gen, "views/custom-trio.heddle");
+            DifferentialHarness.ExpectPrecompiled(gen, "views/custom-trio.heddle");
 
             var builtin = "@model(){{" + CartType + "}}@\\\n" +
                           "@if(IsFeatured){{ <b>Featured</b> }}\n" +
                           "@elif(IsArchived){{ <i>Archived</i> }}\n" +
                           "@else(){{ Regular }}\n";
-            Assert.Equal(RenderDynamic(builtin, model), RenderDynamic(custom, model));
+            var (pre, dyn) = DifferentialHarness.Render("views/custom-trio.heddle", custom, typeof(Cart), model);
+            Assert.Equal(dyn, pre);
+            Assert.Equal(RenderDynamic(builtin, model), pre);
         }
 
         [Theory]

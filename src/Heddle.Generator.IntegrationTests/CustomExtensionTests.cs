@@ -8,9 +8,9 @@ namespace Heddle.Generator.IntegrationTests
 {
     /// <summary>
     /// Custom <c>[ExtensionName]</c> extensions bind from referenced assemblies (never inlined) so custom-extension
-    /// templates precompile, rendering byte-identically with the dynamic backend. A resolved extension that
-    /// overrides a compile-time hook degrades to the dynamic tier under the <c>HED7015</c> warning; an
-    /// extension-only call shape whose name resolves nowhere is the <c>HED7006</c> error.
+    /// templates precompile, rendering byte-identically with the dynamic backend. An extension that overrides a
+    /// compile-time hook, bodied or not, precompiles too — the hook runs for real at static-init — and an
+    /// extension-only call shape whose name resolves nowhere is still the <c>HED7006</c> error.
     /// </summary>
     public class CustomExtensionTests
     {
@@ -49,42 +49,132 @@ namespace Heddle.Generator.IntegrationTests
                 gen.ManifestSource);
         }
 
+        /// <summary>
+        /// <b>The headline capability, half one: a custom extension that overrides the compile-time hook
+        /// precompiles in a DEFAULT build.</b> No opt-in property, no probe, no name list — the override runs for
+        /// real inside the consumer's assembly at static-init, through <c>PrecompiledRuntime.Init</c>. It used to
+        /// cost the template its tier under an <c>HED7015</c> warning, and that warning must now be absent, because
+        /// the fact it reported is no longer true of this build.
+        /// </summary>
         [Fact]
-        public void HookOverridingCustomExtensionWarnsHed7015AndDegrades()
+        public void HookOverridingCustomExtensionPrecompilesInADefaultBuild()
         {
-            // HookedExtension overrides InitStart, unevaluable at build time. That costs the call site its tier —
-            // it does not fail the consumer's build: a third-party extension the generator cannot reason about is
-            // not an authoring error.
-            var t = "@model(){{System.String}}@\\\n@hooked(this)\n";
-            var gen = DifferentialHarness.Generate(new[] { ("views/hooked.heddle", t) });
-            var hed7015 = gen.Diagnostics.FirstOrDefault(d => d.Id == "HED7015");
-            Assert.NotEqual(default, hed7015);
-            Assert.Equal(DiagnosticSeverity.Warning, hed7015.Severity);
-            Assert.Contains("hooked", hed7015.GetMessage());
-            // Nothing the generator reports for this template is an error, so the consumer's build survives it.
-            Assert.DoesNotContain(gen.Diagnostics, d => d.Severity == DiagnosticSeverity.Error);
-            // No entry class emitted — the template degrades, it is not precompiled.
-            Assert.DoesNotContain("class Views_Hooked", gen.ManifestSource ?? string.Empty);
-        }
-
-        [Fact]
-        public void HookOverridingCustomExtensionStillRendersThroughTheDynamicTier()
-        {
-            // The other half of the degrade: the template is refused at build time and the reader still gets a page,
-            // rendered by the tier the refusal routes to.
-            const string key = "views/hooked-render.heddle";
+            const string key = "views/hooked.heddle";
             var t = "@model(){{System.String}}@\\\n<x>@hooked(this)</x>\n";
             var gen = DifferentialHarness.Generate(new[] { (key, t) });
+            Assert.DoesNotContain(gen.Diagnostics, d => d.Id == "HED7015");
             Assert.DoesNotContain(gen.Diagnostics, d => d.Severity == DiagnosticSeverity.Error);
-            Assert.Empty(gen.TemplateSources);   // degraded — no .g.cs
-            DifferentialHarness.ExpectDegrade(gen, key,
-                generator::Heddle.Generator.Emit.RefusalCategory.HookBehavior,
-                "overrides a compile-time hook");
+            DifferentialHarness.ExpectPrecompiled(gen, key);
+            Assert.Contains("PrecompiledRuntime.Init(", Assert.Single(gen.TemplateSources).Value);
 
-            var dynamicTemplate = new HeddleTemplate(t,
-                new Heddle.Runtime.CompileContext(new Heddle.Data.TemplateOptions(), typeof(string)));
-            Assert.True(dynamicTemplate.CompileResult.Success, dynamicTemplate.CompileResult.ToString());
-            Assert.Equal("<x>wonder</x>\n", dynamicTemplate.Generate("wonder"));
+            var (pre, dyn) = DifferentialHarness.Render(key, t, typeof(string), "wonder");
+            Assert.Equal(dyn, pre);
+            Assert.Equal("<x>wonder</x>\n", pre);
+        }
+
+        /// <summary>
+        /// <b>The headline capability, half two: a BODIED call to a third-party extension precompiles in a default
+        /// build.</b> <c>@bellow</c>'s hook re-types its body against the caller's scope — the step-back shape nine
+        /// engine extensions share — and the build has never read it. It no longer needs to: the body is emitted
+        /// with no model cast, the hook chooses the typing at static-init, and the bytes match the dynamic tier's.
+        /// </summary>
+        [Theory]
+        [InlineData("wonder")]
+        [InlineData("")]
+        [InlineData(null)]
+        public void BodiedCallToAThirdPartyExtensionPrecompilesInADefaultBuild(string value)
+        {
+            const string key = "views/bellow.heddle";
+            var t = "@model(){{System.String}}@\\\n<x>@bellow(){{loud}}</x>\n";
+            var gen = DifferentialHarness.Generate(new[] { (key, t) });
+            Assert.DoesNotContain(gen.Diagnostics, d => d.Id == "HED7015");
+            Assert.DoesNotContain(gen.Diagnostics, d => d.Severity == DiagnosticSeverity.Error);
+            DifferentialHarness.ExpectPrecompiled(gen, key);
+
+            // @bellow upper-cases its value, and steps back to its body only when the value is null — so the
+            // body is what the null case renders and the pinned bytes cover both arms.
+            var (pre, dyn) = DifferentialHarness.Render(key, t, typeof(string), value);
+            Assert.Equal(dyn, pre);
+            Assert.Equal("<x>" + (value == null ? "LOUD" : value.ToUpperInvariant()) + "</x>\n", pre);
+        }
+
+        /// <summary>The type-agnostic body is not a blank one: a member read inside it resolves through the
+        /// engine's own member walk against the type the hook chose, bound once at static-init, and renders the
+        /// dynamic tier's bytes.</summary>
+        [Fact]
+        public void ATypeAgnosticBodyReadsItsModelThroughTheEnginesOwnAccessor()
+        {
+            const string key = "views/bellow-read.heddle";
+            // The value is null, so @bellow steps back to its body — which is where the member read lives, typed
+            // by the model this hook chose rather than by anything the build resolved.
+            var t = "@model(){{Heddle.Generator.IntegrationTests.Fixtures.Product}}@\\\n" +
+                    "<x>@bellow(Description){{@(Name)}}</x>\n";
+            var gen = DifferentialHarness.Generate(new[] { (key, t) });
+            Assert.DoesNotContain(gen.Diagnostics, d => d.Severity == DiagnosticSeverity.Error);
+            DifferentialHarness.ExpectPrecompiled(gen, key);
+            Assert.Contains("PrecompiledLateAccessor(", Assert.Single(gen.TemplateSources).Value);
+
+            var (pre, dyn) = DifferentialHarness.Render(key, t, typeof(Fixtures.Product),
+                new Fixtures.Product { Name = "photos", Description = null });
+            Assert.Equal(dyn, pre);
+            Assert.Equal("<x>PHOTOS</x>\n", pre);
+        }
+
+        /// <summary>
+        /// <b><c>[PrecompileUnsupported]</c> costs one call site, not the template.</b> The declaring call binds
+        /// dynamically — it renders by compiling its own source text at first render — while the neighbouring call
+        /// in the same template is precompiled as usual, and the whole template keeps its manifest entry. The
+        /// <c>HED7033</c> warning quotes the extension author's declared reason verbatim.
+        /// </summary>
+        [Fact]
+        public void APrecompileUnsupportedExtensionFallsBackPerCallSiteAndReportsHed7033()
+        {
+            const string key = "views/scanner.heddle";
+            var t = "@model(){{System.String}}@\\\n<x>@scanner(this)</x><y>@yell(this)</y>\n";
+            var gen = DifferentialHarness.Generate(new[] { (key, t) });
+
+            var hed7033 = gen.Diagnostics.FirstOrDefault(d => d.Id == "HED7033");
+            Assert.NotEqual(default, hed7033);
+            Assert.Equal(DiagnosticSeverity.Warning, hed7033.Severity);
+            Assert.Contains("scanner", hed7033.GetMessage());
+            Assert.Contains("reads the enclosing document through InitContext.ParseContext", hed7033.GetMessage());
+            Assert.DoesNotContain(gen.Diagnostics, d => d.Severity == DiagnosticSeverity.Error);
+
+            // The template is still precompiled: only the declaring call left the tier.
+            DifferentialHarness.ExpectPrecompiled(gen, key);
+            var source = Assert.Single(gen.TemplateSources).Value;
+            Assert.Contains("PrecompiledRuntime.SiteFallback(", source);
+            Assert.Contains("() => new global::Heddle.Generator.IntegrationTests.Fixtures.YellExtension()", source);
+
+            var (pre, dyn) = DifferentialHarness.Render(key, t, typeof(string), "wonder");
+            Assert.Equal(dyn, pre);
+            Assert.Equal("<x>scanned:wonder</x><y>WONDER!</y>\n", pre);
+        }
+
+        /// <summary>The declaration is read off the <b>live</b> type as well as the symbol, so a package that adds
+        /// it after a consumer's assembly was built still falls back rather than binding through a seam its author
+        /// has disowned.</summary>
+        [Fact]
+        public void TheRuntimeReadsPrecompileUnsupportedOffTheLiveTypeToo()
+        {
+            var site = new Heddle.Precompiled.PrecompiledInitSite
+            {
+                ExtensionName = "scanner",
+                SourceText = "@scanner(this)",
+                ModelType = typeof(string)
+            };
+            var bound = Heddle.Precompiled.PrecompiledRuntime.Init(
+                () => new Fixtures.ScannerExtension(), site, null);
+
+            Assert.NotNull(site.Fault);
+            Assert.Equal(Heddle.Precompiled.PrecompiledInitFaultScope.CallSite, site.Fault.Scope);
+            Assert.Contains("[PrecompileUnsupported]", site.Fault.Detail);
+            Assert.Contains("InitContext.ParseContext", site.Fault.Detail);
+            Assert.IsNotType<Fixtures.ScannerExtension>(bound);
+
+            // And the reason the declaration is not decorative: the hook never ran, so the observation it would
+            // have made is not one this seam could have given it.
+            Assert.Equal(0, new Fixtures.ScannerExtension().Observed);
         }
 
         [Fact]
