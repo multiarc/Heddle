@@ -90,7 +90,6 @@ namespace Heddle.Generator.Emit
         private readonly CSharpExpressionTyper _csharpTyper;
         private readonly FunctionExportResolver _exports;
         private readonly ExtensionBinder _extensionBinder;
-        private readonly Probe.HookOracle _hooks;
 
         private string _modelTypeText;
         private BlockPosition _modelDirectivePosition;
@@ -207,7 +206,6 @@ namespace Heddle.Generator.Emit
             _csharpTyper = new CSharpExpressionTyper(compilation);
             _exports = exports ?? FunctionExportResolver.Build(compilation);
             _extensionBinder = ExtensionBinder.Build(compilation);
-            _hooks = Probe.HookOracle.For(compilation, config, _extensionBinder.ExtensionAssemblies);
         }
 
         internal sealed class Result
@@ -969,9 +967,9 @@ namespace Heddle.Generator.Emit
                 {
                     // HED7015: resolvable but unevaluable — reported at the call, and a WARNING that accompanies the
                     // degrade rather than an error that fails the consumer's build. Said out loud, and more
-                    // precisely than the template-level HED7031, because "your extension's hook is why, and probing
-                    // would read it" is the one fact the author can act on. Suppressed for role extensions: a custom
-                    // branch trio's InitStart override is the canonical shape, so it degrades with no diagnostic.
+                    // precisely than the template-level HED7031, because "your extension's hook is why" is the one
+                    // fact the author can act on. Suppressed for role extensions: a custom branch trio's InitStart
+                    // override is the canonical shape, so it degrades with no diagnostic.
                     _diagnostics.Add(new EmitDiagnostic(GeneratorDiagnostics.ExtensionOverridesHook,
                         item.Position, name, info.AqnSansVersion, "InitStart/CompleteInit"));
                     reason = new Refusal(RefusalCategory.HookBehavior,
@@ -1096,19 +1094,12 @@ namespace Heddle.Generator.Emit
             return MakeCall(field, paramExpr, uses, item.Position);
         }
 
-        /// <summary>What the build knows about one extension's hook: the probe's answer where it has one, the shared
-        /// table's row for an engine extension otherwise. The assembly test on the table is not decoration — a row
-        /// describes an engine extension, and a package that registers its own <c>@list</c> must not inherit
+        /// <summary>What the build knows about one extension's hook: the shared table's row for an engine
+        /// extension, nothing for anything else. The assembly test is not decoration — a row describes an engine
+        /// extension, and a package that registers its own <c>@list</c> must not inherit
         /// <c>ListExtension</c>'s typing.</summary>
-        private bool TryHookRoles(string name, ExtensionBinder.Info info, out BodyModelSource body)
+        private static bool TryHookRoles(string name, ExtensionBinder.Info info, out BodyModelSource body)
         {
-            if (_hooks.Enabled && _hooks.TryGet(name, info.BareTypeName, info.AssemblyName, out var observed) &&
-                observed.Outcome == HookProbeOutcome.Classified)
-            {
-                body = observed.Body;
-                return true;
-            }
-
             if (info.IsEngineAssembly)
                 return BodyModelRules.TryGet(name, out body, out _);
 

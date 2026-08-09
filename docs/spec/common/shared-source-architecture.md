@@ -47,7 +47,7 @@ moves, or edits shared source follows these rules.
 
 A built-in's name, type or assembly is knowledge to **read**, never to restate. The generator binds
 through `ExtensionBinder`'s `Info` (global name, bare type name, assembly, attributes), types a body
-from the role its hook reports (probed, or the lockstep-held `BodyModelRules` row), and derives a
+from the `BodyModelRules` row an engine extension's own `InitStart` is held to, and derives a
 render type from `[EncodeOutput]`/`[NotEncode]` — so a name-keyed arm is a prediction the engine can
 falsify. `ExtensionAgnosticismTests` gates this over the **compile-input manifest** the generator
 embeds — every file the compiler is given, linked shared sources included, rather than the
@@ -77,16 +77,14 @@ either `permanent` or the stage that retires it; adding one is the reviewable ac
 ## The shared surface (as landed)
 
 Rule cores and tables under `src/Heddle/Language/**` (`ParticipantScan`, `SlotRules`,
-`CallTargetRules`, `BodyModelRules` (whose rows are held equal to the extensions' own `InitStart`
-by the hook-probe lockstep, so the table is an observation the build falls back on rather than a
-prediction), `DocumentShaping` incl. `SlicePieces<T>`,
+`CallTargetRules`, `BodyModelRules` (whose rows are held to the extensions' own `InitStart` by
+rendering tests that read each column, so a wrong row reddens instead of staying latent),
+`DocumentShaping` incl. `SlicePieces<T>`,
 `RegionFillResolver`, `BranchSetLint`, `OutputLints`, `CompileWarningFactory`,
 `HeddleDiagnosticProjection`, `Expressions/**` incl. `EmbeddedCSharpNames`, the
 `NumericKind`/conversion tables, `NativeOperatorRules`, `OverloadRank`, `LiteralFormatter`,
-`CSharpEscape`, `Members/**` incl. `MemberPathWalk`, `MemberVisibility`, `MemberHopRule`,
-`HookProbeProtocol` — the hook probe's sentinel types, probe documents and decode function: data
-plus a pure decode, with the drivers per tier (an in-process one on the engine side, a reflection
-one over a loaded engine on the build side) and the lockstep test between them — and `Binding/**`
+`CSharpEscape`, `Members/**` incl. `MemberPathWalk`, `MemberVisibility`, `MemberHopRule`, and
+`Binding/**`
 incl. `TypeNameIndex` behind `ITypeNameMaps<TType>`, the one type-name ladder both tiers resolve
 `@model` spellings through); precompiled-contract helpers under `src/Heddle/Precompiled/` (`AqnFormatter`,
 `ContentHash`, `PrecompiledSchema`, `TemplateKey` + `TryMakeRelative`/`ToPath`/

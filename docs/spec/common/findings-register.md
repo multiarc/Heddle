@@ -57,6 +57,11 @@ shapes:
 - the test reads the production constant it checks
 - a degrade-only assertion (a blanket refusal passes it)
 - a verdict row answered by a different arm than the one it names
+- a lookup table whose column no production arm reads. A wrong value there costs nothing until
+  something reads it, so it survives every test the table has: `BodyModelRules`' `@list` row said
+  the chained channel was `None` for as long as the row existed, while `ListExtension.InitStart`
+  hands the body compile `new ExType(typeof(int))` and `scope.Model(item, index)` puts the iteration
+  index there. Pin each column with a test that RENDERS the difference, or the table is a comment.
 - `Assert.ThrowsAny<Exception>` (the harness falling over passes it)
 - a `--filter` that matches nothing exits 0
 - xUnit silently drops a theory row whose arguments duplicate another row's — the count drops,
@@ -103,11 +108,6 @@ they get broken.
   code comment, with its tuple-type caveat).
 - A repro whose fixture cannot compile is not a defect. Check the repro compiles before accepting
   its reasoning.
-- The probe loader refusing `bin`/`obj` and every project reference. It reads as over-caution and is
-  not: `LoadFrom` holds the file for the compiler server's life, so loading a build output breaks the
-  *next* build. It is also what makes the IDE and the CLI agree. An extension declared in the
-  compilation being built is unprobeable for the same reason and degrades — that is the answer, not a
-  gap.
 
 ## Open — do not re-report, do re-measure
 
@@ -120,7 +120,7 @@ finding. Six former known-opens died exactly that way.
 | F-079 | `Path.Combine` rejects characters on .NET Framework that .NET Core accepts | 3 | degrade pinned on the net48 CI leg: `NetFrameworkDegradePathTests.AnImportPathWithCharactersTheFrameworkRejectsStillParses` asserts the framework's throw and the parse surviving it |
 | F-080 | on `netstandard2.0` an assembly with no file yields no metadata reference | 3 | no API exists there to fix it; pinned both ways by `NetFrameworkDegradePathTests.AnAssemblyWithNoFileYieldsAReferenceOnlyWhereTheRuntimeExposesItsMetadata` — empty on net48, served on modern TFMs |
 | F-140 | two type-kind verdict rows cannot be honestly pinned (`Structure`, `Extension`) | 6 | `grep -n 'Microsoft.CodeAnalysis.CSharp' src/Heddle.Generator/Heddle.Generator.csproj` — re-test if the version moves past 4.x |
-| F-198 | embedded C# binds inside the consumer's compilation — the probe's question, and now the emitted fragment's own binding — so a consumer-`internal` member resolves where the engine's separate generated assembly raises `RuntimeBinderException`. The generator is *more permissive* on that corner, never less | 3 | measured; `ConsumerParseOptionsTests` is the one test that observes the constraint. Model-path member reads are exempt by construction (`PrecompiledRuntime.DynamicMember` pins its binder context to Heddle's assembly) |
+| F-198 | embedded C# binds inside the consumer's compilation — the emitted fragment's own binding — so a consumer-`internal` member resolves where the engine's separate generated assembly raises `RuntimeBinderException`. The generator is *more permissive* on that corner, never less | 3 | measured; `ConsumerParseOptionsTests` is the one test that observes the constraint. Model-path member reads are exempt by construction (`PrecompiledRuntime.DynamicMember` pins its binder context to Heddle's assembly) |
 | Q8.8 | the `ToString("R")` drift fix is formally unclosable without a Windows `net48` run — the 23 green cases are a revert-detector, not proof of sufficiency | 3 | needs a Windows `net48` leg; nothing on a Linux box can close it |
 | Q8.13 | the value-path coercion rail (a boxed non-string drops to empty on the value path, stringifies on the render path) is pinned only as emitted shape — ruled "implement a byte-level fixture on both tiers", not implemented | 6 | build the host extension whose `ProcessData` consumes its body's `Execute` result and returns a non-string; today's tripwire is `StrategyShapeDifferentialTests`' `strategy-nonstring-value` |
 | Q8.15 | intermittent full-solution failures reproduced only in a shared working tree (a concurrent MSBuild `IncrementalClean` rewriting `bin/**` under running test hosts), never in isolation — the two originally named tests never reproduced | 6 | before blaming a test, re-run 25× from a `git archive HEAD` copy; a retry attribute is not an acceptable resolution |
@@ -131,13 +131,6 @@ Also open, without their own ids:
   `AssemblyRegistrationTests` and `PreparseCacheGenerationTests`.
 - The no-load pin cannot catch a one-shot startup walk; catching it needs a child process comparing
   the loaded set before and after first touch (the future-work shape; no suite spawns one today).
-- The hook probe observes body typing, chained typing and the zero-output answer, and **nothing
-  else**. A hook that mutates compile state — `ScopeType`, the import set, the output profile — is
-  outside the protocol and no check looks for one. What makes that safe today is a property of the
-  population, not a guard: every compile-state-mutating hook is an engine directive with dedicated
-  emitter handling. A third-party hook that mutated compile state would be emitted for what it
-  typed and silently not for what it changed. Closing it means a protocol that observes the scope
-  after the hook runs, which nothing does yet.
 
 ## Unverified platform surface (recorded 2026-07-29)
 

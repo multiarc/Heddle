@@ -17,7 +17,7 @@ namespace Heddle.Generator.IntegrationTests
     /// different.</para>
     /// <para>This suite pins that property on its own, over the engine's own <c>@string</c> — an
     /// <c>[EncodeOutput]</c> <c>AbstractHtmlExtension</c> whose body typing the shared table already carries, so
-    /// nothing here depends on hook probing, on any probe type, or on any build property. Both halves are
+    /// nothing here depends on any build property. Both halves are
     /// asserted, because either alone can be satisfied by accident: the rendered bytes on both tiers, with the
     /// tier pinned (a fallback is byte-identical by design, so an unpinned render proves nothing), and the
     /// emitted bind itself, which stays readable when a later refactor changes which extension can host a body

@@ -93,9 +93,8 @@ namespace Heddle.Generator.Diagnostics
         /// <c>CompleteInit</c> — compile-time logic this build has NOT READ; precompiled binding would silently
         /// skip it (position: the call). A <b>warning</b> that accompanies a degrade: the call site loses the
         /// precompiled tier, the consumer's build does not fail.
-        /// <para>Not-read is the condition, not un-evaluable. Hook probing runs the override and emits what it
-        /// observed, so this fires where probing is off, where the extension cannot be loaded from an immutable
-        /// root, or where the observed role has no emission.</para></summary>
+        /// <para>Not-read is the condition, not un-evaluable — and it holds for every extension outside the
+        /// engine assembly, because the build reads no compile-time hook it did not write itself.</para></summary>
         public static readonly DiagnosticDescriptor ExtensionOverridesHook =
             FromCatalog(HeddleDiagnosticIds.BuildExtensionOverridesHook);
 

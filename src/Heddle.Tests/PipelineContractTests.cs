@@ -234,8 +234,6 @@ namespace Heddle.Tests
                 props[HeddleBuildOptions.EmitUtf8PiecesProperty]);
             Assert.Equal(HeddleBuildOptions.DefaultNodeFallback ? "true" : "false",
                 props[HeddleBuildOptions.NodeFallbackProperty]);
-            Assert.Equal(HeddleBuildOptions.DefaultProbeExtensionHooks ? "true" : "false",
-                props[HeddleBuildOptions.ProbeExtensionHooksProperty]);
 
             // HeddleTemplateRoot's default is MSBuild-only; assert it is still stated, not its C# twin.
             Assert.Equal("$(MSBuildProjectDirectory)", props[HeddleBuildOptions.TemplateRootProperty]);
@@ -258,10 +256,6 @@ namespace Heddle.Tests
             Assert.Equal(100, HeddleBuildOptions.DefaultMaxRecursionCount);
             Assert.False(HeddleBuildOptions.DefaultEmitUtf8Pieces);
             Assert.True(HeddleBuildOptions.DefaultNodeFallback);
-
-            // Off, and the one default whose value is a policy rather than a convenience: on, generated output
-            // depends on the BEHAVIOUR of a referenced assembly and not only on its metadata.
-            Assert.False(HeddleBuildOptions.DefaultProbeExtensionHooks);
         }
 
         /// <summary>Both <see cref="TemplateOptions"/> constructors used to state the defaults independently; the
@@ -443,10 +437,7 @@ namespace Heddle.Tests
         /// a name in one place and not the other is silently inert, which is exactly how <c>Name</c> spent a
         /// release doing nothing.</para>
         /// <para>Set equality both ways, never a count, and stated through the shared name constants rather than
-        /// through string literals — so a renamed property has to be renamed in the one place that owns it. The
-        /// one non-Heddle name in the set, <c>NuGetPackageFolders</c>, is NuGet's own property, read and never
-        /// declared: it is what bounds where the hook probe may load an assembly from, and inventing a Heddle
-        /// alias for it would let a project state a root the restore does not have.</para>
+        /// through string literals — so a renamed property has to be renamed in the one place that owns it.</para>
         /// </summary>
         [Fact]
         public void EveryCompilerVisiblePropertyIsReadByTheConfigReader()
@@ -474,8 +465,7 @@ namespace Heddle.Tests
             Assert.Equal(new[]
             {
                 "HeddleEmitUtf8Pieces", "HeddleExpressionMode", "HeddleGeneratedNamespace", "HeddleMaxRecursionCount",
-                "HeddleNodeFallback", "HeddleOutputProfile", "HeddleProbeExtensionHooks", "HeddleTemplateRoot",
-                "HeddleTrimDirectiveLines", "NuGetPackageFolders"
+                "HeddleNodeFallback", "HeddleOutputProfile", "HeddleTemplateRoot", "HeddleTrimDirectiveLines"
             }, declared.ToArray());
             Assert.Equal(declared.ToArray(), read.ToArray());
         }
@@ -489,7 +479,7 @@ namespace Heddle.Tests
                 defaults[match.Groups["name"].Value] = match.Groups["value"].Value;
 
             // Presence is part of the assertion: a structural change that breaks the parse must be a red test.
-            Assert.Equal(8, defaults.Count);
+            Assert.Equal(7, defaults.Count);
             return defaults;
         }
 

@@ -712,7 +712,6 @@ TYPE Heddle.Precompiled.HeddleBuildOptions
   FIELD Heddle.Data.OutputProfile DefaultOutputProfile
   FIELD System.Boolean DefaultEmitUtf8Pieces
   FIELD System.Boolean DefaultNodeFallback
-  FIELD System.Boolean DefaultProbeExtensionHooks
   FIELD System.Boolean DefaultTrimDirectiveLines
   FIELD System.Int32 DefaultMaxRecursionCount
   FIELD System.String BuildPropertyPrefix
@@ -726,8 +725,6 @@ TYPE Heddle.Precompiled.HeddleBuildOptions
   FIELD System.String MaxRecursionCountProperty
   FIELD System.String NodeFallbackProperty
   FIELD System.String OutputProfileProperty
-  FIELD System.String PackageFoldersProperty
-  FIELD System.String ProbeExtensionHooksProperty
   FIELD System.String TemplateRootProperty
   FIELD System.String TrimDirectiveLinesProperty
   METHOD System.Boolean TryReadBool(System.String, System.Boolean, out System.Boolean)

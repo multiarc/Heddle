@@ -36,8 +36,8 @@ namespace Heddle.Generator.Tests
     /// added and why. It is longer than the list it replaces because it inspects the whole assembly rather than a
     /// third of it, and by every form a name can be written in rather than one.</para>
     /// <para><b>What it does not claim.</b> A literal that is not identifier-shaped is not a name — that is what
-    /// keeps two hundred diagnostic messages out of the ledger — so a hardcoded <i>document</i>, such as the probe
-    /// protocol's template text, is invisible here and answered by deleting the probe instead. A dotted type name
+    /// keeps two hundred diagnostic messages out of the ledger — so a hardcoded <i>document</i>, such as a
+    /// synthesized template, is invisible here and answered by deleting the document instead. A dotted type name
     /// is answered by <see cref="TheGeneratorSpellsNoEngineExtensionTypeItCouldBind"/>, and a table whose keys are
     /// built at runtime is answered by <see cref="NoStaticStringTableIsKeyedByAnExtensionName"/>, which reads
     /// values rather than source text.</para>
@@ -144,12 +144,6 @@ namespace Heddle.Generator.Tests
             ("src/Heddle.Generator/Emit/TemplateEmitter.cs", "using", "equality", 2,
                 "the @using directive: IsDirectiveName plus the emitter's own handling of it; retires in Stage 5"),
 
-            // src/Heddle.Generator/Probe/ProbeAssemblyLoader.cs
-            ("src/Heddle.Generator/Probe/ProbeAssemblyLoader.cs", "bin", "initializer", 1,
-                "a build-output directory segment the probe loader refuses; retires in Stage 4"),
-            ("src/Heddle.Generator/Probe/ProbeAssemblyLoader.cs", "obj", "initializer", 1,
-                "a build-output directory segment the probe loader refuses; retires in Stage 4"),
-
             // src/Heddle/Data/HeddleDiagnosticCatalog.cs
             ("src/Heddle/Data/HeddleDiagnosticCatalog.cs", "out", "initializer", 1,
                 "a call-shape keyword no [Prop] name may take; grammar keyword, permanent"),
@@ -246,12 +240,6 @@ namespace Heddle.Generator.Tests
             ("src/Heddle/Language/HeddleMainListener.cs", "import", "equality", 1,
                 "the @<< import directive named in the parse listener; grammar keyword, permanent"),
 
-            // src/Heddle/Language/HookProbeProtocol.cs
-            ("src/Heddle/Language/HookProbeProtocol.cs", "MARKMARK", "const-field", 1,
-                "the probe documents' body marker; retires in Stage 4"),
-            ("src/Heddle/Language/HookProbeProtocol.cs", "param", "const-field", 1,
-                "the probe protocol's bootstrap extension; retires in Stage 4"),
-
             // src/Heddle/Language/OutputLints.cs
             ("src/Heddle/Language/OutputLints.cs", "action", "initializer", 1,
                 "an HTML attribute whose value is a URL; permanent"),
@@ -295,13 +283,9 @@ namespace Heddle.Generator.Tests
                 "an MSBuild property or metadata name the build options read; permanent"),
             ("src/Heddle/Precompiled/HeddleBuildOptions.cs", "HeddleOutputProfile", "const-field", 1,
                 "an MSBuild property or metadata name the build options read; permanent"),
-            ("src/Heddle/Precompiled/HeddleBuildOptions.cs", "HeddleProbeExtensionHooks", "const-field", 1,
-                "an MSBuild property or metadata name the build options read; permanent"),
             ("src/Heddle/Precompiled/HeddleBuildOptions.cs", "HeddleTemplateRoot", "const-field", 1,
                 "an MSBuild property or metadata name the build options read; permanent"),
             ("src/Heddle/Precompiled/HeddleBuildOptions.cs", "HeddleTrimDirectiveLines", "const-field", 1,
-                "an MSBuild property or metadata name the build options read; permanent"),
-            ("src/Heddle/Precompiled/HeddleBuildOptions.cs", "NuGetPackageFolders", "const-field", 1,
                 "an MSBuild property or metadata name the build options read; permanent")
         };
 
@@ -583,7 +567,7 @@ namespace Heddle.Generator.Tests
             foreach (var field in binder.GetFields(BindingFlags.Static | BindingFlags.NonPublic))
                 Assert.False(typeof(IEnumerable<string>).IsAssignableFrom(field.FieldType),
                     "ExtensionBinder carries a static string collection again (" + field.Name +
-                    "). A set of extension names is exactly what the probe and the shared table replaced.");
+                    "). A set of extension names is exactly what the shared table replaced.");
         }
 
         /// <summary>Every extension name the engine registers, read off the assembly rather than listed — a name

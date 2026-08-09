@@ -210,8 +210,8 @@ namespace Heddle.Generator.Tests
             Assert.DoesNotContain(run.GeneratedSourceTexts, s => s.Contains("class Body1"));
         }
 
-        /// <summary>The table's key set, spelled out. It is what a build that is not probing knows about
-        /// extension hooks, so a row appearing or disappearing changes which templates precompile by default and
+        /// <summary>The table's key set, spelled out. It is everything the build knows about extension hooks, so
+        /// a row appearing or disappearing changes which templates precompile by default and
         /// must be a reviewed change rather than a diff nobody read. The nine step-back encoders joined the four
         /// the emitter used to name in a private list: they share one hook body, and five of them were absent from
         /// that list for no reason but its length.</summary>
