@@ -371,7 +371,7 @@ namespace Heddle.Generator
                     if (observationFailure == null)
                         observationFailure = emitter.ObservationFailure;
 
-                    // Emitter diagnostics (HED7006 error, HED7015 warning). An error here is as unreachable for an
+                    // Emitter diagnostics (HED7006 error, HED7033 warning). An error here is as unreachable for an
                     // import-only fragment as a parse error is — a bodied call to a definition the importer supplies
                     // is one of the shapes that only fails standalone — so errors join the same held channel.
                     if (result.Diagnostics != null)

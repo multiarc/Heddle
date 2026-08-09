@@ -99,8 +99,9 @@ namespace Heddle.Language
             };
 
         /// <summary>The row for a body-hosting built-in extension name, or <c>false</c> when the name declares no
-        /// pinned typing (a custom extension's body typing is its own <c>InitStart</c>'s business, which is
-        /// exactly why the emitter refuses to precompile a bodied custom call).</summary>
+        /// pinned typing. False is not a refusal: a custom extension's body typing is its own <c>InitStart</c>'s
+        /// business, and the emitter's answer to not knowing it is to emit the body type-agnostically and let that
+        /// hook decide at static-init.</summary>
         internal static bool TryGet(string extensionName, out BodyModelSource body, out ChainedModelSource chained)
         {
             if (extensionName != null && Table.TryGetValue(extensionName, out var row))
