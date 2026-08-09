@@ -106,7 +106,50 @@ namespace Heddle.Generator.Emit
             new List<(string, string, int)>();
 
         private readonly List<string> _extensionFields = new List<string>();
+
+        /// <summary>The <c>PrecompiledInitSite</c> field names this template emits, in emission order. They travel
+        /// on the manifest row so the gauntlet can read back what each hook answered at registration.</summary>
+        private readonly List<string> _initSiteFields = new List<string>();
+        private int _initSiteCounter;
+        private int _lateAccessorCounter;
+
+        /// <summary>The shaped working document of the body currently being populated — what a call site's own
+        /// source text is sliced out of. Saved and restored around every body walk, because a nested body's
+        /// positions index its own document rather than the file.</summary>
+        private string _currentDoc;
+
         private readonly StringBuilder _fieldDecls = new StringBuilder();
+
+        /// <summary>The <c>Init</c> calls that must run <b>after</b> an enclosing one: a call site inside a
+        /// type-agnostic body takes its <c>dataType</c> from the model that body's own hook answers with, and a
+        /// static field initializer runs in textual order, so one tier per level of type-agnostic nesting is what
+        /// makes the cascade an ordering rather than a lazy read on the render path.</summary>
+        private readonly List<StringBuilder> _deferredInits = new List<StringBuilder>();
+        private int _initTier;
+
+        private StringBuilder InitDecls
+        {
+            get
+            {
+                if (_initTier == 0)
+                    return _fieldDecls;
+                while (_deferredInits.Count < _initTier)
+                    _deferredInits.Add(new StringBuilder());
+                return _deferredInits[_initTier - 1];
+            }
+        }
+
+        /// <summary>Every field declaration in dependency order: the base tier, then one tier per level of
+        /// type-agnostic nesting.</summary>
+        private string FieldDeclarations()
+        {
+            if (_deferredInits.Count == 0)
+                return _fieldDecls.ToString();
+            var all = new StringBuilder(_fieldDecls.ToString());
+            foreach (var tier in _deferredInits)
+                all.Append(tier);
+            return all.ToString();
+        }
         private readonly StringBuilder _methodDecls = new StringBuilder();
         private int _extensionCounter;
 
@@ -429,13 +472,6 @@ namespace Heddle.Generator.Emit
             };
         }
 
-        /// <summary>The four built-in directive names, hard-coded. Kept as the fallback for a name the binder cannot
-        /// resolve (a template compiled before its reference closure is complete, or against an engine reference
-        /// predating <c>[ZeroOutput]</c>) — never as the primary rule, which is what made a CUSTOM zero-output
-        /// extension diverge silently.</summary>
-        private static bool IsDirectiveName(string name) =>
-            name == "model" || name == "using" || name == "import" || name == "profile";
-
         /// <summary>An extension is zero-output when it declares <c>[ZeroOutput]</c> — the
         /// symbol-readable form of the runtime's null-<c>InitStart</c> protocol, which the generator has no way to
         /// evaluate. A block whose leftmost call is zero-output is removed from the piece stream on both tiers.</summary>
@@ -444,9 +480,7 @@ namespace Heddle.Generator.Emit
             var leftmost = chain.Chain != null && chain.Chain.Count > 0 ? chain.Chain[0] : null;
             if (leftmost == null)
                 return false;
-            if (_extensionBinder.TryResolve(leftmost.ExtensionName, out var info))
-                return info.IsZeroOutput;
-            return IsDirectiveName(leftmost.ExtensionName);
+            return _extensionBinder.TryResolve(leftmost.ExtensionName, out var info) && info.IsZeroOutput;
         }
 
         private bool _modelDeclaredDynamic;
@@ -477,7 +511,7 @@ namespace Heddle.Generator.Emit
                 if (chain.Chain == null || chain.Chain.Count == 0)
                     continue;
                 var item = chain.Chain[0];
-                if (item.ExtensionName == "model")
+                if (item.ExtensionName == DirectiveNames.Model)
                 {
                     var text = (item.ParameterTemplate ?? string.Empty).Trim();
                     if (text.Length != 0)
@@ -486,7 +520,7 @@ namespace Heddle.Generator.Emit
                         _modelDirectivePosition = item.Position;
                     }
                 }
-                else if (item.ExtensionName == "using")
+                else if (item.ExtensionName == DirectiveNames.Using)
                 {
                     var ns = (item.ParameterTemplate ?? string.Empty).Trim();
                     if (ns.Length != 0 && !_usings.Contains(ns))
@@ -512,6 +546,11 @@ namespace Heddle.Generator.Emit
             public bool IsDynamic;
             public bool NeedsModelLocal;
             public bool HostsParticipant;
+
+            /// <summary>The body text after document shaping — what a real body compile writes back over
+            /// <c>InitContext.ParameterTemplate</c>, and what a supplied body has to hand the hook in its
+            /// place.</summary>
+            public string ShapedDocument;
             public readonly List<object> Segments = new List<object>();
         }
 
@@ -572,6 +611,9 @@ namespace Heddle.Generator.Emit
                 return false;
             }
             var working = shape.WorkingDocument;
+            body.ShapedDocument = working;
+            var savedDoc = _currentDoc;
+            _currentDoc = working;
 
             // The piece walk itself is shared with RuntimeDocument.GetDocumentPieces, so the
             // P0..Pn constants below are the same strings the dynamic tier slices.
@@ -622,6 +664,7 @@ namespace Heddle.Generator.Emit
             // arm may use it. Either signal refuses the body.
             reason = firstReason ?? localReason;
             _profileHtml = savedProfile;
+            _currentDoc = savedDoc;
             return completed && !refused;
         }
 
@@ -647,7 +690,7 @@ namespace Heddle.Generator.Emit
             foreach (var chain in ctx.OutputChains)
             {
                 var lm = chain.Chain != null && chain.Chain.Count > 0 ? chain.Chain[0] : null;
-                if (lm != null && lm.ExtensionName == "profile")
+                if (lm != null && lm.ExtensionName == DirectiveNames.Profile)
                 {
                     // The parse is the shared OutputProfileRules rule ProfileExtension.InitStart runs.
                     var v = (lm.ParameterTemplate ?? string.Empty).Trim();
@@ -821,7 +864,9 @@ namespace Heddle.Generator.Emit
                 WarnOnRedundantEncoding(cp);
                 if (!BuildParamExpr(cp, bctx, RefStructUse.Rendered, out var uParam, out var uUses, out reason, item.Position))
                     return null;
-                var uField = AllocateEmptyExtension(item.Position);
+                var uField = AllocateEmptyExtension(item.Position, out reason);
+                if (uField == null)
+                    return null;
                 return MakeCall(uField, uParam, uUses, item.Position);
             }
 
@@ -878,7 +923,7 @@ namespace Heddle.Generator.Emit
             // lookup, and @list's element-type ambiguity check, which follows from the ElementOfData role rather
             // than from the name. All four already emitted the same shape.
             if (_extensionBinder.TryResolve(name, out var bound))
-                return BuildBoundExtensionCall(name, bound, item, cp, bctx, out reason);
+                return BuildBoundExtensionCall(name, bound, chain, item, cp, bctx, out reason);
 
             // Reached only when the shared classifier picked the function tier.
             if (callTarget == CallTargetKind.Function && string.IsNullOrEmpty(item.ParameterTemplate))
@@ -899,7 +944,9 @@ namespace Heddle.Generator.Emit
                 }
 
                 RecordFunctionUses(writer);
-                var fField = AllocateEmptyExtension(item.Position);
+                var fField = AllocateEmptyExtension(item.Position, out reason);
+                if (fField == null)
+                    return null;
                 return MakeCall(fField, "(object)(" + expr + ")", writer.UsedModel, item.Position);
             }
 
@@ -928,7 +975,9 @@ namespace Heddle.Generator.Emit
                 if (lateExpr != null)
                 {
                     RecordFunctionUses(lateWriter);
-                    var lateField = AllocateEmptyExtension(item.Position);
+                    var lateField = AllocateEmptyExtension(item.Position, out reason);
+                    if (lateField == null)
+                        return null;
                     return MakeCall(lateField, "(object)(" + lateExpr + ")", lateWriter.UsedModel, item.Position);
                 }
             }
@@ -954,37 +1003,18 @@ namespace Heddle.Generator.Emit
         /// unread hook is someone else's package behaving in a way this build cannot reproduce, never an authoring
         /// error and never a build failure.</para>
         /// </summary>
-        private Call BuildBoundExtensionCall(string name, ExtensionBinder.Info info, OutputItem item,
-            CallParameter cp, BodyContext bctx, out Refusal reason)
+        private Call BuildBoundExtensionCall(string name, ExtensionBinder.Info info, OutputChain chain,
+            OutputItem item, CallParameter cp, BodyContext bctx, out Refusal reason)
         {
             reason = null;
             bool bodied = !string.IsNullOrEmpty(item.ParameterTemplate);
             bool known = TryHookRoles(name, info, out var bodySource);
 
-            if (info.OverridesHook && !known)
-            {
-                if (!info.IsEngineAssembly && !info.Role.HasValue)
-                {
-                    // HED7015: resolvable but unevaluable — reported at the call, and a WARNING that accompanies the
-                    // degrade rather than an error that fails the consumer's build. Said out loud, and more
-                    // precisely than the template-level HED7031, because "your extension's hook is why" is the one
-                    // fact the author can act on. Suppressed for role extensions: a custom branch trio's InitStart
-                    // override is the canonical shape, so it degrades with no diagnostic.
-                    _diagnostics.Add(new EmitDiagnostic(GeneratorDiagnostics.ExtensionOverridesHook,
-                        item.Position, name, info.AqnSansVersion, "InitStart/CompleteInit"));
-                    reason = new Refusal(RefusalCategory.HookBehavior,
-                        "extension <" + name + "> overrides a compile-time hook", item.Position);
-                    return null;
-                }
-
-                reason = new Refusal(RefusalCategory.HookBehavior, info.Role.HasValue
-                    ? "custom branch extension <" + name + ">"
-                    : "engine extension <" + name + "> with an unread compile-time hook", item.Position);
-                return null;
-            }
-
-            if (bodied)
-                return BuildExtensionBodyCall(name, info, known, bodySource, item, cp, bctx, out reason);
+            // The extension's own author has declared that a static initializer cannot reproduce what its hook
+            // does. Taking them at their word costs this call site and nothing else: the rest of the template
+            // precompiles, and the call renders by compiling its own text at first render.
+            if (info.PrecompileUnsupportedReason != null)
+                return BuildUnsupportedExtensionCall(name, info, chain, item, cp, bctx, out reason);
 
             // Named arguments on a PARAMETER-LESS extension must not be silently dropped — the dynamic tier
             // hard-errors HED5005 for that call, so the precompiled tier degrades and lets the dynamic tier govern
@@ -996,61 +1026,107 @@ namespace Heddle.Generator.Emit
                 return null;
             }
 
-            // A bodiless parameter-declaring extension binds its [Prop] layout at build time — the frozen
-            // prototype + dynamic setters props already emit, installed through BindExtension.
+            // A parameter-declaring extension binds its [Prop] layout at build time; the carrier that installs it
+            // wraps the extension AFTER its hook has run, which is the order the engine's compiler uses.
+            PropLayoutInfo layout = null;
+            string propsRef = null, settersRef = null, namesRef = null;
             if (info.Parameters.Count != 0)
             {
-                var extLayout = ResolveExtensionPropLayout(name, info, item.Position);
-                if (extLayout == null)
+                layout = ResolveExtensionPropLayout(name, info, item.Position);
+                if (layout == null)
                 {
                     // Malformed [Prop] declaration — HED7017 recorded (once per extension type); refuse. HED7017 is
                     // an error, so the build fails rather than silently degrading: a malformed declaration is an
-                    // authoring fault, unlike the hook override HED7015 now merely warns about.
+                    // authoring fault.
                     reason = new Refusal(RefusalCategory.ExtensionBinding,
                         "malformed [Prop] declaration on extension <" + name + ">", item.Position);
                     return null;
                 }
 
-                if (!TryBuildPropsPrototype(extLayout, cp, bctx, out var extPropsRef, out var extSettersRef,
-                        out reason))
+                if (!TryBuildPropsPrototype(layout, cp, bctx, out propsRef, out settersRef, out reason))
                     return null;   // unknown/duplicate/missing/unreproducible → safe dynamic fallback
 
-                if (!BuildParamExpr(cp, bctx, RefStructUse.Model, out var extParamExpr, out var extUses, out reason, item.Position))
-                    return null;
-
-                var namesRef = EmitParameterNamesField(extLayout);
-                var extField = AllocateParameterizedExtension(name, info, extPropsRef, extSettersRef, namesRef,
-                    item.Position, extLayout);
-                return MakeCall(extField, extParamExpr, extUses, item.Position);
+                namesRef = EmitParameterNamesField(layout);
             }
 
-            if (!BuildParamExpr(cp, bctx, RefStructUse.Model, out var paramExpr, out var uses, out reason, item.Position))
+            if (!BuildParamExpr(cp, bctx, RefStructUse.Model, out var paramExpr, out var uses, out reason,
+                    item.Position))
+                return null;
+            if (!TryPlanSite(name, chain, item, cp, bctx, out var plan, out reason))
                 return null;
 
-            var field = AllocateCustomExtension(name, info, item.Position);
+            BodyClass body = null;
+            if (bodied)
+            {
+                if (known)
+                {
+                    if (!TryTypedBody(name, bodySource, item, cp, bctx, plan, out body, out reason))
+                        return null;
+                }
+                else if (!TryTypeAgnosticBody(item, bctx, plan, out body, out reason))
+                {
+                    // The three shapes no type-agnostic emission reproduces — a computed native expression,
+                    // embedded C#, and a nested call whose own typing needs one — cost THIS call site rather than
+                    // the template, by rendering it through the substitute. Where the substitute cannot be honest
+                    // about what the fragment would see, TryTypeAgnosticBody refused instead and left no reason.
+                    if (reason == null)
+                        return null;
+                    var fallbackDetail = "The body of <" + name + "> cannot be emitted without knowing the model " +
+                                         "its hook chooses: " + reason.Detail + ".";
+                    reason = null;
+                    var fallbackField = AllocateSiteFallback(EmitInitSite(plan), fallbackDetail);
+                    return MakeCall(fallbackField, "scope.ModelData", false, item.Position);
+                }
+
+                plan.BodyShaped = body?.ShapedDocument;
+                plan.BodyNeedsLocals = body != null && body.HostsParticipant;
+            }
+
+            var siteField = EmitInitSite(plan);
+            var field = namesRef == null
+                ? AllocateInitExtension(name, info, siteField, body?.Name)
+                : AllocateParameterizedExtension(name, info, siteField, propsRef, settersRef, namesRef,
+                    body?.Name, layout);
             return MakeCall(field, paramExpr, uses, item.Position);
         }
 
         /// <summary>
-        /// The bodied half of the bound-extension arm. Everything here used to be written three times, once per
-        /// name the emitter recognised.
-        /// <para>The body's role decides its typing environment: <see cref="BodyModelSource.Parent"/> keeps the
-        /// caller's, which is the branch trio, <c>@for</c> and every step-back encoder; ElementOfData types it by
-        /// the collection's element, which is <c>@list</c> and the one place the element-type ambiguity check
-        /// belongs — it is a consequence of that role, not of the name. A role the emitter has no emission for
-        /// costs the template its tier, which is the safe direction.</para>
+        /// A call to an extension declaring <c>[PrecompileUnsupported]</c>: the site is written, the substitute is
+        /// installed against it, and <c>HED7033</c> quotes the declared reason verbatim so the template author
+        /// reads the extension author's own sentence rather than a paraphrase of it.
+        /// <para>Reported once per extension per template — a template calling one such extension twenty times has
+        /// one fact to learn, not twenty.</para>
         /// </summary>
-        private Call BuildExtensionBodyCall(string name, ExtensionBinder.Info info, bool known,
-            BodyModelSource bodySource, OutputItem item, CallParameter cp, BodyContext bctx, out Refusal reason)
+        private Call BuildUnsupportedExtensionCall(string name, ExtensionBinder.Info info, OutputChain chain,
+            OutputItem item, CallParameter cp, BodyContext bctx, out Refusal reason)
         {
-            reason = null;
-            if (!known)
-            {
-                reason = new Refusal(RefusalCategory.HookBehavior,
-                    "no body model-typing for a body on <" + name + ">", item.Position);
+            if (!TryPlanSite(name, chain, item, cp, bctx, out var plan, out reason))
                 return null;
-            }
 
+            var stated = info.PrecompileUnsupportedReason.Length == 0
+                ? "no reason stated"
+                : info.PrecompileUnsupportedReason;
+            if (_reportedUnsupportedExtensions.Add(name))
+                _diagnostics.Add(new EmitDiagnostic(GeneratorDiagnostics.ExtensionPrecompileUnsupported,
+                    item.Position, name, info.AqnSansVersion, stated));
+
+            var field = AllocateSiteFallback(EmitInitSite(plan),
+                "<" + name + "> declares [PrecompileUnsupported]: " + stated + ".");
+            return MakeCall(field, "scope.ModelData", false, item.Position);
+        }
+
+        /// <summary>Extensions whose <c>[PrecompileUnsupported]</c> declaration has already been reported for this
+        /// template.</summary>
+        private readonly HashSet<string> _reportedUnsupportedExtensions =
+            new HashSet<string>(System.StringComparer.Ordinal);
+
+        /// <summary>The body of a call whose hook the build has read: typed exactly as before, and now carrying the
+        /// typing it assumed so the hook's own answer can contradict it at registration.</summary>
+        private bool TryTypedBody(string name, BodyModelSource bodySource, OutputItem item, CallParameter cp,
+            BodyContext bctx, SitePlan plan, out BodyClass body, out Refusal reason)
+        {
+            body = null;
+            reason = null;
             ITypeSymbol elementModel = null;
             if (bodySource == BodyModelSource.ElementOfData)
             {
@@ -1059,7 +1135,7 @@ namespace Heddle.Generator.Emit
                 {
                     reason = new Refusal(RefusalCategory.UnknowableValue,
                         "collection reaches IEnumerable<T> at more than one element type", item.Position);
-                    return null;
+                    return false;
                 }
 
                 // The element type is written into the body's own `(T)scope.ModelData`, so it passes the gate every
@@ -1067,31 +1143,117 @@ namespace Heddle.Generator.Emit
                 // `scope.Model(item, index)` boxed, which a ref struct cannot be.
                 if (elementModel != null && elementModel.TypeKind != TypeKind.Dynamic &&
                     !CanWriteTypeName(elementModel, item.Position, out reason))
-                    return null;
+                    return false;
             }
 
             if (!BodyTypingRules.TryNestedBodyContext(bodySource, bctx, elementModel, out var bodyCtx))
             {
                 reason = new Refusal(RefusalCategory.HookBehavior,
                     "body model role " + bodySource + " on <" + name + "> has no emission", item.Position);
-                return null;
+                return false;
             }
 
-            if (!BuildParamExpr(cp, bctx, RefStructUse.Model, out var paramExpr, out var uses, out reason,
-                    item.Position))
-                return null;
-
-            BodyClass body = null;
             if (item.Context != null)
             {
                 body = BuildBody(item.ParameterTemplate, item.Context, bodyCtx, out reason);
                 if (body == null)
-                    return null;
+                    return false;
             }
 
-            var field = AllocateBodyExtension(name, info, body?.Name, body != null && body.HostsParticipant,
-                item.Position);
-            return MakeCall(field, paramExpr, uses, item.Position);
+            // A body on the dynamic tier can still have been typed by the ENGINE — an `object` element, a
+            // `:: dynamic` definition compiled against one call site's model — and that type is what the hook will
+            // report, so it is the assumption to declare. `DynamicBodyModel` carries it; only where neither exists
+            // is the claim genuinely dynamic.
+            var assumed = bodyCtx.ModelSymbol ?? bodyCtx.DynamicBodyModel;
+            if (!TryTypeExpr(assumed, item.Position, out var assumedExpr, out reason))
+                return false;
+            plan.AssumedDataTypeExpr = assumedExpr;
+            return true;
+        }
+
+        /// <summary>
+        /// The body of a call whose hook the build has <b>not</b> read — which is every third-party extension, and
+        /// the case this whole seam exists for. Nothing here is spelled against a model type: the body carries no
+        /// model cast, every member read becomes a <c>PrecompiledLateAccessor</c> bound to the engine's own walk
+        /// once the hook answers, and every nested call site becomes a dependent whose typing that same answer
+        /// fills in.
+        /// <para>Returns false with a reason when some shape inside it cannot be written that way, and false with
+        /// <c>reason</c> already assigned to the caller's <c>out</c> when the whole template must go instead —
+        /// which is the case the substitute cannot serve honestly.</para>
+        /// </summary>
+        private bool TryTypeAgnosticBody(OutputItem item, BodyContext bctx, SitePlan plan, out BodyClass body,
+            out Refusal reason)
+        {
+            body = null;
+            reason = null;
+            plan.BodyTypeAgnostic = true;
+            if (item.Context == null)
+                return true;
+
+            var sink = new LateBodySink();
+            plan.Late = sink;
+            _initTier++;
+            try
+            {
+                body = BuildBody(item.ParameterTemplate, item.Context, bctx.AsTypeAgnostic(sink), out reason);
+            }
+            finally
+            {
+                _initTier--;
+            }
+
+            if (body != null)
+                return true;
+
+            // The substitute compiles this call's own text as its own document, so it sees no enclosing definition,
+            // no ambient region fill scope and no active prop layout. A body that reaches for any of those must not
+            // be handed to it — the template goes to the dynamic tier instead, where all three exist.
+            if (!SubstituteCanServe(item, bctx))
+            {
+                reason = reason ?? new Refusal(RefusalCategory.HookBehavior,
+                    "body of an unread hook", item.Position);
+                return false;
+            }
+
+            reason = reason ?? new Refusal(RefusalCategory.HookBehavior, "unemittable body", item.Position);
+            plan.Late = null;
+            return false;
+        }
+
+        /// <summary>
+        /// Whether a fragment compiled as its own document would see what this body needs. It would not see the
+        /// enclosing document's definitions, the ambient region fill scope, or the active prop layout — the bound
+        /// <c>PrecompiledSiteFallbackExtension</c> states — so a body under any of them, or naming a definition of
+        /// the enclosing document, is refused whole rather than substituted with something that resolves
+        /// differently.
+        /// </summary>
+        private bool SubstituteCanServe(OutputItem item, BodyContext bctx)
+        {
+            if (bctx.Props != null || bctx.RegionHostProps != null || bctx.InSlot)
+                return false;
+            if (bctx.Fills != null && bctx.Fills.Count != 0)
+                return false;
+            return !NamesAnEnclosingDefinition(item.Context);
+        }
+
+        private bool NamesAnEnclosingDefinition(ParseContext context)
+        {
+            if (context == null)
+                return false;
+            foreach (var chain in context.OutputChains)
+            {
+                if (chain.Chain == null)
+                    continue;
+                foreach (var call in chain.Chain)
+                {
+                    if (!string.IsNullOrEmpty(call.ExtensionName) && _parse.DefenitionExists(call.ExtensionName))
+                        return true;
+                    if (call.Context != null && NamesAnEnclosingDefinition(call.Context))
+                        return true;
+                }
+            }
+
+            return false;
         }
 
         /// <summary>What the build knows about one extension's hook: the shared table's row for an engine
@@ -1107,53 +1269,277 @@ namespace Heddle.Generator.Emit
             return false;
         }
 
-        private string AllocateCustomExtension(string name, ExtensionBinder.Info info, BlockPosition position)
+        /// <summary>Everything one call site hands <c>PrecompiledRuntime.Init</c>, gathered before any of it is
+        /// written. A field-by-field mirror of <c>PrecompiledInitSite</c>; every <c>…Expr</c> member is already a
+        /// C# expression, and <c>"null"</c> in a type position is the engine's <c>ExType.Dynamic</c> rather than an
+        /// absent type.</summary>
+        private sealed class SitePlan
         {
-            var field = "E" + _extensionCounter++;
-            var (line, col) = _map.Map(position.StartIndex);
-            _fieldDecls.Append("        private static readonly ").Append(info.GlobalName).Append(' ').Append(field)
-                .Append(" = global::Heddle.Precompiled.PrecompiledRuntime.Bind(\n");
-            _fieldDecls.Append("            new ").Append(info.GlobalName)
-                .Append("(), body: null, ").Append(DerivedRenderTypeLiteral(info))
-                .Append(", needsLocals: false, line: ")
-                .Append(line).Append(", column: ").Append(col).Append(");\n");
-            _extensionFields.Add(field);
-            // The manifest type name comes from the shared AqnFormatter, not from stripping 'global::' off a
-            // display string — a nested extension spells 'Ns.Outer+Inner' on both tiers.
-            RecordExtensionBinding(name, info.BareTypeName, info.AssemblyName);
+            public string Name;
+            public BlockPosition Position;
+            public string SourceText;
+            public string BodyRaw;
+            public string BodyShaped;
+            public bool BodyNeedsLocals;
+            public bool BodyTypeAgnostic;
+            public string AssumedDataTypeExpr = "null";
+            public string AssumedChainedTypeExpr = "null";
+            public string DataTypeExpr = "null";
+            public string ChainedTypeExpr = "null";
+            public string ParentTypeExpr = "null";
+            public string ModelTypeExpr = "null";
+            public string RootModelTypeExpr = "null";
+            public string SlotTypeExpr = "null";
+            public Heddle.Precompiled.PrecompiledCallShape Shape;
+            public bool HasPropArguments;
+            public bool RootReference;
+            public bool InsideDefinition;
+            public LateBodySink Late;
+
+            /// <summary>The sink of the type-agnostic body this call sits <b>inside</b>, if any; the site registers
+            /// on it so the enclosing hook's answer reaches this call's typing.</summary>
+            public LateBodySink Owner;
+
+            /// <summary>The member path whose resolved type is this call's <c>dataType</c>, for a site inside a
+            /// type-agnostic body.</summary>
+            public IReadOnlyList<string> DataTypePath;
+        }
+
+        /// <summary>The <c>typeof</c> expression for a type a site records, or <c>"null"</c> — which the site
+        /// reads as <c>dynamic</c>, not as an absent type. A symbol this assembly may not name is refused rather
+        /// than collapsed to dynamic: collapsing would hand the hook a different <c>dataType</c> than the engine
+        /// hands it.</summary>
+        private bool TryTypeExpr(ITypeSymbol type, BlockPosition position, out string expr, out Refusal reason)
+        {
+            reason = null;
+            if (type == null || type.TypeKind == TypeKind.Dynamic || type.TypeKind == TypeKind.Error)
+            {
+                expr = "null";
+                return true;
+            }
+
+            if (!CanWriteTypeName(type, position, out reason))
+            {
+                expr = null;
+                return false;
+            }
+
+            expr = "typeof(" + SymbolTypeResolver.FullyQualified(type) + ")";
+            return true;
+        }
+
+        /// <summary>The call's own source text — the span the document being walked holds at this call's position.
+        /// A faulted <c>Init</c> compiles it as its own document, so it has to be the text the engine parsed rather
+        /// than the file's.</summary>
+        private string SourceTextAt(BlockPosition position)
+        {
+            var doc = _currentDoc;
+            if (doc == null || position.StartIndex < 0 || position.Length < 0 ||
+                position.StartIndex + position.Length > doc.Length)
+                return null;
+            return doc.Substring(position.StartIndex, position.Length);
+        }
+
+        /// <summary>Gathers the site for one bound-extension call: what the engine's compiler knows here, reduced
+        /// to what a generated field initializer can carry.</summary>
+        private bool TryPlanSite(string name, OutputChain chain, OutputItem item, CallParameter cp, BodyContext bctx,
+            out SitePlan plan, out Refusal reason)
+        {
+            plan = null;
+            var model = bctx.Late != null ? null : bctx.ModelSymbol;
+            if (!TryTypeExpr(model, item.Position, out var modelExpr, out reason))
+                return false;
+            if (!TryTypeExpr(_modelSymbol, item.Position, out var rootExpr, out reason))
+                return false;
+            if (!TryTypeExpr(bctx.SlotType, item.Position, out var slotExpr, out reason))
+                return false;
+
+            var shape = CallShapeRules.Of(cp);
+            var dataExpr = modelExpr;
+            IReadOnlyList<string> dataPath = null;
+            if (bctx.Late != null)
+            {
+                // Inside a type-agnostic body nothing about the model is known yet, so the only shapes that can be
+                // written are the ones whose dataType is a function of it: the whole model, and a member path off
+                // it, which travels as the path rather than as a type. A '::'-rooted path is not one of them — it
+                // starts at the root model, which the build does know.
+                if (shape == Heddle.Precompiled.PrecompiledCallShape.ModelPath && !cp.RootReference)
+                {
+                    dataPath = cp.ModelParameter;
+                    dataExpr = "null";
+                }
+                else if (shape == Heddle.Precompiled.PrecompiledCallShape.ModelPath && cp.RootReference)
+                {
+                    if (!TryTypeExpr(CallSiteValueType(cp, bctx), item.Position, out dataExpr, out reason))
+                        return false;
+                }
+                else if (shape != Heddle.Precompiled.PrecompiledCallShape.None &&
+                         !(cp.NativeExpression is ThisNode))
+                {
+                    reason = new Refusal(RefusalCategory.HookBehavior,
+                        "call shape " + shape + " inside a body typed by an unread hook", item.Position);
+                    return false;
+                }
+            }
+            else if (shape != Heddle.Precompiled.PrecompiledCallShape.None)
+            {
+                if (!TryTypeExpr(CallSiteValueType(cp, bctx), item.Position, out dataExpr, out reason))
+                    return false;
+            }
+
+            plan = new SitePlan
+            {
+                Owner = bctx.Late,
+                DataTypePath = dataPath,
+                Name = name,
+                Position = chain != null ? chain.BlockPosition : item.Position,
+                SourceText = SourceTextAt(chain != null ? chain.BlockPosition : item.Position),
+                BodyRaw = item.ParameterTemplate,
+                DataTypeExpr = dataExpr,
+                ParentTypeExpr = modelExpr,
+                ModelTypeExpr = modelExpr,
+                RootModelTypeExpr = rootExpr,
+                SlotTypeExpr = slotExpr,
+                Shape = shape,
+                HasPropArguments = cp != null && cp.PropArguments != null && cp.PropArguments.Count != 0,
+                RootReference = cp != null && cp.RootReference,
+                InsideDefinition = bctx.Props != null || bctx.InSlot
+            };
+            return true;
+        }
+
+        /// <summary>Writes the site object. Returns its field name.</summary>
+        private string EmitInitSite(SitePlan plan)
+        {
+            var field = "S" + _initSiteCounter++;
+            var w = _fieldDecls;
+            // Internal rather than private: the manifest row names it, so the gauntlet can read what this call's
+            // own hook answered at registration.
+            w.Append("        internal static readonly global::Heddle.Precompiled.PrecompiledInitSite ").Append(field)
+                .Append(" = new global::Heddle.Precompiled.PrecompiledInitSite\n        {\n");
+            w.Append("            ExtensionName = ").Append(CSharpEscape.StringLiteral(plan.Name ?? string.Empty))
+                .Append(",\n");
+            w.Append("            PositionStart = ").Append(plan.Position.StartIndex)
+                .Append(", PositionLength = ").Append(plan.Position.Length).Append(",\n");
+            w.Append("            SourceText = ")
+                .Append(plan.SourceText == null ? "null" : CSharpEscape.StringLiteral(plan.SourceText)).Append(",\n");
+            if (plan.BodyRaw != null)
+            {
+                w.Append("            Body = new global::Heddle.Precompiled.PrecompiledInitBody { RawText = ")
+                    .Append(CSharpEscape.StringLiteral(plan.BodyRaw)).Append(", ShapedText = ")
+                    .Append(plan.BodyShaped == null ? "null" : CSharpEscape.StringLiteral(plan.BodyShaped))
+                    .Append(", NeedsLocals = ").Append(plan.BodyNeedsLocals ? "true" : "false")
+                    .Append(", TypeAgnostic = ").Append(plan.BodyTypeAgnostic ? "true" : "false")
+                    .Append(", AssumedDataType = ").Append(plan.AssumedDataTypeExpr)
+                    .Append(", AssumedChainedType = ").Append(plan.AssumedChainedTypeExpr).Append(" },\n");
+            }
+
+            if (plan.DataTypePath != null)
+                w.Append("            DataTypePath = new string[] { ")
+                    .Append(string.Join(", ", plan.DataTypePath.Select(CSharpEscape.StringLiteral)))
+                    .Append(" },\n");
+            w.Append("            DataType = ").Append(plan.DataTypeExpr)
+                .Append(", ChainedType = ").Append(plan.ChainedTypeExpr)
+                .Append(", ParentType = ").Append(plan.ParentTypeExpr).Append(",\n");
+            w.Append("            ModelType = ").Append(plan.ModelTypeExpr)
+                .Append(", RootModelType = ").Append(plan.RootModelTypeExpr)
+                .Append(", SlotType = ").Append(plan.SlotTypeExpr).Append(",\n");
+            w.Append("            OutputProfile = global::Heddle.Data.OutputProfile.")
+                .Append(_profileHtml ? "Html" : "Text")
+                .Append(", ExpressionMode = global::Heddle.Data.ExpressionMode.").Append(_config.ExpressionMode)
+                .Append(",\n");
+            w.Append("            TrimDirectiveLines = ").Append(_config.TrimDirectiveLines ? "true" : "false")
+                .Append(", MaxRecursionCount = ").Append(_config.MaxRecursionCount).Append(",\n");
+            w.Append("            Namespaces = ").Append(NamespacesExpr()).Append(",\n");
+            w.Append("            CallShape = global::Heddle.Precompiled.PrecompiledCallShape.").Append(plan.Shape)
+                .Append(", HasPropArguments = ").Append(plan.HasPropArguments ? "true" : "false").Append(",\n");
+            w.Append("            RootReference = ").Append(plan.RootReference ? "true" : "false")
+                .Append(", InsideDefinition = ").Append(plan.InsideDefinition ? "true" : "false");
+            if (plan.Late != null && plan.Late.Accessors.Count != 0)
+                w.Append(",\n            BodyAccessors = new global::Heddle.Precompiled.PrecompiledLateAccessor[] { ")
+                    .Append(string.Join(", ", plan.Late.Accessors)).Append(" }");
+            if (plan.Late != null && plan.Late.Dependents.Count != 0)
+                w.Append(",\n            Dependents = new global::Heddle.Precompiled.PrecompiledInitSite[] { ")
+                    .Append(string.Join(", ", plan.Late.Dependents)).Append(" }");
+            w.Append("\n        };\n");
+            _initSiteFields.Add(field);
+            plan.Owner?.Dependents.Add(field);
             return field;
         }
 
-        /// <summary>The extension's output render type derived from its <c>[EncodeOutput]</c>/<c>[NotEncode]</c>
-        /// symbols — the EXACT expression the dynamic tier's <c>InitializeTemplate</c> evaluates over the concrete
-        /// instance type, emitted as the <c>global::Heddle.Data.RenderType.*</c> literal. Never hard-coded <c>Raw</c>:
-        /// a plain <c>[EncodeOutput]</c> custom extension must self-encode on the precompiled tier exactly as it does
-        /// on the dynamic tier; the flags degrade to false → <c>Raw</c>, the safe value, against an older engine
-        /// reference.</summary>
-        private static string DerivedRenderTypeLiteral(ExtensionBinder.Info info)
-            => "global::Heddle.Data.RenderType." +
-               RenderTypeRules.Derive(info.HasEncodeOutput, info.HasNotEncode);
+        /// <summary>The <c>@using</c> namespace set in scope, as the array a site carries.</summary>
+        private string NamespacesExpr()
+        {
+            if (_usings.Count == 0)
+                return "null";
+            return "new string[] { " + string.Join(", ", _usings.Select(CSharpEscape.StringLiteral)) + " }";
+        }
 
-        /// <summary>Allocates a parameter-declaring custom extension call site — the carrier bind through
-        /// <c>PrecompiledRuntime.BindExtension</c> with the frozen props prototype, optional dynamic setters, the
-        /// ordered parameter names, and the derived render type (applied to the INNER extension so an
-        /// <c>[EncodeOutput]</c> inner self-encodes). Field typed <c>AbstractExtension</c> (the carrier is
-        /// engine-internal), as <c>AllocateDefinitionExtension</c> does.</summary>
-        private string AllocateParameterizedExtension(string name, ExtensionBinder.Info info, string propsFieldRef,
-            string dynamicSettersRef, string parameterNamesRef, BlockPosition position,
-            PropLayoutInfo layout = null)
+        /// <summary>
+        /// One bound extension's call site, bound by running the extension's <b>own</b> <c>InitStart</c> inside the
+        /// consumer's assembly. Field typed <see cref="Heddle.Core.AbstractExtension"/> so a call the seam could not
+        /// serve returns its substitute here and costs no per-render branch; a factory rather than a
+        /// <c>new</c> argument so an extension assembly that moved faults this call site instead of the whole type
+        /// initializer.
+        /// </summary>
+        private string AllocateInitExtension(string callName, ExtensionBinder.Info info, string siteField,
+            string bodyName)
         {
             var field = "E" + _extensionCounter++;
-            var (line, col) = _map.Map(position.StartIndex);
-            _fieldDecls.Append("        private static readonly global::Heddle.Core.AbstractExtension ").Append(field)
-                .Append(" = global::Heddle.Precompiled.PrecompiledRuntime.BindExtension(\n");
-            _fieldDecls.Append("            new ").Append(info.GlobalName)
-                .Append("(), props: ").Append(propsFieldRef)
+            var bodyArg = bodyName != null ? "new " + bodyName + "()" : "null";
+            var w = InitDecls;
+            w.Append("        private static readonly global::Heddle.Core.AbstractExtension ").Append(field)
+                .Append(" = global::Heddle.Precompiled.PrecompiledRuntime.Init(\n");
+            w.Append("            () => new ").Append(info.GlobalName).Append("(), ").Append(siteField)
+                .Append(", ").Append(bodyArg).Append(");\n");
+            _extensionFields.Add(field);
+            RecordExtensionBinding(callName, info.BareTypeName, info.AssemblyName);
+            return field;
+        }
+
+        /// <summary>The per-call-site substitute the build writes itself: this call renders by compiling its own
+        /// source text at first render while the rest of the template stays precompiled.</summary>
+        private string AllocateSiteFallback(string siteField, string detail)
+        {
+            var field = "E" + _extensionCounter++;
+            InitDecls.Append("        private static readonly global::Heddle.Core.AbstractExtension ").Append(field)
+                .Append(" = global::Heddle.Precompiled.PrecompiledRuntime.SiteFallback(\n            ")
+                .Append(siteField).Append(", ").Append(CSharpEscape.StringLiteral(detail)).Append(");\n");
+            _extensionFields.Add(field);
+            return field;
+        }
+
+        /// <summary>A member read of a type-agnostic body: the path only, bound to the engine's own accessor by
+        /// <c>PrecompiledRuntime.Init</c> once the hook has said what the body's model is.</summary>
+        private string AllocateLateAccessor(LateBodySink sink, IReadOnlyList<string> segments, bool rootRef)
+        {
+            var field = "LA" + _lateAccessorCounter++;
+            _fieldDecls.Append("        private static readonly global::Heddle.Precompiled.PrecompiledLateAccessor ")
+                .Append(field).Append(" =\n            new global::Heddle.Precompiled.PrecompiledLateAccessor(new string[] { ")
+                .Append(string.Join(", ", segments.Select(CSharpEscape.StringLiteral))).Append(" }, rootRef: ")
+                .Append(rootRef ? "true" : "false").Append(");\n");
+            sink.Accessors.Add(field);
+            return field;
+        }
+
+        /// <summary>Allocates a parameter-declaring extension's call site: the extension's own <c>InitStart</c>
+        /// through <c>PrecompiledRuntime.InitExtension</c>, then the <c>ExtensionParameterCarrier</c> wrap with the
+        /// frozen props prototype, the optional dynamic setters and the ordered parameter names — in that order,
+        /// which is the order the engine's compiler applies them, so the render-type attributes stay on the inner
+        /// extension.</summary>
+        private string AllocateParameterizedExtension(string name, ExtensionBinder.Info info, string siteField,
+            string propsFieldRef, string dynamicSettersRef, string parameterNamesRef, string bodyName,
+            PropLayoutInfo layout)
+        {
+            var field = "E" + _extensionCounter++;
+            var w = InitDecls;
+            w.Append("        private static readonly global::Heddle.Core.AbstractExtension ").Append(field)
+                .Append(" = global::Heddle.Precompiled.PrecompiledRuntime.InitExtension(\n");
+            w.Append("            () => new ").Append(info.GlobalName).Append("(), ").Append(siteField)
+                .Append(", body: ").Append(bodyName != null ? "new " + bodyName + "()" : "null")
+                .Append(", props: ").Append(propsFieldRef)
                 .Append(", dynamicSetters: ").Append(dynamicSettersRef)
-                .Append(", parameterNames: ").Append(parameterNamesRef)
-                .Append(", ").Append(DerivedRenderTypeLiteral(info))
-                .Append(", needsLocals: false, line: ")
-                .Append(line).Append(", column: ").Append(col).Append(");\n");
+                .Append(", parameterNames: ").Append(parameterNamesRef).Append(");\n");
             _extensionFields.Add(field);
             // The prop-layout fingerprint travels with the binding row. Built through the shared
             // PropLayout.FormatFingerprint over this side's slots and ITypeFacts, so the string the runtime
@@ -1593,6 +1979,10 @@ namespace Heddle.Generator.Emit
         /// model.</summary>
         private ITypeSymbol CallSiteValueType(CallParameter cp, BodyContext bctx)
         {
+            // A body whose model the hook chooses has no build-time answer here, and "cannot say" is what every
+            // gate reading this already treats as exempt.
+            if (bctx.Late != null)
+                return null;
             var model = bctx.IsDynamic ? bctx.DynamicBodyModel : bctx.ModelSymbol;
 
             // `this`, which is the enclosing body's own model. As a whole expression it is the model passthrough and
@@ -3148,6 +3538,17 @@ namespace Heddle.Generator.Emit
                 if (cp.RootReference)
                     return BuildRootRefParamExpr(segments, use, callPosition, out paramExpr, out reason);
 
+                if (bctx.Late != null)
+                {
+                    // The read is written as a path and resolved by the engine's own member walk against the type
+                    // the hook answers with — never through the DLR, whose visibility policy and hop rule are the
+                    // dynamic tier's rather than the typed tier's the engine would take here.
+                    paramExpr = "(object)" + AllocateLateAccessor(bctx.Late, segments, rootRef: false) +
+                                ".Read(scope.ModelData, scope.ChainedData, " +
+                                "global::Heddle.Precompiled.PrecompiledRuntime.RootModel(in scope))";
+                    return true;
+                }
+
                 if (bctx.IsDynamic)
                 {
                     // Dynamic tier: leading conditional guards first hop, dynamic ?. carries rest (DynamicParameter emits this).
@@ -3198,6 +3599,16 @@ namespace Heddle.Generator.Emit
                     return true;
                 }
 
+                if (bctx.Late != null)
+                {
+                    // A computed expression's result type depends on an operand type that does not exist until the
+                    // hook answers, and the DLR's numeric promotion is not the engine's for every operand pair —
+                    // routing it there would be wrong rather than slow.
+                    reason = new Refusal(RefusalCategory.NativeExpression,
+                        "computed native expression in a body typed by an unread hook", callPosition);
+                    return false;
+                }
+
                 if (_config.ExpressionMode == Heddle.Data.ExpressionMode.MemberPathsOnly)
                 {
                     reason = new Refusal(RefusalCategory.HostSetup, "native expression under MemberPathsOnly",
@@ -3244,7 +3655,18 @@ namespace Heddle.Generator.Emit
             }
 
             if (!string.IsNullOrEmpty(cp.CSharpExpression))
+            {
+                if (bctx.Late != null)
+                {
+                    // The fragment's model parameter has to be SPELLED, and `object`/`dynamic` in its place changes
+                    // overload resolution inside the expression.
+                    reason = new Refusal(RefusalCategory.EmbeddedCSharp,
+                        "embedded C# in a body typed by an unread hook", callPosition);
+                    return false;
+                }
+
                 return BuildCSharpExpr(cp.CSharpExpression, bctx, out paramExpr, out reason);
+            }
 
             // A single-item chain (@card((Cols)), @list(upper(Name))) reduces to its producer's expression — but not
             // to its producer's VALUE. The carrier the runtime wraps it in renders what it is given, so the value
@@ -3665,28 +4087,37 @@ namespace Heddle.Generator.Emit
             return hops;
         }
 
-        private string AllocateEmptyExtension(BlockPosition position)
+        private string AllocateEmptyExtension(BlockPosition position, out Refusal reason)
         {
+            reason = null;
             var field = "E" + _extensionCounter++;
             // Running profile (post-@profile-flip) decides encoding via shared OutputProfileRules rule.
             OutputProfileRules.ResolveUnnamedCarrier(
                 _profileHtml ? Heddle.Data.OutputProfile.Html : Heddle.Data.OutputProfile.Text,
                 hasBody: false, out var carrierKind, out var carrierRenderType);
-            bool html = carrierKind == UnnamedCarrierKind.EmptyHtml;
-            var typeName = html ? "global::Heddle.Extensions.EmptyHtmlExtension"
-                                : "global::Heddle.Extensions.EmptyExtension";
+            // The carrier is BOUND, not named: the shared rule gives the registry name the running profile
+            // selects, and the binder answers which type that name resolves to in this compilation — so a host that
+            // registers its own carrier under either name gets its own type spelled here.
+            var registryName = OutputProfileRules.CarrierRegistryName(carrierKind);
+            if (!_extensionBinder.TryResolve(registryName, out var carrierInfo))
+            {
+                reason = new Refusal(RefusalCategory.ExtensionBinding,
+                    "no extension is registered for the unnamed carrier", position);
+                return null;
+            }
+
+            if (!CanWriteExtensionTypeName(carrierInfo.TypeSymbol, position, out reason))
+                return null;
+
             var renderType = "global::Heddle.Data.RenderType." + carrierRenderType;
             var (line, col) = _map.Map(position.StartIndex);
-            _fieldDecls.Append("        private static readonly ").Append(typeName).Append(' ').Append(field)
-                .Append(" = global::Heddle.Precompiled.PrecompiledRuntime.Bind(\n");
-            _fieldDecls.Append("            new ").Append(typeName)
+            _fieldDecls.Append("        private static readonly ").Append(carrierInfo.GlobalName).Append(' ')
+                .Append(field).Append(" = global::Heddle.Precompiled.PrecompiledRuntime.Bind(\n");
+            _fieldDecls.Append("            new ").Append(carrierInfo.GlobalName)
                 .Append("(), body: null, ").Append(renderType)
                 .Append(", needsLocals: false, line: ").Append(line).Append(", column: ").Append(col).Append(");\n");
             _extensionFields.Add(field);
-            // Manifest binding name must resolve to bound type: Html redirects to "html" (EmptyHtmlExtension), Text to "" (EmptyExtension).
-            RecordExtensionBinding(OutputProfileRules.CarrierRegistryName(carrierKind),
-                html ? "Heddle.Extensions.EmptyHtmlExtension" : "Heddle.Extensions.EmptyExtension",
-                _extensionBinder.EngineAssemblyName);
+            RecordExtensionBinding(registryName, carrierInfo.BareTypeName, carrierInfo.AssemblyName);
             return field;
         }
 
@@ -3728,28 +4159,6 @@ namespace Heddle.Generator.Emit
             new Dictionary<string, string>(System.StringComparer.Ordinal);
 
         private int _functionSiteCounter;
-
-        /// <summary>Allocates a body-hosting extension's call site. The render type is <b>derived</b> from the
-        /// bound extension's own <c>[EncodeOutput]</c>/<c>[NotEncode]</c> symbols, exactly as every other bind on
-        /// this side does: a hard-coded <c>Raw</c> is invisible for <c>@if</c>/<c>@for</c>/<c>@list</c>, which carry
-        /// neither attribute, and becomes a silent encoding divergence — output escaped on the dynamic tier and raw
-        /// on the precompiled one — the moment an <c>[EncodeOutput]</c> extension hosts a body through here.</summary>
-        private string AllocateBodyExtension(string callName, ExtensionBinder.Info info, string bodyName,
-            bool needsLocals, BlockPosition position)
-        {
-            var field = "E" + _extensionCounter++;
-            var (line, col) = _map.Map(position.StartIndex);
-            var bodyArg = bodyName != null ? "new " + bodyName + "()" : "null";
-            _fieldDecls.Append("        private static readonly ").Append(info.GlobalName).Append(' ').Append(field)
-                .Append(" = global::Heddle.Precompiled.PrecompiledRuntime.Bind(\n");
-            _fieldDecls.Append("            new ").Append(info.GlobalName).Append("(), body: ").Append(bodyArg)
-                .Append(", ").Append(DerivedRenderTypeLiteral(info)).Append(", needsLocals: ")
-                .Append(needsLocals ? "true" : "false")
-                .Append(", line: ").Append(line).Append(", column: ").Append(col).Append(");\n");
-            _extensionFields.Add(field);
-            RecordExtensionBinding(callName, info.BareTypeName, info.AssemblyName);
-            return field;
-        }
 
         /// <summary>The build tier's half of the prop-layout fingerprint — the shared format over
         /// this side's slots and its <c>ITypeFacts</c>.</summary>
@@ -4106,7 +4515,7 @@ namespace Heddle.Generator.Emit
                     utf8LiteralSyntax: ConsumerParsesUtf8Literals());
             w.Line();
 
-            foreach (var line in _fieldDecls.ToString().Split('\n'))
+            foreach (var line in FieldDeclarations().Split('\n'))
                 if (line.Length != 0)
                     w.Raw(line);
             w.Line();
@@ -4342,8 +4751,15 @@ namespace Heddle.Generator.Emit
                         : nameof(Heddle.Precompiled.PrecompiledLinePathForm.TemplatePath)));
 
             // Written only when it is true, so a template that pins its own model keeps the row it has always had
-            // and the wider constructor appears exactly where it says something.
-            sb.Append(_modelDeclaredInTemplate ? ")" : ",\n    modelTypeIsAmbient: true)");
+            // and the wider constructor appears exactly where it says something. The init-site row is the same
+            // shape of decision: it appears only for a template that binds a hook, and it forces the ambient flag
+            // to be written because the two live on one constructor.
+            var sites = marker ? null : InitSitesArray();
+            if (sites == null)
+                sb.Append(_modelDeclaredInTemplate ? ")" : ",\n    modelTypeIsAmbient: true)");
+            else
+                sb.Append(",\n    modelTypeIsAmbient: " + (_modelDeclaredInTemplate ? "false" : "true") +
+                    ",\n    initSites: " + sites + ")");
             return sb.ToString();
         }
 
@@ -4369,6 +4785,16 @@ namespace Heddle.Generator.Emit
                 .Select(fn => $"new global::Heddle.Precompiled.PrecompiledFunctionBinding({CSharpEscape.StringLiteral(fn.Name)}, null, 0)")));
             sb.Append(" }");
             return sb.ToString();
+        }
+
+        /// <summary>The call sites whose hooks ran at registration, so the gauntlet can read their answers.
+        /// <c>null</c> for a template that binds none, which keeps its manifest row exactly the shape it had.</summary>
+        private string InitSitesArray()
+        {
+            if (_initSiteFields.Count == 0)
+                return null;
+            return "new global::Heddle.Precompiled.PrecompiledInitSite[] { " +
+                   string.Join(", ", _initSiteFields.Select(f => $"global::{_namespace}.{_sanitizedName}.{f}")) + " }";
         }
 
         private string ExtensionBindingsArray()

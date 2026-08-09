@@ -118,18 +118,31 @@ namespace Heddle.Generator.Tests
             Assert.Equal(new[] { "HELLO" }, pieces.ToArray());
         }
 
+        /// <summary>
+        /// The emitter keeps <b>no</b> list of directive names. Zero-output classification is read off
+        /// <c>[ZeroOutput]</c> through the binder and nothing else, so a custom zero-output extension is classified
+        /// on the same terms as a built-in one and the four-name fallback that used to sit behind it — the thing
+        /// that made a custom zero-output extension diverge silently — cannot come back under another name.
+        /// <para>The names that remain are the language's own, in the engine's shared table: a build cannot bind
+        /// anything until it knows the model type, the <c>@using</c> set and the running profile, so those three are
+        /// read out of the directive stream at parse level by both tiers. That table is asserted here to hold
+        /// exactly three entries, so a fourth name cannot be smuggled in under the word "grammar"; the
+        /// <c>@&lt;&lt;</c>-era <c>import</c> spelling is not among them, because the emitter no longer classifies
+        /// it at all.</para>
+        /// </summary>
         [Fact]
-        public void EmitterDirectiveListMatchesTheLocksteppedMirror()
+        public void TheEmitterKeepsNoDirectiveNamePredicate()
         {
-            var isDirectiveName = typeof(gen::Heddle.Generator.Emit.TemplateEmitter)
-                .GetMethod("IsDirectiveName", BindingFlags.NonPublic | BindingFlags.Static);
-            Assert.NotNull(isDirectiveName);
+            var emitter = typeof(gen::Heddle.Generator.Emit.TemplateEmitter);
+            Assert.Null(emitter.GetMethod("IsDirectiveName", BindingFlags.NonPublic | BindingFlags.Static));
 
-            // Verifies these four names and nothing else are directives: the complete lockstep set.
-            foreach (var name in new[] { "model", "using", "import", "profile" })
-                Assert.True((bool) isDirectiveName.Invoke(null, new object[] { name }), name);
-            foreach (var name in new[] { "if", "for", "list", "out", "partial", "raw", "html", "js", "attr" })
-                Assert.False((bool) isDirectiveName.Invoke(null, new object[] { name }), name);
+            var table = typeof(gen::Heddle.Language.DirectiveNames);
+            var names = table.GetFields(BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Public)
+                .Where(f => f.IsLiteral && f.FieldType == typeof(string))
+                .Select(f => (string) f.GetRawConstantValue())
+                .OrderBy(n => n, System.StringComparer.Ordinal)
+                .ToArray();
+            Assert.Equal(new[] { "model", "profile", "using" }, names);
         }
 
         private static void AddChain(ParseContext context, string name, int start, int length)

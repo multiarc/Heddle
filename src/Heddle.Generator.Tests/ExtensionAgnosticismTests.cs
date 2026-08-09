@@ -129,20 +129,12 @@ namespace Heddle.Generator.Tests
             // src/Heddle.Generator/Emit/TemplateEmitter.cs
             ("src/Heddle.Generator/Emit/TemplateEmitter.cs", "dynamic", "call:Equals", 3,
                 "a C# type keyword the emitter spells; permanent"),
-            ("src/Heddle.Generator/Emit/TemplateEmitter.cs", "import", "equality", 1,
-                "the @<< import directive, in IsDirectiveName; retires in Stage 5"),
-            ("src/Heddle.Generator/Emit/TemplateEmitter.cs", "model", "equality", 2,
-                "the @model directive: IsDirectiveName plus the emitter's own handling of it; retires in Stage 5"),
             ("src/Heddle.Generator/Emit/TemplateEmitter.cs", "object", "call:Equals", 1,
                 "a C# type keyword the emitter spells; permanent"),
             ("src/Heddle.Generator/Emit/TemplateEmitter.cs", "out", "equality", 1,
-                "@out has its own projection emission rather than a Bind; retires in Stage 5"),
+                "@out has its own projection emission rather than an Init; retires in Stage 6"),
             ("src/Heddle.Generator/Emit/TemplateEmitter.cs", "partial", "equality", 1,
-                "@partial resolves a template key rather than binding; retires in Stage 5"),
-            ("src/Heddle.Generator/Emit/TemplateEmitter.cs", "profile", "equality", 2,
-                "the @profile directive: IsDirectiveName plus the running-profile flip; retires in Stage 5"),
-            ("src/Heddle.Generator/Emit/TemplateEmitter.cs", "using", "equality", 2,
-                "the @using directive: IsDirectiveName plus the emitter's own handling of it; retires in Stage 5"),
+                "@partial resolves a template key rather than binding; retires in Stage 6"),
 
             // src/Heddle/Data/HeddleDiagnosticCatalog.cs
             ("src/Heddle/Data/HeddleDiagnosticCatalog.cs", "out", "initializer", 1,
@@ -189,6 +181,14 @@ namespace Heddle.Generator.Tests
                 "a C# type keyword; permanent"),
             ("src/Heddle/Helpers/CSharpTypeNames.cs", "ushort", "initializer", 1,
                 "a C# type keyword; permanent"),
+
+            // src/Heddle/Language/DirectiveNames.cs
+            ("src/Heddle/Language/DirectiveNames.cs", "model", "const-field", 1,
+                "the @model directive, read at parse level before anything can be bound; grammar keyword, permanent"),
+            ("src/Heddle/Language/DirectiveNames.cs", "profile", "const-field", 1,
+                "the @profile directive, read at parse level to know the running profile; grammar keyword, permanent"),
+            ("src/Heddle/Language/DirectiveNames.cs", "using", "const-field", 1,
+                "the @using directive, read at parse level before any type spelling resolves; grammar keyword, permanent"),
 
             // src/Heddle/Language/Binding/UsingDirectives.cs
             ("src/Heddle/Language/Binding/UsingDirectives.cs", "static", "const-field", 1,
@@ -305,14 +305,9 @@ namespace Heddle.Generator.Tests
         private static readonly (string File, string Reference, int Count, string Why)[]
             AllowedEngineExtensionReferences =
         {
-            ("src/Heddle.Generator/Emit/TemplateEmitter.cs", "Heddle.Extensions.EmptyExtension", 2,
-                "the unnamed carrier, chosen by the running output profile rather than by any name in the " +
-                "template; retires in Stage 5"),
-            ("src/Heddle.Generator/Emit/TemplateEmitter.cs", "Heddle.Extensions.EmptyHtmlExtension", 2,
-                "the unnamed carrier's HTML twin, same reason; retires in Stage 5"),
             ("src/Heddle.Generator/Emit/TemplateEmitter.cs", "Heddle.Extensions.OutExtension", 3,
                 "the @out projection constructs the type it binds, because PrecompiledRuntime.BindOut's parameter " +
-                "type is what enforces the contract in the consumer's own compiler; retires in Stage 5")
+                "type is what enforces the contract in the consumer's own compiler; retires in Stage 6")
         };
 
         /// <summary>The static string-keyed tables in the built assembly that are allowed to contain a built-in

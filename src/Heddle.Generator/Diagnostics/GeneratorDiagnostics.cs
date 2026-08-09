@@ -98,6 +98,14 @@ namespace Heddle.Generator.Diagnostics
         public static readonly DiagnosticDescriptor ExtensionOverridesHook =
             FromCatalog(HeddleDiagnosticIds.BuildExtensionOverridesHook);
 
+        /// <summary>A bound extension carries <c>[PrecompileUnsupported]</c> — its author has declared that the
+        /// compile-time behaviour cannot be reproduced from a static initializer (position: the call). A
+        /// <b>warning</b> accompanying a per-call-site dynamic bind: the rest of the template still precompiles,
+        /// and the declared reason is quoted verbatim so the template author reads the extension author's own
+        /// sentence.</summary>
+        public static readonly DiagnosticDescriptor ExtensionPrecompileUnsupported =
+            FromCatalog(HeddleDiagnosticIds.BuildExtensionPrecompileUnsupported);
+
         /// <summary>The <c>@model</c>/<c>::</c> type name does not resolve in the compilation or
         /// its references — a genuine typo/unresolvable symbol reported natively before the C# compiler sees the
         /// generated code (position: the directive).</summary>

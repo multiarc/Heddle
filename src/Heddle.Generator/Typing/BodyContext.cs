@@ -17,8 +17,9 @@ namespace Heddle.Generator.Typing
         public BodyContext(string modelCast, ITypeSymbol modelSymbol, bool isDynamic, PropLayoutInfo props = null,
             ITypeSymbol slotType = null, Dictionary<string, DefinitionItem> fills = null,
             PropLayoutInfo regionHostProps = null, ITypeSymbol dynamicBodyModel = null,
-            ITypeSymbol root = null, ITypeSymbol chained = null)
+            ITypeSymbol root = null, ITypeSymbol chained = null, LateBodySink late = null)
         {
+            Late = late;
             ModelCast = modelCast;
             ModelSymbol = modelSymbol;
             IsDynamic = isDynamic;
@@ -95,13 +96,21 @@ namespace Heddle.Generator.Typing
         /// chain's real type has a seam to fill.</summary>
         public ITypeSymbol Chained { get; }
 
+        /// <summary>Non-null inside a body the build emitted <b>type-agnostically</b>: the extension hosting it
+        /// decides the body's model type in a hook the build has not read, so nothing here may be spelled against
+        /// a model type. Every model-dependent read and every nested call site registers on this sink instead, and
+        /// <c>PrecompiledRuntime.Init</c> resolves them once the hook has answered.
+        /// <para>Distinct from <see cref="IsDynamic"/>, which says the model genuinely has no static type on either
+        /// tier. Here the engine has a type and the build does not know it yet.</para></summary>
+        public LateBodySink Late { get; }
+
         public BodyContext WithProps(PropLayoutInfo props) =>
             new BodyContext(ModelCast, ModelSymbol, IsDynamic, props, SlotType, Fills, RegionHostProps,
-                DynamicBodyModel, Root, Chained);
+                DynamicBodyModel, Root, Chained, Late);
 
         public BodyContext AsSlot(ITypeSymbol slotType) =>
             new BodyContext(ModelCast, ModelSymbol, IsDynamic, Props, slotType, Fills, RegionHostProps,
-                DynamicBodyModel, Root, Chained);
+                DynamicBodyModel, Root, Chained, Late);
 
         /// <summary>The same body, now typed by the model the call site actually hands it.</summary>
         public BodyContext TypedAs(ITypeSymbol model) =>
@@ -110,10 +119,16 @@ namespace Heddle.Generator.Typing
 
         public BodyContext WithDynamicBodyModel(ITypeSymbol model) =>
             new BodyContext(ModelCast, ModelSymbol, IsDynamic, Props, SlotType, Fills, RegionHostProps, model,
-                Root, Chained);
+                Root, Chained, Late);
 
         public BodyContext WithFills(Dictionary<string, DefinitionItem> fills, PropLayoutInfo regionHostProps) =>
             new BodyContext(ModelCast, ModelSymbol, IsDynamic, Props, SlotType, fills, regionHostProps,
-                DynamicBodyModel, Root, Chained);
+                DynamicBodyModel, Root, Chained, Late);
+
+        /// <summary>The body an unread hook types: no model cast, no static model, and a sink for everything
+        /// model-dependent inside it. Props, slot and fills stay as they are — a prop read is indexed rather than
+        /// typed by the model, so it is unaffected by not knowing one.</summary>
+        public BodyContext AsTypeAgnostic(LateBodySink sink) =>
+            new BodyContext(null, null, false, Props, SlotType, Fills, RegionHostProps, null, Root, null, sink);
     }
 }

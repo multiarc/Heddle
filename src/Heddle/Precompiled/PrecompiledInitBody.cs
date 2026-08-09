@@ -32,5 +32,18 @@ namespace Heddle.Precompiled
         /// <summary>The chained type the build compiled this body against; <c>null</c> means <c>dynamic</c>.
         /// See <see cref="AssumedDataType"/>.</summary>
         public Type AssumedChainedType { get; set; }
+
+        /// <summary>Whether <see cref="AssumedChainedType"/> is a claim at all. The emitter spells a body's
+        /// <c>chained</c> type in exactly one place — an embedded C# fragment's parameter list — and types it
+        /// <c>dynamic</c> everywhere else, so a hook that re-types the chained channel (<c>@list</c> hands its body
+        /// an <c>Int32</c> index) contradicts nothing the build wrote. Only a body that spelled the type sets this,
+        /// and only then is the answer compared.</summary>
+        public bool AssumesChainedType { get; set; }
+
+        /// <summary>The build emitted this body with <b>no model cast</b>, because it could not resolve the typing
+        /// the hook would choose. There is then no assumption to contradict — <see cref="AssumedDataType"/> and
+        /// <see cref="AssumedChainedType"/> say nothing — and the hook's answer is instead published on the site
+        /// and used to bind the body's reads and to type its nested call sites.</summary>
+        public bool TypeAgnostic { get; set; }
     }
 }

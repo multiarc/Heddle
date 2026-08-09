@@ -323,6 +323,11 @@ namespace Heddle.Data
         /// symbol, agree and raise nothing.</summary>
         public const string BuildConflictingModelTypeDeclarations = "HED7032";
 
+        /// <summary>A bound extension declares <c>[PrecompileUnsupported]</c>: its compile-time behaviour cannot be
+        /// reproduced from a static initializer, so this call site binds dynamically while the rest of the template
+        /// still precompiles. The declared reason is carried verbatim.</summary>
+        public const string BuildExtensionPrecompileUnsupported = "HED7033";
+
         /// <summary>A precompiled entry failed the run-time gauntlet, so the render degrades to the dynamic
         /// tier (carried on <c>PrecompiledFallbackEvent.DiagnosticId</c>).</summary>
         public const string PrecompiledGauntletFallback = "HED7101";

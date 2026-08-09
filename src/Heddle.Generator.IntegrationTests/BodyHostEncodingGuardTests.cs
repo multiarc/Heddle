@@ -22,10 +22,11 @@ namespace Heddle.Generator.IntegrationTests
     /// tier pinned (a fallback is byte-identical by design, so an unpinned render proves nothing), and the
     /// emitted bind itself, which stays readable when a later refactor changes which extension can host a body
     /// at all.</para>
-    /// <para>The subject is an engine extension rather than a fixture one for a reason worth stating: a bodied
-    /// call on a custom extension does not precompile in a default build — <c>BodyModelRules</c> carries no row
-    /// for it, so the emitter refuses the site and never reaches this bind. When custom bodied calls start
-    /// precompiling, this file is where their row belongs.</para>
+    /// <para>The render type is no longer a literal the build writes: the call site runs the extension's own
+    /// <c>InitStart</c> through <c>PrecompiledRuntime.Init</c>, which derives it from the <b>live</b> type's
+    /// attributes exactly as <c>HeddleCompiler.InitializeTemplate</c> does. So the source-level half of this guard
+    /// asserts that the site goes through that seam and bakes no render type at all — which is a stronger property
+    /// than the literal it replaces, because a build that mis-derives it can no longer exist.</para>
     /// </summary>
     public class BodyHostEncodingGuardTests
     {
@@ -55,28 +56,28 @@ namespace Heddle.Generator.IntegrationTests
             Assert.DoesNotContain(RawBody, precompiled);
         }
 
-        /// <summary>The emitted-source proof, belt to the render assertion's braces: the bind that constructs the
-        /// body-hosting extension carries the render type derived from its attributes, and carries no
-        /// <c>RenderType.Raw</c>. Read at the source level so the guard still names what broke if the rendered
-        /// difference is ever masked by a change to the runtime side of the seam.</summary>
+        /// <summary>The emitted-source proof, belt to the render assertion's braces: the body-hosting call site
+        /// constructs the extension behind a factory and hands it to <c>PrecompiledRuntime.Init</c>, which runs the
+        /// extension's own hook and derives the render type off the live type — so no render type is written here
+        /// at all, and there is no literal left to be wrong.</summary>
         [Fact]
-        public void TheBodyHostingBindPassesTheDerivedRenderTypeAndNotRaw()
+        public void TheBodyHostingSiteRunsTheExtensionsOwnHookAndBakesNoRenderType()
         {
             var gen = DifferentialHarness.Generate(new[] { (Key, Template) });
             DifferentialHarness.ExpectPrecompiled(gen, Key);
 
             var source = string.Join("\n", gen.TemplateSources.Values);
-            const string bind = "new global::Heddle.Extensions.StringExtension(), body: ";
-            var start = source.IndexOf(bind, StringComparison.Ordinal);
+            const string init = "PrecompiledRuntime.Init(";
+            var start = source.IndexOf(init, StringComparison.Ordinal);
             Assert.True(start >= 0,
-                "No body-hosting bind for @string in the generated source:\n" + source);
+                "No Init-bound site for @string in the generated source:\n" + source);
 
             var end = source.IndexOf(");", start, StringComparison.Ordinal);
-            Assert.True(end > start, "Unterminated bind call in the generated source:\n" + source);
+            Assert.True(end > start, "Unterminated Init call in the generated source:\n" + source);
             var allocation = source.Substring(start, end - start);
 
-            Assert.Contains("global::Heddle.Data.RenderType.Encode", allocation);
-            Assert.DoesNotContain("RenderType.Raw", allocation);
+            Assert.Contains("() => new global::Heddle.Extensions.StringExtension()", allocation);
+            Assert.DoesNotContain("RenderType.", allocation);
         }
     }
 }
