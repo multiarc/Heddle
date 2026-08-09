@@ -132,9 +132,9 @@ namespace Heddle.Generator.Tests
             ("src/Heddle.Generator/Emit/TemplateEmitter.cs", "object", "call:Equals", 1,
                 "a C# type keyword the emitter spells; permanent"),
             ("src/Heddle.Generator/Emit/TemplateEmitter.cs", "out", "equality", 1,
-                "@out has its own projection emission rather than an Init; retires in Stage 6"),
+                "the slot-channel keyword a def header already reserves; grammar keyword, permanent"),
             ("src/Heddle.Generator/Emit/TemplateEmitter.cs", "partial", "equality", 1,
-                "@partial resolves a template key rather than binding; retires in Stage 6"),
+                "the call whose own body is evaluated at compile time to name a template; permanent"),
 
             // src/Heddle/Data/HeddleDiagnosticCatalog.cs
             ("src/Heddle/Data/HeddleDiagnosticCatalog.cs", "out", "initializer", 1,
@@ -196,37 +196,37 @@ namespace Heddle.Generator.Tests
 
             // src/Heddle/Language/BodyModelRules.cs
             ("src/Heddle/Language/BodyModelRules.cs", "attr", "element-access", 1,
-                "a key of the pinned body-typing table; retires in Stage 6"),
+                "a key of the engine's own body-typing floor; permanent"),
             ("src/Heddle/Language/BodyModelRules.cs", "date", "element-access", 1,
-                "a key of the pinned body-typing table; retires in Stage 6"),
+                "a key of the engine's own body-typing floor; permanent"),
             ("src/Heddle/Language/BodyModelRules.cs", "elif", "element-access", 1,
-                "a key of the pinned body-typing table; retires in Stage 6"),
+                "a key of the engine's own body-typing floor; permanent"),
             ("src/Heddle/Language/BodyModelRules.cs", "else", "element-access", 1,
-                "a key of the pinned body-typing table; retires in Stage 6"),
+                "a key of the engine's own body-typing floor; permanent"),
             ("src/Heddle/Language/BodyModelRules.cs", "elseif", "element-access", 1,
-                "a key of the pinned body-typing table; retires in Stage 6"),
+                "a key of the engine's own body-typing floor; permanent"),
             ("src/Heddle/Language/BodyModelRules.cs", "for", "element-access", 1,
-                "a key of the pinned body-typing table; retires in Stage 6"),
+                "a key of the engine's own body-typing floor; permanent"),
             ("src/Heddle/Language/BodyModelRules.cs", "guid", "element-access", 1,
-                "a key of the pinned body-typing table; retires in Stage 6"),
+                "a key of the engine's own body-typing floor; permanent"),
             ("src/Heddle/Language/BodyModelRules.cs", "if", "element-access", 1,
-                "a key of the pinned body-typing table; retires in Stage 6"),
+                "a key of the engine's own body-typing floor; permanent"),
             ("src/Heddle/Language/BodyModelRules.cs", "ifnot", "element-access", 1,
-                "a key of the pinned body-typing table; retires in Stage 6"),
+                "a key of the engine's own body-typing floor; permanent"),
             ("src/Heddle/Language/BodyModelRules.cs", "int", "element-access", 1,
-                "a key of the pinned body-typing table; retires in Stage 6"),
+                "a key of the engine's own body-typing floor; permanent"),
             ("src/Heddle/Language/BodyModelRules.cs", "js", "element-access", 1,
-                "a key of the pinned body-typing table; retires in Stage 6"),
+                "a key of the engine's own body-typing floor; permanent"),
             ("src/Heddle/Language/BodyModelRules.cs", "list", "element-access", 1,
-                "a key of the pinned body-typing table; retires in Stage 6"),
+                "a key of the engine's own body-typing floor; permanent"),
             ("src/Heddle/Language/BodyModelRules.cs", "money", "element-access", 1,
-                "a key of the pinned body-typing table; retires in Stage 6"),
+                "a key of the engine's own body-typing floor; permanent"),
             ("src/Heddle/Language/BodyModelRules.cs", "string", "element-access", 1,
-                "a key of the pinned body-typing table; retires in Stage 6"),
+                "a key of the engine's own body-typing floor; permanent"),
             ("src/Heddle/Language/BodyModelRules.cs", "time", "element-access", 1,
-                "a key of the pinned body-typing table; retires in Stage 6"),
+                "a key of the engine's own body-typing floor; permanent"),
             ("src/Heddle/Language/BodyModelRules.cs", "url", "element-access", 1,
-                "a key of the pinned body-typing table; retires in Stage 6"),
+                "a key of the engine's own body-typing floor; permanent"),
 
             // src/Heddle/Language/Expressions/EmbeddedCSharpNames.cs
             ("src/Heddle/Language/Expressions/EmbeddedCSharpNames.cs", "chained", "const-field", 1,
@@ -317,10 +317,17 @@ namespace Heddle.Generator.Tests
 
         /// <summary>The static string-keyed tables in the built assembly that are allowed to contain a built-in
         /// extension name, by <c>(declaring type, member, the intersecting names)</c>. Keyed on the VALUES read out
-        /// of the built assembly, so renaming or moving a table changes nothing here — the two that would matter,
-        /// <c>BodyModelRules.Table</c> and its <c>PinnedNames</c> projection, are named with the stage that
-        /// deletes them. The rest collide by coincidence: the engine registers encoders called <c>@int</c> and
-        /// <c>@string</c>, so every C# keyword table intersects the extension names by two.</summary>
+        /// of the built assembly, so renaming or moving a table changes nothing here.
+        /// <para><c>BodyModelRules.Table</c> and its <c>PinnedNames</c> projection are the two that would matter,
+        /// and they are <b>permanent</b>. They were to retire once a real engine compile could type those bodies
+        /// instead, and that compile now exists — but it cannot run against a reference assembly, which is what a
+        /// project-to-project reference gives the compiler, so it is unavailable for a whole class of consumer.
+        /// The table is what those builds type <c>@if</c>, <c>@list</c> and the step-back encoders' bodies from;
+        /// removing it was measured against this repository's own suites and took thirty-five test methods red,
+        /// including corpus templates leaving the precompiled tier outright. A floor that only sometimes has
+        /// something above it is still a floor.</para>
+        /// <para>The rest collide by coincidence: the engine registers encoders called <c>@int</c> and
+        /// <c>@string</c>, so every C# keyword table intersects the extension names by two.</para></summary>
         private static readonly (string Type, string Member, string Names, string Why)[] AllowedNameKeyedTables =
         {
             ("Heddle.Data.HeddleDiagnosticCatalog+PropFaults", "ReservedNames", "out",
@@ -333,10 +340,10 @@ namespace Heddle.Generator.Tests
             ("Heddle.Helpers.CSharpTypeNames", "Names", "int, string", "C# type keywords; permanent"),
             ("Heddle.Language.BodyModelRules", "PinnedNames",
                 "attr, date, elif, else, elseif, for, guid, if, ifnot, int, js, list, money, string, time, url",
-                "the pinned body-typing table, projected; retires in Stage 6"),
+                "the engine's own body-typing floor, projected; permanent"),
             ("Heddle.Language.BodyModelRules", "Table",
                 "attr, date, elif, else, elseif, for, guid, if, ifnot, int, js, list, money, string, time, url",
-                "the pinned body-typing table itself; retires in Stage 6")
+                "the engine's own body-typing floor itself; permanent")
         };
 
         /// <summary>Types whose statics cannot be read — reading one runs its type initializer, and a generator

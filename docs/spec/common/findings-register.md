@@ -127,6 +127,14 @@ finding. Six former known-opens died exactly that way.
 
 Also open, without their own ids:
 
+- **Engine observation cannot run against a project-to-project reference.** The compiler is handed
+  the referencing project's *reference assembly* — metadata with the method bodies removed — so
+  there is no `InitStart` to execute and `HED7034` reports it. A package reference names the
+  implementation and is observed normally. MSBuild knows both paths (`@(ReferencePath)` is the
+  implementation, `@(ReferencePathWithRefAssemblies)` is what the compiler is given); bridging them
+  means giving the generator an input it does not read from the compilation, which needs its own
+  decision record. Until then the engine's own body-typing table is the floor for those builds, and
+  deleting it was measured red across thirty-five test methods.
 - Two `AssemblyHelper` orderings cannot be pinned; a racing test passes by luck. Stated in
   `AssemblyRegistrationTests` and `PreparseCacheGenerationTests`.
 - The no-load pin cannot catch a one-shot startup walk; catching it needs a child process comparing
