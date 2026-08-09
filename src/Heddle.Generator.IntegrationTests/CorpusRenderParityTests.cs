@@ -37,7 +37,7 @@ namespace Heddle.Generator.IntegrationTests
 
         private static IEnumerable<string> NamesWithRender(Func<CorpusRender, bool> predicate) =>
             CorpusIntent.Rows
-                .Where(r => r.Tier == CorpusTier.Precompiles && predicate(r.Render))
+                .Where(r => r.Bound && predicate(r.Render))
                 .Select(r => r.Name)
                 .OrderBy(n => n, StringComparer.Ordinal);
 

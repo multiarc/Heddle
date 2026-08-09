@@ -656,6 +656,26 @@ namespace Heddle.Generator.IntegrationTests
             Precompiled,
         }
 
+        /// <summary>The build-recorded per-call-site fallbacks in one template's generated source: every
+        /// <c>PrecompiledRuntime.SiteFallback</c> field the emitter wrote for it. The manifest cannot answer this —
+        /// a template that gives up one call site and one that gives up nothing both carry a bound strategy — so
+        /// the generated source is the only place the distinction exists.
+        /// <para>Counted rather than tested for presence, because the interesting drift is a second site appearing
+        /// beside the declared one.</para></summary>
+        internal static int SiteFallbackCount(GenResult gen, string key)
+        {
+            if (gen?.TemplateSources == null)
+                return 0;
+            if (!gen.TemplateSources.TryGetValue(SanitizeKey(key) + ".g.cs", out var source) || source == null)
+                return 0;
+            var count = 0;
+            const string marker = "PrecompiledRuntime.SiteFallback(";
+            for (var at = source.IndexOf(marker, StringComparison.Ordinal); at >= 0;
+                 at = source.IndexOf(marker, at + marker.Length, StringComparison.Ordinal))
+                count++;
+            return count;
+        }
+
         /// <summary>The single copy of the manifest probe the deliberate-degrade suites used to hand-roll.</summary>
         internal static ManifestState ClassifyInManifest(string manifest, string key)
         {
