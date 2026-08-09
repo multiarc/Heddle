@@ -58,7 +58,7 @@ namespace Heddle.Generator.Tests
                 s.Contains("ParticipantScan.") || s.Contains("DocumentShaper.Shape("),
                 "The scope-channel predicate is consumed by something other than the shared scan — a private "
                 + "participant scan has come back (under any name). Statement: " + s.Trim()));
-            Assert.Equal(3, consumers.Count);   // 2 shared-scan call sites + the DocumentShaper hand-off
+            Assert.Equal(4, consumers.Count);   // 2 shared-scan call sites + 2 DocumentShaper hand-offs (bodies, @partial name fold)
 
             Assert.NotNull(typeof(ParticipantScan).GetMethod("BodyHostsParticipant",
                 BindingFlags.Static | BindingFlags.NonPublic));

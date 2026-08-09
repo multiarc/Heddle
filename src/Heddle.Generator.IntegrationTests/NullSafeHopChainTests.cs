@@ -96,36 +96,40 @@ namespace Heddle.Generator.IntegrationTests
 
         /// <summary>
         /// A ref struct read <em>through</em> to a member of its own is fine — what leaves the path is an
-        /// <c>int</c>. The ref struct itself as the path's value is not: every consumer boxes it, and a ref struct
-        /// cannot be boxed.
-        /// <para>Neither tier can render this, and that is not the point. The engine refuses it with
-        /// <c>HED0005</c> when it compiles the template — an id, a position, something a host can report. Emitting
-        /// it put <c>CS0030</c> into the consumer's build instead: no Heddle id, reported against a
-        /// <c>.heddle</c> file. Degrading is what lets the engine's refusal be the one the reader sees.</para>
+        /// <c>int</c>. The ref struct itself as the path's value depends on the <b>sink</b>: in output position no
+        /// consumer needs a box — the carrier renders <c>value is string s ? s : value.ToString()</c> — so the
+        /// emitter stringifies in place and the template precompiles (<c>RefStructSinkTests</c> pins the bytes and
+        /// the encoding composition). Boxing sinks stay refused with sink-named reasons.
+        /// <para>The engines split by TFM here: the .NET Framework runtime predates ref structs, its expression
+        /// trees box the value without complaint and the dynamic tier renders <c>ToString()</c> — the bytes the
+        /// stringified emission reproduces — while the modern engine's trees reject by-ref-like types wholesale and
+        /// its compile fails with the HED0005 catch-all. The precompiled tier renders the functioning tier's bytes
+        /// on every TFM.</para>
         /// </summary>
         [Fact]
-        public void APathEndingOnARefStructDegradesInsteadOfBreakingTheBuild()
+        public void APathEndingOnARefStructInOutputPositionPrecompilesAsItsToString()
         {
             const string key = "views/ref-struct-as-value.heddle";
             const string template =
                 "@model(){{Heddle.Generator.IntegrationTests.Fixtures.NestedRefStructModel}}@(Inner.Buf)";
 
             var gen = DifferentialHarness.Generate(new[] { (key, template) });
-            DifferentialHarness.ExpectDegrade(gen, key);
+            DifferentialHarness.ExpectPrecompiled(gen, key);
             Assert.DoesNotContain(gen.Diagnostics,
                 d => d.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Error);
 
             var dynamicTemplate = new Heddle.HeddleTemplate(template,
                 new Heddle.Runtime.CompileContext(typeof(NestedRefStructModel)));
 #if NETFRAMEWORK
-            // The degrade above is right on every TFM — modern csc enforces the byref-like marking whatever
-            // the consumer targets, so generated code naming this type fails the consumer's build. What the
-            // degrade FALLS BACK TO differs: the .NET Framework runtime predates ref structs and enforces
-            // nothing, its expression trees box the value without complaint, and the dynamic tier renders.
             Assert.True(dynamicTemplate.CompileResult.Success, dynamicTemplate.CompileResult.ToString());
+            Assert.Equal(dynamicTemplate.Generate(new NestedRefStructModel { Inner = new RefStructModel() }),
+                DifferentialHarness.RenderGenerated(gen, key,
+                    new NestedRefStructModel { Inner = new RefStructModel() }));
 #else
-            // And the refusal the degrade hands off to is a real one, with an id.
+            // The modern engine's own refusal, with an id — the defect lane the stringified emission fixes forward.
             Assert.False(dynamicTemplate.CompileResult.Success);
+            Assert.Equal("hello", DifferentialHarness.RenderGenerated(gen, key,
+                new NestedRefStructModel { Inner = new RefStructModel() }));
 #endif
         }
 

@@ -626,4 +626,28 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
         public System.Collections.Generic.List<int> Numbers { get; set; } =
             new System.Collections.Generic.List<int> { 1, 2 };
     }
+
+    /// <summary>A ref-struct member beside its string twin. <c>Buf</c> carries an HTML-hostile character so the
+    /// carrier's encode-vs-raw composition is observable, and <c>BufText</c> is the dynamic-tier control that
+    /// renders the exact bytes <c>Buf.ToString()</c> produces.</summary>
+    public sealed class SpanHost
+    {
+        public System.Span<char> Buf => new[] { 'h', '&', 'i' };
+
+        public string BufText => "h&i";
+
+        public string Name { get; set; }
+
+        public System.Span<char> this[int index] => new[] { 'z' };
+    }
+
+    /// <summary>The caller of a computed-name <c>@partial</c>: <c>Name</c> feeds the null-scope evaluation cases
+    /// and <c>When</c> — a non-nullable value type — makes the name body's model cast throw over the null scope,
+    /// the engine's compile-fault lane.</summary>
+    public sealed class PartialCaller
+    {
+        public string Name { get; set; }
+
+        public System.DateTime When { get; set; }
+    }
 }

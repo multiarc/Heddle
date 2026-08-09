@@ -43,6 +43,10 @@ namespace Heddle.Generator.Emit
         private readonly TemplateEmitter.PropLayoutInfo _props;
         private readonly FunctionExportResolver _exports;
         private bool _usedModel;
+
+        /// <summary>Non-zero while writing a function call's arguments — the one place a ref-struct refusal names
+        /// the argument sink rather than the operand one.</summary>
+        private int _functionArgDepth;
         private readonly HashSet<string> _usedDefaultFunctions = new HashSet<string>();
         private readonly List<(string Name, string Aqn, int OverloadCount)> _usedExports =
             new List<(string, string, int)>();
@@ -333,7 +337,9 @@ namespace Heddle.Generator.Emit
             var args = new string[call.Arguments.Count];
             for (int i = 0; i < args.Length; i++)
             {
+                _functionArgDepth++;
                 args[i] = Write(call.Arguments[i]);
+                _functionArgDepth--;
                 if (args[i] == null)
                     return null;
             }
@@ -779,11 +785,15 @@ namespace Heddle.Generator.Emit
                 return Refuse("a member path that does not resolve statically");
             }
 
-            // An expression's operands are boxed, and a ref struct cannot be. The modern-TFM engine refuses
-            // the same path at template compile (HED0005); degrading surfaces that positioned id instead of
-            // a CS0030 in a .g.cs.
+            // An expression's operands and a function's arguments are boxed, and a ref struct cannot be. The
+            // modern-TFM engine refuses the same path at template compile (HED0005); degrading surfaces that
+            // positioned id instead of a CS0030 in a .g.cs. Only the rendered sink escapes this — outside the
+            // expression tier entirely, where the carrier stringifies the value in place (TemplateEmitter's
+            // RefStructUse split).
             if (SymbolTypeResolver.EndsOnRefStruct(resolution))
-                return Refuse("a member path ending on a ref struct, which an expression operand cannot box");
+                return Refuse(_functionArgDepth > 0
+                    ? "a member path ending on a ref struct, which a function argument cannot box (CS1503)"
+                    : "a member path ending on a ref struct, which an expression operand cannot box (CS0029)");
 
             return MemberPathWriter.Write(rootExpr, TemplateEmitter.MapHops(resolution), _allocateHopLocal);
         }
