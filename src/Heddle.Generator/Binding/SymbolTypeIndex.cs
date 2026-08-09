@@ -16,8 +16,13 @@ namespace Heddle.Generator.Binding
     /// <c>System</c>/<c>System.Collections.Generic</c> fallback the runtime does not have. This created a risk where
     /// <c>:: List</c> could bind to different types on the two tiers, and emitted typed code would type member hops
     /// off the wrong type. The implicit namespaces are gone.</para>
+    /// <para>The resolution <b>rule</b> itself is no longer mirrored here: this class is the build tier's
+    /// <see cref="ITypeNameMaps{TType}"/>, and <see cref="TypeNameIndex"/> — shared source, run unchanged by the
+    /// runtime over its reflection maps — is the ladder. What stays is what only a compilation can answer: how the
+    /// index is built, what an assembly-qualified spelling means against references rather than a loader, and
+    /// whether a name exists anywhere at all.</para>
     /// </summary>
-    internal sealed class SymbolTypeIndex
+    internal sealed class SymbolTypeIndex : ITypeNameMaps<INamedTypeSymbol>
     {
         private readonly Dictionary<string, List<INamedTypeSymbol>> _shortNames =
             new Dictionary<string, List<INamedTypeSymbol>>(System.StringComparer.Ordinal);
@@ -105,138 +110,47 @@ namespace Heddle.Generator.Binding
             list.Add(type);
         }
 
-        /// <summary>
-        /// The runtime's <c>ResolveSimpleType</c> rule over the build-time universe, arm for arm: an
-        /// assembly-qualified spelling first, then a dotted one, then a bare short name. The three arms disambiguate
-        /// differently and swapping one for another changes the answer — the dotted arm re-qualifies the whole
-        /// spelling with each import, where the short-name arm asks which candidate's own namespace was imported.
-        /// <para>The runtime's directive arms sit around the index in the runtime's order, which is C#'s: an
-        /// alias claiming the head binds <b>before</b> the index and commits, and a <c>using static</c> target's
-        /// nested types come <b>after</b> it. <c>global::</c> precedes both, being a qualifier no index key
-        /// carries and one C# reads past every alias.</para>
-        /// </summary>
+        /// <summary>Resolves a simple name through the shared ladder over this index. The arms, their order and
+        /// the ambiguity rule are <see cref="TypeNameIndex"/>'s and are the runtime's.</summary>
         internal bool TryResolve(string name, IReadOnlyList<string> imports, out INamedTypeSymbol type,
-            out TypeSpellingFault fault)
+            out TypeSpellingFault fault) =>
+            TypeNameIndex.TryResolve(name, imports, this, out type, out fault);
+
+        public bool TryGetByShortName(string key, out IReadOnlyList<INamedTypeSymbol> types)
         {
-            imports = imports ?? new string[0];
-
-            if (UsingDirectives.TryStripGlobalQualifier(name, out var globalName))
-            {
-                if (TryLookupQualified(globalName, out type, out var globalAmbiguity))
-                {
-                    fault = TypeSpellingFault.None;
-                    return true;
-                }
-
-                fault = globalAmbiguity ? TypeSpellingFault.Ambiguous : TypeSpellingFault.Unresolved;
-                return false;
-            }
-
-            var directives = UsingDirectives.Parse(imports);
-
-            // An alias binds the head ahead of the name index, because that is the order C# reads a
-            // namespace-or-type-name in: the scope's alias directives, then the namespaces the scope imports.
-            // Claiming the head commits — the index is not consulted afterwards — for the same reason.
-            if (directives.ClaimsHead(name))
-            {
-                if (TryResolveThroughAlias(name, directives, out type, out var claimedAmbiguity))
-                {
-                    fault = TypeSpellingFault.None;
-                    return true;
-                }
-
-                fault = claimedAmbiguity ? TypeSpellingFault.Ambiguous : TypeSpellingFault.Unresolved;
-                return false;
-            }
-
-            if (TryResolveIndexed(name, imports, out type, out fault))
-                return true;
-
-            if (directives.IsEmpty)
-                return false;
-
-            // A `using static` target's nested types stay behind the index. C# puts them in the same bucket
-            // as an imported namespace's types, and the index is a superset of that bucket, so moving this
-            // arm forward would narrow rather than reorder.
-            if (TryResolveThroughStaticImport(name, directives, out type, out var staticAmbiguity))
-            {
-                fault = TypeSpellingFault.None;
-                return true;
-            }
-
-            if (staticAmbiguity)
-                fault = TypeSpellingFault.Ambiguous;
-            return false;
+            var found = _shortNames.TryGetValue(key, out var list);
+            types = list;
+            return found;
         }
 
-        /// <summary>The name-index arms. Kept apart from the directive arms so each can be ordered against the
-        /// index on its own: the <c>static</c> arm still fires only where these had no answer, while the alias arm
-        /// is reached before them.</summary>
-        private bool TryResolveIndexed(string name, IReadOnlyList<string> imports, out INamedTypeSymbol type,
-            out TypeSpellingFault fault)
+        public bool TryGetByFullName(string key, out IReadOnlyList<INamedTypeSymbol> types)
+        {
+            var found = _fullNames.TryGetValue(key, out var list);
+            types = list;
+            return found;
+        }
+
+        /// <summary>The runtime's <c>Type.Namespace</c>: the nearest enclosing namespace, which for a nested type is
+        /// its outer type's, and null for the global namespace.</summary>
+        public string NamespaceOf(INamedTypeSymbol type)
+        {
+            var ns = type.ContainingNamespace;
+            return ns == null || ns.IsGlobalNamespace ? null : ns.ToDisplayString();
+        }
+
+        public bool SameType(INamedTypeSymbol left, INamedTypeSymbol right) =>
+            SymbolEqualityComparer.Default.Equals(left, right);
+
+        /// <summary>The Roslyn projection of the shared alias table — the one spelling this index does not carry,
+        /// because no type's metadata name is <c>int</c>.</summary>
+        public bool TryResolveKeyword(string name, out INamedTypeSymbol type)
         {
             type = null;
-
-            if (name.IndexOf(',') >= 0)
-                return TryResolveAssemblyQualified(name, out type, out fault);
-
-            if (name.IndexOf('.') >= 0)
-            {
-                if (_fullNames.TryGetValue(name, out var qualified))
-                {
-                    if (qualified.Count == 1)
-                    {
-                        type = qualified[0];
-                        fault = TypeSpellingFault.None;
-                        return true;
-                    }
-
-                    // Several types answer to the whole spelling. An import may still name one of them by
-                    // re-qualifying it; nothing else settles it, and the runtime raises its "ambigous" error.
-                    if (TryResolveThroughImports(name, imports, out type, out fault))
-                        return true;
-                    fault = TypeSpellingFault.Ambiguous;
-                    return false;
-                }
-
-                return TryResolveThroughImports(name, imports, out type, out fault);
-            }
-
-            if (!_shortNames.TryGetValue(name, out var candidates))
-            {
-                fault = TypeSpellingFault.Unresolved;
+            if (_compilation == null || !SymbolTypeResolver.Keywords.TryGetValue(name, out var special))
                 return false;
-            }
 
-            if (candidates.Count == 1)
-            {
-                type = candidates[0];
-                fault = TypeSpellingFault.None;
-                return true;
-            }
-
-            // A short-name tie is settled by whether a candidate's own namespace was imported. Both tiers raise
-            // ambiguity instead of using assembly-order matching.
-            INamedTypeSymbol single = null;
-            int matches = 0;
-            foreach (var candidate in candidates)
-            {
-                var nsName = NamespaceNameOf(candidate);
-                if (nsName == null || !Contains(imports, nsName))
-                    continue;
-                matches++;
-                single = candidate;
-            }
-
-            if (matches == 1)
-            {
-                type = single;
-                fault = TypeSpellingFault.None;
-                return true;
-            }
-
-            fault = matches > 1 ? TypeSpellingFault.Ambiguous : TypeSpellingFault.Unresolved;
-            return false;
+            type = _compilation.GetSpecialType(special);
+            return type != null;
         }
 
         /// <summary>
@@ -255,10 +169,9 @@ namespace Heddle.Generator.Binding
         /// <para>The public key token is likewise required when stated: a version drifts on its own with every
         /// build, a public key token does not.</para></para>
         /// </summary>
-        private bool TryResolveAssemblyQualified(string name, out INamedTypeSymbol type, out TypeSpellingFault fault)
+        public bool TryResolveAssemblyQualified(string name, out INamedTypeSymbol type)
         {
             type = null;
-            fault = TypeSpellingFault.Unresolved;
 
             int comma = name.IndexOf(',');
             var typeName = name.Substring(0, comma).Trim();
@@ -286,7 +199,6 @@ namespace Heddle.Generator.Binding
                     continue;
 
                 type = candidate;
-                fault = TypeSpellingFault.None;
                 return true;
             }
 
@@ -304,153 +216,6 @@ namespace Heddle.Generator.Binding
                 if (left[i] != right[i])
                     return false;
             return true;
-        }
-
-        /// <summary>
-        /// The runtime's dotted-spelling arm of a <c>using</c> namespace import. A namespace import brings the types
-        /// <b>declared in</b> that namespace into scope and nothing else — not the namespaces nested inside it — so
-        /// a candidate counts only when its own containing namespace <i>is</i> the import. A nested type reports its
-        /// outer type's namespace, which is what keeps <c>using A;</c> + <c>Outer.Inner</c> resolving while
-        /// <c>using A;</c> + <c>Sub.Deep</c> stops.
-        /// <para>Every import is read before any candidate wins: a spelling two imports each complete is the
-        /// ambiguity C# reports as CS0104, not a question <c>@using</c> declaration order may answer.</para>
-        /// </summary>
-        private bool TryResolveThroughImports(string name, IReadOnlyList<string> imports,
-            out INamedTypeSymbol type, out TypeSpellingFault fault)
-        {
-            type = null;
-            INamedTypeSymbol declared = null;
-            foreach (var import in imports)
-            {
-                if (!_fullNames.TryGetValue(import + "." + name, out var candidates))
-                    continue;
-
-                foreach (var candidate in candidates)
-                {
-                    if (!string.Equals(NamespaceNameOf(candidate), import, System.StringComparison.Ordinal))
-                        continue;
-                    // The same type reached twice (a duplicate import) is no tie; two distinct types are.
-                    if (declared != null && !SymbolEqualityComparer.Default.Equals(declared, candidate))
-                    {
-                        fault = TypeSpellingFault.Ambiguous;
-                        return false;
-                    }
-
-                    declared = candidate;
-                }
-            }
-
-            if (declared == null)
-            {
-                fault = TypeSpellingFault.Unresolved;
-                return false;
-            }
-
-            type = declared;
-            fault = TypeSpellingFault.None;
-            return true;
-        }
-
-        /// <summary>The runtime's <c>Type.Namespace</c>: the nearest enclosing namespace, which for a nested type is
-        /// its outer type's, and null for the global namespace.</summary>
-        private static string NamespaceNameOf(INamedTypeSymbol type)
-        {
-            var ns = type.ContainingNamespace;
-            return ns == null || ns.IsGlobalNamespace ? null : ns.ToDisplayString();
-        }
-
-        /// <summary>The runtime's global-namespace lookup, which consults no import and no alias. The second key is
-        /// how a type with no namespace is stored here — see <see cref="Qualify"/>.</summary>
-        private bool TryLookupQualified(string name, out INamedTypeSymbol type, out bool ambiguous)
-        {
-            ambiguous = false;
-            type = null;
-            if (!_fullNames.TryGetValue(name, out var candidates) &&
-                !_fullNames.TryGetValue("." + name, out candidates))
-                return false;
-
-            if (candidates.Count != 1)
-            {
-                ambiguous = true;
-                return false;
-            }
-
-            type = candidates[0];
-            return true;
-        }
-
-        /// <summary>The runtime's <c>X = Some.Target</c> arm: the alias stands for its target wherever a spelling
-        /// starts with it, which is one substitution for a type alias used alone, a namespace alias qualifying a
-        /// type, and a type alias reaching a nested type.</summary>
-        private bool TryResolveThroughAlias(string name, UsingDirectives directives, out INamedTypeSymbol type,
-            out bool ambiguous)
-        {
-            type = null;
-            ambiguous = false;
-            if (directives.Aliases.Count == 0)
-                return false;
-
-            var dot = name.IndexOf('.');
-            var head = dot < 0 ? name : name.Substring(0, dot);
-            if (!directives.Aliases.TryGetValue(head, out var target))
-                return false;
-
-            UsingDirectives.TryStripGlobalQualifier(target, out var qualified);
-            if (dot < 0)
-            {
-                // `using X = int;` is a legal alias, and a keyword is the one spelling this index does not carry.
-                if (SymbolTypeResolver.Keywords.TryGetValue(qualified, out var special))
-                {
-                    type = _compilation?.GetSpecialType(special);
-                    if (type != null)
-                        return true;
-                }
-            }
-            else
-            {
-                qualified = qualified + name.Substring(dot);
-            }
-
-            return TryLookupQualified(qualified, out type, out ambiguous);
-        }
-
-        /// <summary>The runtime's <c>static Some.Target</c> arm, which for type resolution contributes the target's
-        /// nested types under their own names. Two targets contributing one name is the ambiguity C# reports as
-        /// CS0104.</summary>
-        private bool TryResolveThroughStaticImport(string name, UsingDirectives directives, out INamedTypeSymbol type,
-            out bool ambiguous)
-        {
-            type = null;
-            ambiguous = false;
-
-            var matches = 0;
-            foreach (var target in directives.StaticTargets)
-            {
-                UsingDirectives.TryStripGlobalQualifier(target, out var qualified);
-                if (!TryLookupQualified(qualified + "." + name, out var candidate, out var targetAmbiguity))
-                {
-                    ambiguous |= targetAmbiguity;
-                    continue;
-                }
-
-                matches++;
-                type = candidate;
-            }
-
-            if (matches == 1 && !ambiguous)
-                return true;
-
-            ambiguous |= matches > 1;
-            type = null;
-            return false;
-        }
-
-        private static bool Contains(IReadOnlyList<string> imports, string value)
-        {
-            for (int i = 0; i < imports.Count; i++)
-                if (string.Equals(imports[i], value, System.StringComparison.Ordinal))
-                    return true;
-            return false;
         }
 
         /// <summary>Whether any type answers to the (final segment of the) name anywhere in the universe — the
