@@ -41,9 +41,17 @@ namespace Heddle.Generator.Typing
             out BodyContext nested)
         {
             nested = bctx;
-            if (!BodyModelRules.TryGet(name, out var source, out _))
-                return false;
+            return BodyModelRules.TryGet(name, out var source, out _) &&
+                   TryNestedBodyContext(source, bctx, elementModel, out nested);
+        }
 
+        /// <summary>The same rule, given the role directly rather than a name to look it up by — which is what the
+        /// hook probe supplies, and what lets an extension the table has no row for be typed by what its own hook
+        /// did rather than by whether the emitter happened to know its name.</summary>
+        internal static bool TryNestedBodyContext(BodyModelSource source, BodyContext bctx,
+            ITypeSymbol elementModel, out BodyContext nested)
+        {
+            nested = bctx;
             if (source == BodyModelSource.Parent)
                 return true;
 
