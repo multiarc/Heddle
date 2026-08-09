@@ -221,6 +221,17 @@ namespace Heddle.Generator
             var usedHintNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
             var exports = Heddle.Generator.Binding.FunctionExportResolver.Build(compilation);
+            var binder = ExtensionBinder.Build(compilation);
+
+            // Layer 2, offered once per compilation and never touched by the incremental pipeline: no Assembly, no
+            // Type and no harvest is ever a provider payload, because either would break provider equality and pin
+            // memory across generations. Nothing is emitted or loaded until an emitter meets a body it cannot type.
+            var observation = new Observe.ObservationSource(compilation, config, binder,
+                ImportClosureDigest(importMap),
+                importPath => importMap.TryGetValue(
+                    ImportIdentity(importPath, registeredSpellings), out var content) ? content : string.Empty,
+                importPath => ImportIdentity(importPath, registeredSpellings));
+            string observationFailure = null;
 
             // HED7021: an [ExportFunctions] container the runtime's RegisterFrom would throw on.
             // HED7021: reported at Location.None (attribute is in consuming assembly, not template)
@@ -230,7 +241,7 @@ namespace Heddle.Generator
                     Location.None, container.Reason));
 
             // HED7016: branch Continuation/Terminal lacking [ScopeChannel] (empty for engine-only compilations).
-            foreach (var driftType in ExtensionBinder.Build(compilation).DriftTypes)
+            foreach (var driftType in binder.DriftTypes)
                 spc.ReportDiagnostic(Diagnostic.Create(GeneratorDiagnostics.BranchRoleMissingScopeChannel,
                     Location.None, driftType));
 
@@ -350,8 +361,15 @@ namespace Heddle.Generator
                         // its spelling (reported at HED7004 above) must not reach the runtime index, or the two tiers
                         // would disagree about which template answers to it.
                         registeredName: registeredNameForManifest,
-                        modelType: template.ModelType);
+                        modelType: template.ModelType,
+                        observation: observation);
                     var result = emitter.Emit(ContentHash.HashText(template.Content));
+                    // The first template that cannot be observed is the one reported, and it costs that template
+                    // its typing and nothing else: a model type with no counterpart in the emitted assembly says
+                    // nothing about the next template's, and turning the whole compilation off over it would make
+                    // coverage depend on which template happened to be emitted first.
+                    if (observationFailure == null)
+                        observationFailure = emitter.ObservationFailure;
 
                     // Emitter diagnostics (HED7006 error, HED7015 warning). An error here is as unreachable for an
                     // import-only fragment as a parse error is — a bodied call to a definition the importer supplies
@@ -452,7 +470,41 @@ namespace Heddle.Generator
                 if (!importedKeys.Contains(pending.Key))
                     spc.ReportDiagnostic(pending.Value);
 
+            ReportObservation(spc, config, observationFailure);
             EmitManifest(spc, ns, engineVersion, manifestEntries);
+        }
+
+        /// <summary>HED7034, once per compilation: a note under <c>Auto</c> and an error under <c>Strict</c>. A
+        /// build that never configured an observe directory is not a build that tried and failed, so <c>Auto</c>
+        /// says nothing about it — only <c>Strict</c>, which asked for the guarantee, does. A build no template
+        /// ever asked to observe reports nothing in either mode: it emitted exactly what an observing build would
+        /// have emitted, so there is no guarantee left to report on.</summary>
+        private static void ReportObservation(SourceProductionContext spc, GlobalConfig config, string failure)
+        {
+            if (failure == null || config.ObserveMode == ObserveMode.Off)
+                return;
+
+            if (config.ObserveMode == ObserveMode.Strict)
+            {
+                spc.ReportDiagnostic(Diagnostic.Create(GeneratorDiagnostics.EngineNotObservedStrict, Location.None,
+                    failure));
+                return;
+            }
+
+            if (string.IsNullOrEmpty(config.ObserveIntermediatePath))
+                return;
+            spc.ReportDiagnostic(Diagnostic.Create(GeneratorDiagnostics.EngineNotObserved, Location.None, failure));
+        }
+
+        /// <summary>The identity of the whole import map, which over-approximates any one template's import
+        /// closure and can therefore only over-invalidate the observation memo, never under-invalidate it.</summary>
+        private static string ImportClosureDigest(Dictionary<string, string> importMap)
+        {
+            var rows = new List<string>(importMap.Count);
+            foreach (var pair in importMap)
+                rows.Add(pair.Key + "|" + ContentHash.HashText(pair.Value ?? string.Empty));
+            rows.Sort(StringComparer.Ordinal);
+            return ContentHash.HashText(string.Join("\n", rows.ToArray()));
         }
 
         /// <summary>Parses the template and reports template diagnostics.
@@ -487,22 +539,7 @@ namespace Heddle.Generator
             // all. Without this step `x/../lib.heddle` and `sub/./lib.heddle` — files the engine reads and renders —
             // were imports nobody had included, and the build failed over a working template. The raw spelling is
             // still what a miss is reported with, so the message names what the author wrote.
-            Func<string, string> identity = importPath =>
-            {
-                var canonical = CanonicalizeImportPath(importPath);
-                if (!SpellingSurvivesKeyDerivation(canonical) ||
-                    !TemplateKey.TryNormalize(canonical, out var key))
-                    return importPath;
-
-                // The key grammar may rename the spelling only when what it arrives at is a name a
-                // `<HeddleTemplate Name="...">` explicitly registered. A registered name lives in key space by
-                // construction, and importing by one is the documented idiom; a path spelling does not, and
-                // renaming it would bind a file the engine never reads.
-                return KeyNamesTheSameFile(canonical, key) ||
-                       (registeredNames != null && registeredNames.Contains(key))
-                    ? key
-                    : importPath;
-            };
+            Func<string, string> identity = importPath => ImportIdentity(importPath, registeredNames);
 
             var settings = new ParserSettings
             {
@@ -619,6 +656,27 @@ namespace Heddle.Generator
                 hadErrors = true;
 
             return parseContext;
+        }
+
+        /// <summary>
+        /// What makes two import spellings the same document. Stated once because three readers ask it: the parse
+        /// that reports missing imports, the cycle guard, and the observed engine compile — and a reader resolving
+        /// by a different rule would give one document several identities.
+        /// <para>The key grammar may rename the spelling only when what it arrives at is a name a
+        /// <c>&lt;HeddleTemplate Name="..."&gt;</c> explicitly registered. A registered name lives in key space by
+        /// construction, and importing by one is the documented idiom; a path spelling does not, and renaming it
+        /// would bind a file the engine never reads.</para>
+        /// </summary>
+        private static string ImportIdentity(string importPath, ICollection<string> registeredNames)
+        {
+            var canonical = CanonicalizeImportPath(importPath);
+            if (!SpellingSurvivesKeyDerivation(canonical) || !TemplateKey.TryNormalize(canonical, out var key))
+                return importPath;
+
+            return KeyNamesTheSameFile(canonical, key) ||
+                   (registeredNames != null && registeredNames.Contains(key))
+                ? key
+                : importPath;
         }
 
         /// <summary>The characters that separate one path segment from the next, asked of the platform rather than

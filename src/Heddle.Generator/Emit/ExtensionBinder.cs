@@ -180,6 +180,25 @@ namespace Heddle.Generator.Emit
 
         public bool TryResolve(string name, out Info info) => _byName.TryGetValue(name, out info);
 
+        /// <summary>Every bound name with what this compilation resolved it to. Engine observation reads it to make
+        /// the loaded engine's process-global registry answer for <b>this</b> compilation or not at all.</summary>
+        public IEnumerable<KeyValuePair<string, Info>> ByName => _byName;
+
+        /// <summary>The distinct assembly simple names bound extensions come from, excluding the compilation's own
+        /// — that one reaches a loaded engine as the emitted intermediate assembly, not as a reference.</summary>
+        public IReadOnlyList<string> ExtensionAssemblyNames
+        {
+            get
+            {
+                var names = new List<string>();
+                var seen = new HashSet<string>(System.StringComparer.OrdinalIgnoreCase);
+                foreach (var info in _byName.Values)
+                    if (!string.IsNullOrEmpty(info.AssemblyName) && seen.Add(info.AssemblyName))
+                        names.Add(info.AssemblyName);
+                return names;
+            }
+        }
+
         /// <summary>The name resolves to a type under the <b>runtime's</b> discovery predicate
         /// (implements <c>IExtension</c> and carries an inherited <c>[ExtensionName]</c>) but the generator cannot
         /// reproduce its render protocol, or two unrelated types claim it. The recorded reason feeds the degrade

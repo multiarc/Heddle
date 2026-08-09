@@ -227,7 +227,8 @@ namespace Heddle.Generator.Emit
         public TemplateEmitter(string key, string sanitizedName, string generatedNamespace, string cleanDocument,
             string originalDocument, ParseContext parse, GlobalConfig config, Compilation compilation,
             FunctionExportResolver exports = null, string sourcePath = null, string lineDirectiveFile = null,
-            bool lineDirectiveFileIsRootRelative = true, string registeredName = null, string modelType = null)
+            bool lineDirectiveFileIsRootRelative = true, string registeredName = null, string modelType = null,
+            Observe.ObservationSource observation = null)
         {
             _metadataModelType = string.IsNullOrWhiteSpace(modelType) ? null : modelType.Trim();
             _key = key;
@@ -249,7 +250,27 @@ namespace Heddle.Generator.Emit
             _csharpTyper = new CSharpExpressionTyper(compilation);
             _exports = exports ?? FunctionExportResolver.Build(compilation);
             _extensionBinder = ExtensionBinder.Build(compilation);
+            _observation = observation;
         }
+
+        /// <summary>Layer 2, when the build could build it: a real engine compile of this very template, from which
+        /// the emitter takes the model type a hook chose for its body. Consulted <b>only</b> where the build would
+        /// otherwise have no typing at all, so what it can change is which tier a read takes and never a rendered
+        /// byte — and asked for the first time only from there, so a template the build already types costs the
+        /// bundle nothing.</summary>
+        private readonly Observe.ObservationSource _observation;
+
+        private Observe.ObservedDocument _observed;
+
+        private bool _observeAttempted;
+
+        /// <summary>Why this template could not be observed, or <c>null</c>. The generator decides what a failure
+        /// costs — an informational note under <c>auto</c>, a build error under <c>strict</c>.</summary>
+        private string _observationFailure;
+
+        /// <summary>Why this template could not be observed, or <c>null</c>. Read rather than reported here,
+        /// because what a failure costs is the build option's decision and not the emitter's.</summary>
+        internal string ObservationFailure => _observationFailure;
 
         internal sealed class Result
         {
@@ -1010,6 +1031,13 @@ namespace Heddle.Generator.Emit
             bool bodied = !string.IsNullOrEmpty(item.ParameterTemplate);
             bool known = TryHookRoles(name, info, out var bodySource);
 
+            // Observation is consulted only where the build has no typing of its own, so it can only ever ADD a
+            // typed body — which is what makes coverage monotone and byte identity a property of the design rather
+            // than of a comparison.
+            ITypeSymbol observedModel = null;
+            if (!known && bodied && TryObservedBodyModel(item, out observedModel))
+                known = true;
+
             // The extension's own author has declared that a static initializer cannot reproduce what its hook
             // does. Taking them at their word costs this call site and nothing else: the rest of the template
             // precompiles, and the call renders by compiling its own text at first render.
@@ -1060,7 +1088,7 @@ namespace Heddle.Generator.Emit
             {
                 if (known)
                 {
-                    if (!TryTypedBody(name, bodySource, item, cp, bctx, plan, out body, out reason))
+                    if (!TryTypedBody(name, bodySource, observedModel, item, cp, bctx, plan, out body, out reason))
                         return null;
                 }
                 else if (!TryTypeAgnosticBody(item, bctx, plan, out body, out reason, out var canSubstitute))
@@ -1120,15 +1148,58 @@ namespace Heddle.Generator.Emit
         private readonly HashSet<string> _reportedUnsupportedExtensions =
             new HashSet<string>(System.StringComparer.Ordinal);
 
-        /// <summary>The body of a call whose hook the build has read: typed exactly as before, and now carrying the
-        /// typing it assumed so the hook's own answer can contradict it at registration.</summary>
-        private bool TryTypedBody(string name, BodyModelSource bodySource, OutputItem item, CallParameter cp,
+        /// <summary>The model type the engine itself compiled this call's body against, when a real engine compile
+        /// of this template was available and every recorded entry for the body's span agreed on one non-dynamic
+        /// answer. False is always "no answer", never a wrong one.</summary>
+        private bool TryObservedBodyModel(OutputItem item, out ITypeSymbol model)
+        {
+            model = null;
+            if (item.Context == null || item.ParameterTemplate == null)
+                return false;
+            var observed = Observed();
+            if (observed == null)
+                return false;
+            if (!observed.TryBodyModel(item.Context.AbsoluteOffset, item.ParameterTemplate.Length, out model))
+                return false;
+            return model.TypeKind != TypeKind.Dynamic && CanWriteTypeName(model, item.Position, out _);
+        }
+
+        /// <summary>This template's observed compile, run on the first body the build could not type and not
+        /// before: building the bundle is a whole C# compile of the compilation being built, and a template that
+        /// never needs one must never pay for one.</summary>
+        private Observe.ObservedDocument Observed()
+        {
+            if (_observeAttempted)
+                return _observed;
+
+            _observeAttempted = true;
+            if (_observation == null)
+                return null;
+
+            var observation = _observation.Get(out _observationFailure);
+            if (observation == null)
+                return null;
+
+            _observed = observation.Observe(_originalDocument, _modelSymbol, out _observationFailure);
+            return _observed;
+        }
+
+        /// <summary>The body of a call whose hook the build has read — from the shared table, or from an observed
+        /// engine compile: typed exactly as before, and carrying the typing it assumed so the hook's own answer can
+        /// contradict it at registration.</summary>
+        private bool TryTypedBody(string name, BodyModelSource bodySource, ITypeSymbol observedModel,
+            OutputItem item, CallParameter cp,
             BodyContext bctx, SitePlan plan, out BodyClass body, out Refusal reason)
         {
             body = null;
             reason = null;
-            ITypeSymbol elementModel = null;
-            if (bodySource == BodyModelSource.ElementOfData)
+            ITypeSymbol elementModel = observedModel;
+
+            // An observed answer names the body's model outright, which is exactly what the element-of-data
+            // construction below does with a type — so it takes that arm rather than needing one of its own.
+            if (observedModel != null)
+                bodySource = BodyModelSource.ElementOfData;
+            else if (bodySource == BodyModelSource.ElementOfData)
             {
                 elementModel = ListElementModel(cp, bctx, out var elementAmbiguous);
                 if (elementAmbiguous)

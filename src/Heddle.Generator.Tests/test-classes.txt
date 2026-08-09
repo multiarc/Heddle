@@ -17,6 +17,7 @@ Heddle.Generator.Tests.DocumentShaperAdapterTests
 Heddle.Generator.Tests.DocumentShapingCharacterizationTests
 Heddle.Generator.Tests.EmbeddedCSharpFragmentShapeTests
 Heddle.Generator.Tests.EmitterSharedRuleAdoptionTests
+Heddle.Generator.Tests.EngineObservationTests
 Heddle.Generator.Tests.ExportDiscoveryTests
 Heddle.Generator.Tests.ExportExtensionsScopeTests
 Heddle.Generator.Tests.ExtensionAgnosticismTests
