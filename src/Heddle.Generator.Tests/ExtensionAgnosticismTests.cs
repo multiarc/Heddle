@@ -305,9 +305,10 @@ namespace Heddle.Generator.Tests
         private static readonly (string File, string Reference, int Count, string Why)[]
             AllowedEngineExtensionReferences =
         {
-            ("src/Heddle.Generator/Emit/TemplateEmitter.cs", "Heddle.Extensions.OutExtension", 3,
-                "the @out projection constructs the type it binds, because PrecompiledRuntime.BindOut's parameter " +
-                "type is what enforces the contract in the consumer's own compiler; retires in Stage 6")
+            // Empty, and asserted so: the emitter binds every extension it emits — the unnamed carrier through the
+            // registry name the shared profile rule computes, @out through the name it is called by — so there is
+            // no engine extension left whose type it spells.
+
         };
 
         /// <summary>The static string-keyed tables in the built assembly that are allowed to contain a built-in
