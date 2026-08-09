@@ -888,9 +888,9 @@ namespace Heddle.Generator.Emit
             WarnOnShadowedFunction(item, callTarget, definitionItem);
 
             if (callTarget == CallTargetKind.Fill)
-                return BuildDefinitionCall(definitionItem, item, cp, bctx, isFill: true, out reason);
+                return BuildDefinitionCall(definitionItem, chain, item, cp, bctx, isFill: true, out reason);
             if (callTarget == CallTargetKind.Definition)
-                return BuildDefinitionCall(definitionItem, item, cp, bctx, isFill: false, out reason);
+                return BuildDefinitionCall(definitionItem, chain, item, cp, bctx, isFill: false, out reason);
 
             if (name == "out")
                 return BuildOutCall(name, chain, item, cp, bctx, out reason);
@@ -1282,6 +1282,7 @@ namespace Heddle.Generator.Emit
         {
             public string Name;
             public BlockPosition Position;
+            public BlockPosition DefinitionPosition;
             public string SourceText;
             public string BodyRaw;
             public string BodyShaped;
@@ -1289,6 +1290,11 @@ namespace Heddle.Generator.Emit
             public bool BodyTypeAgnostic;
             public string AssumedDataTypeExpr = "null";
             public string AssumedChainedTypeExpr = "null";
+            public string DefinitionBodyRaw;
+            public string DefinitionBodyShaped;
+            public bool DefinitionBodyNeedsLocals;
+            public string DefinitionAssumedDataTypeExpr = "null";
+            public string DefinitionSlotTypeExpr = "null";
             public string DataTypeExpr = "null";
             public string ChainedTypeExpr = "null";
             public string ParentTypeExpr = "null";
@@ -1426,6 +1432,9 @@ namespace Heddle.Generator.Emit
                 .Append(",\n");
             w.Append("            PositionStart = ").Append(plan.Position.StartIndex)
                 .Append(", PositionLength = ").Append(plan.Position.Length).Append(",\n");
+            if (plan.DefinitionPosition.Length != 0)
+                w.Append("            DefinitionPositionStart = ").Append(plan.DefinitionPosition.StartIndex)
+                    .Append(", DefinitionPositionLength = ").Append(plan.DefinitionPosition.Length).Append(",\n");
             w.Append("            SourceText = ")
                 .Append(plan.SourceText == null ? "null" : CSharpEscape.StringLiteral(plan.SourceText)).Append(",\n");
             if (plan.BodyRaw != null)
@@ -1443,6 +1452,18 @@ namespace Heddle.Generator.Emit
                 w.Append("            DataTypePath = new string[] { ")
                     .Append(string.Join(", ", plan.DataTypePath.Select(CSharpEscape.StringLiteral)))
                     .Append(" },\n");
+            if (plan.DefinitionBodyRaw != null)
+            {
+                w.Append("            DefinitionBody = new global::Heddle.Precompiled.PrecompiledInitBody { RawText = ")
+                    .Append(CSharpEscape.StringLiteral(plan.DefinitionBodyRaw)).Append(", ShapedText = ")
+                    .Append(plan.DefinitionBodyShaped == null
+                        ? "null"
+                        : CSharpEscape.StringLiteral(plan.DefinitionBodyShaped))
+                    .Append(", NeedsLocals = ").Append(plan.DefinitionBodyNeedsLocals ? "true" : "false")
+                    .Append(", AssumedDataType = ").Append(plan.DefinitionAssumedDataTypeExpr).Append(" },\n");
+            }
+
+            w.Append("            DefinitionSlotType = ").Append(plan.DefinitionSlotTypeExpr).Append(",\n");
             w.Append("            DataType = ").Append(plan.DataTypeExpr)
                 .Append(", ChainedType = ").Append(plan.ChainedTypeExpr)
                 .Append(", ParentType = ").Append(plan.ParentTypeExpr).Append(",\n");
@@ -1754,8 +1775,8 @@ namespace Heddle.Generator.Emit
 
         // ---- Definition invocation ----
 
-        private Call BuildDefinitionCall(DefinitionItem def, OutputItem item, CallParameter cp, BodyContext bctx,
-            bool isFill, out Refusal reason)
+        private Call BuildDefinitionCall(DefinitionItem def, OutputChain chain, OutputItem item, CallParameter cp,
+            BodyContext bctx, bool isFill, out Refusal reason)
         {
             reason = null;
 
@@ -1849,6 +1870,7 @@ namespace Heddle.Generator.Emit
             // of the two — precompiling a template the engine refuses at compile time and throwing the engine's
             // own InvalidCastException at render instead.
             BodyClass callerBody = null;
+            ITypeSymbol callerBodyModel = null;
             if (!string.IsNullOrEmpty(item.ParameterTemplate) && item.Context != null)
             {
                 BodyContext callerCtx;
@@ -1885,6 +1907,7 @@ namespace Heddle.Generator.Emit
                 callerBody = BuildBody(item.ParameterTemplate, item.Context, callerCtx, out reason);
                 if (callerBody == null)
                     return null;
+                callerBodyModel = callerCtx.ModelSymbol ?? callerCtx.DynamicBodyModel;
             }
 
             // Compiled once per (definition identity, parse context); the fill scope is not part of that identity,
@@ -1897,11 +1920,36 @@ namespace Heddle.Generator.Emit
                 return null;
             }
 
+            if (!TryPlanSite(def.Name, chain, item, cp, bctx, out var plan, out reason))
+                return null;
+
+            // The engine types the inner carrier by the definition's own model and the outer by the slot type when
+            // there is one, so those are the two assumptions this site declares.
+            if (!TryTypeExpr(defBodyCtx.ModelSymbol ?? defBodyCtx.DynamicBodyModel, item.Position,
+                    out var innerAssumed, out reason))
+                return null;
+            if (!TryTypeExpr(slotType, def.Position, out var definitionSlotExpr, out reason))
+                return null;
+
+            plan.DefinitionPosition = def.Position;
+            plan.DataTypeExpr = innerAssumed;
+            plan.DefinitionSlotTypeExpr = definitionSlotExpr;
+            plan.DefinitionBodyRaw = def.ParameterTemplate ?? string.Empty;
+            plan.DefinitionBodyShaped = bodyInfo.Body.ShapedDocument;
             // Each carrier uses its own body's flag (not OR'd); two different documents, separate derivation.
-            bool bodyNeedsLocals = bodyInfo.Body.HostsParticipant;
-            bool callerContentNeedsLocals = callerBody != null && callerBody.HostsParticipant;
-            var field = AllocateDefinitionExtension(bodyInfo.Body.Name, callerBody?.Name, propsFieldRef,
-                dynamicSettersRef, bodyNeedsLocals, callerContentNeedsLocals, slotMode, item.Position);
+            plan.DefinitionBodyNeedsLocals = bodyInfo.Body.HostsParticipant;
+            plan.DefinitionAssumedDataTypeExpr = innerAssumed;
+            if (callerBody != null)
+            {
+                plan.BodyShaped = callerBody.ShapedDocument;
+                plan.BodyNeedsLocals = callerBody.HostsParticipant;
+                if (!TryTypeExpr(callerBodyModel, item.Position, out var outerAssumed, out reason))
+                    return null;
+                plan.AssumedDataTypeExpr = outerAssumed;
+            }
+
+            var field = AllocateInitDefinition(EmitInitSite(plan), bodyInfo.Body.Name, callerBody?.Name,
+                propsFieldRef, dynamicSettersRef);
             return MakeCall(field, paramExpr, usesModel, item.Position);
         }
 
@@ -3358,30 +3406,27 @@ namespace Heddle.Generator.Emit
         private static SpecialType UnderlyingSpecial(ITypeSymbol type)
             => TryGetNullableUnderlying(type, out var underlying) ? underlying.SpecialType : type.SpecialType;
 
-        private string AllocateDefinitionExtension(string bodyName, string callerBodyName, string propsFieldRef,
-            string dynamicSettersRef, bool bodyNeedsLocals, bool callerContentNeedsLocals, bool slotMode,
-            BlockPosition position)
+        /// <summary>
+        /// A definition invocation's call site. The two carriers are built by the engine's own
+        /// <c>CreateExtension</c> sequence — two <c>InitStart</c> runs, the outer over the caller content under the
+        /// definition's slot type and the inner over the definition body under its own — so slot mode and the
+        /// recursion limit come from the hook rather than from constants written here.
+        /// <para>Both carriers are positioned at the <b>definition's declaration</b>, which is where
+        /// <c>CompileFromDefenition</c> puts them and where the dynamic tier reports a fault against; the build
+        /// used to position them at the call, so error coordinates move onto the engine's here.</para>
+        /// </summary>
+        private string AllocateInitDefinition(string siteField, string bodyName, string callerBodyName,
+            string propsFieldRef, string dynamicSettersRef)
         {
             var field = "E" + _extensionCounter++;
-            var (line, col) = _map.Map(position.StartIndex);
             var callerArg = callerBodyName != null ? "new " + callerBodyName + "()" : "null";
-            _fieldDecls.Append("        private static readonly global::Heddle.Core.AbstractExtension ").Append(field)
-                .Append(" = global::Heddle.Precompiled.PrecompiledRuntime.BindDefinition(\n");
-            _fieldDecls.Append("            body: new ").Append(bodyName).Append("(), callerContent: ").Append(callerArg)
+            var w = InitDecls;
+            w.Append("        private static readonly global::Heddle.Core.AbstractExtension ").Append(field)
+                .Append(" = global::Heddle.Precompiled.PrecompiledRuntime.InitDefinition(\n");
+            w.Append("            ").Append(siteField).Append(", body: new ").Append(bodyName)
+                .Append("(), callerContent: ").Append(callerArg)
                 .Append(", props: ").Append(propsFieldRef)
-                .Append(", dynamicSetters: ").Append(dynamicSettersRef)
-                .Append(", global::Heddle.Data.RenderType.Raw");
-            // Per-carrier overload gated on schema (PrecompiledSchema.EmitsPerCarrierLocals).
-            if (PrecompiledSchema.EmitsPerCarrierLocals)
-                _fieldDecls.Append(", bodyNeedsLocals: ").Append(bodyNeedsLocals ? "true" : "false")
-                    .Append(", callerContentNeedsLocals: ").Append(callerContentNeedsLocals ? "true" : "false");
-            else
-                _fieldDecls.Append(", needsLocals: ")
-                    .Append(bodyNeedsLocals || callerContentNeedsLocals ? "true" : "false");
-            _fieldDecls
-                .Append(", slotMode: ").Append(slotMode ? "true" : "false")
-                .Append(", maxRecursionCount: ").Append(_config.MaxRecursionCount)
-                .Append(", line: ").Append(line).Append(", column: ").Append(col).Append(");\n");
+                .Append(", dynamicSetters: ").Append(dynamicSettersRef).Append(");\n");
             _extensionFields.Add(field);
             return field;
         }

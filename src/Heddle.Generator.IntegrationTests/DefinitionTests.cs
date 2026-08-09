@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Heddle.Data;
 using Heddle.Generator.IntegrationTests.Fixtures;
 using Heddle.Runtime;
+using System.Text.RegularExpressions;
 using Xunit;
 
 namespace Heddle.Generator.IntegrationTests
@@ -227,6 +228,31 @@ namespace Heddle.Generator.IntegrationTests
                 if (!char.IsLetterOrDigit(chars[i]))
                     chars[i] = '-';
             return new string(chars);
+        }
+
+        /// <summary>
+        /// <b>The definition carriers are positioned at the definition's declaration, not at the call.</b> That is
+        /// where <c>CompileFromDefenition</c> puts them, so it is where the dynamic tier reports a fault against —
+        /// and the build used to write the call's position instead, which is a coordinate the engine never
+        /// produces. The site now carries both, and they are different values for the same call.
+        /// </summary>
+        [Fact]
+        public void TheDefinitionCarriersTakeTheDeclarationsPositionRatherThanTheCalls()
+        {
+            const string key = "views/def-position.heddle";
+            var t = "@model(){{" + ProductType + "}}@\\\n" +
+                    "@%<greet>{{Made by @(Name).}} :: Heddle.Generator.IntegrationTests.Fixtures.Manufacturer%@\n" +
+                    "<footer>@greet(Manufacturer)</footer>\n";
+            var gen = DifferentialHarness.Generate(new[] { (key, t) });
+            DifferentialHarness.ExpectPrecompiled(gen, key);
+
+            var source = Assert.Single(gen.TemplateSources).Value;
+            var call = Regex.Match(source, @"PositionStart = (\d+), PositionLength = (\d+)");
+            var declaration = Regex.Match(source, @"DefinitionPositionStart = (\d+), DefinitionPositionLength = (\d+)");
+            Assert.True(call.Success && declaration.Success,
+                "The definition site records neither position:\n" + source);
+            Assert.NotEqual(call.Groups[1].Value, declaration.Groups[1].Value);
+            Assert.NotEqual(call.Groups[2].Value, declaration.Groups[2].Value);
         }
     }
 }
