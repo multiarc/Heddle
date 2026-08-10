@@ -41,7 +41,7 @@ namespace Heddle.Generated
             RootReference = false, InsideDefinition = false
         };
         private static readonly global::Heddle.Core.AbstractExtension E0 = global::Heddle.Precompiled.PrecompiledRuntime.Init(
-            () => new global::Heddle.Extensions.IfExtension(), S0, new Body1());
+            () => new global::Heddle.Extensions.IfExtension(), S0, null);
         internal static readonly global::Heddle.Precompiled.PrecompiledInitSite S1 = new global::Heddle.Precompiled.PrecompiledInitSite
         {
             ExtensionName = "else",
@@ -58,7 +58,7 @@ namespace Heddle.Generated
             RootReference = false, InsideDefinition = false
         };
         private static readonly global::Heddle.Core.AbstractExtension E1 = global::Heddle.Precompiled.PrecompiledRuntime.Init(
-            () => new global::Heddle.Extensions.ElseExtension(), S1, new Body2());
+            () => new global::Heddle.Extensions.ElseExtension(), S1, null);
 
         private sealed class Body0 : global::Heddle.Runtime.IProcessStrategy
         {
@@ -83,40 +83,6 @@ namespace Heddle.Generated
                 var v1 = E1.ProcessData(scope.Model(scope.ModelData)) as string ?? string.Empty;
 #line hidden
                 return string.Concat(v0, v1, P2);
-#line default
-            }
-        }
-
-        private sealed class Body1 : global::Heddle.Runtime.IProcessStrategy
-        {
-            public void Render(in global::Heddle.Data.Scope scope)
-            {
-#line hidden
-                scope.Renderer.Render(P0);
-#line default
-            }
-
-            public string Execute(in global::Heddle.Data.Scope scope)
-            {
-#line hidden
-                return P0;
-#line default
-            }
-        }
-
-        private sealed class Body2 : global::Heddle.Runtime.IProcessStrategy
-        {
-            public void Render(in global::Heddle.Data.Scope scope)
-            {
-#line hidden
-                scope.Renderer.Render(P1);
-#line default
-            }
-
-            public string Execute(in global::Heddle.Data.Scope scope)
-            {
-#line hidden
-                return P1;
 #line default
             }
         }

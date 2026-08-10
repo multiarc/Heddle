@@ -621,6 +621,39 @@ namespace Heddle.Generator.Emit
             /// place.</summary>
             public string ShapedDocument;
             public readonly List<object> Segments = new List<object>();
+
+            /// <summary>Whether any output chain survived shaping — the build's side of the negation of
+            /// <c>RuntimeDocument.Empty</c>. <c>HeddleCompiler.CompileBody</c> adds a document element for a chain
+            /// whose composed <c>returnTypeChainedPrevious</c> is non-null and drops every other, and the shared
+            /// shaper drops exactly the same ones here, so a body with no surviving element is a document the
+            /// engine builds and then discards.
+            /// <para>Read off the shaped element list rather than off <see cref="Segments"/>, and written before the
+            /// element walk begins: a definition body is registered before it is populated so a self-call finds it,
+            /// and a half-built segment list would tell that call the body was empty.</para></summary>
+            public bool HasProcessors;
+
+            /// <summary>Set when a call site was handed <c>null</c> in place of this body, so the class it would
+            /// have been is never referenced and is never written.</summary>
+            public bool Suppressed;
+        }
+
+        /// <summary>
+        /// The strategy a call site installs for <paramref name="body"/>: the body class, or <c>null</c> where the
+        /// body compiles to no processors. <c>AbstractExtension.InitSubTemplate</c> discards a document that holds
+        /// none — <c>subTemplate.Empty</c> yields no result — and leaves the hook with no strategy and the shaped
+        /// text as its inert <c>_innerResult</c>, which is the post-state <c>PrecompiledRuntime.Init</c> installs
+        /// for a null body over a non-empty <c>RawText</c>. Handing one a real strategy instead makes
+        /// <c>InnerExist</c> true where the engine leaves it false, and every hook that reads it — the raw carrier,
+        /// the encoding carrier, <c>@out</c>, and any extension of anyone's — renders the other tier's bytes.
+        /// </summary>
+        private static string BodyStrategyName(BodyClass body)
+        {
+            if (body == null)
+                return null;
+            if (body.HasProcessors)
+                return body.Name;
+            body.Suppressed = true;
+            return null;
         }
 
         private readonly List<string> _pieces = new List<string>();
@@ -687,6 +720,7 @@ namespace Heddle.Generator.Emit
             }
             var working = shape.WorkingDocument;
             body.ShapedDocument = working;
+            body.HasProcessors = shape.Elements.Count != 0;
             var savedDoc = _currentDoc;
             _currentDoc = working;
 
@@ -1043,10 +1077,7 @@ namespace Heddle.Generator.Emit
             if (name.Length == 0)
             {
                 if (!string.IsNullOrEmpty(item.ParameterTemplate))
-                {
-                    reason = new Refusal(RefusalCategory.ChainCarrier, "bodied unnamed carrier", item.Position);
-                    return null;
-                }
+                    return BuildBodiedUnnamedCarrier(chain, item, cp, bctx, out reason);
 
                 WarnOnRedundantEncoding(cp);
                 if (!BuildParamExpr(cp, bctx, RefStructUse.Rendered, out var uParam, out var uUses, out reason, item.Position))
@@ -1196,6 +1227,36 @@ namespace Heddle.Generator.Emit
         }
 
         /// <summary>
+        /// A bodied <c>@(x){{ … }}</c>: a raw rescoping container the profile never redirects, so the shared rule
+        /// gives it the empty registry name and the binder answers which type that name resolves to here. From
+        /// there it is an ordinary bound call — the carrier's own <c>InitStart</c> runs at static init and takes
+        /// the body the build supplies, including the <c>null</c> a body of static text alone earns, which is what
+        /// leaves <c>InnerExist</c> false and the carrier rendering its model.
+        /// <para>The bodiless form keeps its own arm above: only it is redirected to the encoding carrier under the
+        /// Html profile, only it records the compiled-unnamed-output flag the <c>@profile</c> lint reads, and only
+        /// it can carry a producer whose encoding is redundant.</para>
+        /// </summary>
+        private object BuildBodiedUnnamedCarrier(OutputChain chain, OutputItem item, CallParameter cp,
+            BodyContext bctx, out Refusal reason)
+        {
+            OutputProfileRules.ResolveUnnamedCarrier(
+                _profileHtml ? Heddle.Data.OutputProfile.Html : Heddle.Data.OutputProfile.Text,
+                hasBody: true, out var carrierKind, out _);
+            var registryName = OutputProfileRules.CarrierRegistryName(carrierKind);
+            if (!_extensionBinder.TryResolve(registryName, out var carrierInfo))
+            {
+                reason = new Refusal(RefusalCategory.ExtensionBinding,
+                    "no extension is registered for the unnamed carrier", item.Position);
+                return null;
+            }
+
+            if (!CanWriteExtensionTypeName(carrierInfo.TypeSymbol, item.Position, out reason))
+                return null;
+
+            return BuildBoundExtensionCall(registryName, carrierInfo, chain, item, cp, bctx, out reason);
+        }
+
+        /// <summary>
         /// <para>The single arm for every bound <c>[ExtensionName]</c> extension, built in or referenced, bodied or
         /// not. Its one question is whether the build knows what this extension's compile-time hook does; everything
         /// after that is the same emission the engine branch trio, <c>@list</c>, <c>@for</c> and a plain custom
@@ -1307,10 +1368,11 @@ namespace Heddle.Generator.Emit
             }
 
             var siteField = EmitInitSite(plan);
+            var bodyRef = BodyStrategyName(body);
             var field = namesRef == null
-                ? AllocateInitExtension(name, info, siteField, body?.Name)
+                ? AllocateInitExtension(name, info, siteField, bodyRef)
                 : AllocateParameterizedExtension(name, info, siteField, propsRef, settersRef, namesRef,
-                    body?.Name, layout);
+                    bodyRef, layout);
             return MakeCall(field, paramExpr, uses, item.Position, siteField);
         }
 
@@ -1489,6 +1551,14 @@ namespace Heddle.Generator.Emit
 
             if (body != null)
                 return true;
+
+            // What the consumer's build configuration forbids, it forbids the substitute too: the substitute
+            // compiles this call's own text as its own document under the request's own options, and an
+            // expression-mode gate or a missing reference refuses that text wherever it is compiled. Emitted, the
+            // call would raise the engine's own refusal at first render instead of at build, while the dynamic
+            // tier reports it as the collected compile error it is — so the template goes there.
+            if (reason != null && reason.Category == RefusalCategory.HostSetup)
+                return false;
 
             // The substitute compiles this call's own text as its own document, so it sees no enclosing definition,
             // no ambient region fill scope and no active prop layout. A body that reaches for any of those must not
@@ -2269,8 +2339,8 @@ namespace Heddle.Generator.Emit
             }
 
             var definitionSite = EmitInitSite(plan);
-            var field = AllocateInitDefinition(definitionSite, bodyInfo.Body.Name, callerBody?.Name,
-                propsFieldRef, dynamicSettersRef);
+            var field = AllocateInitDefinition(definitionSite, BodyStrategyName(bodyInfo.Body),
+                BodyStrategyName(callerBody), propsFieldRef, dynamicSettersRef);
             return MakeCall(field, paramExpr, usesModel, item.Position, definitionSite);
         }
 
@@ -3577,12 +3647,13 @@ namespace Heddle.Generator.Emit
             string propsFieldRef, string dynamicSettersRef)
         {
             var field = "E" + _extensionCounter++;
+            var bodyArg = bodyName != null ? "new " + bodyName + "()" : "null";
             var callerArg = callerBodyName != null ? "new " + callerBodyName + "()" : "null";
             var w = InitDecls;
             w.Append("        private static readonly global::Heddle.Core.AbstractExtension ").Append(field)
                 .Append(" = global::Heddle.Precompiled.PrecompiledRuntime.InitDefinition(\n");
-            w.Append("            ").Append(siteField).Append(", body: new ").Append(bodyName)
-                .Append("(), callerContent: ").Append(callerArg)
+            w.Append("            ").Append(siteField).Append(", body: ").Append(bodyArg)
+                .Append(", callerContent: ").Append(callerArg)
                 .Append(", props: ").Append(propsFieldRef)
                 .Append(", dynamicSetters: ").Append(dynamicSettersRef).Append(");\n");
             _extensionFields.Add(field);
@@ -3853,7 +3924,12 @@ namespace Heddle.Generator.Emit
 
             if (!string.IsNullOrEmpty(cp.CSharpExpression))
             {
-                if (bctx.Late != null)
+                // The expression-mode gate is asked first, inside a type-agnostic body as well as outside one: it
+                // is the engine's own refusal of this text under these options rather than anything the body's
+                // typing decides, and the answer below costs a call site instead of the template — which would put
+                // the fragment in front of a substitute that compiles the same text under the same options and
+                // meets the same gate at first render.
+                if (bctx.Late != null && _config.ExpressionMode == Heddle.Data.ExpressionMode.FullCSharp)
                 {
                     // The fragment's model parameter has to be SPELLED, and `object`/`dynamic` in its place changes
                     // overload resolution inside the expression.
@@ -4827,6 +4903,9 @@ namespace Heddle.Generator.Emit
 
             foreach (var body in _bodies)
             {
+                // A body whose call site was handed null instead of a strategy is referenced by nothing.
+                if (body.Suppressed)
+                    continue;
                 EmitBodyClass(w, body);
                 w.Line();
             }

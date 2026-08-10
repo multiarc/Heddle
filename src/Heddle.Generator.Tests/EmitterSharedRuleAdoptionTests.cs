@@ -162,17 +162,25 @@ namespace Heddle.Generator.Tests
 
         private const string ModelCast = "(global::RuleAdoption.Person)scope.ModelData";
 
-        /// <summary>The text of the first nested body class in the generated template source. Nested-body
-        /// classes are emitted after <c>Body0</c> (the document root), so <c>Body1</c> is the host's body.</summary>
+        /// <summary>The text from the first nested body class onward. Nested-body classes are emitted after
+        /// <c>Body0</c> (the document root), and their numbering carries gaps: a body that compiles to no
+        /// processors is handed to its call site as <c>null</c> and its class is never written, so the first
+        /// nested class is found by scanning rather than by naming <c>Body1</c>.</summary>
         private static string NestedBodySource(string template)
         {
             var run = GeneratorHarness.RunWithSources(
                 new[] { ("views/rule-adoption.heddle", "@model(){{RuleAdoption.Person}}@\\\n" + template) },
                 new[] { ModelSource });
-            var source = run.GeneratedSourceTexts.FirstOrDefault(s => s.Contains("class Body1"));
+            var source = run.GeneratedSourceTexts.FirstOrDefault(s => NestedBodyIndex(s) >= 0);
             Assert.NotNull(source);   // a degraded template emits no nested body at all — a deleted row shows up here
-            var at = source.IndexOf("class Body1", System.StringComparison.Ordinal);
-            return source.Substring(at);
+            return source.Substring(NestedBodyIndex(source));
+        }
+
+        /// <summary>The offset of the first <c>class Body&lt;n&gt;</c> other than the document root's, or -1.</summary>
+        private static int NestedBodyIndex(string source)
+        {
+            var match = System.Text.RegularExpressions.Regex.Match(source, @"class Body(?!0\b)\d+");
+            return match.Success ? match.Index : -1;
         }
 
         /// <summary>The <see cref="BodyModelSource.Parent"/> rows, read off the emitted bytes: a branch body and a
