@@ -15,7 +15,8 @@ namespace Heddle.Generator.Pipeline
     {
         public GlobalConfig(OutputProfile outputProfile, ExpressionMode expressionMode, bool trimDirectiveLines,
             int maxRecursionCount, string templateRoot, string generatedNamespace, bool emitUtf8Pieces,
-            bool nodeFallback, ObserveMode observeMode, string observeIntermediatePath)
+            bool nodeFallback, ObserveMode observeMode, string observeIntermediatePath,
+            string observeImplementationPath)
         {
             OutputProfile = outputProfile;
             ExpressionMode = expressionMode;
@@ -27,6 +28,7 @@ namespace Heddle.Generator.Pipeline
             NodeFallback = nodeFallback;
             ObserveMode = observeMode;
             ObserveIntermediatePath = observeIntermediatePath;
+            ObserveImplementationPath = observeImplementationPath;
         }
 
         public OutputProfile OutputProfile { get; }
@@ -50,6 +52,11 @@ namespace Heddle.Generator.Pipeline
         /// nowhere, which is observation being unavailable.</summary>
         public string ObserveIntermediatePath { get; }
 
+        /// <summary>The implementation image behind every reference the compiler was handed as a reference
+        /// assembly, <c>|</c>-separated; empty means nothing to substitute, which leaves a project-to-project
+        /// engine reference unexecutable and observation unavailable.</summary>
+        public string ObserveImplementationPath { get; }
+
         public bool Equals(GlobalConfig other)
         {
             if (other is null) return false;
@@ -63,6 +70,8 @@ namespace Heddle.Generator.Pipeline
                    && NodeFallback == other.NodeFallback
                    && ObserveMode == other.ObserveMode
                    && string.Equals(ObserveIntermediatePath, other.ObserveIntermediatePath,
+                       StringComparison.Ordinal)
+                   && string.Equals(ObserveImplementationPath, other.ObserveImplementationPath,
                        StringComparison.Ordinal);
         }
 
@@ -83,6 +92,7 @@ namespace Heddle.Generator.Pipeline
                 hash = hash * 31 + NodeFallback.GetHashCode();
                 hash = hash * 31 + (int)ObserveMode;
                 hash = hash * 31 + (ObserveIntermediatePath?.GetHashCode() ?? 0);
+                hash = hash * 31 + (ObserveImplementationPath?.GetHashCode() ?? 0);
                 return hash;
             }
         }

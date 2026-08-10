@@ -14,6 +14,16 @@ namespace Heddle.Generator.IntegrationTests
     /// </summary>
     public class CustomExtensionTests
     {
+        /// <summary>Observation off, which is what a test of the <b>type-agnostic</b> body has to ask for. That
+        /// emission is what the build reaches for where it has no typing of its own, and a real engine compile now
+        /// supplies a typing for nearly every hook — so leaving it to chance would test whichever of the two arms
+        /// happened to run. The dynamic-tier tests ask for their tier the same way.</summary>
+        private static readonly System.Collections.Generic.Dictionary<string, string> Unobserved =
+            new System.Collections.Generic.Dictionary<string, string>
+            {
+                ["build_property.HeddleObserveEngine"] = "Off"
+            };
+
         [Theory]
         [InlineData("hello world")]
         [InlineData("")]
@@ -109,13 +119,13 @@ namespace Heddle.Generator.IntegrationTests
             // by the model this hook chose rather than by anything the build resolved.
             var t = "@model(){{Heddle.Generator.IntegrationTests.Fixtures.Product}}@\\\n" +
                     "<x>@bellow(Description){{@(Name)}}</x>\n";
-            var gen = DifferentialHarness.Generate(new[] { (key, t) });
+            var gen = DifferentialHarness.Generate(new[] { (key, t) }, Unobserved);
             Assert.DoesNotContain(gen.Diagnostics, d => d.Severity == DiagnosticSeverity.Error);
             DifferentialHarness.ExpectPrecompiled(gen, key);
             Assert.Contains("PrecompiledLateAccessor(", Assert.Single(gen.TemplateSources).Value);
 
             var (pre, dyn) = DifferentialHarness.Render(key, t, typeof(Fixtures.Product),
-                new Fixtures.Product { Name = "photos", Description = null });
+                new Fixtures.Product { Name = "photos", Description = null }, Unobserved);
             Assert.Equal(dyn, pre);
             Assert.Equal("<x>PHOTOS</x>\n", pre);
         }
@@ -133,7 +143,7 @@ namespace Heddle.Generator.IntegrationTests
             const string key = "views/bellow-computed.heddle";
             var t = "@model(){{Heddle.Generator.IntegrationTests.Fixtures.GridModel}}@\\\n" +
                     "<x>@bellow(Name){{@(Cols + 1)}}</x><y>@yell(Name)</y>\n";
-            var gen = DifferentialHarness.Generate(new[] { (key, t) });
+            var gen = DifferentialHarness.Generate(new[] { (key, t) }, Unobserved);
             Assert.DoesNotContain(gen.Diagnostics, d => d.Severity == DiagnosticSeverity.Error);
             DifferentialHarness.ExpectPrecompiled(gen, key);
 
@@ -142,7 +152,7 @@ namespace Heddle.Generator.IntegrationTests
             Assert.Contains("() => new global::Heddle.Generator.IntegrationTests.Fixtures.YellExtension()", source);
 
             var (pre, dyn) = DifferentialHarness.Render(key, t, typeof(Fixtures.GridModel),
-                new Fixtures.GridModel { Name = "photos", Cols = 2 });
+                new Fixtures.GridModel { Name = "photos", Cols = 2 }, Unobserved);
             Assert.Equal(dyn, pre);
         }
 
@@ -160,7 +170,7 @@ namespace Heddle.Generator.IntegrationTests
             var t = "@model(){{Heddle.Generator.IntegrationTests.Fixtures.GridModel}}@\\\n" +
                     "@%<greet>{{hello}} :: System.String%@\n" +
                     "<x>@bellow(Name){{@greet(Name)@(Cols + 1)}}</x>\n";
-            var gen = DifferentialHarness.Generate(new[] { (key, t) });
+            var gen = DifferentialHarness.Generate(new[] { (key, t) }, Unobserved);
             Assert.DoesNotContain(gen.Diagnostics, d => d.Severity == DiagnosticSeverity.Error);
             DifferentialHarness.ExpectDegrade(gen, key,
                 generator::Heddle.Generator.Emit.RefusalCategory.HookBehavior, "body");

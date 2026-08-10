@@ -1154,9 +1154,8 @@ namespace Heddle.Generator.Emit
 
             // ONE arm for every bound extension. What stood here were three near-identical name-keyed arms — the
             // engine branch trio, @list, @for — and a fourth, generic one further down for everything else. They
-            // differed in exactly two things: the body's model role, which is an answer now rather than a name
-            // lookup, and @list's element-type ambiguity check, which follows from the ElementOfData role rather
-            // than from the name. All four already emitted the same shape.
+            // differed in exactly one thing: the body's model role, which is read off a real engine compile now
+            // rather than looked up by name. All four already emitted the same shape.
             if (_extensionBinder.TryResolve(name, out var bound))
                 return BuildBoundExtensionCall(name, bound, chain, item, cp, bctx, out reason);
 
@@ -1261,12 +1260,13 @@ namespace Heddle.Generator.Emit
         /// not. Its one question is whether the build knows what this extension's compile-time hook does; everything
         /// after that is the same emission the engine branch trio, <c>@list</c>, <c>@for</c> and a plain custom
         /// extension all reached separately before.</para>
-        /// <para>The hook's body typing is <i>known</i> when the shared table carries a row for an engine extension,
-        /// or when a real engine compile of this template was observed. It is not known for anything else, and that
-        /// is no longer a decline: the body is emitted type-agnostically and the extension's own hook chooses its
-        /// typing at static-init, so a bodied call to a third-party extension precompiles in a default build with no
-        /// property to set and no name to be on. Only the three shapes a type-agnostic body cannot write cost
-        /// anything, and they cost that one call site through the substitute.</para>
+        /// <para>The hook's body typing is <i>known</i> when a real engine compile of this template was observed, or
+        /// when the extension's author declared it by carrying <c>[ChildTemplateHost]</c>. It is not known for
+        /// anything else — no name is consulted, and a built-in's body is typed by exactly what types a third
+        /// party's — and that is no longer a decline: the body is emitted type-agnostically and the extension's own
+        /// hook chooses its typing at static-init, so a bodied call precompiles in a default build with no property
+        /// to set and no name to be on. Only the three shapes a type-agnostic body cannot write cost anything, and
+        /// they cost that one call site through the substitute.</para>
         /// </summary>
         private Call BuildBoundExtensionCall(string name, ExtensionBinder.Info info, OutputChain chain,
             OutputItem item, CallParameter cp, BodyContext bctx, out Refusal reason,
@@ -1274,24 +1274,23 @@ namespace Heddle.Generator.Emit
         {
             reason = null;
             bool bodied = !string.IsNullOrEmpty(item.ParameterTemplate);
-            bool known = TryHookRoles(name, info, out var bodySource);
 
             // The child-template-host role declares its own body typing: the attribute obliges the extension to
             // evaluate its body — the child's name — against the call value, which is the same value it obliges the
             // child itself to be compiled against. That is a declaration by the extension's author, not a table
             // this compiler keeps, and the hook contradicts it at registration like any other assumption.
-            if (!known && hostsChildTemplate)
-            {
-                bodySource = BodyModelSource.Data;
-                known = true;
-            }
+            var bodySource = BodyModelSource.Data;
+            bool known = hostsChildTemplate;
 
             // Observation is consulted only where the build has no typing of its own, so it can only ever ADD a
             // typed body — which is what makes coverage monotone and byte identity a property of the design rather
             // than of a comparison.
             ITypeSymbol observedModel = null;
-            if (!known && bodied && TryObservedBodyModel(item, out observedModel))
+            if (!known && bodied && TryObservedBodyModel(item, bctx, out observedModel))
+            {
                 known = true;
+                bodySource = BodyModelSource.Observed;
+            }
 
             // The extension's own author has declared that a static initializer cannot reproduce what its hook
             // does. Taking them at their word costs this call site and nothing else: the rest of the template
@@ -1407,10 +1406,12 @@ namespace Heddle.Generator.Emit
         private readonly HashSet<string> _reportedUnsupportedExtensions =
             new HashSet<string>(System.StringComparer.Ordinal);
 
-        /// <summary>The model type the engine itself compiled this call's body against, when a real engine compile
-        /// of this template was available and every recorded entry for the body's span agreed on one non-dynamic
-        /// answer. False is always "no answer", never a wrong one.</summary>
-        private bool TryObservedBodyModel(OutputItem item, out ITypeSymbol model)
+        /// <summary>The model the engine itself compiled this call's body against, when a real engine compile of
+        /// this template was available and every recorded entry for the body's span agreed. False is always "no
+        /// answer", never a wrong one; a <c>null</c> model with a true return is the engine's own answer that the
+        /// body compiles against a dynamic scope, which the emitter reproduces rather than treating as silence.
+        /// </summary>
+        private bool TryObservedBodyModel(OutputItem item, BodyContext bctx, out ITypeSymbol model)
         {
             model = null;
             if (item.Context == null || item.ParameterTemplate == null)
@@ -1418,9 +1419,27 @@ namespace Heddle.Generator.Emit
             var observed = Observed();
             if (observed == null)
                 return false;
-            if (!observed.TryBodyModel(item.Context.AbsoluteOffset, item.ParameterTemplate.Length, out model))
+            if (!observed.TryBodyModel(item.Context.AbsoluteOffset, item.ParameterTemplate.Length, out model,
+                    out var isDynamic))
                 return false;
-            return model.TypeKind != TypeKind.Dynamic && CanWriteTypeName(model, item.Position, out _);
+            // Under a DYNAMIC enclosing scope, `System.Object` is what "no model" reports rather than a model: a
+            // hook that re-types its body to its caller's scope hands the body compile the document's own type, and
+            // a document with no @model has that one. Casting to it binds no member and refuses every read the
+            // dynamic tier would have served, so it is read as what it means there — no static model.
+            // Under a TYPED enclosing scope the same answer is a real one: an `object` element of a declared
+            // collection is a type, the engine refuses a member read on it, and so does this.
+            if (isDynamic || model.TypeKind == TypeKind.Dynamic ||
+                (bctx.IsDynamic && model.SpecialType == SpecialType.System_Object))
+            {
+                model = null;
+                return true;
+            }
+
+            // Asked without reporting, unlike every other spelling gate here. A type generated code may not name is
+            // not a fault of this template: the body simply goes out type-agnostically and the template precompiles,
+            // so there is nothing for an author to act on and HED7030's sentence — "cannot be precompiled" — would
+            // be false. The name is still never written, which is the whole point of asking.
+            return _resolver.ClassifyModelType(model, out _) == Binding.SymbolTypeResolver.NameFault.None;
         }
 
         /// <summary>This template's observed compile, run on the first body the build could not type and not
@@ -1443,56 +1462,34 @@ namespace Heddle.Generator.Emit
             return _observed;
         }
 
-        /// <summary>The body of a call whose hook the build has read — from the shared table, or from an observed
-        /// engine compile: typed exactly as before, and carrying the typing it assumed so the hook's own answer can
-        /// contradict it at registration.</summary>
+        /// <summary>The body of a call whose hook the build has read — from an observed engine compile, or from the
+        /// author's own <c>[ChildTemplateHost]</c> declaration: typed exactly as before, and carrying the typing it
+        /// assumed so the hook's own answer can contradict it at registration.</summary>
         private bool TryTypedBody(string name, BodyModelSource bodySource, ITypeSymbol observedModel,
             OutputItem item, CallParameter cp,
             BodyContext bctx, SitePlan plan, out BodyClass body, out Refusal reason)
         {
             body = null;
             reason = null;
-            ITypeSymbol elementModel = observedModel;
-
-            // An observed answer names the body's model outright, which is exactly what the element-of-data
-            // construction below does with a type — so it takes that arm rather than needing one of its own.
-            if (observedModel != null)
-                bodySource = BodyModelSource.ElementOfData;
-            else if (bodySource == BodyModelSource.Data)
+            ITypeSymbol bodyModel = observedModel;
+            if (bodySource == BodyModelSource.Data)
             {
                 // The host's own data value. A caller that IS typed but whose value's type cannot be said is the
                 // one shape this role cannot carry: a guess there changes what the body evaluates to.
-                elementModel = CallSiteValueType(cp, bctx);
-                if (elementModel == null && !bctx.IsDynamic)
+                bodyModel = CallSiteValueType(cp, bctx);
+                if (bodyModel == null && !bctx.IsDynamic)
                 {
                     reason = new Refusal(RefusalCategory.UnknowableValue,
                         "'" + name + "' body over a call value with no static type", item.Position);
                     return false;
                 }
 
-                if (elementModel != null && elementModel.TypeKind != TypeKind.Dynamic &&
-                    !CanWriteTypeName(elementModel, item.Position, out reason))
-                    return false;
-            }
-            else if (bodySource == BodyModelSource.ElementOfData)
-            {
-                elementModel = ListElementModel(cp, bctx, out var elementAmbiguous);
-                if (elementAmbiguous)
-                {
-                    reason = new Refusal(RefusalCategory.UnknowableValue,
-                        "collection reaches IEnumerable<T> at more than one element type", item.Position);
-                    return false;
-                }
-
-                // The element type is written into the body's own `(T)scope.ModelData`, so it passes the gate every
-                // other spelled name passes. It is a model position: the host hands each element to
-                // `scope.Model(item, index)` boxed, which a ref struct cannot be.
-                if (elementModel != null && elementModel.TypeKind != TypeKind.Dynamic &&
-                    !CanWriteTypeName(elementModel, item.Position, out reason))
+                if (bodyModel != null && bodyModel.TypeKind != TypeKind.Dynamic &&
+                    !CanWriteTypeName(bodyModel, item.Position, out reason))
                     return false;
             }
 
-            if (!BodyTypingRules.TryNestedBodyContext(bodySource, bctx, elementModel, out var bodyCtx))
+            if (!BodyTypingRules.TryNestedBodyContext(bodySource, bctx, bodyModel, out var bodyCtx))
             {
                 reason = new Refusal(RefusalCategory.HookBehavior,
                     "body model role " + bodySource + " on <" + name + "> has no emission", item.Position);
@@ -1612,19 +1609,6 @@ namespace Heddle.Generator.Emit
                 }
             }
 
-            return false;
-        }
-
-        /// <summary>What the build knows about one extension's hook: the shared table's row for an engine
-        /// extension, nothing for anything else. The assembly test is not decoration — a row describes an engine
-        /// extension, and a package that registers its own <c>@list</c> must not inherit
-        /// <c>ListExtension</c>'s typing.</summary>
-        private static bool TryHookRoles(string name, ExtensionBinder.Info info, out BodyModelSource body)
-        {
-            if (info.IsEngineAssembly)
-                return BodyModelRules.TryGet(name, out body, out _);
-
-            body = default;
             return false;
         }
 
@@ -2425,47 +2409,6 @@ namespace Heddle.Generator.Emit
         }
 
         /// <summary>
-        /// The model an <c>@list</c> body runs under, which is the element type of the collection the call site
-        /// hands it: the host resolves <c>IEnumerable&lt;T&gt;</c> and falls back to <c>dynamic</c> for a collection
-        /// that implements no generic form. Null is "cannot say" — the data expression itself has no static type
-        /// here — and is not the same answer as <c>dynamic</c>.
-        /// <para>A collection reaching <c>IEnumerable&lt;T&gt;</c> at more than one <c>T</c> is a third answer and
-        /// sets <paramref name="ambiguous"/>. The host picks one of them by reflection order, which is not an order
-        /// this can reproduce — but it does pick one, so the engine has an element type here and compiles the whole
-        /// body against it. Treating that as an ordinary "cannot say" put the body on the dynamic tier with no
-        /// model behind it, which every gate downstream exempts: the template precompiled and rendered where the
-        /// engine refuses it at compile time. The emitter not being able to name the type the engine chose is a
-        /// reason to leave the body to the dynamic tier, not to emit one against no type at all.</para>
-        /// </summary>
-        private ITypeSymbol ListElementModel(CallParameter cp, BodyContext bctx, out bool ambiguous)
-        {
-            ambiguous = false;
-            var dataType = CallSiteValueType(cp, bctx);
-            if (dataType == null)
-                return null;
-            if (dataType.TypeKind == TypeKind.Dynamic)
-                return dataType;
-
-            ITypeSymbol element = null;
-            foreach (var candidate in SelfAndInterfaces(dataType))
-            {
-                if (!(candidate is INamedTypeSymbol named) ||
-                    named.ConstructedFrom?.SpecialType != SpecialType.System_Collections_Generic_IEnumerable_T ||
-                    named.TypeArguments.Length != 1)
-                    continue;
-                if (element != null && !SymbolEqualityComparer.Default.Equals(element, named.TypeArguments[0]))
-                {
-                    ambiguous = true;
-                    return null;
-                }
-
-                element = named.TypeArguments[0];
-            }
-
-            return element ?? _compilation.DynamicType;
-        }
-
-        /// <summary>
         /// Whether the engine's accepted-type check would let this value reach this extension. It asks whether
         /// the value's static type is assignable to any type the extension declares with <c>[DataType]</c>, after
         /// unwrapping a nullable and with a value that has no static type exempt — a <c>dynamic</c> value is decided
@@ -2503,13 +2446,6 @@ namespace Heddle.Generator.Emit
             detail = "value type '" + SymbolTypeResolver.FullyQualified(valueType) +
                      "' is not one of the accepted types [" + string.Join(", ", names) + "]";
             return false;
-        }
-
-        private static IEnumerable<ITypeSymbol> SelfAndInterfaces(ITypeSymbol type)
-        {
-            yield return type;
-            foreach (var iface in type.AllInterfaces)
-                yield return iface;
         }
 
         /// <summary>A computed native expression's static type together with the shared tables' descriptor of it.

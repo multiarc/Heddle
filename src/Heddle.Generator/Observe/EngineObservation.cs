@@ -103,16 +103,18 @@ namespace Heddle.Generator.Observe
                 return null;
             }
 
-            if (IsReferenceAssembly(engineSymbol))
+            var implementations = ImplementationReferences.Read(config.ObserveImplementationPath);
+            if (IsReferenceAssembly(engineSymbol) && !implementations.TryGet(engineSymbol.Identity, out _))
             {
                 failure = "the engine assembly '" + engineSymbol.Identity.Name + "' is referenced as a reference " +
-                          "assembly, which carries no method bodies and cannot be executed — a project reference " +
-                          "compiles against one, a package reference against the implementation";
+                          "assembly, which carries no method bodies and cannot be executed, and the build declared " +
+                          "no implementation of that identity in " +
+                          HeddleBuildOptions.ObserveImplementationPathProperty;
                 return null;
             }
 
             var intermediatePath = IntermediateAssembly.Produce(compilation, config.ObserveIntermediatePath,
-                out _, out var emitFailure);
+                out _, out var emitFailure, out var intermediateName);
             if (intermediatePath == null)
             {
                 failure = emitFailure;
@@ -127,10 +129,18 @@ namespace Heddle.Generator.Observe
                     continue;
                 var symbol = compilation.GetAssemblyOrModuleSymbol(reference) as IAssemblySymbol;
                 var simple = symbol != null ? symbol.Identity.Name : BundleLoader.FileSimpleName(portable.FilePath);
-                loader.Declare(simple, portable.FilePath, ModuleVersionIdOf(portable));
+
+                // The compiler holds the reference assembly; the bundle has to hold something it can run. The
+                // substitution is keyed on the identity the compilation itself resolved, so what gets loaded is
+                // the same assembly the compilation compiled against or nothing at all — never a near-miss whose
+                // metadata names would map onto other types.
+                if (symbol != null && implementations.TryGet(symbol.Identity, out var implementation))
+                    loader.Declare(simple, implementation.Path, implementation.ModuleVersionId);
+                else
+                    loader.Declare(simple, portable.FilePath, ModuleVersionIdOf(portable));
             }
 
-            loader.DeclareContentAddressed(compilation.AssemblyName ?? "Heddle.Observed", intermediatePath);
+            loader.DeclareContentAddressed(intermediateName, intermediatePath);
             loader.Arm();
 
             var engine = loader.TryLoad(engineSymbol.Identity.Name);
@@ -146,10 +156,11 @@ namespace Heddle.Generator.Observe
             if (surface == null)
                 return null;
 
-            var intermediate = loader.TryLoad(compilation.AssemblyName ?? "Heddle.Observed");
+            var intermediate = loader.TryLoad(intermediateName);
             if (intermediate == null)
             {
-                failure = "the intermediate assembly could not be loaded from '" + intermediatePath + "'";
+                failure = "the intermediate assembly could not be loaded from '" + intermediatePath + "'" +
+                          (BundleLoader.LastLoadError == null ? "" : " — " + BundleLoader.LastLoadError);
                 return null;
             }
 
@@ -159,6 +170,7 @@ namespace Heddle.Generator.Observe
             var digestPrefix = new StringBuilder()
                 .Append(IntermediateAssembly.Digest(compilation)).Append('|')
                 .Append(ModuleVersionIdOf(engine)).Append('|')
+                .Append(implementations.Digest).Append('|')
                 .Append(importClosureDigest ?? string.Empty).Append('|')
                 .Append((int)config.OutputProfile).Append('|')
                 .Append((int)config.ExpressionMode).Append('|')
@@ -291,12 +303,11 @@ namespace Heddle.Generator.Observe
         /// <summary>
         /// Whether a referenced assembly is a <b>reference assembly</b> — metadata with its method bodies thrown
         /// away, which the runtime refuses to execute at all.
-        /// <para>This is the one structural limit of the whole layer, and it is a property of the reference rather
-        /// than of anything Heddle does: a project-to-project reference compiles against the referencing project's
-        /// generated reference assembly, so the engine the compilation names is an image with no
-        /// <c>InitStart</c> in it to run. Observation is unavailable there and the body is emitted
-        /// type-agnostically, which is a tier and never a byte. A package reference names the implementation and
-        /// is observed normally.</para>
+        /// <para>A project-to-project reference compiles against the referenced project's generated reference
+        /// assembly, so the engine the compilation names is an image with no <c>InitStart</c> in it to run — but
+        /// MSBuild knows the implementation too, and <see cref="ImplementationReferences"/> carries it. What this
+        /// predicate answers is therefore only "does this one need substituting", and a build with no substitution
+        /// on record for it is the one that cannot observe.</para>
         /// </summary>
         private static bool IsReferenceAssembly(IAssemblySymbol assembly)
         {
@@ -526,21 +537,36 @@ namespace Heddle.Generator.Observe
             _entries = entries;
         }
 
-        /// <summary>The model type the engine compiled the body at <paramref name="offset"/> against, or
-        /// <c>false</c> when the span was never recorded, the entries disagree, the type is dynamic, or the type
-        /// has no symbol in this compilation.</summary>
-        internal bool TryBodyModel(int offset, int length, out ITypeSymbol model)
+        /// <summary>
+        /// The model the engine compiled the body at <paramref name="offset"/> against — <c>false</c> when the span
+        /// was never recorded, the entries disagree, or the type it names has no symbol in this compilation.
+        /// <para><b>Dynamic is an answer, not the absence of one.</b> The engine compiling a body against a dynamic
+        /// scope is what it did, and it is what the emitter reproduces by building the body in a dynamic context —
+        /// which is a whole tier better than emitting it type-agnostically, because a dynamic-tier body still reads
+        /// members, calls functions and hosts branch participants. Conflating the two put every body under a
+        /// model-less root through the substitute.</para>
+        /// </summary>
+        internal bool TryBodyModel(int offset, int length, out ITypeSymbol model, out bool isDynamic)
         {
             model = null;
+            isDynamic = false;
             Type found = null;
             var seen = false;
+            var anyDynamic = false;
             foreach (var entry in _entries)
             {
                 if (entry.Offset != offset || entry.Length != length)
                     continue;
                 if (entry.ModelDynamic || entry.Model == null)
-                    return false;
-                if (seen && entry.Model != found)
+                {
+                    if (seen && !anyDynamic)
+                        return false;
+                    anyDynamic = true;
+                    seen = true;
+                    continue;
+                }
+
+                if (seen && (anyDynamic || entry.Model != found))
                     return false;
                 found = entry.Model;
                 seen = true;
@@ -548,6 +574,11 @@ namespace Heddle.Generator.Observe
 
             if (!seen)
                 return false;
+            if (anyDynamic)
+            {
+                isDynamic = true;
+                return true;
+            }
 
             model = _owner.SymbolOf(found);
             return model != null;

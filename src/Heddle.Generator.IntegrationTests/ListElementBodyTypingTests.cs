@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -183,23 +184,27 @@ namespace Heddle.Generator.IntegrationTests
         /// Typing the body means <b>writing</b> the element type — <c>(T)scope.ModelData</c> — so it has to pass
         /// the same gate every other name the emitter spells passes. Here it does not: the element is
         /// <c>[Obsolete(error: true)]</c> and the cast would be CS0619 in the consumer's build, off a
-        /// <c>.g.cs</c> nobody can edit, over a collection the engine iterates and renders perfectly well. The
-        /// template degrades and says so, rather than stopping a build its author did not break.
-        /// <para>Without this the guard would be an unmeasured one, which the record counts as a cost rather than a
-        /// safety margin — so it is measured. The collection itself is nameable, which is what puts the refusal on
-        /// the element and nothing else.</para>
-        /// <para><b>The second row is the cost, recorded rather than narrowed.</b> Its body reads nothing, so no
-        /// cast would have been written and the file would have compiled — and it degrades anyway, because the
-        /// refusal is taken before the body is inspected. Narrowing it means building the body against no type and
-        /// asking afterwards whether it consulted one, which is exactly the state the typing above exists to
-        /// prevent. A cycle that narrows the rule reddens this row and has to say what it did.</para>
+        /// <c>.g.cs</c> nobody can edit, over a collection the engine iterates and renders perfectly well.
+        /// <para><b>The cost is now the body's typing and not the template.</b> It used to be the template: the
+        /// build had one way to type this body and refusing it refused everything. It has another now — the body
+        /// goes out type-agnostically over the engine's own accessors and the extension's hook types it at
+        /// static-init — so the name is still never written and the template still precompiles. That is the
+        /// narrowing the earlier rows invited, and this is it saying what it did: the two rows below used to pin a
+        /// dynamic-tier degrade and a <c>HED7030</c>, and now pin neither.</para>
+        /// <para>The obsolete ELEMENT must appear nowhere in the generated file, which is the half that was never
+        /// negotiable and is asserted directly rather than through the degrade that used to imply it. The
+        /// collection is a different type with a different obsoletion — warning-level, deliberately, so that only
+        /// the element is out of reach — and generated code names it in every entry-point signature, so the
+        /// assertion is on the element's own name at a word boundary rather than on a substring that
+        /// <c>RetiredItems</c> also contains. That the collection IS named is asserted too: without it the
+        /// negative half could pass over a file that named nothing at all.</para>
         /// </summary>
-        /// <param name="body">The read that puts the element type into the file, and — in the second row — one that
-        /// does not.</param>
+        /// <param name="body">The read that would have put the element type into the file, and one that would
+        /// not.</param>
         [Theory]
         [InlineData("reads-the-element", "[@(Tag)]", "[t][t]\n")]
         [InlineData("reads-nothing", "[x]", "[x][x]\n")]
-        public void AnElementTypeGeneratedCodeMayNotNameDegradesRatherThanBreakingTheConsumersBuild(string name,
+        public void AnElementTypeGeneratedCodeMayNotNameCostsTheBodysTypingAndNotTheTemplate(string name,
             string body, string expected)
         {
             var key = "list-typing/retired-element-" + name + ".heddle";
@@ -207,11 +212,16 @@ namespace Heddle.Generator.IntegrationTests
                           "@list(this){{" + body + "}}\n";
             var gen = DifferentialHarness.Generate(new[] { (key, content) });
 
-            Assert.Contains(gen.Diagnostics, d => d.Id == HeddleDiagnosticIds.BuildInaccessibleModelSymbol);
-            DifferentialHarness.ExpectDegrade(gen, key);
+            Assert.DoesNotContain(gen.Diagnostics, d => d.Id == HeddleDiagnosticIds.BuildInaccessibleModelSymbol);
+            DifferentialHarness.ExpectPrecompiled(gen, key);
+            Assert.All(gen.TemplateSources.Values, source =>
+            {
+                Assert.DoesNotMatch(@"\bRetiredItem\b", source);
+                Assert.Contains("ListTyping.RetiredItems", source, StringComparison.Ordinal);
+            });
 
-            // The retired type is the subject: this pins that a model the build tier refuses still renders on the
-            // dynamic one. Naming it is the test, so the obsoletion is suppressed over every mention of it, not
+            // The retired type is the subject: this pins that a model the build tier may not spell still renders
+            // identically. Naming it is the test, so the obsoletion is suppressed over every mention of it, not
             // only the construction — the typeof below is the same deliberate use.
 #pragma warning disable CS0618
             var model = new RetiredItems();
