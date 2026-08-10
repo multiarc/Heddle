@@ -50,9 +50,12 @@ namespace Heddle.Generator.Pipeline
             var observePath = HeddleBuildOptions.ReadString(
                 lookup(HeddleBuildOptions.ObserveIntermediatePathProperty),
                 HeddleBuildOptions.DefaultObserveIntermediatePath);
+            var observeImplementations = HeddleBuildOptions.ReadString(
+                lookup(HeddleBuildOptions.ObserveImplementationPathProperty),
+                HeddleBuildOptions.DefaultObserveImplementationPath);
 
             return new GlobalConfig(profile, mode, trim, maxRecursion, root, ns, emitU8, nodeFallback, observe,
-                observePath);
+                observePath, observeImplementations);
         }
 
         private static TEnum ReadEnum<TEnum>(Func<string, string> lookup, string name, TEnum fallback,

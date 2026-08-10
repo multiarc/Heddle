@@ -2,8 +2,6 @@
 using System.Linq;
 using System.Reflection;
 using Xunit;
-using BodyModelRules = gen::Heddle.Language.BodyModelRules;
-using BodyModelSource = gen::Heddle.Language.BodyModelSource;
 using CallTargetRules = gen::Heddle.Language.CallTargetRules;
 using ParticipantScan = gen::Heddle.Language.ParticipantScan;
 using SlotRules = gen::Heddle.Language.SlotRules;
@@ -143,7 +141,6 @@ namespace Heddle.Generator.Tests
         [InlineData("Heddle.Language.ParticipantScan")]
         [InlineData("Heddle.Language.SlotRules")]
         [InlineData("Heddle.Language.CallTargetRules")]
-        [InlineData("Heddle.Language.BodyModelRules")]
         [InlineData("Heddle.Language.Expressions.EmbeddedCSharpNames")]
         [InlineData("Heddle.Data.OutputProfileRules")]
         [InlineData("Heddle.Data.RenderTypeRules")]
@@ -153,8 +150,8 @@ namespace Heddle.Generator.Tests
             Assert.NotNull(typeof(HeddleTemplate).Assembly.GetType(typeName));
         }
 
-        // Build-tier conformance: TemplateEmitter.TryNestedBodyContext derives nested body context from the row.
-        // Tests run the generator and read emitted bytes: row changes change bytes.
+        // Build-tier conformance: the emitter types a nested body from what the extension's own hook chose, read
+        // off a real engine compile. Tests run the generator and read emitted bytes.
 
         private const string ModelSource =
             "namespace RuleAdoption { public class Person { public string Name { get; set; } " +
@@ -183,9 +180,10 @@ namespace Heddle.Generator.Tests
             return match.Success ? match.Index : -1;
         }
 
-        /// <summary>The <see cref="BodyModelSource.Parent"/> rows, read off the emitted bytes: a branch body and a
-        /// <c>@for</c> body keep the ENCLOSING model, so the generated body class casts <c>scope.ModelData</c> to
-        /// the document's model type exactly as the root body does.</summary>
+        /// <summary>Read off the emitted bytes: a branch body and a <c>@for</c> body keep the ENCLOSING model, so
+        /// the generated body class casts <c>scope.ModelData</c> to the document's model type exactly as the root
+        /// body does. No name is consulted to learn that — the hooks say so when the build compiles the template
+        /// through the real engine.</summary>
         [Theory]
         [InlineData("@if(Name){{@(Name)}}")]
         [InlineData("@ifnot(Name){{@(Name)}}")]
@@ -193,16 +191,15 @@ namespace Heddle.Generator.Tests
         [InlineData("@if(Name){{x}}@elseif(Name){{@(Name)}}")]
         [InlineData("@if(Name){{x}}@else(){{@(Name)}}")]
         [InlineData("@for(2){{@(Name)}}")]
-        public void TheEmitterTypesAParentRowBodyByTheEnclosingModel(string template)
+        public void TheEmitterTypesABranchOrForBodyByTheEnclosingModel(string template)
         {
             Assert.Contains(ModelCast, NestedBodySource(template));
         }
 
-        /// <summary>The <see cref="BodyModelSource.ElementOfData"/> row, read off the emitted bytes: an
-        /// <c>@list</c> element body is typed by the ELEMENT type, not the enclosing model —
-        /// <c>ListExtension.InitStart</c> hands the body the collection's <c>IEnumerable&lt;T&gt;</c> argument and
-        /// the engine compiles it in a scope of that type. This is the row whose confusion with Parent would
-        /// silently bind a member of the wrong type; the two casts are textually unmistakable.</summary>
+        /// <summary>Read off the emitted bytes: an <c>@list</c> element body is typed by the ELEMENT type, not the
+        /// enclosing model — <c>ListExtension.InitStart</c> hands the body the collection's
+        /// <c>IEnumerable&lt;T&gt;</c> argument and the engine compiles it in a scope of that type. Confusing the
+        /// two would silently bind a member of the wrong type; the two casts are textually unmistakable.</summary>
         [Fact]
         public void TheEmitterTypesAListElementBodyByTheElementType()
         {
@@ -212,8 +209,8 @@ namespace Heddle.Generator.Tests
             Assert.Contains("(string)scope.ModelData", body);
         }
 
-        /// <summary>The same row from the refusing side, which is what stops the row above from being satisfied by
-        /// typing the body as anything at all: a member the ELEMENT type does not carry is refused, though the
+        /// <summary>The same typing from the refusing side, which is what stops the test above from being satisfied
+        /// by typing the body as anything at all: a member the ELEMENT type does not carry is refused, though the
         /// enclosing model carries it. The engine raises <c>HED0001</c> on the element type for this template, so
         /// nothing is emitted here either.</summary>
         [Fact]
@@ -226,32 +223,6 @@ namespace Heddle.Generator.Tests
             Assert.Contains(run.GeneratorDiagnostics,
                 d => d.Id == gen::Heddle.Data.HeddleDiagnosticIds.BuildUnresolvableMember);
             Assert.DoesNotContain(run.GeneratedSourceTexts, s => s.Contains("class Body1"));
-        }
-
-        /// <summary>The table's key set, spelled out. It is everything the build knows about extension hooks, so
-        /// a row appearing or disappearing changes which templates precompile by default and
-        /// must be a reviewed change rather than a diff nobody read. The nine step-back encoders joined the four
-        /// the emitter used to name in a private list: they share one hook body, and five of them were absent from
-        /// that list for no reason but its length.</summary>
-        [Fact]
-        public void TheTablePinsExactlyTheNamesTheEmitterEmitsBodiesFor()
-        {
-            Assert.Equal(
-                new[]
-                {
-                    "attr", "date", "elif", "else", "elseif", "for", "guid", "if", "ifnot", "int", "js", "list",
-                    "money", "string", "time", "url"
-                },
-                BodyModelRules.PinnedNames.OrderBy(n => n, System.StringComparer.Ordinal).ToArray());
-        }
-
-        /// <summary>The definition/caller/region rows, which are not keyed by an extension name.</summary>
-        [Fact]
-        public void TheDefinitionSideRowsAreStated()
-        {
-            Assert.Equal(BodyModelSource.Declared, BodyModelRules.DefinitionBody);
-            Assert.Equal(BodyModelSource.SlotOrData, BodyModelRules.CallerContent);
-            Assert.Equal(BodyModelSource.DeclaredOrParent, BodyModelRules.RegionBody);
         }
 
         /// <summary>Zero-output classification runs through the binder, so a custom <c>[ZeroOutput]</c> extension is

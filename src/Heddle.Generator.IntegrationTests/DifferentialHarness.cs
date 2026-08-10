@@ -161,6 +161,18 @@ namespace Heddle.Generator.IntegrationTests
             public Assembly Assembly;
         }
 
+        /// <summary>Where these runs may write observation's content-addressed intermediate assemblies — one per
+        /// process, created once, and never deleted: the files under it are content-addressed and the assemblies
+        /// loaded from them stay loaded for the life of the process by design.</summary>
+        private static readonly string ObserveDirectory = CreateObserveDirectory();
+
+        private static string CreateObserveDirectory()
+        {
+            var path = Path.Combine(Path.GetTempPath(), "heddle-observe-differential", Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(path);
+            return path;
+        }
+
         /// <summary>Runs the generator over the given templates, compiles the generated sources into a loadable
         /// assembly, and returns both. Global options map build_property.* keys.
         /// <para><paramref name="rewriteManifest"/> rewrites the emitted manifest source before it is compiled — the
@@ -186,6 +198,14 @@ namespace Heddle.Generator.IntegrationTests
             var global = globalOptions ?? new Dictionary<string, string>();
             if (!global.ContainsKey("build_property.HeddleGeneratedNamespace"))
                 global["build_property.HeddleGeneratedNamespace"] = GeneratedNamespace;
+
+            // Every real build has somewhere to write observation's intermediate assemblies:
+            // Heddle.Generator.targets sets $(HeddleObserveIntermediatePath) for any project that has not turned
+            // observation off. A run without one is unlike every consumer, and since a body's typing now comes from
+            // the observed compile rather than a table of names, it is the difference between reading an
+            // extension's hook and reading nothing.
+            if (!global.ContainsKey("build_property.HeddleObserveIntermediatePath"))
+                global["build_property.HeddleObserveIntermediatePath"] = ObserveDirectory;
 
             // Each template keyed explicitly via per-file Key metadata so DeriveKey is deterministic and
             // OS-independent (paths carry the key too, for diagnostics).

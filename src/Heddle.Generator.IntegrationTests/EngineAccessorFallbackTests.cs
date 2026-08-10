@@ -27,6 +27,17 @@ namespace Heddle.Generator.IntegrationTests
         private static readonly Dictionary<string, string> FallbackOff =
             new Dictionary<string, string> { ["build_property.HeddleNodeFallback"] = "false" };
 
+        /// <summary>The same opt-out with observation off. A type-agnostic body is what the build emits where it
+        /// has no typing for one, and observation supplies a typing for nearly every hook now — so a test whose
+        /// subject is the type-agnostic emission has to ask for the condition that produces it, exactly as a test
+        /// of the dynamic tier asks for the dynamic tier.</summary>
+        private static readonly Dictionary<string, string> FallbackOffUnobserved =
+            new Dictionary<string, string>
+            {
+                ["build_property.HeddleNodeFallback"] = "false",
+                ["build_property.HeddleObserveEngine"] = "Off"
+            };
+
         private static Type Fixture(string fullName) =>
             typeof(EngineAccessorFallbackTests).Assembly.GetType(fullName, throwOnError: true);
 
@@ -98,7 +109,7 @@ namespace Heddle.Generator.IntegrationTests
             const string key = "views/accessor-late-optout.heddle";
             const string template = "@model(){{" + Fixtures + "Product}}@\\\n" +
                                     "<x>@bellow(Description){{@(Name)}}</x>\n";
-            var gen = DifferentialHarness.Generate(new[] { (key, template) }, FallbackOff);
+            var gen = DifferentialHarness.Generate(new[] { (key, template) }, FallbackOffUnobserved);
 
             Assert.Empty(gen.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
             DifferentialHarness.ExpectPrecompiled(gen, key);

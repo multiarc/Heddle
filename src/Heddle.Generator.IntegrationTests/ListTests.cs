@@ -222,25 +222,26 @@ namespace Heddle.Generator.IntegrationTests
         }
 
         /// <summary>
-        /// What the refusal costs, stated rather than left to be discovered. It is taken before the body is looked
-        /// at, so it declines every <c>@list</c> over such a collection — including bodies that could not have
-        /// needed the element type: one that iterates the element without reading a member of it, and one that
-        /// reads nothing at all. The engine renders both.
-        /// <para>Narrowing it to the bodies that do need the type means building the body first against no type and
-        /// asking afterwards whether it consulted one, which is the state the refusal exists to prevent: a body on
-        /// the dynamic tier with no model behind it, exempted by every gate downstream. So the cost is recorded
-        /// here instead, and a cycle that narrows the rule reddens these rows and has to say what it did.</para>
+        /// <b>What the refusal used to cost, and no longer does.</b> The refusal was taken before the body was
+        /// looked at, so it declined every <c>@list</c> over an ambiguous-element collection — including bodies
+        /// that could not have needed the element type: one that iterates the element without reading a member of
+        /// it, and one that reads nothing at all. The engine renders both, and now so does the build tier.
+        /// <para>The narrowing is not the emitter guessing better. There is no ambiguity left to resolve: the
+        /// element type is read off a real engine compile of this template, so the build knows which
+        /// <c>IEnumerable&lt;T&gt;</c> the host actually picked instead of refusing because reflection order is not
+        /// reproducible. The row above still degrades, because there the engine refuses the template outright and
+        /// the observed compile has no answer to give.</para>
         /// </summary>
         [Theory]
         [InlineData("iterates", "@for(this){{y}}", "[yyy]\n")]
         [InlineData("reads-nothing", "[x]", "[[x][x]]\n")]
-        public void TheAmbiguityRefusalAlsoDeclinesBodiesThatDoNotNeedTheElementType(string name, string body,
+        public void ABodyOverAnAmbiguousElementNowPrecompilesOnTheEnginesOwnPick(string name, string body,
             string engineOutput)
         {
             var key = "views/list-ambiguous-cost-" + name + ".heddle";
             var t = "@model(){{" + AmbiguousHolderType + "}}@\\\n[@list(Multi){{" + body + "}}]\n";
 
-            DifferentialHarness.ExpectDegrade(DifferentialHarness.Generate(new[] { (key, t) }), key);
+            DifferentialHarness.ExpectPrecompiled(DifferentialHarness.Generate(new[] { (key, t) }), key);
 
             var dynamicTemplate = new HeddleTemplate(t,
                 new Heddle.Runtime.CompileContext(new Heddle.Data.TemplateOptions(),

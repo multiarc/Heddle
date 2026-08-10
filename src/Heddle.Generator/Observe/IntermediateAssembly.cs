@@ -4,6 +4,7 @@ using System.IO;
 using System.Text;
 using Heddle.Precompiled;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.Emit;
 
 namespace Heddle.Generator.Observe
 {
@@ -120,16 +121,33 @@ namespace Heddle.Generator.Observe
         }
 
         /// <summary>
+        /// The assembly <b>name</b> the intermediate is emitted under: the compilation's own, suffixed with the
+        /// digest of its content.
+        /// <para>The suffix is not decoration. <c>Assembly.LoadFrom</c> admits one image per simple name per
+        /// process, and a compiler server compiles the same project many times — so a second content emitted under
+        /// the project's own name is a file the runtime refuses outright, and observation would have worked once
+        /// per project per server and silently not again. Content-addressing the name makes two contents two
+        /// identities, which is what they are.</para>
+        /// <para>It is a pure function of the content, so it is the same name on every machine and in every
+        /// process, and it changes exactly when the emitted image would.</para>
+        /// </summary>
+        internal static string AssemblyName(Compilation compilation, string digest) =>
+            (compilation.AssemblyName ?? "Heddle.Observed") + ".observed." + digest;
+
+        /// <summary>
         /// The content-addressed path of the emitted intermediate assembly, producing it if this is the first build
         /// to need that exact content.
         /// </summary>
         /// <returns>The path, or <c>null</c> with <paramref name="failure"/> set — always a reason to observe
         /// nothing, never a reason to fail a build.</returns>
+        /// <param name="assemblyName">The simple name the image carries, which is what the bundle loads it by.
+        /// </param>
         internal static string Produce(Compilation compilation, string directory, out bool emitted,
-            out string failure)
+            out string failure, out string assemblyName)
         {
             emitted = false;
             failure = null;
+            assemblyName = null;
             if (string.IsNullOrEmpty(directory))
             {
                 failure = "no intermediate output path was supplied to the generator";
@@ -137,21 +155,29 @@ namespace Heddle.Generator.Observe
             }
 
             var digest = Digest(compilation);
+            assemblyName = AssemblyName(compilation, digest);
             lock (Gate)
             {
-                if (Produced.TryGetValue(digest, out var known))
+                // The memo says this process already produced that content; the store says whether the file is
+                // still there. Both have to agree, because they are answering about different lifetimes: the
+                // compiler is a persistent server and `_HeddleCleanObserveCache` empties this directory on every
+                // clean, so a memo trusted on its own hands back a path the next build has deleted — and every
+                // build after that one, for the life of the server, observes nothing and says only that the
+                // intermediate assembly could not be loaded.
+                if (Produced.TryGetValue(digest, out var known) && ObserveCache.IsComplete(known))
                     return known;
             }
 
+            var renamed = compilation.WithAssemblyName(assemblyName);
             var path = Path.Combine(directory, "heddle.observe." + digest + ".dll");
             string emitFailure = null;
             bool wrote;
             var ok = ObserveCache.Ensure(path, stream =>
             {
-                var result = compilation.Emit(stream);
+                var result = renamed.Emit(stream);
                 if (!result.Success)
                 {
-                    emitFailure = "the compilation being built does not compile yet";
+                    emitFailure = "the compilation being built does not compile yet" + FirstError(result);
                     throw new InvalidOperationException(emitFailure);
                 }
             }, out wrote);
@@ -166,6 +192,22 @@ namespace Heddle.Generator.Observe
             lock (Gate)
                 Produced[digest] = path;
             return path;
+        }
+
+        /// <summary>The first error the emit reported, so an unobservable build says which one — the emit runs on
+        /// the pre-generator compilation under a content-addressed assembly name, and a compilation that reads a
+        /// friend assembly's internals loses that grant with the name, which is a sentence worth reading rather
+        /// than guessing at.</summary>
+        private static string FirstError(EmitResult result)
+        {
+            foreach (var diagnostic in result.Diagnostics)
+            {
+                if (diagnostic.Severity != DiagnosticSeverity.Error)
+                    continue;
+                return " (" + diagnostic.Id + ": " + diagnostic.GetMessage() + ")";
+            }
+
+            return string.Empty;
         }
 
         /// <summary>Test seam: how many distinct contents this process has produced. A second generator run over

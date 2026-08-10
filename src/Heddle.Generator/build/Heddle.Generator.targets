@@ -69,6 +69,45 @@
     <MakeDir Directories="$(HeddleObserveIntermediatePath)" ContinueOnError="true" />
   </Target>
 
+  <!-- The implementation image behind every reference the compiler is handed as a REFERENCE ASSEMBLY.
+       A ProjectReference resolves to the referenced project's real output in @(ReferencePath) and to its generated
+       reference assembly in %(ReferencePath.ReferenceAssembly); CoreCompile passes the latter, which carries no
+       method bodies and so cannot be executed. Observation has to run the engine, so it needs the former.
+
+       Unlike @(HeddleModelAssembly) above, this must NOT go to @(ReferencePath): the compiler already has these
+       assemblies — as reference assemblies — and appending the implementations would hand it two images of one
+       identity. So it takes the other route the compilation's declared inputs offer, the one
+       $(HeddleObserveIntermediatePath) already takes: a CompilerVisibleProperty, which the compiler writes into the
+       generated .editorconfig and passes as an analyzer config input. The generator still reads nothing it was not
+       given, and build output stays a function of the compilation's declared inputs.
+
+       Only the items that actually carry %(ReferenceAssembly) are listed — for everything else the compiler already
+       has the implementation, so there is nothing to substitute. The generator matches each entry to the compilation
+       by ASSEMBLY IDENTITY and ignores anything that does not match exactly, so the order this list arrives in
+       cannot decide an answer. Project references are built before this project compiles, so every path here names
+       a file that already exists; one that does not simply contributes nothing.
+
+       The separator is '|', NOT the ';' an item transform would use by default. A CompilerVisibleProperty is
+       delivered through the generated .editorconfig, and an editorconfig value ends at the first ';' or '#' — the
+       parser reads the rest as a comment. A ';'-joined list therefore arrives at the generator truncated to its
+       first entry, silently and with no diagnostic anywhere. '|' is not a legal path character on Windows and is
+       not comment syntax, so it survives the round trip; the generator splits on it.
+
+       Guarded by `PipelineContractTests.EveryCompilerVisiblePropertyIsReadByTheConfigReader`, which holds the
+       property to the reader, and by `EngineObservationTests.TheImplementationListIsSplitOnTheBarAndOnNothingElse`,
+       which holds the reader to the separator. -->
+  <Target Name="_HeddleResolveObserveImplementationPath"
+          AfterTargets="ResolveAssemblyReferences"
+          BeforeTargets="GenerateMSBuildEditorConfigFileCore;CoreCompile"
+          Condition="'$(HeddleObserveEngine)' != 'Off' and '$(HeddleObserveImplementationPath)' == ''">
+    <ItemGroup>
+      <_HeddleObserveImplementation Include="@(ReferencePath)" Condition="'%(ReferencePath.ReferenceAssembly)' != ''" />
+    </ItemGroup>
+    <PropertyGroup>
+      <HeddleObserveImplementationPath>@(_HeddleObserveImplementation->'%(FullPath)', '|')</HeddleObserveImplementationPath>
+    </PropertyGroup>
+  </Target>
+
   <Target Name="_HeddleCleanObserveCache" AfterTargets="CoreClean" Condition="'$(HeddleObserveIntermediatePath)' != ''">
     <ItemGroup>
       <_HeddleObserveCacheFile Include="$(HeddleObserveIntermediatePath)/**" />

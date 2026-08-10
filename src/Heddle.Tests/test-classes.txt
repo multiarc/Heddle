@@ -8,7 +8,7 @@ Heddle.Tests.AssemblyRegistrationTests
 Heddle.Tests.AssignabilityCorpusReflectionTests
 Heddle.Tests.AtEscapeTests
 Heddle.Tests.BindDefinitionOverloadTests
-Heddle.Tests.BodyModelRuleTableTests
+Heddle.Tests.BodyModelTypingTests
 Heddle.Tests.BraceMisreadWarningTests
 Heddle.Tests.BranchAllocationTests
 Heddle.Tests.BranchConcurrencyTests

@@ -6,6 +6,8 @@ using System.Linq;
 using Xunit;
 using BundleLoader = gen::Heddle.Generator.Observe.BundleLoader;
 using EngineObservation = gen::Heddle.Generator.Observe.EngineObservation;
+using ImplementationReferences = gen::Heddle.Generator.Observe.ImplementationReferences;
+using ObserveCache = gen::Heddle.Generator.Observe.ObserveCache;
 using IntermediateAssembly = gen::Heddle.Generator.Observe.IntermediateAssembly;
 
 namespace Heddle.Generator.Tests
@@ -191,31 +193,135 @@ namespace ObserveProbe
 
         /// <summary>
         /// A build whose templates the generator already types never asks to observe, so it emits no intermediate
-        /// assembly, loads nothing, and cannot fail to observe — <c>Strict</c> included. Building the bundle is a
-        /// whole C# compile of the compilation being built and the generator runs on every change to it, so an
-        /// unconditional one would put that compile on an editor's keystroke path for every consumer, including
-        /// every consumer with nothing to gain from it.
+        /// assembly, loads nothing, and cannot fail to observe — <c>Strict</c> with nowhere to write included.
+        /// Building the bundle is a whole C# compile of the compilation being built and the generator runs on every
+        /// change to it, so an unconditional one would put that compile on an editor's keystroke path for every
+        /// consumer, including every consumer with nothing to gain from it.
+        /// <para>A template with no body at all is what qualifies now. A body-hosting call does ask, whatever its
+        /// name: the build reads what the hook chose rather than predicting it from a table of built-in names, so
+        /// <c>@if</c> asks exactly as a third party's extension does.</para>
         /// </summary>
         [Fact]
         public void ATemplateTheBuildAlreadyTypesNeverAsksToObserve()
         {
             var run = GeneratorHarness.RunWithSources(
-                new[] { ("page.heddle", "@model(){{ObserveProbe.Page}}@if(Rows){{[ok]}}") },
+                new[] { ("page.heddle", "@model(){{ObserveProbe.Page}}@(Rows)") },
                 new[] { ExtensionSource("obsunused") },
                 new Dictionary<string, string>
                 {
-                    ["build_property.HeddleObserveEngine"] = "Strict"
+                    ["build_property.HeddleObserveEngine"] = "Strict",
+                    ["build_property.HeddleObserveIntermediatePath"] = string.Empty
                 });
 
             Assert.Empty(run.GeneratorDiagnostics.Where(d => d.Id == "HED7034"));
             Assert.Contains("__HeddleManifest", string.Join("\n", run.GeneratedSourceTexts));
         }
 
+        /// <summary>A run with the observe directory declared EMPTY — the harness fills one in otherwise, exactly
+        /// as <c>Heddle.Generator.targets</c> does for every real project, so "nowhere to write" has to be asked
+        /// for.</summary>
         private static GeneratorRun Unwritable(string extensionName, string mode) =>
             GeneratorHarness.RunWithSources(
                 new[] { ("page.heddle", Template.Replace("NAME", extensionName)) },
                 new[] { ExtensionSource(extensionName) },
-                new Dictionary<string, string> { ["build_property.HeddleObserveEngine"] = mode });
+                new Dictionary<string, string>
+                {
+                    ["build_property.HeddleObserveEngine"] = mode,
+                    ["build_property.HeddleObserveIntermediatePath"] = string.Empty
+                });
+
+        /// <summary>
+        /// The declared implementation list is split on <c>|</c> and on nothing else.
+        /// <para>The separator is not cosmetic. The list reaches the generator as a
+        /// <c>CompilerVisibleProperty</c>, which the compiler writes into the generated <c>.editorconfig</c>, and
+        /// an editorconfig value ends at the first <c>;</c> — the rest is read as a comment. So a <c>;</c>-joined
+        /// list would arrive truncated to its first entry, silently, with nothing anywhere to say so. Splitting on
+        /// <c>|</c> is what makes the truncation impossible; a <c>;</c>-joined pair is one path here, names no
+        /// file, and contributes nothing.</para>
+        /// </summary>
+        [Fact]
+        public void TheImplementationListIsSplitOnTheBarAndOnNothingElse()
+        {
+            var engine = typeof(Heddle.Data.Scope).Assembly;
+            var roslyn = typeof(Microsoft.CodeAnalysis.Compilation).Assembly;
+
+            var bar = ImplementationReferences.Read(engine.Location + "|" + roslyn.Location);
+            Assert.True(bar.TryGet(Microsoft.CodeAnalysis.AssemblyIdentity.FromAssemblyDefinition(engine), out var engineEntry));
+            Assert.Equal(engine.Location, engineEntry.Path);
+            Assert.True(bar.TryGet(Microsoft.CodeAnalysis.AssemblyIdentity.FromAssemblyDefinition(roslyn), out _));
+
+            var semicolon = ImplementationReferences.Read(engine.Location + ";" + roslyn.Location);
+            Assert.Same(ImplementationReferences.None, semicolon);
+        }
+
+        /// <summary>A path that will not open, or opens and is not an assembly, contributes nothing rather than
+        /// failing the read — the declining direction, so a build with one stale entry still substitutes the
+        /// others.</summary>
+        [Fact]
+        public void APathThatIsNotAReadableAssemblyContributesNothing()
+        {
+            var engine = typeof(Heddle.Data.Scope).Assembly;
+            var missing = Path.Combine(_directory, "no-such-file.dll");
+
+            Assert.Same(ImplementationReferences.None, ImplementationReferences.Read(missing));
+
+            var mixed = ImplementationReferences.Read(missing + "|" + engine.Location);
+            Assert.True(mixed.TryGet(Microsoft.CodeAnalysis.AssemblyIdentity.FromAssemblyDefinition(engine), out _));
+        }
+
+        /// <summary>The digest is a function of the set and not of the order it arrived in, and it moves when the
+        /// set does — it joins the observation memo's key, where an implementation rebuilt behind an unchanged
+        /// reference assembly is a different answer and nothing else would say so.</summary>
+        [Fact]
+        public void TheDigestIsOrderIndependentAndMovesWithTheSet()
+        {
+            var engine = typeof(Heddle.Data.Scope).Assembly.Location;
+            var roslyn = typeof(Microsoft.CodeAnalysis.Compilation).Assembly.Location;
+
+            Assert.Equal(ImplementationReferences.Read(engine + "|" + roslyn).Digest,
+                ImplementationReferences.Read(roslyn + "|" + engine).Digest);
+            Assert.NotEqual(ImplementationReferences.Read(engine).Digest,
+                ImplementationReferences.Read(engine + "|" + roslyn).Digest);
+        }
+
+        /// <summary>
+        /// The produced-content memo and the file store answer about different lifetimes, so the memo alone is not
+        /// an answer.
+        /// <para>A compiler is a persistent server and <c>_HeddleCleanObserveCache</c> empties the observe
+        /// directory on every clean, so between two builds in one process the file behind a memo entry is routinely
+        /// gone. Trusted on its own the memo hands back that path, the bundle finds nothing to load, and every
+        /// build for the rest of the server's life reports only that the intermediate assembly could not be
+        /// loaded — which under <c>Strict</c> is a red build a developer cannot clear without killing the
+        /// compiler. The memo still does its job when the file is there: a second run over identical inputs
+        /// re-emits nothing.</para>
+        /// </summary>
+        [Fact]
+        public void AnIntermediateWhoseFileWasCleanedIsProducedAgain()
+        {
+            var compilation = ProbeCompilation("namespace CleanProbe { public class Marker { } }");
+
+            var first = IntermediateAssembly.Produce(compilation, _directory, out var wroteFirst,
+                out var firstFailure, out var firstName);
+            Assert.True(first != null, firstFailure);
+            Assert.True(wroteFirst);
+
+            var again = IntermediateAssembly.Produce(compilation, _directory, out var wroteAgain,
+                out var againFailure, out var againName);
+            Assert.True(again != null, againFailure);
+            Assert.False(wroteAgain);
+            Assert.Equal(firstName, againName);
+
+            File.Delete(first);
+            File.Delete(first + ".ok");
+            Assert.False(ObserveCache.IsComplete(first));
+
+            var after = IntermediateAssembly.Produce(compilation, _directory, out var wroteAfter,
+                out var afterFailure, out var afterName);
+            Assert.True(after != null, afterFailure);
+            Assert.True(wroteAfter);
+            Assert.Equal(firstName, afterName);
+            Assert.True(ObserveCache.IsComplete(after));
+        }
 
         /// <summary>An unparsable <c>HeddleObserveEngine</c> is HED7009 like every other option, and the build
         /// falls back to the default rather than guessing from a typo.</summary>
@@ -239,9 +345,10 @@ namespace ObserveProbe
             return string.Join("\n----\n", run.GeneratedSourceTexts);
         }
 
-        private static string DigestOf(string source)
-        {
-            var compilation = Microsoft.CodeAnalysis.CSharp.CSharpCompilation.Create("DigestProbe",
+        private static string DigestOf(string source) => IntermediateAssembly.Digest(ProbeCompilation(source));
+
+        private static Microsoft.CodeAnalysis.Compilation ProbeCompilation(string source) =>
+            Microsoft.CodeAnalysis.CSharp.CSharpCompilation.Create("DigestProbe",
                 new[] { Microsoft.CodeAnalysis.CSharp.CSharpSyntaxTree.ParseText(source) },
                 new[]
                 {
@@ -249,7 +356,5 @@ namespace ObserveProbe
                 },
                 new Microsoft.CodeAnalysis.CSharp.CSharpCompilationOptions(
                     Microsoft.CodeAnalysis.OutputKind.DynamicallyLinkedLibrary));
-            return IntermediateAssembly.Digest(compilation);
-        }
     }
 }

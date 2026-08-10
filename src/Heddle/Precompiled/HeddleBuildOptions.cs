@@ -26,6 +26,12 @@ namespace Heddle.Precompiled
         /// only MSBuild can create the directory: an analyzer may not touch <c>System.IO.Directory</c>.</summary>
         public const string ObserveIntermediatePathProperty = "HeddleObserveIntermediatePath";
 
+        /// <summary>The implementation image behind every reference the compiler was handed as a reference
+        /// assembly, which is what observation loads and executes. MSBuild owns the value because only MSBuild sees
+        /// both halves of a project reference: <c>@(ReferencePath)</c> is the implementation and
+        /// <c>%(ReferenceAssembly)</c> is what <c>CoreCompile</c> compiles against.</summary>
+        public const string ObserveImplementationPathProperty = "HeddleObserveImplementationPath";
+
         public const OutputProfile DefaultOutputProfile = OutputProfile.Html;
         public const ExpressionMode DefaultExpressionMode = ExpressionMode.Native;
         public const bool DefaultTrimDirectiveLines = true;
@@ -43,6 +49,11 @@ namespace Heddle.Precompiled
         /// <summary>The generator's blank fallback for the observe directory. An empty path means "nowhere to write
         /// an intermediate assembly", which is observation being unavailable rather than an error.</summary>
         public const string DefaultObserveIntermediatePath = "";
+
+        /// <summary>The generator's blank fallback for the implementation reference list. Empty means "no reference
+        /// the compiler holds has a separate implementation on record", which is what a build that resolves no
+        /// reference assemblies at all declares.</summary>
+        public const string DefaultObserveImplementationPath = "";
 
         /// <summary>The generator's blank fallback for the template root. The <i>effective</i> default is MSBuild's
         /// <c>$(MSBuildProjectDirectory)</c>; an empty root here means "no root", which flattens keys (and now draws

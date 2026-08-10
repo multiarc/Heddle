@@ -471,8 +471,9 @@ namespace Heddle.Tests
             Assert.Equal(new[]
             {
                 "HeddleEmitUtf8Pieces", "HeddleExpressionMode", "HeddleGeneratedNamespace", "HeddleMaxRecursionCount",
-                "HeddleNodeFallback", "HeddleObserveEngine", "HeddleObserveIntermediatePath", "HeddleOutputProfile",
-                "HeddleTemplateRoot", "HeddleTrimDirectiveLines"
+                "HeddleNodeFallback", "HeddleObserveEngine", "HeddleObserveImplementationPath",
+                "HeddleObserveIntermediatePath", "HeddleOutputProfile", "HeddleTemplateRoot",
+                "HeddleTrimDirectiveLines"
             }, declared.ToArray());
             Assert.Equal(declared.ToArray(), read.ToArray());
         }

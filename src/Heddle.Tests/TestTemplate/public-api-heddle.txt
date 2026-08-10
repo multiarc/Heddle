@@ -733,6 +733,7 @@ TYPE Heddle.Precompiled.HeddleBuildOptions
   FIELD System.Int32 DefaultMaxRecursionCount
   FIELD System.String BuildPropertyPrefix
   FIELD System.String DefaultGeneratedNamespace
+  FIELD System.String DefaultObserveImplementationPath
   FIELD System.String DefaultObserveIntermediatePath
   FIELD System.String DefaultTemplateRoot
   FIELD System.String EmitUtf8PiecesProperty
@@ -743,6 +744,7 @@ TYPE Heddle.Precompiled.HeddleBuildOptions
   FIELD System.String MaxRecursionCountProperty
   FIELD System.String NodeFallbackProperty
   FIELD System.String ObserveEngineProperty
+  FIELD System.String ObserveImplementationPathProperty
   FIELD System.String ObserveIntermediatePathProperty
   FIELD System.String OutputProfileProperty
   FIELD System.String TemplateRootProperty

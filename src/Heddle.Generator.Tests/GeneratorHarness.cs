@@ -114,6 +114,37 @@ namespace Heddle.Generator.Tests
             return string.Join("\n", lines);
         }
 
+        /// <summary>
+        /// Where these runs may write observation's content-addressed intermediate assemblies.
+        /// <para>Every real build has one: <c>Heddle.Generator.targets</c> sets
+        /// <c>$(HeddleObserveIntermediatePath)</c> for any project that has not turned observation off. A harness
+        /// without one is a harness unlike every consumer — and since a body's typing now comes from the observed
+        /// compile rather than from a table of names, it is the difference between the emitter reading a hook and
+        /// reading nothing at all. A test that wants the nowhere-to-write case declares the key empty and gets it.
+        /// </para>
+        /// </summary>
+        private static readonly string ObserveDirectory = CreateObserveDirectory();
+
+        private static string CreateObserveDirectory()
+        {
+            var path = Path.Combine(Path.GetTempPath(), "heddle-observe-harness", Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(path);
+            return path;
+        }
+
+        /// <summary>The caller's global options with the observe directory filled in where the caller did not name
+        /// one — never overwriting a value a test chose, empty included.</summary>
+        private static Dictionary<string, string> WithObserveDefaults(Dictionary<string, string> globalOptions)
+        {
+            const string key = "build_property.HeddleObserveIntermediatePath";
+            var merged = globalOptions == null
+                ? new Dictionary<string, string>()
+                : new Dictionary<string, string>(globalOptions);
+            if (!merged.ContainsKey(key))
+                merged[key] = ObserveDirectory;
+            return merged;
+        }
+
         private static readonly IReadOnlyList<MetadataReference> References = BuildReferences();
 
         private static IReadOnlyList<MetadataReference> BuildReferences()
@@ -190,7 +221,7 @@ namespace Heddle.Generator.Tests
             var additionalTexts = texts.ToImmutableArray();
 
             var optionsProvider = new TestConfigOptionsProvider(
-                globalOptions ?? new Dictionary<string, string>(),
+                WithObserveDefaults(globalOptions),
                 perFileOptions ?? new Dictionary<string, Dictionary<string, string>>());
 
             var driver = CSharpGeneratorDriver.Create(
@@ -222,7 +253,7 @@ namespace Heddle.Generator.Tests
                 .ToImmutableArray();
 
             var optionsProvider = new TestConfigOptionsProvider(
-                globalOptions ?? new Dictionary<string, string>(),
+                WithObserveDefaults(globalOptions),
                 perFileOptions ?? new Dictionary<string, Dictionary<string, string>>());
 
             GeneratorDriver driver = CSharpGeneratorDriver.Create(

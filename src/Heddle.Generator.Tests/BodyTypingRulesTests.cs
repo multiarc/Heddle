@@ -7,6 +7,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Xunit;
 using BodyContext = gen::Heddle.Generator.Typing.BodyContext;
+using BodyModelSource = gen::Heddle.Language.BodyModelSource;
 using BodyTypingMemo = gen::Heddle.Generator.Typing.BodyTypingMemo;
 using BodyTypingRules = gen::Heddle.Generator.Typing.BodyTypingRules;
 using ParseContext = gen::Heddle.Language.ParseContext;
@@ -64,29 +65,14 @@ namespace Heddle.Generator.Tests
             return layout;
         }
 
-        // ---- TryNestedBodyContext: the BodyModelRules row decides the nested body's environment ----
-
-        [Theory]
-        [InlineData("if")]
-        [InlineData("ifnot")]
-        [InlineData("elif")]
-        [InlineData("elseif")]
-        [InlineData("else")]
-        [InlineData("for")]
-        public void AParentRowBodyKeepsTheEnclosingContext(string name)
-        {
-            var bctx = TypedContext(Person);
-            Assert.True(BodyTypingRules.TryNestedBodyContext(name, bctx, null, out var nested));
-            Assert.Same(bctx.ModelSymbol, nested.ModelSymbol);
-            Assert.Equal(bctx.ModelCast, nested.ModelCast);
-            Assert.False(nested.IsDynamic);
-        }
+        // ---- TryNestedBodyContext: the role the host's hook put the body in decides its environment ----
 
         [Fact]
-        public void AListBodyIsTypedByTheElementNotTheEnclosingModel()
+        public void AnObservedBodyIsTypedByTheModelTheHookChoseNotTheEnclosingOne()
         {
             var bctx = TypedContext(Person);
-            Assert.True(BodyTypingRules.TryNestedBodyContext("list", bctx, StringType, out var nested));
+            Assert.True(BodyTypingRules.TryNestedBodyContext(BodyModelSource.Observed, bctx, StringType,
+                out var nested));
             Assert.False(nested.IsDynamic);
             Assert.Same(StringType, nested.ModelSymbol);
             Assert.Equal("(" + SymbolTypeResolver.FullyQualified(StringType) + ")", nested.ModelCast);
@@ -95,9 +81,10 @@ namespace Heddle.Generator.Tests
         }
 
         [Fact]
-        public void AListBodyOverADynamicElementIsUntypedAndCarriesTheElement()
+        public void AnObservedBodyOverADynamicModelIsUntypedAndCarriesIt()
         {
-            Assert.True(BodyTypingRules.TryNestedBodyContext("list", TypedContext(Person), DynamicType, out var nested));
+            Assert.True(BodyTypingRules.TryNestedBodyContext(BodyModelSource.Observed, TypedContext(Person),
+                DynamicType, out var nested));
             Assert.True(nested.IsDynamic);
             Assert.Null(nested.ModelSymbol);
             Assert.Null(nested.ModelCast);
@@ -105,27 +92,23 @@ namespace Heddle.Generator.Tests
         }
 
         [Fact]
-        public void AListBodyWithNoElementTypeIsUntypedWithNoModelBehindIt()
+        public void AnObservedBodyWithNoModelTypeIsUntypedWithNoModelBehindIt()
         {
-            Assert.True(BodyTypingRules.TryNestedBodyContext("list", TypedContext(Person), null, out var nested));
+            Assert.True(BodyTypingRules.TryNestedBodyContext(BodyModelSource.Observed, TypedContext(Person),
+                null, out var nested));
             Assert.True(nested.IsDynamic);
             Assert.Null(nested.DynamicBodyModel);
         }
 
         [Fact]
-        public void SlotModeAndPropsPropagateIntoAListBody()
+        public void SlotModeAndPropsPropagateIntoAnObservedBody()
         {
             var props = Layout(("title", StringType));
             var bctx = TypedContext(Person, props).AsSlot(StringType);
-            Assert.True(BodyTypingRules.TryNestedBodyContext("list", bctx, IntType, out var nested));
+            Assert.True(BodyTypingRules.TryNestedBodyContext(BodyModelSource.Observed, bctx, IntType,
+                out var nested));
             Assert.Same(StringType, nested.SlotType);
             Assert.Same(props, nested.Props);
-        }
-
-        [Fact]
-        public void ANameWithNoPinnedRowRefusesTheNestedBody()
-        {
-            Assert.False(BodyTypingRules.TryNestedBodyContext("frobnicate", TypedContext(Person), null, out _));
         }
 
         // ---- TryDataValueBodyContext: a data-role body is typed by the call value (the engine's dataType) ----
