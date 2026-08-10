@@ -51,14 +51,27 @@ namespace Heddle.Precompiled
 
         /// <summary>Binds the engine's accessor. Called once, from <see cref="PrecompiledRuntime.Init"/>, before
         /// anything can render. A <c>::</c>-rooted path walks from <paramref name="rootType"/>, which the site
-        /// already knows, and every other path from the model type the hook just answered with.</summary>
+        /// already knows, and every other path from the model type the hook just answered with.
+        /// <para><b>No type is the dynamic answer, not the absence of one.</b> A hook that compiles its body
+        /// against a dynamic scope — which is every hook re-typing its body to a caller under a model-less
+        /// document — reports no type here, and the engine resolves that body's reads at render rather than
+        /// refusing them at compile time. So does this: the path binds to the same per-hop
+        /// <see cref="PrecompiledRuntime.DynamicMember"/> walk the dynamic tier emits, in the same binder context,
+        /// with the same null-propagating hop rule. Reading it as a refusal instead put every such body — and with
+        /// it the enclosing call site — through <see cref="PrecompiledSiteFallbackExtension"/>, which compiles the
+        /// call as its own document and so cannot carry a protocol the enclosing scope owns: a nested branch set
+        /// published its state where the sibling terminal could not read it and the render threw.</para></summary>
         /// <returns>The failure message, or <c>null</c> on success.</returns>
         internal string Bind(Type modelType, Type rootType)
         {
             var startType = RootReference ? rootType : modelType;
             if (startType == null)
-                return "the hook answered no model type for this body, so '" + string.Join(".", Segments) +
-                       "' has nothing to resolve against";
+            {
+                _read = ReadDynamic;
+                IsBound = true;
+                return null;
+            }
+
             try
             {
                 _read = PrecompiledRuntime.NativeAccessor(startType, Segments, RootReference);
@@ -70,6 +83,18 @@ namespace Heddle.Precompiled
                 return "'" + string.Join(".", Segments) + "' does not resolve on '" + startType.FullName + "': " +
                        e.Message;
             }
+        }
+
+        /// <summary>The dynamic tier's own read of this path: one hop per segment through the engine's shared
+        /// dynamic member access, a <c>null</c> receiver propagating <c>null</c>. A method group rather than a
+        /// closure, so binding allocates nothing beyond the delegate and rendering allocates nothing at all.
+        /// </summary>
+        private object ReadDynamic(object model, object chained, object root)
+        {
+            var current = RootReference ? root : model;
+            for (int i = 0; i < Segments.Length && current != null; i++)
+                current = PrecompiledRuntime.DynamicMember(current, Segments[i]);
+            return current;
         }
     }
 }
