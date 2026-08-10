@@ -8,10 +8,10 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// The double-encode warning HED2003 (phase 2 D9): a bodiless unnamed <c>@(...)</c> under effective
-    /// <c>Html</c> whose parenthesized chain's final producer carries <c>[EncodeOutput]</c> is flagged at the
-    /// producer call. Negatives — named <c>@html()</c>, <c>@out():html()</c>, the inert top-level
-    /// <c>@(V):html()</c>, and the <c>Text</c>-profile nested chain — never warn.
+    /// The double-encode warning HED2003: a bodiless unnamed <c>@(...)</c> under effective <c>Html</c>
+    /// whose parenthesized chain's final producer carries <c>[EncodeOutput]</c> is flagged at the producer call.
+    /// Negatives — named <c>@html()</c>, <c>@out():html()</c>, the inert top-level <c>@(V):html()</c>, and
+    /// the <c>Text</c>-profile nested chain — never warn.
     /// </summary>
     public class DoubleEncodeWarningTests
     {
@@ -40,7 +40,7 @@ namespace Heddle.Tests
                 w => w.DiagnosticId == HeddleDiagnosticIds.RedundantEncodingExtension);
             Assert.Equal(Hed2003Message, warning.Error);
             Assert.Equal("Remove 'html()', or output the trusted value through @raw(...).", warning.Fix);
-            // Positioned at the nested html producer (inside the outer @( ... )), not at the outer carrier.
+            // Warning points to the nested producer, not the outer carrier.
             Assert.True(warning.Position.StartIndex > 1);
             Assert.Equal("&amp;lt;b&amp;gt;x&amp;lt;/b&amp;gt;", t.Generate(new VModel { V = "<b>x</b>" }));
         }
@@ -72,8 +72,7 @@ namespace Heddle.Tests
         [Fact]
         public void TopLevelChainedHtmlDoesNotWarn()
         {
-            // M15: the chained html() result lands in the ignored ChainedData of the bodiless sink and is
-            // discarded; the sink encodes its own ModelData once. Inert, so no warning.
+            // Chained result is discarded; only sink's own encoding applies.
             var t = Compile("@(V):html()", OutputProfile.Html);
             Assert.False(HasWarning(t));
             Assert.Equal("&lt;b&gt;x&lt;/b&gt;", t.Generate(new VModel { V = "<b>x</b>" }));

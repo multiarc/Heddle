@@ -14,10 +14,10 @@ using Xunit;
 namespace Heddle.Generator.Tests
 {
     /// <summary>
-    /// WI7 / D-ROLE-5 (§6.5): the optional generator drift diagnostic <c>HED7016</c> fires for a branch
-    /// <c>Continuation</c>/<c>Terminal</c> that omits <c>[ScopeChannel]</c> (it can never read the branch state at
-    /// render time, R11), and never fires for the compliant engine built-ins or a compliant custom trio. The
-    /// diagnostic is additive: emitting it does not change any generated source or existing diagnostics.
+    /// The optional generator drift diagnostic <c>HED7016</c> fires for a branch <c>Continuation</c>/<c>Terminal</c>
+    /// that omits <c>[ScopeChannel]</c> (it can never read the branch state at render time), and never fires for the
+    /// compliant engine built-ins or a compliant custom trio. The diagnostic is additive: emitting it does not change
+    /// any generated source or existing diagnostics.
     /// </summary>
     public class BranchRoleDriftDiagnosticTests
     {
@@ -25,9 +25,14 @@ namespace Heddle.Generator.Tests
 
         private static IReadOnlyList<MetadataReference> BuildReferences()
         {
-            var tpa = (string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES");
+            var tpa = Heddle.Generator.Tests.HostAssemblies.TrustedOrLoaded();
             var refs = tpa.Split(Path.PathSeparator)
                 .Where(p => !string.IsNullOrEmpty(p) && File.Exists(p))
+                // Heddle.Generator is an *analyzer*, never a reference — and it carries linked copies of runtime
+                // types (Heddle.Attributes.BranchRole), so handing it to a probe compilation alongside Heddle.dll
+                // makes those names ambiguous (CS0433). Same filter the harnesses apply.
+                .Where(p => !string.Equals(Path.GetFileNameWithoutExtension(p), "Heddle.Generator",
+                    StringComparison.OrdinalIgnoreCase))
                 .Select(p => (MetadataReference)MetadataReference.CreateFromFile(p))
                 .ToList();
             refs.Add(MetadataReference.CreateFromFile(
@@ -35,9 +40,8 @@ namespace Heddle.Generator.Tests
             return refs;
         }
 
-        // A continuation and a terminal that FAIL the R11 contract (no [ScopeChannel]); plus one compliant
-        // continuation, to prove the drift set is exactly the offenders.
-        private const string DriftSource = @"
+        // Two drift cases (no [ScopeChannel]) and one compliant continuation to establish the exact drift set.
+        private static readonly string DriftSource = GeneratorHarness.WithAllExtensionsExported(@"
 using Heddle.Attributes;
 using Heddle.Core;
 using Heddle.Data;
@@ -52,7 +56,7 @@ namespace DriftBranch
         public override void RenderData(in Scope scope) { }
     }
 
-    // Continuation WITHOUT [ScopeChannel] — drift (HED7016).
+    // Drift: Continuation missing [ScopeChannel].
     [ExtensionName(""driftbetween"")]
     [BranchRole(BranchRole.Continuation)]
     public class DriftBetweenExtension : AbstractExtension
@@ -61,7 +65,7 @@ namespace DriftBranch
         public override void RenderData(in Scope scope) { }
     }
 
-    // Terminal WITHOUT [ScopeChannel] — drift (HED7016).
+    // Drift: Terminal missing [ScopeChannel].
     [ExtensionName(""driftfinish"")]
     [BranchRole(BranchRole.Terminal)]
     public class DriftFinishExtension : AbstractExtension
@@ -70,7 +74,7 @@ namespace DriftBranch
         public override void RenderData(in Scope scope) { }
     }
 
-    // Compliant continuation — NOT drift.
+    // Compliant: has [ScopeChannel].
     [ExtensionName(""okbetween"")]
     [ScopeChannel]
     [BranchRole(BranchRole.Continuation)]
@@ -79,9 +83,9 @@ namespace DriftBranch
         public override object ProcessData(in Scope scope) => string.Empty;
         public override void RenderData(in Scope scope) { }
     }
-}";
+}");
 
-        private const string CompliantTrioSource = @"
+        private static readonly string CompliantTrioSource = GeneratorHarness.WithAllExtensionsExported(@"
 using Heddle.Attributes;
 using Heddle.Core;
 using Heddle.Data;
@@ -113,7 +117,7 @@ namespace OkBranch
         public override object ProcessData(in Scope scope) => string.Empty;
         public override void RenderData(in Scope scope) { }
     }
-}";
+}");
 
         private sealed class TemplateText : AdditionalText
         {
@@ -139,7 +143,7 @@ namespace OkBranch
             public override Microsoft.CodeAnalysis.Diagnostics.AnalyzerConfigOptions GetOptions(AdditionalText textFile) => new Options();
         }
 
-        private static ImmutableArray<Diagnostic> RunGenerator(string csharpSource)
+        private static ImmutableArray<Diagnostic> RunGenerator(string csharpSource, string template = "hello")
         {
             var trees = csharpSource == null
                 ? Array.Empty<SyntaxTree>()
@@ -147,7 +151,7 @@ namespace OkBranch
             var compilation = CSharpCompilation.Create("DriftGenTest", trees, References,
                 new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 
-            var texts = ImmutableArray.Create<AdditionalText>(new TemplateText("Home.heddle", "hello"));
+            var texts = ImmutableArray.Create<AdditionalText>(new TemplateText("Home.heddle", template));
 
             var driver = CSharpGeneratorDriver.Create(
                 new[] { new HeddleTemplateGenerator().AsSourceGenerator() },
@@ -180,8 +184,27 @@ namespace OkBranch
         public void Hed7016DoesNotFireForCompliantTrioOrBuiltIns()
         {
             Assert.Empty(RunGenerator(CompliantTrioSource).Where(d => d.Id == "HED7016"));
-            // No custom source at all — only the engine built-ins (all R11-compliant).
+            // No custom source at all — only the engine built-ins, which all carry the pairing.
             Assert.Empty(RunGenerator(null).Where(d => d.Id == "HED7016"));
+        }
+
+        /// <summary>HED7016 names the drifting <i>type</i> once per compilation; the front end's own HED3005 names
+        /// the <i>call</i>, so a template that actually uses the drifting continuation now carries a positioned
+        /// squiggle at it. The compliant continuation in the same trio draws neither.</summary>
+        [Fact]
+        public void Hed3005IsForwardedAtTheCallThatUsesTheDriftingContinuation()
+        {
+            const string drifting = "@begin(true){{a}}@driftbetween(true){{b}}";
+
+            var reported = RunGenerator(DriftSource, drifting);
+            var warning = Assert.Single(reported, d => d.Id == "HED3005");
+            Assert.Equal(DiagnosticSeverity.Warning, warning.Severity);
+            Assert.Equal(drifting.IndexOf("driftbetween", StringComparison.Ordinal),
+                warning.Location.SourceSpan.Start);
+            Assert.Contains("[ScopeChannel]", warning.GetMessage(), StringComparison.Ordinal);
+
+            var compliant = RunGenerator(DriftSource, "@begin(true){{a}}@okbetween(true){{b}}");
+            Assert.DoesNotContain(compliant, d => d.Id == "HED3005");
         }
 
         [Fact]

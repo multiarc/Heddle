@@ -6,7 +6,6 @@ using Heddle.Data;
 namespace Heddle {
     public class FileReader {
         private readonly TemplateOptions _options;
-        private readonly string _templateName;
 
         public FileReader (TemplateOptions options)
         {
@@ -17,7 +16,6 @@ namespace Heddle {
             if (string.IsNullOrWhiteSpace(options.TemplateName))
                 throw new ArgumentException("Template Name should not be empty");
 
-            _templateName = options.TemplateName;
             _options = options;
         }
 
@@ -34,9 +32,10 @@ namespace Heddle {
             }
         }
 
+        /// <summary>The composed file path from <see cref="TemplateOptions.FullPath"/>. The constructor guarantees non-blank inputs.</summary>
         public string GetFileName ()
         {
-            return Path.Combine(_options.RootPath, _templateName + _options.FileNamePostfix);
+            return _options.FullPath;
         }
     }
 }

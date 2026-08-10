@@ -1,0 +1,16 @@
+{%- comment -%}
+  Idiomatic Liquid -- composed-page nav-link partial (DotLiquid dialect).
+
+  Patterns followed, from the engines' own documentation:
+    Liquid language reference   https://shopify.github.io/liquid/
+    DotLiquid                   http://dotliquidmarkup.org/
+
+  Nested nav partial: invoked from a {% for %} loop; DotLiquid's scope-shared
+  {% include %} makes the loop variable visible inside the partial.
+
+  Authored the way the docs teach rather than to match the oracle byte-for-byte: readable
+  whitespace and Liquid's own control-flow tags. Checked by the functional verifier, not
+  the byte gate.
+{%- endcomment -%}
+
+<li class="nav-link"><a href="{{ link.href }}">{{ link.label }}</a></li>

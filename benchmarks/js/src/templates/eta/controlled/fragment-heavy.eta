@@ -1,0 +1,1 @@
+<div class="panel"><% it.items.forEach(item => { %><% if (item.is_tile) { %><%~ include("@tile", item) %><% } else if (item.is_card) { %><%~ include("@card", item) %><% } else if (item.is_media) { %><%~ include("@media_row", item) %><% } else { %><%~ include("@stat", item) %><% } %><% }) %></div>

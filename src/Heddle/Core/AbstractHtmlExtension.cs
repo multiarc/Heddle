@@ -12,8 +12,7 @@ namespace Heddle.Core
             var obj = ProcessDataInternal(scope);
             if (DirectRender && obj != null)
             {
-                // Route through the effective encoder (B2): the configured TemplateOptions.Encoder carried by the
-                // render's sink, or null for the legacy WebUtility.HtmlEncode path.
+                // Use configured encoder or fall back to WebUtility for legacy compatibility.
                 var encoder = (scope.Renderer as IEncoderCarrier)?.Encoder;
                 var dataToEncode = obj as string;
                 if (!string.IsNullOrEmpty(dataToEncode))

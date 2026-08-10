@@ -8,7 +8,7 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Phase 7 D5/D20 (WI4 runtime side): the <see cref="PrecompiledRuntime"/> render funnel. Hand-built strategies
+    /// The <see cref="PrecompiledRuntime"/> render funnel. Hand-built strategies
     /// reproducing the generated-code shape (example 1: static pieces + a bound <c>EmptyExtension</c> over member
     /// paths, per-hop null-safe) must render <b>byte-identical</b> to the dynamic engine — the differential contract
     /// the generator's emitter will target.
@@ -121,6 +121,55 @@ namespace Heddle.Tests
             var scope = new Scope(null, null, null, null, renderer, null, null);
             Assert.Null(PrecompiledRuntime.Prop(scope, 0));
             Assert.Null(PrecompiledRuntime.RootModel(scope));
+        }
+
+        /// <summary>RootData rides the scope lineage unchanged through model swaps, so a generated '::' read
+        /// inside any nested body still answers the template's root model — the same object, not a copy.</summary>
+        [Fact]
+        public void RootModelSurvivesModelSwaps()
+        {
+            var root = new Product { Name = "root" };
+            var renderer = new ScopeRenderer(16);
+            var scope = new Scope(root, null, root, null, renderer, null, null);
+            var nested = scope.Model(new Nested { Name = "child" }).Model("leaf");
+            Assert.Same(root, PrecompiledRuntime.RootModel(nested));
+        }
+
+        /// <summary>
+        /// A hook that compiled its body against a dynamic scope reports no type, and that is an answer: the
+        /// accessor binds to the dynamic tier's own per-hop read instead of refusing.
+        /// <para>Refusing it faulted the enclosing call site into <c>PrecompiledSiteFallbackExtension</c>, which
+        /// compiles that call as its own document — and a document cannot carry a protocol the enclosing scope
+        /// owns. A nested branch set under a model-less document published its state where the sibling terminal
+        /// could not read it, and rendering threw '@else is a branch terminal with no matching opener' where the
+        /// engine renders the else body. <c>branching-nested.heddle</c> is that shape, and
+        /// <c>EngineObservationCorpusTests</c> renders it on both the blind and the observed build.</para>
+        /// </summary>
+        [Fact]
+        public void AnAccessorTheHookGaveNoModelTypeForReadsDynamicallyRatherThanRefusing()
+        {
+            var accessor = new PrecompiledLateAccessor(new[] { "Manufacturer", "Name" });
+
+            Assert.Null(accessor.Bind(null, null));
+            Assert.True(accessor.IsBound);
+
+            var model = new Product { Manufacturer = new Nested { Name = "m" } };
+            Assert.Equal("m", accessor.Read(model, null, null));
+            Assert.Null(accessor.Read(new Product(), null, null));
+            Assert.Null(accessor.Read(null, null, null));
+        }
+
+        /// <summary>The same answer over the root channel: a '::'-rooted path whose root type the site could not
+        /// state reads the root model dynamically rather than refusing the template.</summary>
+        [Fact]
+        public void ARootRootedAccessorWithNoRootTypeReadsTheRootModelDynamically()
+        {
+            var accessor = new PrecompiledLateAccessor(new[] { "Name" }, rootRef: true);
+
+            Assert.Null(accessor.Bind(null, null));
+            Assert.True(accessor.IsBound);
+            Assert.Equal("root", accessor.Read(new Product { Name = "model" }, null,
+                new Product { Name = "root" }));
         }
     }
 }

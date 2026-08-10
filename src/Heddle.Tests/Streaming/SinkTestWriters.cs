@@ -5,9 +5,7 @@ using System.Collections.Generic;
 namespace Heddle.Tests.Streaming
 {
     /// <summary>
-    /// Test-owned <see cref="IBufferWriter{T}"/> implementations (phase 8 WI2). <c>ArrayBufferWriter&lt;byte&gt;</c> is
-    /// in-box only on netcoreapp3.0+/netstandard2.1 and is <b>not</b> in the System.Memory package — so on the net48
-    /// test lane the sink tests run over these writers instead (same assertions, same fixtures).
+    /// Test <see cref="IBufferWriter{T}"/> implementations. <c>ArrayBufferWriter&lt;byte&gt;</c> unavailable on net48, so sink tests use these instead.
     /// </summary>
     internal sealed class TestBufferWriter : IBufferWriter<byte>
     {
@@ -58,9 +56,7 @@ namespace Heddle.Tests.Streaming
     }
 
     /// <summary>
-    /// A deliberately stingy <see cref="IBufferWriter{T}"/> that returns spans of <b>exactly</b> the requested hint
-    /// (the minimum the contract allows) and a fresh array every call — stressing that the sink adapters honor the
-    /// GetSpan contract (never assume a larger span; never write after Advance; request a fresh span each iteration).
+    /// Returns spans of exactly the requested hint (minimum the contract allows), fresh array each call — stresses sink adapters honor the GetSpan contract.
     /// </summary>
     internal sealed class StingyBufferWriter : IBufferWriter<byte>
     {
@@ -91,9 +87,7 @@ namespace Heddle.Tests.Streaming
     }
 
     /// <summary>
-    /// A resettable, pool-backed <see cref="IBufferWriter{T}"/> for the allocation guarantee tests (D13): after warm-up
-    /// its backing array is reused across renders, so a per-render allocation delta reflects only the engine's own
-    /// managed allocations, not the sink's buffer growth.
+    /// Pool-backed and resettable; for allocation tests where the backing array reuses after warm-up so deltas reflect engine allocations only.
     /// </summary>
     internal sealed class PooledResettableBufferWriter : IBufferWriter<byte>
     {

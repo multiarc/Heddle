@@ -11,7 +11,7 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// C1-R11 — render-budget enforcement, exercised per budget kind × per sink path (string / <see cref="TextWriter"/>
+    /// Render-budget enforcement, exercised per budget kind × per sink path (string / <see cref="TextWriter"/>
     /// / <c>IBufferWriter&lt;byte&gt;</c>) × breach and just-under-limit, plus the empty-loop deadline, recursion
     /// interplay, and the zero-cost-when-off (null budget) behavior. The wrapper is per-<c>Generate</c> and enforces at
     /// the renderer seam, so all three sinks share one counting site — every sink is expected to behave identically.
@@ -55,13 +55,11 @@ namespace Heddle.Tests
             }
         }
 
-        // ---- MaxOutputChars ---------------------------------------------------------------------------------
-
         [Theory]
         [MemberData(nameof(Sinks))]
         public void OutputChars_Breach_Throws(SinkKind sink)
         {
-            var t = Compile("abcdefghij", new RenderBudget { MaxOutputChars = 5 });   // 10 static chars > 5
+            var t = Compile("abcdefghij", new RenderBudget { MaxOutputChars = 5 });
             var ex = Assert.Throws<TemplateRenderBudgetException>(() => Render(t, sink));
             Assert.Equal(RenderBudgetKind.OutputChars, ex.Kind);
             Assert.Equal(5, ex.Limit);
@@ -77,13 +75,11 @@ namespace Heddle.Tests
             Assert.Equal("abcdefghij", Render(t, sink));
         }
 
-        // ---- MaxRenderOps -----------------------------------------------------------------------------------
-
         [Theory]
         [MemberData(nameof(Sinks))]
         public void RenderOps_Breach_Throws(SinkKind sink)
         {
-            var t = Compile("@for(10){{x}}", new RenderBudget { MaxRenderOps = 5 });   // 10 write ops > 5
+            var t = Compile("@for(10){{x}}", new RenderBudget { MaxRenderOps = 5 });
             var ex = Assert.Throws<TemplateRenderBudgetException>(() => Render(t, sink));
             Assert.Equal(RenderBudgetKind.RenderOps, ex.Kind);
             Assert.Equal(5, ex.Limit);
@@ -97,13 +93,10 @@ namespace Heddle.Tests
             Assert.Equal("xxxxxxxxxx", Render(t, sink));
         }
 
-        // ---- MaxRenderTime ----------------------------------------------------------------------------------
-
         [Theory]
         [MemberData(nameof(Sinks))]
         public void RenderTime_Breach_Throws(SinkKind sink)
         {
-            // A zero deadline fires on the first render op on every sink.
             var t = Compile("@for(1000000){{x}}", new RenderBudget { MaxRenderTime = TimeSpan.Zero });
             var ex = Assert.Throws<TemplateRenderBudgetException>(() => Render(t, sink));
             Assert.Equal(RenderBudgetKind.RenderTime, ex.Kind);
@@ -117,8 +110,6 @@ namespace Heddle.Tests
             Assert.Equal("xxxxxxxxxx", Render(t, sink));
         }
 
-        // ---- Empty-loop deadline backstop (C1-R4) -----------------------------------------------------------
-
         [Fact]
         public void EmptyLoop_ZeroOutput_TerminatesViaDeadline()
         {
@@ -130,12 +121,10 @@ namespace Heddle.Tests
             Assert.Equal(RenderBudgetKind.RenderTime, ex.Kind);
         }
 
-        // ---- Empty-loop deadline under an encode proxy (Obs-1 / C1-R4 universality) --------------------------
-
         [Fact]
         public void EmptyLoop_NestedInValueExtensionBody_TerminatesViaDeadline()
         {
-            // Obs-1: a zero-output loop nested inside a DirectRender value-extension body (@html's encoded body).
+            // A zero-output loop nested inside a DirectRender value-extension body (@html's encoded body).
             // There, the loop's `scope.Renderer` is the HtmlEncodedRenderer encode proxy, not the BudgetedRenderer.
             // The proxy must forward IBudgetProbe to the inner budgeted renderer so the per-iteration MaxRenderTime
             // backstop still fires — otherwise the empty loop performs no render op and runs unbounded.
@@ -153,8 +142,6 @@ namespace Heddle.Tests
             var t = Compile("@html(1){{@for(5){{@if(1>2){{never}}}}}}", budget: null);
             Assert.Equal(string.Empty, t.Generate(null));
         }
-
-        // ---- Recursion interplay (C1-R11) -------------------------------------------------------------------
 
         [Fact]
         public void Budget_Fires_IndependentOf_MaxRecursionCount()
@@ -175,17 +162,13 @@ namespace Heddle.Tests
             Assert.Equal(RenderBudgetKind.OutputChars, ex.Kind);
         }
 
-        // ---- Zero cost when off (C1-R11 behavioral leg) -----------------------------------------------------
-
         [Theory]
         [MemberData(nameof(Sinks))]
         public void NullBudget_NeverThrows_AndRendersNormally(SinkKind sink)
         {
-            var t = Compile("@for(500){{x}}", budget: null);   // no wrapper installed on the null path
+            var t = Compile("@for(500){{x}}", budget: null);
             Assert.Equal(new string('x', 500), Render(t, sink));
         }
-
-        // ---- Exception shape (C1-R5) ------------------------------------------------------------------------
 
         [Fact]
         public void Exception_Message_MatchesPattern()

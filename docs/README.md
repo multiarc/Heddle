@@ -16,7 +16,7 @@ The engine is published as a set of NuGet packages:
 | `Heddle.LanguageServer` | [src/Heddle.LanguageServer](../src/Heddle.LanguageServer) | LSP server for editors, shipped as a `dotnet tool` (`heddle-lsp`). |
 | `Heddle.Tool` | [src/Heddle.Tool](../src/Heddle.Tool) | The `heddle` CLI — a `dotnet tool` for rendering templates and build‑time code generation (the T4 successor). |
 
-Current release line: **2.0.0**. The published version is set from the latest
+Current release line: **2.1.0**. The published version is set from the latest
 [release tag](https://github.com/multiarc/Heddle/releases) (`vX.Y.Z`) at publish time —
 see [nuget.org](https://www.nuget.org/packages/Heddle) — so the version in the source
 tree is just a placeholder.
@@ -35,7 +35,7 @@ tree is just a placeholder.
   like‑for‑like comparison is against the four parity‑checked Liquid/Handlebars engines, which
   Heddle leads on render time and where it allocates the least or tied‑least memory —
   Handlebars.Net is within ~0.3 KB). See [Architecture → Performance](architecture.md#performance-characteristics)
-  and the [benchmark project](../src/Heddle.Performance).
+  and the [benchmark harnesses](../benchmarks/README.md).
 - **Composable without coupling.** Reusable templates are declarative extension points, so a
   page can be split into independent pieces recombined by a layout — at no runtime cost — and
   any page can serve as a base for another. See
@@ -108,7 +108,7 @@ Roslyn code generation, lexer modes) and **[Building & Testing](building.md)**.
 ```
 
 ```csharp
-HeddleTemplate.Configure(typeof(Program).Assembly);
+HeddleTemplate.Register(typeof(Program).Assembly);
 
 var source = "@model(){{dynamic}}\n<p>Hi @(Name) — you have @int(Count) new comments.</p>";
 using var template = new HeddleTemplate(source, new CompileContext(new TemplateOptions()));

@@ -95,7 +95,7 @@ namespace Heddle.Samples.StreamingSsr
             var textWriter = await http.GetStringAsync("/text-writer");
             await app.StopAsync();
 
-            // Phase 8 encoding-parity rule at integration level: byte-sink == string Generate == TextWriter sink.
+            // The encoding-parity rule at integration level: byte-sink == string Generate == TextWriter sink.
             var stringOut = template.Generate(Model);
             if (!string.Equals(streamed, stringOut, StringComparison.Ordinal))
                 throw new InvalidOperationException("parity broken: IBufferWriter<byte> output != string Generate output.");

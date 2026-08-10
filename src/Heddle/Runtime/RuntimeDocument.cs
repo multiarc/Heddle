@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using Heddle.Attributes;
 using Heddle.Data;
 using Heddle.Helpers;
+using Heddle.Language;
 using Heddle.Runtime.Parameters;
 using Heddle.Strings;
 using Heddle.Strings.Core;
@@ -46,6 +48,14 @@ namespace Heddle.Runtime {
         {
             public IDataProcessor Processor;
             public string Piece;
+
+            /// <summary>
+            /// <see cref="Piece"/> pre-encoded as UTF-8, so a UTF-8 sink writes final-form bytes
+            /// instead of re-transcoding the same static text on every render. Null when this
+            /// element carries a <see cref="Processor"/> rather than a literal piece. Encoded once
+            /// at document build: templates compile once, so the cost is off the render path.
+            /// </summary>
+            public byte[] PieceUtf8;
         }
 
         private static ICollection<IDataProcessor> OptimizeCallTree(DocumentElement[] items, string document, out bool canDoFullOptimize)
@@ -92,50 +102,23 @@ namespace Heddle.Runtime {
             return resultTree;
         }
 
+        /// <summary>Segments document into static pieces and processors; shared with emitter so <c>P0..Pn</c> constants match.</summary>
         private static DataProcessor[] GetDocumentPieces(ICollection<IDataProcessor> processors, string document)
         {
             List<DataProcessor> optimized = new List<DataProcessor>();
-            int offset = 0;
-            foreach (var element in processors)
-            {
-                if (element.Position.StartIndex > offset)
+            DocumentShaping.SlicePieces(processors, element => element.Position, document,
+                piece => optimized.Add(new DataProcessor { Piece = piece, Processor = null }),
+                element =>
                 {
-                    optimized.Add(new DataProcessor
-                    {
-                        Piece = document.Substring(offset, element.Position.StartIndex - offset),
-                    });
-                    optimized.Add(new DataProcessor
-                    {
-                        Processor = element
-                    });
-                }
-                else
-                {
-                    optimized.Add(new DataProcessor
-                    {
-                        Processor = element
-                    });
-                }
-                offset = element.Position.StartIndex + element.Position.Length;
-            }
-            if (document.Length > offset)
-            {
-                optimized.Add(new DataProcessor
-                {
-                    Piece = document.Substring(offset),
-                    Processor = null
+                    optimized.Add(new DataProcessor { Processor = element });
+                    return true;
                 });
-            }
             return optimized.ToArray();
         }
 
         /// <summary>
-        /// <para>Whether a body execution of this document must be provisioned with a
-        /// <see cref="ScopeLocals"/> frame: <c>true</c> iff the compiled document statically contains a
-        /// <c>[ScopeChannel]</c> participant (phase 3 D2). Nested bodies are separate documents and do not
-        /// contribute — the flag is strictly per body level.</para>
-        /// <para>Computed once in the constructor over the pre-optimization element tree (recursing nested
-        /// chain parameters); immutable afterwards — safe to read from concurrent renders.</para>
+        /// Whether a body execution must provision a <see cref="ScopeLocals"/> frame: <c>true</c> iff the document
+        /// contains a <c>[ScopeChannel]</c> participant. Computed once, immutable and thread-safe.
         /// </summary>
         internal bool NeedsLocals { get; }
 
@@ -169,8 +152,7 @@ namespace Heddle.Runtime {
         {
             if (item == null)
                 return false;
-            // Phase 8 (D4 carrier-transparency): a parameter-declaring [ScopeChannel] extension stands behind the
-            // attribute-less ExtensionParameterCarrier — unwrap so its body still provisions a locals frame.
+            // Unwrap ExtensionParameterCarrier to reach the [ScopeChannel] extension it wraps.
             var extension = (item.Extension as Core.ExtensionParameterCarrier)?.Inner ?? item.Extension;
             if (extension != null &&
                 extension.GetType().IsHaveAttribute<ScopeChannelAttribute>(true))
@@ -240,6 +222,7 @@ namespace Heddle.Runtime {
                 _processor = processor;
             }
 
+            // Guard: if extension cannot produce a string, degrade to empty.
             public string Execute(in Scope scope) => _processor.ProcessData(scope) as string ?? string.Empty;
 
             public void Render(in Scope scope)
@@ -251,17 +234,24 @@ namespace Heddle.Runtime {
         private sealed class DocumentStrategy : IProcessStrategy
         {
             private readonly string _document;
+            private readonly byte[] _documentUtf8;
 
             public DocumentStrategy(string document)
             {
                 _document = document;
+                _documentUtf8 = Encoding.UTF8.GetBytes(document);
             }
 
             public string Execute(in Scope scope) => _document;
 
+            // Same shape as PrecompiledRuntime.WritePiece, whose semantics the parity gates pin: a
+            // UTF-8 sink takes pre-encoded bytes, everything else takes the chars. Static pieces
+            // reach the sink directly and never pass through the encode proxy, so the
+            // never-bypass-encoding invariant is untouched.
             public void Render(in Scope scope)
             {
-                scope.Renderer.Render(_document);
+                if (scope.Renderer is IUtf8ScopeRenderer u8) u8.RenderUtf8(_documentUtf8);
+                else scope.Renderer.Render(_document);
             }
         }
 
@@ -306,6 +296,12 @@ namespace Heddle.Runtime {
             public NormalStrategy(DataProcessor[] processors)
             {
                 _processors = processors;
+                // Eager: templates compile once, so this is one-time work off the render path. Costs
+                // roughly the static content again in bytes for ASCII-dominated templates, which is
+                // the trade for not re-transcoding every static piece on every UTF-8 render.
+                for (var i = 0; i < _processors.Length; i++)
+                    if (_processors[i].Piece != null)
+                        _processors[i].PieceUtf8 = Encoding.UTF8.GetBytes(_processors[i].Piece);
             }
 
             public string Execute(in Scope scope)
@@ -327,11 +323,15 @@ namespace Heddle.Runtime {
 
             public void Render(in Scope scope)
             {
-                foreach (var element in _processors)
+                // Type-tested once for the whole document rather than per piece.
+                var u8 = scope.Renderer as IUtf8ScopeRenderer;
+                for (var i = 0; i < _processors.Length; i++)
                 {
+                    var element = _processors[i];
                     if (element.Piece != null)
                     {
-                        scope.Renderer.Render(element.Piece);
+                        if (u8 != null) u8.RenderUtf8(element.PieceUtf8);
+                        else scope.Renderer.Render(element.Piece);
                     }
                     else
                     {

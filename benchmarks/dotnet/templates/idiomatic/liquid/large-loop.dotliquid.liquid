@@ -1,0 +1,18 @@
+{%- comment -%}
+  Idiomatic Liquid -- large-loop (DotLiquid dialect).
+
+  Patterns followed, from the engines' own documentation:
+    Liquid language reference   https://shopify.github.io/liquid/
+    DotLiquid                   http://dotliquidmarkup.org/
+
+  The display name row-N is composed in the template as the literal row- plus the value
+  substitution (the model carries data, never display strings).
+
+  Authored the way the docs teach rather than to match the oracle byte-for-byte: readable
+  whitespace and Liquid's own control-flow tags. Checked by the functional verifier, not
+  the byte gate.
+{%- endcomment -%}
+
+{% for item in items %}
+  <tr><td>row-{{ item.value }}</td><td>{{ item.value }}</td></tr>
+{% endfor %}

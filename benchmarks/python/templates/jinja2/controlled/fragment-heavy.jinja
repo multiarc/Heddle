@@ -1,0 +1,1 @@
+<div class="panel">{% for item in items %}{% if item.is_tile %}{% include "shared/tile.jinja" %}{% elif item.is_card %}{% include "shared/card.jinja" %}{% elif item.is_media %}{% include "shared/media-row.jinja" %}{% else %}{% include "shared/stat.jinja" %}{% endif %}{% endfor %}</div>

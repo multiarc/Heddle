@@ -1,0 +1,23 @@
+{
+  "workload": "fragment-heavy",
+  "suite": "raw",
+  "values": [
+    { "text": "<section class=\"tile\">", "count": 12 },
+    { "text": "<article class=\"card\">", "count": 12 },
+    { "text": "<div class=\"media-row\">", "count": 12 },
+    { "text": "<div class=\"stat\">", "count": 12 },
+    { "text": "<span class=\"promo-badge\">", "count": 12 },
+    { "text": "<p class=\"price\">", "count": 12 },
+    { "text": "item-00", "count": 1 },
+    { "text": "item-47", "count": 1 }
+  ],
+  "markers": [
+    "<div class=\"panel\">",
+    "item-00",
+    "item-24",
+    "item-47",
+    "</div>"
+  ],
+  "forbidden": [],
+  "required": []
+}

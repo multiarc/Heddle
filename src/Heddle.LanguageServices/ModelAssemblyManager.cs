@@ -7,7 +7,7 @@ using Heddle.Native;
 namespace Heddle.LanguageServices
 {
     /// <summary>
-    /// Owns the collectible model <see cref="ModelAssemblyContext"/> and its engine registration (phase 6 D14).
+    /// Owns the collectible model <see cref="ModelAssemblyContext"/> and its engine registration.
     /// Load registers the assemblies with <see cref="AssemblyHelper"/> so engine type resolution can see their
     /// types; unload clears that registration (dropping the engine's static references) then <c>Unload()</c>s the
     /// context, retaining only a <see cref="WeakReference"/> for the collection check.
@@ -36,7 +36,7 @@ namespace Heddle.LanguageServices
                 }
                 catch
                 {
-                    // an unreadable/invalid model assembly degrades to typeless for that file (D20 log-level)
+                    // Unreadable/invalid assemblies degrade to typeless.
                 }
             }
 

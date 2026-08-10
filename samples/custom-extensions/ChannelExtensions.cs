@@ -9,7 +9,7 @@ using Heddle.Data;
 
 namespace Heddle.Samples.CustomExtensions
 {
-    // A third-party-style pair coordinating through the public Scope.Publish/TryRead channel (phase 3 D6): the
+    // A third-party-style pair coordinating through the public Scope.Publish/TryRead channel: the
     // publisher writes under its own key (respecting the reserved "heddle." prefix rule) and the reader retrieves it.
     // [ScopeChannel] tells the engine a body containing this extension needs a local frame.
 
@@ -39,7 +39,7 @@ namespace Heddle.Samples.CustomExtensions
             scope.Renderer.Render(ProcessData(scope)?.ToString() ?? string.Empty);
     }
 
-    // A branch-protocol participant (phase 3): reads the BranchState published by a preceding @if/@elif and renders
+    // A branch-protocol participant: reads the BranchState published by a preceding @if/@elif and renders
     // its body only on the not-taken path — a third-party @else-like extension built entirely on the public channel.
     [ExtensionName("ifmiss")]
     [ScopeChannel]

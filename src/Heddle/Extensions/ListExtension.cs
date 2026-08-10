@@ -10,22 +10,7 @@ using Heddle.Strings;
 namespace Heddle.Extensions
 {
     /// <summary>
-    /// <para>List Template</para>
-    /// <para>Optional parameter is sub-template (fully incluisive) wich represents one of element of the list.</para>
-    /// <para>Data should be formatted as ordinary source template. Required <see cref="IEnumerable{T}"/> interface implemented for source data to be serialized.</para>
-    /// <para>For Example:</para>
-    /// <para>
-    ///     <code>
-    ///         <para>&lt;%&lt;list&gt;</para>
-    ///             <para>CustomerList</para>
-    ///             <para>[Birth Date: &lt;%&lt;date&gt;BirthDate[yyyy-MM-dd]%&gt; Name: &lt;%&lt;string&gt;Name%&gt;&lt;br /&gt;]</para>
-    ///         <para>%&gt;</para>
-    ///     </code>
-    /// </para>
-    /// <para>Will produce:</para>
-    /// <para>Birth Date: 1970-02-22 Name: Alex</para>
-    /// <para>Birth Date: 1976-04-15 Name: Anna</para>
-    /// <para>...</para>
+    /// Renders a sub-template once per element of an <see cref="IEnumerable{T}"/>, concatenating results.
     /// </summary>
     [ExtensionName("list")]
     [DataType(typeof(IEnumerable))]
@@ -56,8 +41,7 @@ namespace Heddle.Extensions
         {
             if (!(scope.ModelData is IEnumerable))
                 return string.Empty;
-            // C1-R4: same one-time probe type-test for the value-building path — a giant loop in value context
-            // accumulates before it ever reaches the sink, so the deadline is its only bound.
+            // Type-test the probe once; large loops accumulate before reaching the sink, so enforce the deadline here.
             var probe = scope.Renderer as IBudgetProbe;
             var enumerable = (IEnumerable) scope.ModelData;
             var count = _collectionCountReader?.GetCount(scope.ModelData);
@@ -107,8 +91,7 @@ namespace Heddle.Extensions
             if (!(scope.ModelData is IEnumerable))
                 return;
 
-            // C1-R4: type-test the held renderer for the budget probe once, before the loop, then enforce the
-            // wall-clock deadline per iteration so a zero-output loop (no render op) still terminates.
+            // Type-test the probe once; enforce the deadline per iteration even if the loop produces no output.
             var probe = scope.Renderer as IBudgetProbe;
             var enumerable = (IEnumerable) scope.ModelData;
             var index = 0;

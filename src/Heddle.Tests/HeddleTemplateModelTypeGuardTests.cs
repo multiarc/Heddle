@@ -8,11 +8,11 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Phase 4 WI3 — the opt-in Release model-type guard (<see cref="TemplateOptions.ValidateModelType"/>,
-    /// P4-Q2): opted in, a wrong-typed model throws the same "Type mismatch. Need X but got Y"
-    /// <see cref="TemplateProcessingException"/> the <c>DEBUG</c> guard has always thrown; off (the default),
-    /// Release behavior is unchanged; <c>DEBUG</c> always validates regardless of the flag; the precompiled
-    /// adapter is skipped in both configurations (the documented known limit).
+    /// The model-type guard. A wrong-typed model is refused with "Type mismatch. Need X but got Y"
+    /// in every configuration and whatever <see cref="TemplateOptions.ValidateModelType"/> says — without it the
+    /// value reaches the compiled accessor's cast and escapes as a raw <see cref="InvalidCastException"/>, which is
+    /// not the shape any other render fault has. The precompiled adapter is still skipped: it binds a strategy
+    /// directly and has no compile-time model type to check against.
     /// </summary>
     public class HeddleTemplateModelTypeGuardTests
     {
@@ -38,53 +38,33 @@ namespace Heddle.Tests
             Assert.Equal("STATIC", template.Generate(new Flag()));
         }
 
-#if !DEBUG
         /// <summary>
-        /// Opt-in off (the default) in Release: wrong-typed data is not validated — today's Release behavior,
-        /// byte-identical (the template renders its static body).
+        /// The opt-in left off, which is its default: a wrong-typed model is refused all the same. This is what
+        /// keeps the fault Heddle-shaped on the path that has no guard to fall back on.
         /// </summary>
         [Fact]
-        public void MismatchWithoutOptInIsNotValidatedInRelease()
+        public void MismatchIsValidatedWithTheOptInLeftOff()
         {
             HeddleTemplate.Configure(typeof(HeddleTemplateModelTypeGuardTests).GetTypeInfo().Assembly);
             using var template = new HeddleTemplate("STATIC", new CompileContext(typeof(Flag)));
             Assert.True(template.CompileResult.Success, template.CompileResult.ToString());
 
-            Assert.Equal("STATIC", template.Generate(new object()));
-        }
-#endif
-
-#if DEBUG
-        /// <summary>
-        /// The preserved historical behavior: in DEBUG the guard fires unconditionally, even with the
-        /// opt-in left off.
-        /// </summary>
-        [Fact]
-        public void DebugGuardFiresRegardlessOfOptIn()
-        {
-            HeddleTemplate.Configure(typeof(HeddleTemplateModelTypeGuardTests).GetTypeInfo().Assembly);
-            using var template = new HeddleTemplate("STATIC",
-                new CompileContext(new TemplateOptions { ValidateModelType = false }, typeof(Flag)));
-            Assert.True(template.CompileResult.Success, template.CompileResult.ToString());
-
             var exception = Assert.Throws<TemplateProcessingException>(() => template.Generate(new object()));
             Assert.StartsWith("Type mismatch. Need ", exception.Message);
+
+            Assert.Equal("STATIC", template.Generate(new Flag()));
         }
-#endif
+
+
 
         /// <summary>
-        /// The documented known limit: a precompiled-adapter template (no compile-time model type to check
-        /// against) is never validated, even with the opt-in requested — mirroring the DEBUG guard's skip.
+        /// A precompiled-adapter template binds a strategy directly, so there is no compile-time model type to
+        /// check a model against. It is skipped rather than guessed at.
         /// </summary>
         [Fact]
-        public void PrecompiledPathIsNotValidatedEvenWhenOptedIn()
+        public void PrecompiledPathHasNoModelTypeToValidateAgainst()
         {
             using var template = new HeddleTemplate(new StaticStrategy("P"));   // the internal precompiled-adapter ctor (IVT)
-            // Force the opt-in on the resolved field: even then, the precompiled path skips the guard.
-            var field = typeof(HeddleTemplate).GetField("_validateModelType",
-                BindingFlags.NonPublic | BindingFlags.Instance);
-            Assert.NotNull(field);
-            field.SetValue(template, true);
 
             Assert.Equal("P", template.Generate(new object()));
         }

@@ -60,7 +60,7 @@ namespace Heddle.Runtime.Expressions
             ParseContext parseContext, out ExType resultType)
         {
             // 'this' as a whole expression is the model passthrough — compiles to the existing EmptyParameter so
-            // it works on dynamic scopes too, exactly like the empty member path (D5).
+            // it works on dynamic scopes too, exactly like the empty member path.
             if (expression is ThisNode)
             {
                 resultType = compileScope.ScopeType;
@@ -93,7 +93,7 @@ namespace Heddle.Runtime.Expressions
 
             if (compiler._usesProps)
             {
-                // Props-aware delegate shape (D9): a fourth object[] parameter bound to scope.PropsData. Emitted
+                // Props-aware delegate shape: a fourth object[] parameter bound to scope.PropsData. Emitted
                 // only when the tree contains a prop root; prop-free expressions keep today's 3-arg shape.
                 var propsLambda = Expression.Lambda<Func<object, object, object, object[], object>>(
                     boxed, compiler._model, compiler._chained, compiler._root, compiler._props);
@@ -133,8 +133,6 @@ namespace Heddle.Runtime.Expressions
             return null;
         }
 
-        #region Literals & paths
-
         private Expression VisitLiteral(LiteralNode literal)
         {
             if (literal.LiteralError != null)
@@ -146,7 +144,7 @@ namespace Heddle.Runtime.Expressions
 
         private Expression VisitThis(ThisNode node)
         {
-            // As an operand or path root, 'this' is a typed operand following the phase 1 dynamic-operand rule.
+            // As an operand or path root, 'this' is a typed operand following the dynamic-operand rule.
             _foldable = false;
             var scopeType = _compileScope.ScopeType;
             if (scopeType.IsDynamic)
@@ -175,7 +173,7 @@ namespace Heddle.Runtime.Expressions
             }
             else
             {
-                // Phase 5 (D9): a body prop read wins on the first segment (never for :: root refs, handled above).
+                // A body prop read wins on the first segment (never for :: root refs, handled above).
                 var propExpr = TryVisitPropRoot(path);
                 if (propExpr != null)
                     return propExpr;
@@ -202,7 +200,7 @@ namespace Heddle.Runtime.Expressions
         }
 
         /// <summary>
-        /// Native-tier body prop read (D9): when the path's first segment names a prop in the active layout,
+        /// Native-tier body prop read: when the path's first segment names a prop in the active layout,
         /// roots the read at <c>Convert(props[index], propType)</c> and hops the remaining segments; sets the
         /// props-aware delegate flag. Returns <c>null</c> when the segment is not a prop (ordinary model root).
         /// </summary>
@@ -260,10 +258,9 @@ namespace Heddle.Runtime.Expressions
                     indices[i] = args[i].Type == typeof(int) ? args[i] : Expression.Convert(args[i], typeof(int));
                 }
 
-                Expression access = args.Length == 1
-                    ? Expression.ArrayIndex(target, indices[0])
-                    : Expression.ArrayIndex(target, indices);
-                return NullSafeTarget(target, access, elementType);
+                return NullSafeTarget(target, elementType, receiver => args.Length == 1
+                    ? Expression.ArrayIndex(receiver, indices[0])
+                    : Expression.ArrayIndex(receiver, indices));
             }
 
             var indexer = FindIndexer(targetType, args);
@@ -273,17 +270,26 @@ namespace Heddle.Runtime.Expressions
             var converted = new Expression[args.Length];
             for (int i = 0; i < args.Length; i++)
                 converted[i] = ConvertTo(args[i], indexParams[i].ParameterType);
-            Expression indexerAccess = Expression.Property(target, indexer, converted);
-            return NullSafeTarget(target, indexerAccess, indexer.PropertyType);
+            return NullSafeTarget(target, indexer.PropertyType,
+                receiver => Expression.Property(receiver, indexer, converted));
         }
 
-        private static Expression NullSafeTarget(Expression target, Expression access, Type resultType)
+        /// <summary>
+        /// Guards <paramref name="access"/> with a null test on its receiver. The receiver is bound to a local and
+        /// the access is built over that local, because writing the target into both the test and the access would
+        /// evaluate it twice — and nest, so an indexed path would pay two to the power of its length.
+        /// </summary>
+        private static Expression NullSafeTarget(Expression target, Type resultType,
+            Func<Expression, Expression> access)
         {
             if (target.Type.IsValueType)
-                return access;
-            return Expression.Condition(
-                Expression.Equal(target, Expression.Constant(null, target.Type)),
-                Expression.Default(resultType), access);
+                return access(target);
+            var receiver = Expression.Variable(target.Type);
+            return Expression.Block(new[] { receiver },
+                Expression.Assign(receiver, target),
+                Expression.Condition(
+                    Expression.Equal(receiver, Expression.Constant(null, target.Type)),
+                    Expression.Default(resultType), access(receiver)));
         }
 
         private static PropertyInfo FindIndexer(Type type, Expression[] args)
@@ -319,10 +325,6 @@ namespace Heddle.Runtime.Expressions
                 $"Type {FriendlyName(targetType)} has no accessible indexer that takes ({argTypes}).");
         }
 
-        #endregion
-
-        #region Function calls
-
         private Expression VisitCall(CallNode call)
         {
             _foldable = false;
@@ -331,9 +333,9 @@ namespace Heddle.Runtime.Expressions
             {
                 if (TemplateFactory.Exists(call.Name) || _parseContext.DefenitionExists(call.Name))
                     return Fail(call.Position, HeddleDiagnosticIds.ExtensionCalledAsFunction,
-                        $"'{call.Name}' is an extension, not a registered function — extensions cannot be called inside a native expression. Use a call chain, or register a function with TemplateOptions.Functions.");
+                        FunctionCallMessages.ExtensionCalledAsFunction(call.Name));
                 return Fail(call.Position, HeddleDiagnosticIds.UnknownFunction,
-                    $"Cannot find extension or registered function '{call.Name}'. Register it with TemplateOptions.Functions, or check the name.");
+                    FunctionCallMessages.UnknownFunction(call.Name));
             }
 
             var argExprs = new Expression[call.Arguments.Count];
@@ -347,17 +349,15 @@ namespace Heddle.Runtime.Expressions
             var bind = BindOverload(overloads, argExprs, out var chosen, out var expanded);
             if (bind == BindOutcome.Ambiguous)
             {
-                var candidates = string.Join(", ", overloads.Select(o => o.ToSignatureString()));
                 return Fail(call.Position, HeddleDiagnosticIds.AmbiguousFunctionCall,
-                    $"The call to function '{call.Name}' is ambiguous between: {candidates}.");
+                    FunctionCallMessages.AmbiguousFunctionCall(call.Name, overloads));
             }
 
             if (bind == BindOutcome.None)
             {
                 var argTypes = string.Join(", ", argExprs.Select(a => FriendlyName(a.Type)));
-                var candidates = string.Join(", ", overloads.Select(o => o.ToSignatureString()));
                 return Fail(call.Position, HeddleDiagnosticIds.NoFunctionOverload,
-                    $"No overload of function '{call.Name}' takes ({argTypes}). Candidates: {candidates}.");
+                    FunctionCallMessages.NoFunctionOverload(call.Name, argTypes, overloads));
             }
 
             if (IsCompositeFormat(chosen))
@@ -367,10 +367,10 @@ namespace Heddle.Runtime.Expressions
                     return formatError;
             }
 
-            // HED4001 (phase 4 D3): the built-in three-argument range with a statically-visible non-positive
+            // HED4001: the built-in three-argument range with a statically-visible non-positive
             // literal (or sign-prefixed literal) step is a compile error, positioned at the step argument.
             // Scoped to the built-in MethodInfo by reference — a host-replaced 'range' governs its own step
-            // rules. More complex constant shapes fall through to the render-time guard (phase 1 D17).
+            // rules. More complex constant shapes fall through to the render-time guard.
             if (chosen.Method != null && chosen.Method == RangeThreeArgMethod && call.Arguments.Count == 3 &&
                 TryGetLiteralIntStep(call.Arguments[2], out var step) && step <= 0)
             {
@@ -384,138 +384,68 @@ namespace Heddle.Runtime.Expressions
             return Expression.Invoke(Expression.Constant(chosen.Target, chosen.Target.GetType()), finalArgs);
         }
 
-        private enum BindOutcome { Bound, None, Ambiguous }
+        /// <summary>
+        /// The reflection fact source for the shared overload ranker. The rank logic itself —
+        /// <c>ConversionRank</c>/<c>TryRank</c>/<c>Dominates</c> and the Pareto tier bind — now lives once in
+        /// <see cref="OverloadRank"/>, where the generator's linked build consults the identical rule instead of
+        /// delegating overload selection to the consumer's C# compiler.
+        /// </summary>
+        private sealed class ReflectionRankModel : IRankModel<Type>
+        {
+            public static readonly ReflectionRankModel Instance = new ReflectionRankModel();
+
+            public bool AreSame(Type a, Type b) => a == b;
+
+            public bool IsObject(Type type) => type == typeof(object);
+
+            public bool IsValueType(Type type) => type.IsValueType;
+
+            public bool TryGetNullableUnderlying(Type type, out Type underlying)
+            {
+                underlying = Nullable.GetUnderlyingType(type);
+                return underlying != null;
+            }
+
+            public NumericKind KindOf(Type type) => NumericTable.FromClrType(type);
+
+            public bool IsReferenceAssignable(Type from, Type to) => to.IsAssignableFrom(from);
+        }
+
+        private static RankArgument<Type> ToRankArgument(Expression arg) =>
+            IsNullLiteral(arg) ? RankArgument<Type>.Null() : RankArgument<Type>.Of(arg.Type);
+
+        private static RankCandidate<Type> ToRankCandidate(FunctionEntry entry) =>
+            new RankCandidate<Type>(entry.ParameterTypes, entry.HasParamsArray, entry.ParamsElementType);
 
         private static BindOutcome BindOverload(IReadOnlyList<FunctionEntry> overloads, Expression[] args,
             out FunctionEntry chosen, out bool expanded)
         {
-            var outcome = BindTier(overloads, args, false, out chosen);
-            expanded = false;
-            if (outcome != BindOutcome.None)
-                return outcome;
-            expanded = true;
-            return BindTier(overloads, args, true, out chosen);
+            var rankArgs = new RankArgument<Type>[args.Length];
+            for (int i = 0; i < args.Length; i++)
+                rankArgs[i] = ToRankArgument(args[i]);
+            return BindOverload(overloads, rankArgs, out chosen, out expanded);
         }
 
-        private static BindOutcome BindTier(IReadOnlyList<FunctionEntry> overloads, Expression[] args, bool expanded,
-            out FunctionEntry chosen)
+        /// <summary>The rank-argument form of the bind, shared with the precompiled tier's late-bound call site
+        /// (<see cref="Precompiled.PrecompiledFunctionSite"/>) so both tiers select the SAME overload through the
+        /// SAME <see cref="OverloadRank"/> tiers over the same reflection rank model.</summary>
+        internal static BindOutcome BindOverload(IReadOnlyList<FunctionEntry> overloads,
+            IReadOnlyList<RankArgument<Type>> rankArgs, out FunctionEntry chosen, out bool expanded)
         {
-            chosen = null;
-            var candidates = new List<(FunctionEntry entry, int[] ranks)>();
-            foreach (var entry in overloads)
-            {
-                if (TryRank(entry, args, expanded, out var ranks))
-                    candidates.Add((entry, ranks));
-            }
+            var candidates = new RankCandidate<Type>[overloads.Count];
+            for (int i = 0; i < overloads.Count; i++)
+                candidates[i] = ToRankCandidate(overloads[i]);
 
-            if (candidates.Count == 0)
-                return BindOutcome.None;
-
-            var nonDominated = new List<(FunctionEntry entry, int[] ranks)>();
-            foreach (var candidate in candidates)
-            {
-                bool dominated = candidates.Any(other => other.entry != candidate.entry && Dominates(other.ranks, candidate.ranks));
-                if (!dominated)
-                    nonDominated.Add(candidate);
-            }
-
-            if (nonDominated.Count == 1)
-            {
-                chosen = nonDominated[0].entry;
-                return BindOutcome.Bound;
-            }
-
-            return BindOutcome.Ambiguous;
-        }
-
-        private static bool Dominates(int[] a, int[] b)
-        {
-            bool strictlyBetter = false;
-            for (int i = 0; i < a.Length; i++)
-            {
-                if (a[i] > b[i])
-                    return false;
-                if (a[i] < b[i])
-                    strictlyBetter = true;
-            }
-
-            return strictlyBetter;
-        }
-
-        private static bool TryRank(FunctionEntry entry, Expression[] args, bool expanded, out int[] ranks)
-        {
-            ranks = null;
-            if (!expanded)
-            {
-                if (entry.ParameterTypes.Length != args.Length)
-                    return false;
-                var result = new int[args.Length];
-                for (int i = 0; i < args.Length; i++)
-                {
-                    int rank = ConversionRank(args[i], entry.ParameterTypes[i]);
-                    if (rank < 0)
-                        return false;
-                    result[i] = rank;
-                }
-
-                ranks = result;
-                return true;
-            }
-
-            if (!entry.HasParamsArray)
-                return false;
-            int fixedCount = entry.ParameterTypes.Length - 1;
-            if (args.Length < fixedCount)
-                return false;
-            var elementType = entry.ParamsElementType;
-            var vector = new int[args.Length];
-            for (int i = 0; i < fixedCount; i++)
-            {
-                int rank = ConversionRank(args[i], entry.ParameterTypes[i]);
-                if (rank < 0)
-                    return false;
-                vector[i] = rank;
-            }
-
-            for (int i = fixedCount; i < args.Length; i++)
-            {
-                int rank = ConversionRank(args[i], elementType);
-                if (rank < 0)
-                    return false;
-                vector[i] = rank + 1; // expanded params ranked slightly worse than a fixed match
-            }
-
-            ranks = vector;
-            return true;
+            var binding = OverloadRank.Bind(ReflectionRankModel.Instance, candidates, rankArgs);
+            expanded = binding.Expanded;
+            chosen = binding.Outcome == BindOutcome.Bound ? overloads[binding.Index] : null;
+            return binding.Outcome;
         }
 
         /// <summary>Conversion rank: exact = 0, widening/reference/lifting = 1, boxing to object = 2; -1 = none.</summary>
         private static int ConversionRank(Expression arg, Type parameterType)
         {
-            if (IsNullLiteral(arg))
-            {
-                if (!parameterType.IsValueType || Nullable.GetUnderlyingType(parameterType) != null)
-                    return 1;
-                return -1;
-            }
-
-            var argType = arg.Type;
-            if (argType == parameterType)
-                return 0;
-            if (parameterType == typeof(object))
-                return 2;
-            if (NumericPromotion.IsImplicitNumeric(argType, parameterType))
-                return 1;
-            if (!argType.IsValueType && parameterType.IsAssignableFrom(argType))
-                return 1;
-            if (argType.IsValueType && Nullable.GetUnderlyingType(parameterType) == argType)
-                return 1;
-            var argUnderlying = Nullable.GetUnderlyingType(argType);
-            var paramUnderlying = Nullable.GetUnderlyingType(parameterType);
-            if (argUnderlying != null && paramUnderlying != null &&
-                (argUnderlying == paramUnderlying || NumericPromotion.IsImplicitNumeric(argUnderlying, paramUnderlying)))
-                return 1;
-            return -1;
+            return OverloadRank.ConversionRank(ReflectionRankModel.Instance, ToRankArgument(arg), parameterType);
         }
 
         private static bool IsConvertibleTo(Expression arg, Type parameterType)
@@ -523,7 +453,7 @@ namespace Heddle.Runtime.Expressions
             return ConversionRank(arg, parameterType) >= 0;
         }
 
-        private static Expression[] BuildCallArguments(FunctionEntry entry, Expression[] args, bool expanded)
+        internal static Expression[] BuildCallArguments(FunctionEntry entry, Expression[] args, bool expanded)
         {
             if (!expanded)
             {
@@ -606,10 +536,6 @@ namespace Heddle.Runtime.Expressions
             return max;
         }
 
-        #endregion
-
-        #region Unary
-
         private Expression VisitUnary(UnaryNode node)
         {
             var operand = Visit(node.Operand);
@@ -677,10 +603,6 @@ namespace Heddle.Runtime.Expressions
                 $"Operator '{op}' is not defined for operand type {FriendlyName(type)}.");
         }
 
-        #endregion
-
-        #region Binary
-
         private Expression VisitBinary(BinaryNode node)
         {
             if (node.Operator == ExprOperator.AndAlso || node.Operator == ExprOperator.OrElse)
@@ -741,6 +663,22 @@ namespace Heddle.Runtime.Expressions
                 var target = lifted ? typeof(Nullable<>).MakeGenericType(promoted) : promoted;
                 var l = ConvertTo(left, target);
                 var r = ConvertTo(right, target);
+
+                // HED1018: an integral or decimal division/modulo over CONSTANT operands with a zero divisor can
+                // only ever throw, so it fails the compile instead of arming a render-time DivideByZeroException.
+                // Scoped exactly the way C# scopes CS0020 — the whole expression constant, floating point excluded
+                // (1.0/0 folds to Infinity), a runtime divisor left to throw at render — and to what the build
+                // tier's ConstantFolding refuses, so the two tiers keep one verdict for one expression.
+                if ((node.Operator == ExprOperator.Divide || node.Operator == ExprOperator.Modulo) &&
+                    (NumericPromotion.IsIntegral(promoted) || promoted == typeof(decimal)) &&
+                    IsConstantSubtree(node.Left) && IsConstantSubtree(node.Right) && DivisorIsZero(r, promoted))
+                {
+                    HeddleDiagnosticCatalog.TryGet(HeddleDiagnosticIds.DivisionByConstantZero, out var info);
+                    return Fail(node.Position, HeddleDiagnosticIds.DivisionByConstantZero,
+                        string.Format(CultureInfo.InvariantCulture, info.MessageFormat,
+                            OperatorLexeme.ForBinary(node.Operator)));
+                }
+
                 return ArithmeticFactory(node.Operator, l, r);
             }
 
@@ -751,6 +689,45 @@ namespace Heddle.Runtime.Expressions
             catch (InvalidOperationException)
             {
                 return FailBinary(node, left.Type, right.Type);
+            }
+        }
+
+        /// <summary>Whether the node is a constant expression in C#'s sense — the same closure the build tier's
+        /// <c>ConstantFolding</c> walks: literals composed by unary, binary and conditional operators. Paths,
+        /// props and function calls are never constant, whatever they would evaluate to.</summary>
+        private static bool IsConstantSubtree(ExprNode node)
+        {
+            switch (node)
+            {
+                case LiteralNode _:
+                    return true;
+                case UnaryNode unary:
+                    return IsConstantSubtree(unary.Operand);
+                case BinaryNode binary:
+                    return IsConstantSubtree(binary.Left) && IsConstantSubtree(binary.Right);
+                case TernaryNode ternary:
+                    return IsConstantSubtree(ternary.Condition) && IsConstantSubtree(ternary.WhenTrue) &&
+                           IsConstantSubtree(ternary.WhenFalse);
+                default:
+                    return false;
+            }
+        }
+
+        /// <summary>Evaluates a constant divisor the way the whole-tree fold at the top of
+        /// <see cref="Compile"/> evaluates constants — by executing it — and asks whether it is the promoted
+        /// type's zero. Only reached for side-effect-free constant subtrees; anything that goes wrong answers
+        /// "not zero" and leaves the fault to render time, which was the behaviour before this check existed.</summary>
+        private static bool DivisorIsZero(Expression divisor, Type promoted)
+        {
+            try
+            {
+                var value = Expression.Lambda<Func<object>>(Expression.Convert(divisor, typeof(object)))
+                    .Compile()();
+                return value != null && value.Equals(Activator.CreateInstance(promoted));
+            }
+            catch (Exception)
+            {
+                return false;
             }
         }
 
@@ -894,13 +871,23 @@ namespace Heddle.Runtime.Expressions
             bool lifted = left.Type != leftU || right.Type != rightU;
 
             if (leftU == typeof(bool) && rightU == typeof(bool))
+            {
+                // The enum and integral arms below both spend `lifted` on a common nullable target; bool has no
+                // promotion to spend it on, so a mismatched pair is refused here instead. Matching nullability is
+                // what the shared operator table already answers for this shape, and what `&&`/`||` and `==` answer
+                // one arm over.
+                if (left.Type != right.Type)
+                    return FailBinary(node, left.Type, right.Type);
                 return BitwiseFactory(node.Operator, left, right);
+            }
 
             if (leftU.IsEnum && rightU.IsEnum && leftU == rightU)
             {
                 var enumUnderlying = Enum.GetUnderlyingType(leftU);
                 var opType = lifted ? typeof(Nullable<>).MakeGenericType(enumUnderlying) : enumUnderlying;
-                var resultType = lifted ? left.Type : leftU;
+                // A lifted pair must yield the nullable enum even when only the right side is nullable —
+                // converting the Nullable<underlying> result to a bare enum throws at render on a null operand.
+                var resultType = lifted ? typeof(Nullable<>).MakeGenericType(leftU) : leftU;
                 var combined = BitwiseFactory(node.Operator, ConvertTo(left, opType), ConvertTo(right, opType));
                 return Expression.Convert(combined, resultType);
             }
@@ -993,10 +980,6 @@ namespace Heddle.Runtime.Expressions
             }
         }
 
-        #endregion
-
-        #region Ternary
-
         private Expression VisitTernary(TernaryNode node)
         {
             var condition = Visit(node.Condition);
@@ -1086,10 +1069,6 @@ namespace Heddle.Runtime.Expressions
             return false;
         }
 
-        #endregion
-
-        #region Helpers
-
         private static bool IsNullLiteral(Expression expression)
         {
             return expression is ConstantExpression constant && constant.Value == null;
@@ -1140,7 +1119,7 @@ namespace Heddle.Runtime.Expressions
         private Expression FailBinary(BinaryNode node, Type leftType, Type rightType)
         {
             return Fail(node.Position, HeddleDiagnosticIds.BinaryOperatorNotDefined,
-                $"Operator '{Symbol(node.Operator)}' is not defined for operand types {FriendlyName(leftType)} and {FriendlyName(rightType)}.");
+                $"Operator '{OperatorLexeme.ForBinary(node.Operator)}' is not defined for operand types {FriendlyName(leftType)} and {FriendlyName(rightType)}.");
         }
 
         private Expression Fail(BlockPosition position, string diagnosticId, string message)
@@ -1150,36 +1129,12 @@ namespace Heddle.Runtime.Expressions
             return null;
         }
 
-        private static string Symbol(ExprOperator op)
-        {
-            switch (op)
-            {
-                case ExprOperator.Add: return "+";
-                case ExprOperator.Subtract: return "-";
-                case ExprOperator.Multiply: return "*";
-                case ExprOperator.Divide: return "/";
-                case ExprOperator.Modulo: return "%";
-                case ExprOperator.LeftShift: return "<<";
-                case ExprOperator.RightShift: return ">>";
-                case ExprOperator.LessThan: return "<";
-                case ExprOperator.LessThanOrEqual: return "<=";
-                case ExprOperator.GreaterThan: return ">";
-                case ExprOperator.GreaterThanOrEqual: return ">=";
-                case ExprOperator.Equal: return "==";
-                case ExprOperator.NotEqual: return "!=";
-                case ExprOperator.And: return "&";
-                case ExprOperator.ExclusiveOr: return "^";
-                case ExprOperator.Or: return "|";
-                default: return op.ToString();
-            }
-        }
-
         private static string FriendlyName(ExprNode _)
         {
             return "the two arms";
         }
 
-        private static string FriendlyName(Type type)
+        internal static string FriendlyName(Type type)
         {
             if (type == typeof(int)) return "int";
             if (type == typeof(uint)) return "uint";
@@ -1201,7 +1156,5 @@ namespace Heddle.Runtime.Expressions
                 return FriendlyName(underlying) + "?";
             return type.Name;
         }
-
-        #endregion
     }
 }

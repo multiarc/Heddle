@@ -1,8 +1,10 @@
+using System.Globalization;
 using System.IO;
 using System.Reflection;
 using Heddle.Data;
 using Heddle.Runtime;
 using Xunit;
+using Heddle.TestCorpus;
 
 namespace Heddle.Tests
 {
@@ -43,12 +45,26 @@ namespace Heddle.Tests
             var document = File.ReadAllText($"TestTemplate/{name}.heddle").Replace("\r\n", "\n");
             var t = new HeddleTemplate(document, new CompileContext(new TemplateOptions(), model.GetType()));
             Assert.True(t.CompileResult.Success, t.CompileResult.ToString());
-            return t.Generate(model);
+
+            // The engine renders a value through its own ToString(), so decimal points, group separators and the
+            // negative sign come from the ambient culture. The goldens are committed in invariant form and a golden
+            // is not a file this suite may regenerate, so the render is pinned to the culture the goldens hold —
+            // otherwise a byte comparison against them is a statement about the host's regional settings.
+            var previous = CultureInfo.CurrentCulture;
+            CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
+            try
+            {
+                return t.Generate(model);
+            }
+            finally
+            {
+                CultureInfo.CurrentCulture = previous;
+            }
         }
 
         private static void AssertGolden(string name, string actual)
         {
-            File.WriteAllText($"TestTemplate/test-{name}.html", actual);
+            File.WriteAllText(TestCorpusIndex.WrittenArtifactPath($"test-{name}.html"), actual);
             var expected = File.ReadAllText($"TestTemplate/generated-{name}.html").Replace("\r\n", "\n");
             Assert.Equal(expected, actual);
         }

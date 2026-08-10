@@ -1,0 +1,14 @@
+// Workload 3 — large-loop, templ controlled port: byte-parity with the shared golden
+// after normalization. Dense single-line row body; the display name is composed IN THE
+// TEMPLATE as the literal "row-" plus the value substitution (the model carries
+// ONLY Value). Value is an int — templ renders numbers natively, identical bytes to
+// strconv.Itoa on the raw alphabet.
+package controlled
+
+import "heddle.dev/benchmarks/go/internal/model"
+
+templ largeLoop(m model.LoopModel) {
+	for _, r := range m.Items {
+		<tr><td>row-{ r.Value }</td><td>{ r.Value }</td></tr>
+	}
+}

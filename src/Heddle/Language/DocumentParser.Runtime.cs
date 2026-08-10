@@ -3,17 +3,12 @@ using Heddle.Runtime;
 
 namespace Heddle.Language
 {
-    /// <summary>
-    /// The runtime <c>CompileContext</c> adapters over the shared <see cref="DocumentParser"/> core (phase 7 D4).
-    /// Kept in a separate partial file so the generator's shared-source compile (which has no <c>CompileContext</c>)
-    /// excludes this file. Each adapter builds a <see cref="ParserSettings"/> from the compile context's options,
-    /// runs the shared core, then copies the front-end diagnostics collected on the <see cref="ParseContext"/> into
-    /// the compile context — the single copy point the D4 seam funnels all front-end errors through.
-    /// </summary>
+    /// <summary>Runtime <c>CompileContext</c> adapters over <see cref="DocumentParser"/>;
+    /// kept separate so the generator's shared-source compile excludes this file.</summary>
     public static partial class DocumentParser
     {
-        /// <summary>Performs parse of document (runtime adapter).</summary>
-        /// <returns>Full template context tree found in source template</returns>
+        /// <summary>Parse document and copy diagnostics to compile context.</summary>
+        /// <returns>Parse context tree</returns>
         public static ParseContext Parse(string document, CompileContext compileContext, out string cleanDocument)
         {
             if (compileContext == null)

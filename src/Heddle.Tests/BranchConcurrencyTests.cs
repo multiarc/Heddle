@@ -10,7 +10,7 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// The standards-mandated parallel-render isolation proof (phase 3 criterion 6): many concurrent renders
+    /// Parallel-render isolation: many concurrent renders
     /// of one compiled branch-set template with opposite per-thread conditions show no cross-talk, because
     /// all per-render branch state lives in <c>ScopeLocals</c> frames created inside a single render lineage
     /// and never shared across threads (extension instances hold no mutable per-render state).

@@ -2,86 +2,119 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using Microsoft.CodeAnalysis;
+using Heddle.Exceptions;
+using Heddle.TestCorpus;
 using Xunit;
 
 namespace Heddle.Generator.IntegrationTests
 {
     /// <summary>
-    /// Phase 7 WI9 render parity: for the model-less corpus templates that precompile (definition default output,
-    /// overrides/layering, import composition), renders the real <c>TestTemplate/**</c> file through both backends and
-    /// asserts byte-identical output — the render-correctness gate the classification-only
-    /// <see cref="CorpusDifferentialTests"/> does not itself provide. Imports resolve from the corpus directory on the
-    /// dynamic side and from the whole-corpus <c>AdditionalFiles</c> set on the precompiled side.
+    /// Render parity: for every corpus template the intent table declares model-less and precompiling, renders the
+    /// real <c>TestTemplate/**</c> file through both backends and asserts byte-identical output — the
+    /// render-correctness gate the classification-only <see cref="CorpusDifferentialTests"/> does not itself provide.
+    /// Imports resolve from the corpus directory on the dynamic side and from the whole-corpus
+    /// <c>AdditionalFiles</c> set on the precompiled side.
+    /// <para>The set comes from the intent table rather than a hand-written list. It was ten names against
+    /// thirty-two eligible templates, with nothing to notice the other twenty-two — a template could be added,
+    /// declared standalone and precompiling, and never rendered by this gate at all.</para>
+    /// <para>Both halves of the render column are measured, not taken on trust. Reading the table for the set to
+    /// render only moves the drift one column left: an entry declared <c>ResolveOnly</c> leaves the gate on its own
+    /// say-so, and seven entries declared <c>WithModel</c> sat outside it while rendering identically all along. So
+    /// everything not declared <c>ResolveOnly</c> is rendered, and everything declared <c>ResolveOnly</c> is
+    /// rendered too — to prove it cannot be.</para>
     /// </summary>
     public class CorpusRenderParityTests
     {
-        private static string CorpusDir()
-        {
-            var self = typeof(DifferentialHarness).Assembly.Location;
-            var candidate = self.Replace("Heddle.Generator.IntegrationTests", "Heddle.Tests");
-            if (!File.Exists(candidate))
-                return null;
-            var tfmDir = Path.GetDirectoryName(candidate);
-            var projDir = Path.GetFullPath(Path.Combine(tfmDir, "..", "..", ".."));
-            var corpus = Path.Combine(projDir, "TestTemplate");
-            return Directory.Exists(corpus) ? corpus : null;
-        }
+        /// <summary>Precompiling entries the intent table says a shared harness may render without a model —
+        /// everything except <see cref="CorpusRender.ResolveOnly"/>.</summary>
+        public static IEnumerable<object[]> ModelLessRenderable() =>
+            NamesWithRender(r => r != CorpusRender.ResolveOnly).Select(n => new object[] { n });
 
-        private static List<(string key, string content)> LoadCorpus(string dir)
-        {
-            var list = new List<(string, string)>();
-            foreach (var path in Directory.EnumerateFiles(dir, "*.heddle", SearchOption.AllDirectories)
-                         .OrderBy(p => p, StringComparer.Ordinal))
-            {
-                var rel = path.Substring(dir.Length).TrimStart('\\', '/').Replace('\\', '/');
-                list.Add((rel, File.ReadAllText(path)));
-            }
+        /// <summary>Precompiling entries the table excuses from rendering altogether — earned, never declared;
+        /// see <see cref="AnEntryDeclaredResolveOnlyGenuinelyDoesNotRender"/>.</summary>
+        public static IEnumerable<string> DeclaredResolveOnly() =>
+            NamesWithRender(r => r == CorpusRender.ResolveOnly);
 
-            return list;
-        }
+        private static IEnumerable<string> NamesWithRender(Func<CorpusRender, bool> predicate) =>
+            CorpusIntent.Rows
+                .Where(r => r.Bound && predicate(r.Render))
+                .Select(r => r.Name)
+                .OrderBy(n => n, StringComparer.Ordinal);
 
         [Theory]
-        [InlineData("optimized-document.heddle")]
-        [InlineData("ergo-double-render.heddle")]
-        [InlineData("ergo-import-library.heddle")]
-        [InlineData("ergo-import-composition.heddle")]
-        [InlineData("branching-partial-parent.heddle")]
-        [InlineData("profile-partial-parent.heddle")]
-        [InlineData("profile-flagship.heddle")]
-        [InlineData("profile-directive.heddle")]
-        // Hidden-token offset regression: a single-file multi-line definition body with an inner comment must
-        // render byte-identically across the precompiled and runtime backends (the enclosing-block trim fix lives
-        // in both backends' DocumentShaper/HeddleCompiler). The cross-file override page layers an imported
-        // definition and falls back to the dynamic path, so it carries no precompiled entry to compare — its
-        // correctness is pinned by the runtime golden (Heddle.Tests MultilineOverrideOffsetRegressionTests).
-        [InlineData("regr-def-inner-comment.heddle")]
+        [MemberData(nameof(ModelLessRenderable))]
         public void ModelLessCorpusTemplateRendersIdentically(string name)
         {
-            var dir = CorpusDir();
-            if (dir == null)
-                return; // Heddle.Tests corpus for this TFM not built — the full-solution gate builds it.
+            var (precompiled, dyn) = RenderModelLess(name);
+            Assert.Equal(dyn, precompiled);
+        }
 
-            // Diagnostic-fixture templates carry deliberate front-end errors; exclude them so the rest of the corpus
-            // generates cleanly (imports still resolve from the remaining set).
-            var diagnosticFixtures = new HashSet<string>(StringComparer.Ordinal)
+        /// <summary>
+        /// <see cref="CorpusRender.ResolveOnly"/> is the value that removes an entry from byte-parity coverage, so
+        /// it is the one that has to be earned rather than declared. Rendering the entry anyway is the only way to
+        /// find out: a row that reads <c>ResolveOnly</c> for a template that renders perfectly well has taken it out
+        /// of the gate for nothing, and the column drifts one silent row at a time.
+        /// </summary>
+        /// <para>The column was empty while a template the engine refuses to render was also one the build tier
+        /// declined to precompile. Late-bound functions separate the two: a call the host has not registered
+        /// precompiles — the build knows the call's shape, only not its target — and both tiers then refuse the
+        /// same way when nothing supplies it. So the loop below is now the real gate, and the cardinality check
+        /// that stood in for it while the set was empty has become the guard that it is not empty again by
+        /// accident.</para>
+        [Fact]
+        public void AnEntryDeclaredResolveOnlyGenuinelyDoesNotRender()
+        {
+            var declared = DeclaredResolveOnly().ToList();
+
+            // The cardinality is the guard on the loop, not on the column: a loop over an empty self-derived set
+            // passes without executing its body, and the assertion would be describing nothing.
+            Assert.NotEmpty(declared);
+
+            foreach (var name in declared)
             {
-                "ergo-import-broken.heddle", "import-origin-a.heddle", "import-origin-b.heddle",
-                "import-origin-broken.heddle", "import-origin-c.heddle",
-            };
-            var corpus = LoadCorpus(dir).Where(t => !diagnosticFixtures.Contains(Path.GetFileName(t.key))).ToList();
+                var refusal = Assert.ThrowsAny<Exception>(() => RenderModelLess(name));
+
+                // Not merely "something threw". A harness failure — a missing fixture, a build-time degrade where
+                // one was not declared — throws too, and would let a row keep its exemption for a reason that has
+                // nothing to do with the template. What earns the exemption is a refusal the ENGINE owns: a render
+                // fault, or the compile fault it raises for a call nothing registered, which a late-bound site
+                // reproduces rather than rendering past.
+                Assert.True(refusal is TemplateProcessingException || refusal is TemplateCompileException,
+                    "'" + name + "' is excused from render parity, but it failed with " +
+                    refusal.GetType().Name + " rather than a refusal the engine owns: " + refusal.Message);
+            }
+        }
+
+        /// <summary>
+        /// The declared set and the corpus on disk agree by name, so a template declared precompiling but absent —
+        /// or renamed — is a red build rather than a theory case that quietly stops existing.
+        /// </summary>
+        [Fact]
+        public void EveryDeclaredPrecompilingEntryIsInTheCorpus()
+        {
+            var declared = new HashSet<string>(NamesWithRender(_ => true), StringComparer.Ordinal);
+            var present = new HashSet<string>(
+                TestCorpusIndex.Load(includeFrontEndErrorFixtures: false).Select(t => Path.GetFileName(t.key)),
+                StringComparer.Ordinal);
+
+            Assert.True(declared.Count > 0, "the intent table declares no precompiling entries");
+            Assert.Equal(new HashSet<string>(declared.Where(present.Contains), StringComparer.Ordinal), declared);
+        }
+
+        private static (string precompiled, string dynamic) RenderModelLess(string name)
+        {
+            // The corpus is in THIS project's own output directory (TestCorpus.props), so locating it is
+            // AppContext.BaseDirectory and nothing else.
+            var dir = TestCorpusIndex.CorpusDir;
+            // FrontEndError entries carry deliberate parse errors; excluded so the rest of the corpus generates
+            // cleanly (imports still resolve from what remains). The set is read from the intent table.
+            var corpus = TestCorpusIndex.Load(includeFrontEndErrorFixtures: false);
             var target = corpus.FirstOrDefault(t => Path.GetFileName(t.key) == name);
             Assert.False(target.content == null, "Corpus template not found: " + name);
 
-            var self = typeof(DifferentialHarness).Assembly.Location;
-            var testsDll = self.Replace("Heddle.Generator.IntegrationTests", "Heddle.Tests");
-            var extra = File.Exists(testsDll)
-                ? new[] { MetadataReference.CreateFromFile(testsDll) }
-                : Array.Empty<MetadataReference>();
-
-            var (precompiled, dyn) = DifferentialHarness.RenderInCorpus(
-                corpus, target.key, target.content, typeof(object), null, dir, extraReferences: extra);
-            Assert.Equal(dyn, precompiled);
+            return DifferentialHarness.RenderInCorpus(
+                corpus, target.key, target.content, typeof(object), null, dir,
+                extraReferences: DifferentialHarness.EngineTestModelReferences());
         }
     }
 }

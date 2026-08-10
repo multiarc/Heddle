@@ -1,0 +1,26 @@
+{{## Idiomatic Scriban -- composed-page mega-menu nav partial.
+
+     Patterns followed, from Scriban's own documentation:
+       language          https://github.com/scriban/scriban/blob/master/doc/language.md
+       builtins/html     https://github.com/scriban/scriban/blob/master/doc/builtins.md#html-functions
+       runtime/includes  https://github.com/scriban/scriban/blob/master/doc/runtime.md
+
+     Renders one mega menu from the scope-shared loop variable `menu`; each tab with a
+     dropdown nests the nav-column partial. Checked by the functional verifier, not the
+     byte gate. Note the multi-line comment delimiters: the single-line form ends at the
+     first newline, which would leave the doc URLs to parse as expressions. ##}}
+
+<div class="top-menu-wrapper">
+  <ul class="top-menu">
+    {{~ for tab in menu.tabs ~}}
+      <li class="{{ tab.css }}">
+        <a href="{{ tab.href }}" class="drop">{{ tab.label }}</a>
+        {{~ if tab.has_dropdown ~}}
+          <div class="{{ tab.dropdown_css }}">
+            {{~ for column in tab.columns }}{{ include 'nav-column' }}{{ end ~}}
+          </div>
+        {{~ end ~}}
+      </li>
+    {{~ end ~}}
+  </ul>
+</div>

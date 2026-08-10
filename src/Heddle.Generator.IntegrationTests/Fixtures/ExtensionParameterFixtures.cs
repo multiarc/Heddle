@@ -3,11 +3,6 @@ using Heddle.Attributes;
 using Heddle.Core;
 using Heddle.Data;
 
-// Phase 8 (WI9) — extension-parameter fixtures. Exported to the dynamic backend via the combined
-// [assembly: ExportExtensions(...)] list in BranchRoleExtensions.cs (single assembly-level list; the malformed
-// fixtures join it too so the DIFFERENTIAL dynamic side resolves the names — the generator resolves them by
-// [ExtensionName] regardless).
-
 namespace Heddle.Generator.IntegrationTests.Fixtures
 {
     /// <summary>The canonical parameter-declaring extension: one optional int parameter (default 3), read at
@@ -45,9 +40,7 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
         }
     }
 
-    /// <summary>The F6/H1 fixture: <c>[EncodeOutput]</c> AND a <c>[Prop]</c> — the carrier must stay
-    /// attribute-transparent so the inner still self-encodes on both tiers (an XSS-class guard). Emits
-    /// markup-significant characters so Encode vs Raw differ in bytes.</summary>
+    /// <summary><c>[EncodeOutput]</c> with <c>[Prop]</c>: carrier stays attribute-transparent so inner self-encodes.</summary>
     [ExtensionName("encodedGrid")]
     [EncodeOutput]
     [Prop("columns", typeof(int), Default = 3)]
@@ -65,11 +58,7 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
         }
     }
 
-    /// <summary>The P8-J-E1 / D8 / WI5b fixture: a NO-parameter <c>[EncodeOutput]</c> custom extension shaped to
-    /// provably hit <c>AllocateCustomExtension</c> — no <c>InitStart</c>/<c>CompleteInit</c> override (so
-    /// <c>OverridesHook == false</c> and a bodiless call binds through the plain custom path, not the dynamic
-    /// fallback), <c>[EncodeOutput]</c> without <c>[NotEncode]</c> (derived render type <c>Encode</c>, the
-    /// previously-divergent value), markup-significant output (Encode vs Raw differ in bytes).</summary>
+    /// <summary><c>[EncodeOutput]</c> with no parameters: hits <c>AllocateCustomExtension</c> with render type <c>Encode</c>.</summary>
     [ExtensionName("encodedBare")]
     [EncodeOutput]
     public sealed class EncodedBareExtension : AbstractHtmlExtension
@@ -165,8 +154,6 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
         }
     }
 
-    // ---- The Nullable<T> re-declaration trio (the H2-c3 cross-tier oracle) ----
-
     /// <summary>Base: <c>c: IComparable</c>.</summary>
     [Prop("c", typeof(IComparable), Optional = true)]
     public abstract class IfaceBaseExtension : EchoExtensionBase
@@ -180,6 +167,43 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
     [Prop("c", typeof(int?))]
     public sealed class NullableIfaceItemExtension : IfaceBaseExtension
     {
+    }
+
+    /// <summary>Base: <c>e: Enum</c>.</summary>
+    [Prop("e", typeof(Enum), Optional = true)]
+    public abstract class EnumBaseExtension : EchoExtensionBase
+    {
+    }
+
+    /// <summary>Malformed: re-declares <c>e</c> as <c>DayOfWeek?</c>. Roslyn classifies the boxing of the
+    /// underlying enum, which does derive from <c>Enum</c>; the CLR relates <c>Nullable&lt;T&gt;</c> itself, whose
+    /// base chain is <c>ValueType</c> and stops there → HED5008 / HED7017. The class-target twin of the interface
+    /// exclusion above, which a correction phrased as "except an interface" leaves behind.</summary>
+    [ExtensionName("nullableEnum")]
+    [Prop("e", typeof(DayOfWeek?))]
+    public sealed class NullableEnumItemExtension : EnumBaseExtension
+    {
+    }
+
+    /// <summary>Base: <c>v: ValueType</c> — which is on <c>Nullable&lt;T&gt;</c>'s own base chain, where
+    /// <c>Enum</c> is not.</summary>
+    [Prop("v", typeof(ValueType), Optional = true)]
+    public abstract class ValueTypeBaseExtension : EchoExtensionBase
+    {
+    }
+
+    /// <summary>Clean: re-declares <c>v</c> as the same <c>DayOfWeek?</c> the row above declares, against the one
+    /// target the CLR does relate it to. The pair says the rule is <c>Nullable&lt;T&gt;</c>'s own hierarchy and
+    /// not "refuse every nullable re-declaration".</summary>
+    [ExtensionName("nullableValueType")]
+    [Prop("v", typeof(DayOfWeek?), Optional = true)]
+    public sealed class NullableValueTypeItemExtension : ValueTypeBaseExtension
+    {
+        public override object ProcessData(in Scope scope)
+        {
+            return "v=" + (scope.GetParameter("v")?.ToString() ?? "none") + ":" +
+                   (scope.ModelData?.ToString() ?? string.Empty);
+        }
     }
 
     /// <summary>Base: <c>m: int</c>.</summary>
@@ -213,5 +237,225 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
         {
             return "n=" + scope.GetParameter("n") + ":" + (scope.ModelData?.ToString() ?? string.Empty);
         }
+    }
+
+    /// <summary>A value-type default on an <c>object</c>-typed prop — the one arm of the default conversion that
+    /// needs boxing, and the reason prop defaults ask the conversion table with boxing switched on while a slot
+    /// value asks with it switched off.</summary>
+    [ExtensionName("boxedDefault")]
+    [Prop("n", typeof(object), Default = 5)]
+    public sealed class BoxedDefaultExtension : EchoExtensionBase
+    {
+        public override object ProcessData(in Scope scope)
+        {
+            var value = scope.GetParameter("n");
+            return "n=" + value + "/" + (value?.GetType().Name ?? "null") + ":" +
+                   (scope.ModelData?.ToString() ?? string.Empty);
+        }
+    }
+
+    /// <summary>Widening default <c>int</c> into <c>long?</c>: must produce boxed <see cref="long"/>, not <c>int</c>.</summary>
+    [ExtensionName("nullableLiftDefault")]
+    [Prop("n", typeof(long?), Default = 5)]
+    public sealed class NullableLiftDefaultExtension : EchoExtensionBase
+    {
+        public override object ProcessData(in Scope scope)
+        {
+            var value = scope.GetParameter("n");
+            return "n=" + value + "/" + (value?.GetType().Name ?? "null") + ":" +
+                   (scope.ModelData?.ToString() ?? string.Empty);
+        }
+    }
+
+    /// <summary>A prop type generated code may not spell: <c>internal</c> to this assembly, so a cast written
+    /// against it in the consumer's own compilation would be CS0122. Nothing on the extension-parameter path ever
+    /// spells a prop type — the prototype stores boxed values, the parameter-name field stores strings, and the
+    /// fingerprint is a manifest string — so this is the fixture that says whether refusing such a layout prevents
+    /// anything or only costs a working template.</summary>
+    internal sealed class InternalBadge
+    {
+        public override string ToString() => "badge";
+    }
+
+    /// <summary>Declares one prop of an unnameable type and one of a perfectly ordinary one, so a test can tell
+    /// "this prop" from "this extension".</summary>
+    [ExtensionName("badged")]
+    [Prop("badge", typeof(InternalBadge), Optional = true)]
+    [Prop("size", typeof(int), Default = 2)]
+    public sealed class BadgedExtension : AbstractExtension
+    {
+        public override object ProcessData(in Scope scope)
+        {
+            var badge = scope.GetParameter("badge");
+            return "badge=" + (badge?.ToString() ?? "none") + "/size=" + scope.GetParameter("size") + ":" +
+                   (scope.ModelData?.ToString() ?? string.Empty);
+        }
+
+        public override void RenderData(in Scope scope)
+        {
+            scope.Renderer.Render((string) ProcessData(scope));
+        }
+    }
+
+    /// <summary>Renders the <c>day</c> parameter <b>with its runtime type</b>. A default stored under the wrong
+    /// CLR type still prints the right digits for some values, so the type is the part worth asserting.</summary>
+    public abstract class DayEchoExtension : AbstractExtension
+    {
+        public override object ProcessData(in Scope scope)
+        {
+            var value = scope.GetParameter("day");
+            return "day=" + value + "/" + (value?.GetType().Name ?? "null");
+        }
+
+        public override void RenderData(in Scope scope) => scope.Renderer.Render((string) ProcessData(scope));
+    }
+
+    /// <summary>A prop of an enum type with a default of that same enum — the identity arm of the conversion.</summary>
+    [ExtensionName("enumDefault")]
+    [Prop("day", typeof(DayOfWeek), Default = DayOfWeek.Tuesday)]
+    public sealed class EnumDefaultExtension : DayEchoExtension
+    {
+    }
+
+    /// <summary>The same with the enum's zero member: the underlying primitive is then the default value of every
+    /// integral type, which is exactly the value a dropped type hides behind.</summary>
+    [ExtensionName("enumZeroDefault")]
+    [Prop("day", typeof(DayOfWeek), Default = DayOfWeek.Sunday)]
+    public sealed class EnumZeroDefaultExtension : DayEchoExtension
+    {
+    }
+
+    /// <summary>An enum whose underlying type is not <c>int</c>, so a default written as an <c>int</c> literal
+    /// would be a differently-sized box as well as a differently-named one.</summary>
+    public enum Rung : byte
+    {
+        Low = 0,
+        High = 7
+    }
+
+    [ExtensionName("byteEnumDefault")]
+    [Prop("day", typeof(Rung), Default = Rung.High)]
+    public sealed class ByteEnumDefaultExtension : DayEchoExtension
+    {
+    }
+
+    /// <summary>The lifted form: a <c>Nullable&lt;enum&gt;</c> prop boxes the enum itself, not the nullable.</summary>
+    [ExtensionName("nullableEnumDefault")]
+    [Prop("day", typeof(DayOfWeek?), Default = DayOfWeek.Friday)]
+    public sealed class NullableEnumDefaultExtension : DayEchoExtension
+    {
+    }
+
+    /// <summary>The boxing arm: an enum default on an <c>object</c>-typed prop passes through unconverted, so what
+    /// the prop holds is a boxed enum and every read that formats or types it can tell.</summary>
+    [ExtensionName("objectEnumDefault")]
+    [Prop("day", typeof(object), Default = DayOfWeek.Tuesday)]
+    public sealed class ObjectEnumDefaultExtension : DayEchoExtension
+    {
+    }
+
+    /// <summary>The contrast that proves the enum <em>type</em> is what the other fixtures are about, not the
+    /// default machinery: an <c>int</c> default against the same enum prop is a declaration both tiers refuse.</summary>
+    [ExtensionName("enumIntDefault")]
+    [Prop("day", typeof(DayOfWeek), Default = 2)]
+    public sealed class EnumIntDefaultExtension : DayEchoExtension
+    {
+    }
+
+    /// <summary>An enum this assembly keeps to itself: naming it in generated code would be CS0122 in the
+    /// consumer's build, so its default has no reproducible form.</summary>
+    internal enum InternalRung
+    {
+        One = 1
+    }
+
+    [ExtensionName("internalEnumDefault")]
+    [Prop("day", typeof(InternalRung), Default = InternalRung.One)]
+    public sealed class InternalEnumDefaultExtension : DayEchoExtension
+    {
+    }
+
+    /// <summary>Prop names carrying the characters a C# string literal has to escape. The names travel into the
+    /// generated ordered-name array the runtime builds its name→index map from, so a name that survives the trip
+    /// altered binds the wrong slot, and one that does not survive at all fails the consumer's build.</summary>
+    /// <summary>The face that fails <b>silently</b>: a backslash written through unescaped stays legal C# and
+    /// decodes to a different name.</summary>
+    [ExtensionName("escapedNames")]
+    [Prop("a\\b", typeof(int), Default = 1)]
+    [Prop("q\"t", typeof(int), Default = 2)]
+    public sealed class EscapedPropNamesExtension : AbstractExtension
+    {
+        public override object ProcessData(in Scope scope) =>
+            scope.GetParameter("a\\b") + "," + scope.GetParameter("q\"t");
+
+        public override void RenderData(in Scope scope) => scope.Renderer.Render((string) ProcessData(scope));
+    }
+
+    /// <summary>The face that fails <b>loudly</b>: a newline or a trailing backslash ends the literal early and
+    /// the consumer's build stops.</summary>
+    [ExtensionName("unspellableNames")]
+    [Prop("nl\nx", typeof(int), Default = 3)]
+    [Prop("tail\\", typeof(int), Default = 4)]
+    public sealed class UnspellablePropNamesExtension : AbstractExtension
+    {
+        public override object ProcessData(in Scope scope) =>
+            scope.GetParameter("nl\nx") + "," + scope.GetParameter("tail\\");
+
+        public override void RenderData(in Scope scope) => scope.Renderer.Render((string) ProcessData(scope));
+    }
+
+    /// <summary>Real defaults C# has no literal for. <c>double.PositiveInfinity</c> and friends are <c>const</c>
+    /// fields, so they are legal attribute arguments and the host's own source compiles; what has no spelling is
+    /// the value written back out into generated code.</summary>
+    [ExtensionName("nonFiniteDefaults")]
+    [Prop("w", typeof(double), Default = double.PositiveInfinity)]
+    public sealed class NonFiniteDoubleDefaultExtension : AbstractExtension
+    {
+        public override object ProcessData(in Scope scope) => "w=" + scope.GetParameter("w");
+
+        public override void RenderData(in Scope scope) => scope.Renderer.Render((string) ProcessData(scope));
+    }
+
+    /// <summary>The <c>float</c> twin of the row above — the same expression one line up in the formatter.</summary>
+    [ExtensionName("nonFiniteFloatDefaults")]
+    [Prop("w", typeof(float), Default = float.NaN)]
+    public sealed class NonFiniteFloatDefaultExtension : AbstractExtension
+    {
+        public override object ProcessData(in Scope scope) => "w=" + scope.GetParameter("w");
+
+        public override void RenderData(in Scope scope) => scope.Renderer.Render((string) ProcessData(scope));
+    }
+
+    /// <summary>The finite near neighbour, so the two rows above read as a rule about non-finite values rather
+    /// than a refusal of every real default.</summary>
+    [ExtensionName("finiteDefaults")]
+    [Prop("w", typeof(double), Default = 1.5)]
+    [Prop("e", typeof(double), Default = double.Epsilon)]
+    public sealed class FiniteDoubleDefaultExtension : AbstractExtension
+    {
+        public override object ProcessData(in Scope scope) =>
+            "w=" + scope.GetParameter("w") + ";e=" + scope.GetParameter("e");
+
+        public override void RenderData(in Scope scope) => scope.Renderer.Render((string) ProcessData(scope));
+    }
+
+    /// <summary>The four integral types narrower than <c>int</c>, which C# gives no literal suffix.</summary>
+    [ExtensionName("narrowDefaults")]
+    [Prop("b", typeof(byte), Default = (byte) 5)]
+    [Prop("sb", typeof(sbyte), Default = (sbyte) -5)]
+    [Prop("s", typeof(short), Default = (short) -300)]
+    [Prop("us", typeof(ushort), Default = (ushort) 400)]
+    public sealed class NarrowDefaultsExtension : AbstractExtension
+    {
+        public override object ProcessData(in Scope scope) =>
+            One(scope, "b") + ";" + One(scope, "sb") + ";" + One(scope, "s") + ";" + One(scope, "us");
+
+        private static string One(in Scope scope, string name)
+        {
+            var value = scope.GetParameter(name);
+            return name + "=" + value + "/" + (value?.GetType().Name ?? "null");
+        }
+
+        public override void RenderData(in Scope scope) => scope.Renderer.Render((string) ProcessData(scope));
     }
 }

@@ -1,0 +1,20 @@
+{% extends "idiomatic/tera/shared/composed-page-base.html" %}
+{# Idiomatic Tera child template the composed page. Patterns follow
+   the Tera docs (keats.github.io/tera): "Inheritance" (child extends the base and fills the
+   live body block; the section-default blocks are left un-overridden, so the base defaults
+   render - mirroring layout.heddle). The slider body is the SAME as the controlled track's:
+   the verifier's removed-segment calibration pin is the slider, so an empty body fails,
+   deliberately. #}
+{% block body %}
+  <div class="slider-wrapper theme-default">
+    <div id="slider" class="nivoSlider">
+    </div>
+    <div class="home-content">
+      <div>
+        <a href="/products/gluten-free">
+          <img src="/files/homepage/homebtmbanners/gluten-hp.jpg" width="984" border="0" />
+        </a>
+      </div>
+    </div>
+  </div>
+{% endblock %}

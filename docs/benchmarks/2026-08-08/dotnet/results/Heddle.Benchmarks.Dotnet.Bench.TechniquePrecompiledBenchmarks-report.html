@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+<meta charset='utf-8' />
+<title>Heddle.Benchmarks.Dotnet.Bench.TechniquePrecompiledBenchmarks-20260808-025943</title>
+
+<style type="text/css">
+	table { border-collapse: collapse; display: block; width: 100%; overflow: auto; }
+	td, th { padding: 6px 13px; border: 1px solid #ddd; text-align: right; }
+	tr { background-color: #fff; border-top: 1px solid #ccc; }
+	tr:nth-child(even) { background: #f8f8f8; }
+</style>
+</head>
+<body>
+<pre><code>
+BenchmarkDotNet v0.15.8, Windows 11 (10.0.26200.8894/25H2/2025Update/HudsonValley2)
+AMD Ryzen 9 9950X 4.30GHz, 1 CPU, 32 logical and 16 physical cores
+.NET SDK 10.0.302
+  [Host]   : .NET 10.0.10 (10.0.10, 10.0.1026.32716), X64 RyuJIT x86-64-v4
+  ShortRun : .NET 10.0.10 (10.0.10, 10.0.1026.32716), X64 RyuJIT x86-64-v4
+</code></pre>
+<pre><code>Job=ShortRun  IterationCount=3  LaunchCount=3  
+WarmupCount=3  
+</code></pre>
+
+<table>
+<thead><tr><th>Method</th><th>Workload      </th><th>Mean    </th><th>Error </th><th>StdDev</th><th>Ratio</th><th>RatioSD</th><th>Gen0</th><th>Gen1</th><th>Gen2</th><th>Allocated</th><th>Alloc Ratio</th>
+</tr>
+</thead><tbody><tr><td>Utf8</td><td>conditional-heavy</td><td>24,572.1 ns</td><td>1,663.03 ns</td><td>989.64 ns</td><td>1.00</td><td>0.05</td><td>2.1057</td><td>-</td><td>-</td><td>35352 B</td><td>1.00</td>
+</tr><tr><td>TextWriter</td><td>conditional-heavy</td><td>17,830.6 ns</td><td>226.52 ns</td><td>134.80 ns</td><td>0.73</td><td>0.03</td><td>2.1057</td><td>-</td><td>-</td><td>35344 B</td><td>1.00</td>
+</tr><tr><td>String</td><td>conditional-heavy</td><td>18,328.5 ns</td><td>83.33 ns</td><td>49.59 ns</td><td>0.75</td><td>0.03</td><td>7.8735</td><td>-</td><td>-</td><td>131768 B</td><td>3.73</td>
+</tr><tr><td>Utf8</td><td>fragment-heavy</td><td>4,463.1 ns</td><td>295.72 ns</td><td>175.98 ns</td><td>1.00</td><td>0.05</td><td>0.1831</td><td>-</td><td>-</td><td>3088 B</td><td>1.00</td>
+</tr><tr><td>TextWriter</td><td>fragment-heavy</td><td>2,968.3 ns</td><td>34.99 ns</td><td>20.82 ns</td><td>0.67</td><td>0.02</td><td>0.1831</td><td>-</td><td>-</td><td>3080 B</td><td>1.00</td>
+</tr><tr><td>String</td><td>fragment-heavy</td><td>3,603.0 ns</td><td>50.24 ns</td><td>29.90 ns</td><td>0.81</td><td>0.03</td><td>2.4376</td><td>0.3014</td><td>-</td><td>40768 B</td><td>13.20</td>
+</tr><tr><td>Utf8</td><td>large-loop</td><td>220,761.0 ns</td><td>4,742.24 ns</td><td>2,822.03 ns</td><td>1.00</td><td>0.02</td><td>23.1934</td><td>-</td><td>-</td><td>390536 B</td><td>1.00</td>
+</tr><tr><td>TextWriter</td><td>large-loop</td><td>157,615.4 ns</td><td>1,125.02 ns</td><td>669.48 ns</td><td>0.71</td><td>0.01</td><td>23.1934</td><td>-</td><td>-</td><td>390528 B</td><td>1.00</td>
+</tr><tr><td>String</td><td>large-loop</td><td>2,574,464.1 ns</td><td>82,325.07 ns</td><td>48,990.33 ns</td><td>11.66</td><td>0.25</td><td>210.9375</td><td>167.9688</td><td>164.0625</td><td>1579378 B</td><td>4.04</td>
+</tr><tr><td>Utf8</td><td>mixed-page</td><td>4,376.7 ns</td><td>135.15 ns</td><td>80.43 ns</td><td>1.00</td><td>0.02</td><td>0.2365</td><td>-</td><td>-</td><td>3984 B</td><td>1.00</td>
+</tr><tr><td>TextWriter</td><td>mixed-page</td><td>2,600.4 ns</td><td>25.05 ns</td><td>14.91 ns</td><td>0.59</td><td>0.01</td><td>0.2365</td><td>-</td><td>-</td><td>3976 B</td><td>1.00</td>
+</tr><tr><td>String</td><td>mixed-page</td><td>3,336.8 ns</td><td>63.24 ns</td><td>37.64 ns</td><td>0.76</td><td>0.02</td><td>4.2305</td><td>0.4692</td><td>-</td><td>70816 B</td><td>17.78</td>
+</tr><tr><td>Utf8</td><td>trivial-substitution</td><td>201.9 ns</td><td>2.34 ns</td><td>1.39 ns</td><td>1.00</td><td>0.01</td><td>0.0105</td><td>-</td><td>-</td><td>176 B</td><td>1.00</td>
+</tr><tr><td>TextWriter</td><td>trivial-substitution</td><td>130.4 ns</td><td>1.88 ns</td><td>1.12 ns</td><td>0.65</td><td>0.01</td><td>0.0100</td><td>-</td><td>-</td><td>168 B</td><td>0.95</td>
+</tr><tr><td>String</td><td>trivial-substitution</td><td>189.9 ns</td><td>2.65 ns</td><td>1.58 ns</td><td>0.94</td><td>0.01</td><td>0.1721</td><td>0.0010</td><td>-</td><td>2880 B</td><td>16.36</td>
+</tr></tbody></table>
+</body>
+</html>

@@ -1,0 +1,210 @@
+//! Controlled-track Tera runners. Template texts are normative ports — the golden gate
+//! defines their bytes, so do not re-derive or reformat them here. Escaping modes are
+//! split across TWO `OnceLock` instances: `tera_controlled_raw` with
+//! `autoescape_on(std::iter::empty::<&str>())` (the documented disable form) and
+//! `tera_controlled_encoded` with default autoescape (template names end `.html`).
+//! Templates are registered with `add_template_file` and contexts are built once, so
+//! parse/compile sits outside every `render()`.
+
+use std::path::Path;
+use std::sync::OnceLock;
+
+use tera::{Context, Tera};
+
+use crate::models;
+
+// ---- instances -------------------------------------------------------------------------------
+
+const RAW_TEMPLATES: [&str; 27] = [
+    // composed-page: chrome-fragment includes, the nested nav partial chain,
+    // the base layout with the live body block, and the extending child page.
+    "controlled/tera/chrome/alert-top.html",
+    "controlled/tera/chrome/secondary-wholesale-menu.html",
+    "controlled/tera/chrome/secondary-retail-menu.html",
+    "controlled/tera/chrome/alert-below.html",
+    "controlled/tera/chrome/assets-styles.html",
+    "controlled/tera/chrome/assets-scripts.html",
+    "controlled/tera/chrome/custom-styles.html",
+    "controlled/tera/chrome/head-scripts.html",
+    "controlled/tera/chrome/body-scripts.html",
+    "controlled/tera/chrome/body-end-scripts.html",
+    "controlled/tera/nav/link.html",
+    "controlled/tera/nav/section.html",
+    "controlled/tera/nav/column.html",
+    "controlled/tera/nav/mega-menu.html",
+    "controlled/tera/shared/composed-page-layout.html",
+    "controlled/tera/composed-page.html",
+    "controlled/tera/trivial-substitution.html",
+    "controlled/tera/large-loop.html",
+    "controlled/tera/mixed-page.html",
+    "controlled/tera/conditional-heavy.html",
+    // fragment-heavy: four dispatched per-kind partials plus the card's two
+    // sub-partials, then the dispatching main template.
+    "controlled/tera/shared/fragment-heavy-tile.html",
+    "controlled/tera/shared/fragment-heavy-badge.html",
+    "controlled/tera/shared/fragment-heavy-price.html",
+    "controlled/tera/shared/fragment-heavy-card.html",
+    "controlled/tera/shared/fragment-heavy-media-row.html",
+    "controlled/tera/shared/fragment-heavy-stat.html",
+    "controlled/tera/fragment-heavy.html",
+];
+
+const ENCODED_TEMPLATES: [&str; 2] = [
+    "controlled/tera/fortunes-encoded.html",
+    "controlled/tera/encoded-loop.html",
+];
+
+fn build_instance(names: &[&str], autoescape_off: bool) -> Tera {
+    let mut tera = Tera::default();
+    if autoescape_off {
+        tera.autoescape_on(std::iter::empty::<&str>());
+    }
+    let base = Path::new(env!("CARGO_MANIFEST_DIR")).join("templates");
+    for name in names {
+        tera.add_template_file(base.join(name), Some(name))
+            .unwrap_or_else(|e| panic!("tera controlled: cannot register {name}: {e}"));
+    }
+    tera
+}
+
+/// Cold-parse support: a fresh raw instance parsing the same 27 template files
+/// the runtime `tera_controlled_raw` instance holds.
+pub fn build_fresh_raw() -> Tera {
+    build_instance(&RAW_TEMPLATES, true)
+}
+
+/// Cold-parse support: a fresh encoded instance parsing the same 2 template
+/// files the runtime `tera_controlled_encoded` instance holds.
+pub fn build_fresh_encoded() -> Tera {
+    build_instance(&ENCODED_TEMPLATES, false)
+}
+
+/// The controlled-raw instance — autoescape fully off.
+pub fn tera_controlled_raw() -> &'static Tera {
+    static TERA: OnceLock<Tera> = OnceLock::new();
+    TERA.get_or_init(|| build_instance(&RAW_TEMPLATES, true))
+}
+
+/// The controlled-encoded instance — default autoescape on `.html` names.
+pub fn tera_controlled_encoded() -> &'static Tera {
+    static TERA: OnceLock<Tera> = OnceLock::new();
+    TERA.get_or_init(|| build_instance(&ENCODED_TEMPLATES, false))
+}
+
+// ---- contexts (built once from the shared models) --------------------------------------------
+
+fn composed_context() -> &'static Context {
+    static CTX: OnceLock<Context> = OnceLock::new();
+    CTX.get_or_init(|| {
+        Context::from_serialize(models::composed()).expect("tera composed-page context")
+    })
+}
+
+fn substitution_context() -> &'static Context {
+    static CTX: OnceLock<Context> = OnceLock::new();
+    CTX.get_or_init(|| {
+        Context::from_serialize(models::substitution()).expect("tera trivial-substitution context")
+    })
+}
+
+fn large_loop_context() -> &'static Context {
+    static CTX: OnceLock<Context> = OnceLock::new();
+    CTX.get_or_init(|| {
+        let mut ctx = Context::new();
+        ctx.insert("items", models::large_loop());
+        ctx
+    })
+}
+
+fn mixed_context() -> &'static Context {
+    static CTX: OnceLock<Context> = OnceLock::new();
+    CTX.get_or_init(|| Context::from_serialize(models::mixed()).expect("tera mixed-page context"))
+}
+
+fn conditional_context() -> &'static Context {
+    static CTX: OnceLock<Context> = OnceLock::new();
+    CTX.get_or_init(|| {
+        let mut ctx = Context::new();
+        ctx.insert("rows", models::conditional());
+        ctx
+    })
+}
+
+fn fragment_context() -> &'static Context {
+    static CTX: OnceLock<Context> = OnceLock::new();
+    CTX.get_or_init(|| {
+        let mut ctx = Context::new();
+        ctx.insert("items", models::fragment());
+        ctx
+    })
+}
+
+fn fortunes_context() -> &'static Context {
+    static CTX: OnceLock<Context> = OnceLock::new();
+    CTX.get_or_init(|| {
+        let mut ctx = Context::new();
+        ctx.insert("rows", models::fortunes());
+        ctx
+    })
+}
+
+fn encoded_loop_context() -> &'static Context {
+    static CTX: OnceLock<Context> = OnceLock::new();
+    CTX.get_or_init(|| {
+        let mut ctx = Context::new();
+        ctx.insert("items", models::encoded_loop());
+        ctx
+    })
+}
+
+// ---- render fns ------------------------------------------------------------------------------
+
+fn render_raw(name: &str, ctx: &Context) -> String {
+    tera_controlled_raw()
+        .render(name, ctx)
+        .unwrap_or_else(|e| panic!("tera controlled raw {name} render: {e}"))
+}
+
+fn render_encoded(name: &str, ctx: &Context) -> String {
+    tera_controlled_encoded()
+        .render(name, ctx)
+        .unwrap_or_else(|e| panic!("tera controlled encoded {name} render: {e}"))
+}
+
+pub fn render_composed_page() -> String {
+    render_raw("controlled/tera/composed-page.html", composed_context())
+}
+
+pub fn render_trivial_substitution() -> String {
+    render_raw(
+        "controlled/tera/trivial-substitution.html",
+        substitution_context(),
+    )
+}
+
+pub fn render_large_loop() -> String {
+    render_raw("controlled/tera/large-loop.html", large_loop_context())
+}
+
+pub fn render_mixed_page() -> String {
+    render_raw("controlled/tera/mixed-page.html", mixed_context())
+}
+
+pub fn render_conditional_heavy() -> String {
+    render_raw(
+        "controlled/tera/conditional-heavy.html",
+        conditional_context(),
+    )
+}
+
+pub fn render_fragment_heavy() -> String {
+    render_raw("controlled/tera/fragment-heavy.html", fragment_context())
+}
+
+pub fn render_fortunes_encoded() -> String {
+    render_encoded("controlled/tera/fortunes-encoded.html", fortunes_context())
+}
+
+pub fn render_encoded_loop() -> String {
+    render_encoded("controlled/tera/encoded-loop.html", encoded_loop_context())
+}

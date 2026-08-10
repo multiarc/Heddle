@@ -10,10 +10,10 @@ using Xunit;
 namespace Heddle.Tests.Streaming
 {
     /// <summary>
-    /// Shared harness for the phase 8 three-sink parity property (WI3/WI4): render one compiled template through the
-    /// string, <see cref="TextWriter"/>, and UTF-8 <c>IBufferWriter&lt;byte&gt;</c> sinks and assert
-    /// <c>textWriter == string</c> and <c>utf8Bytes == Encoding.UTF8.GetBytes(string)</c> — the property oracle from the
-    /// roadmap's TDD verdict, strictly stronger than sampled goldens (the string path is already golden-pinned).
+    /// Shared harness for rendering one compiled template through the
+    /// string, <see cref="TextWriter"/>, and UTF-8 <c>IBufferWriter&lt;byte&gt;</c> sinks and asserting
+    /// <c>textWriter == string</c> and <c>utf8Bytes == Encoding.UTF8.GetBytes(string)</c> — the property oracle,
+    /// strictly stronger than sampled goldens (the string path is already golden-pinned).
     /// </summary>
     internal static class SinkTestHarness
     {

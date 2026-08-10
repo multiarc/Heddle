@@ -9,15 +9,18 @@ using Heddle.Strings.Core;
 namespace Heddle.Extensions
 {
     [ExtensionName("out")]
+    [SlotProjection]
     public class OutExtension : AbstractExtension
     {
         private bool _slotMode;
         private bool _composedGuard;
 
-        /// <summary>Phase 7 slots: puts this pre-constructed carrier in slot-projection mode, reproducing the
+        /// <summary>Puts this pre-constructed carrier in slot-projection mode, reproducing the
         /// <c>_slotMode</c> flag <see cref="InitStart"/> derives from <c>CompileContext.SlotParameterType</c> (the
-        /// InitStart <see cref="Heddle.Precompiled.PrecompiledRuntime.BindDefinition"/> bypasses). Called only from a
-        /// generated static initializer via <c>PrecompiledRuntime.BindOut</c>; never mutated after.</summary>
+        /// InitStart <see cref="Heddle.Precompiled.PrecompiledRuntime.BindDefinition"/> bypasses). Reached only
+        /// through the retired <c>PrecompiledRuntime.BindOut</c>, which generated code from earlier generator
+        /// versions still calls; the current build runs the real <see cref="InitStart"/> instead and this decides
+        /// nothing for it. Never mutated after.</summary>
         internal void SetPrecompiledSlotMode() => _slotMode = true;
 
         private const string GuardMessage =
@@ -33,8 +36,7 @@ namespace Heddle.Extensions
 
             if (slotType != null)
             {
-                // Slot-declaring definition body (D11): every @out must pass a value; a slot-mode @out is
-                // bodiless; the value's static type must be assignable to the slot type (rows 1–4, no boxing).
+                // In slot-declaring contexts, every @out must pass a value; its type must be assignable to the slot type.
                 _slotMode = true;
                 _composedGuard = source != null && source.IsChainedConsumer;
 
@@ -73,8 +75,7 @@ namespace Heddle.Extensions
 
             if (hasValue)
             {
-                // @out with a value where no slot parameter is declared (D13) — including the formerly
-                // accepted-and-ignored @out(X)/@out(true). Two message forms: inside vs outside a definition body.
+                // @out(value) requires a slot parameter; different error message inside vs outside definition body.
                 bool insideDefinition = initContext.ParseContext != null && initContext.ParseContext.InDefintionContext;
                 var message = insideDefinition
                     ? "'@out' with a value requires the enclosing definition to declare a slot parameter: '<name(out:: Type)>'."
@@ -91,10 +92,11 @@ namespace Heddle.Extensions
         {
             if (_slotMode)
             {
-                if (_composedGuard || !(scope.SlotCarrier is SlotContent carrier))
+                var carrier = scope.SlotCarrier;
+                if (_composedGuard || carrier == null)
                     throw new TemplateProcessingException(GuardMessage);
                 var projectionScope = carrier.InvocationScope.Model(scope.ModelData);
-                return carrier.Outer.RenderCallerContent(projectionScope);
+                return carrier.RenderCallerContent(projectionScope);
             }
 
             if (!InnerExist)
@@ -108,29 +110,17 @@ namespace Heddle.Extensions
         {
             if (_slotMode)
             {
-                if (_composedGuard || !(scope.SlotCarrier is SlotContent carrier))
+                var carrier = scope.SlotCarrier;
+                if (_composedGuard || carrier == null)
                     throw new TemplateProcessingException(GuardMessage);
                 var projectionScope = carrier.InvocationScope.Model(scope.ModelData);
-                carrier.Outer.RenderCallerContentInto(projectionScope);
+                carrier.RenderCallerContentInto(projectionScope);
                 return;
             }
 
             if (!InnerExist)
             {
-                // Value-emitter convention, shared with @()/@raw/@html (EmptyExtension/EmptyHtmlExtension) since
-                // inception: a body counts only when it holds dynamic (@) content (InnerExist). A static-only
-                // body is inert, so a non-slot @out emits ONLY the chained value — exactly as this extension's own
-                // ProcessData has always done (`if (!InnerExist) return scope.ChainedData;`). Without the return we
-                // fall through to RenderInnerResult and ALSO emit the inert static body (_innerResult), double-
-                // rendering the chained value AND the body on the render path — an anomaly no value-emitter has,
-                // and the RenderData branch was the lone place that did it.
-                //
-                // Stringify a boxed non-string (e.g. the int index a counted @for(...) threads on the chained
-                // channel); a plain 'as string' would silently drop it. This matches ProcessData returning the
-                // raw object for the STRING case. For a non-string, the process/concat path currently drops the
-                // value (`ProcessData(...) as string ?? ""` in RuntimeDocument) — a separate, pre-existing issue
-                // not addressed here; the value-emitter convention above, NOT full Render/Process parity (which
-                // that drop breaks for non-strings), is what justifies suppressing the inert body.
+                // Static-only body is inert, so emit chained value; stringify non-strings to avoid silent drops.
                 var chained = scope.ChainedData;
                 scope.Renderer.Render(chained is string chainedString ? chainedString : chained?.ToString());
                 return;
@@ -140,18 +130,8 @@ namespace Heddle.Extensions
             RenderInnerResult(innerScope);
         }
 
-        private static bool HasOutValue(CallParameter callParameter)
-        {
-            if (callParameter.NativeExpression != null)
-                return true;
-            if (callParameter.ChainParameter != null)
-                return true;
-            if (!string.IsNullOrEmpty(callParameter.CSharpExpression))
-                return true;
-            if (callParameter.PropArguments != null)
-                return true;
-            return callParameter.ModelParameter != null && callParameter.ModelParameter.Length > 0 &&
-                   !string.IsNullOrEmpty(callParameter.ModelParameter[0]);
-        }
+        /// <summary>The canonical five-way test lives in the shared <see cref="SlotRules"/> so the build tier and the
+        /// runtime cannot drift apart; this stays as the extension's own vocabulary.</summary>
+        private static bool HasOutValue(CallParameter callParameter) => SlotRules.HasOutValue(callParameter);
     }
 }

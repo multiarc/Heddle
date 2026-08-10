@@ -1,0 +1,12 @@
+<% /* idiomatic Eta implementation (Phase 4).
+      Patterns followed: https://eta.js.org/docs/4.x.x/syntax/cheatsheet,
+      https://eta.js.org/docs/4.x.x/syntax/layouts-and-blocks (layout, it.body),
+      https://eta.js.org/docs/4.x.x/api/overview (loadTemplate, render). */ %>
+<div class="nav-section">
+  <% if (it.title_linked) { %>
+    <span class="nav-title"><a href="<%= it.href %>"><%= it.title %></a></span>
+  <% } else { %>
+    <span class="nav-title"><%= it.title %></span>
+  <% } %>
+  <ul><% it.links.forEach(l => { %><%~ include("@nav_link", l) %><% }) %></ul>
+</div>

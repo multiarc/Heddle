@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+<meta charset='utf-8' />
+<title>Heddle.Benchmarks.Dotnet.Bench.ComposedPageBenchmarks-20260808-013512</title>
+
+<style type="text/css">
+	table { border-collapse: collapse; display: block; width: 100%; overflow: auto; }
+	td, th { padding: 6px 13px; border: 1px solid #ddd; text-align: right; }
+	tr { background-color: #fff; border-top: 1px solid #ccc; }
+	tr:nth-child(even) { background: #f8f8f8; }
+</style>
+</head>
+<body>
+<pre><code>
+BenchmarkDotNet v0.15.8, Windows 11 (10.0.26200.8894/25H2/2025Update/HudsonValley2)
+AMD Ryzen 9 9950X 4.30GHz, 1 CPU, 32 logical and 16 physical cores
+.NET SDK 10.0.302
+  [Host]   : .NET 10.0.10 (10.0.10, 10.0.1026.32716), X64 RyuJIT x86-64-v4
+  ShortRun : .NET 10.0.10 (10.0.10, 10.0.1026.32716), X64 RyuJIT x86-64-v4
+</code></pre>
+<pre><code>Job=ShortRun  IterationCount=3  LaunchCount=3  
+WarmupCount=3  
+</code></pre>
+
+<table>
+<thead><tr><th>Method          </th><th>Track</th><th>Mean</th><th>Error</th><th>StdDev</th><th>Ratio</th><th>RatioSD</th><th>Gen0</th><th>Gen1</th><th>Gen2</th><th>Allocated</th><th>Alloc Ratio</th>
+</tr>
+</thead><tbody><tr><td>RenderHeddle</td><td>controlled</td><td>34.066 &mu;s</td><td>5.3035 &mu;s</td><td>3.1560 &mu;s</td><td>1.01</td><td>0.13</td><td>3.1128</td><td>3.1128</td><td>3.1128</td><td>233392 B</td><td>1.000</td>
+</tr><tr><td>RenderHeddleUtf8</td><td>controlled</td><td>1.798 &mu;s</td><td>0.2713 &mu;s</td><td>0.1614 &mu;s</td><td>0.05</td><td>0.01</td><td>0.0095</td><td>-</td><td>-</td><td>184 B</td><td>0.001</td>
+</tr><tr><td>RenderHeddleTextWriter</td><td>controlled</td><td>1.238 &mu;s</td><td>0.0085 &mu;s</td><td>0.0051 &mu;s</td><td>0.04</td><td>0.00</td><td>0.0076</td><td>-</td><td>-</td><td>128 B</td><td>0.001</td>
+</tr><tr><td>RenderFluid</td><td>controlled</td><td>60.234 &mu;s</td><td>3.6891 &mu;s</td><td>2.1953 &mu;s</td><td>1.78</td><td>0.18</td><td>11.1694</td><td>5.6152</td><td>3.6621</td><td>237548 B</td><td>1.018</td>
+</tr><tr><td>RenderScriban</td><td>controlled</td><td>419.333 &mu;s</td><td>30.5925 &mu;s</td><td>18.2051 &mu;s</td><td>12.41</td><td>1.29</td><td>58.5938</td><td>26.3672</td><td>15.6250</td><td>1182107 B</td><td>5.065</td>
+</tr><tr><td>RenderDotLiquid</td><td>controlled</td><td>153.755 &mu;s</td><td>13.3191 &mu;s</td><td>7.9260 &mu;s</td><td>4.55</td><td>0.49</td><td>18.7988</td><td>9.5215</td><td>7.3242</td><td>415490 B</td><td>1.780</td>
+</tr><tr><td>RenderHandlebars</td><td>controlled</td><td>62.869 &mu;s</td><td>3.8804 &mu;s</td><td>2.3092 &mu;s</td><td>1.86</td><td>0.19</td><td>10.9863</td><td>5.3711</td><td>3.7842</td><td>233056 B</td><td>0.999</td>
+</tr><tr><td>RenderRazor</td><td>controlled</td><td>64.815 &mu;s</td><td>10.3742 &mu;s</td><td>6.1735 &mu;s</td><td>1.92</td><td>0.25</td><td>8.6670</td><td>1.9531</td><td>0.7324</td><td>245440 B</td><td>1.052</td>
+</tr><tr><td>RenderHeddle</td><td>idiomatic</td><td>32.761 &mu;s</td><td>4.1901 &mu;s</td><td>2.4935 &mu;s</td><td>1.01</td><td>0.10</td><td>3.1738</td><td>3.1738</td><td>3.1738</td><td>233414 B</td><td>1.000</td>
+</tr><tr><td>RenderHeddleUtf8</td><td>idiomatic</td><td>1.883 &mu;s</td><td>0.1831 &mu;s</td><td>0.1089 &mu;s</td><td>0.06</td><td>0.01</td><td>0.0095</td><td>-</td><td>-</td><td>184 B</td><td>0.001</td>
+</tr><tr><td>RenderHeddleTextWriter</td><td>idiomatic</td><td>1.260 &mu;s</td><td>0.0123 &mu;s</td><td>0.0073 &mu;s</td><td>0.04</td><td>0.00</td><td>0.0076</td><td>-</td><td>-</td><td>128 B</td><td>0.001</td>
+</tr><tr><td>RenderFluid</td><td>idiomatic</td><td>60.527 &mu;s</td><td>3.2964 &mu;s</td><td>1.9616 &mu;s</td><td>1.86</td><td>0.15</td><td>11.1694</td><td>5.5542</td><td>3.6621</td><td>237764 B</td><td>1.019</td>
+</tr><tr><td>RenderScriban</td><td>idiomatic</td><td>431.057 &mu;s</td><td>40.3621 &mu;s</td><td>24.0189 &mu;s</td><td>13.23</td><td>1.21</td><td>59.5703</td><td>21.4844</td><td>15.6250</td><td>1212660 B</td><td>5.195</td>
+</tr><tr><td>RenderDotLiquid</td><td>idiomatic</td><td>194.211 &mu;s</td><td>9.8814 &mu;s</td><td>5.8802 &mu;s</td><td>5.96</td><td>0.48</td><td>19.5313</td><td>9.7656</td><td>7.3242</td><td>429755 B</td><td>1.841</td>
+</tr><tr><td>RenderHandlebars</td><td>idiomatic</td><td>64.713 &mu;s</td><td>6.4197 &mu;s</td><td>3.8203 &mu;s</td><td>1.99</td><td>0.19</td><td>10.9863</td><td>5.2490</td><td>3.7842</td><td>233305 B</td><td>1.000</td>
+</tr><tr><td>RenderRazor</td><td>idiomatic</td><td>59.550 &mu;s</td><td>13.8188 &mu;s</td><td>8.2233 &mu;s</td><td>1.83</td><td>0.28</td><td>8.6670</td><td>2.0752</td><td>0.7324</td><td>245665 B</td><td>1.052</td>
+</tr></tbody></table>
+</body>
+</html>

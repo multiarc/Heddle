@@ -3,14 +3,10 @@ using Heddle.Runtime.Expressions;
 namespace Heddle.Precompiled
 {
     /// <summary>
-    /// The built-in function shim (phase 7 D21, OQ1 resolution): the legal call target for the 18 default built-in
-    /// functions (35 overloads) in generated code. <c>BuiltInFunctions</c> is internal to <c>Heddle</c> and consumer
-    /// assemblies have no IVT, so this public façade is how DEFAULT-function calls precompile. Discovered
-    /// <c>[ExportFunctions]</c> exports never route through it — generated code binds them directly to their public
-    /// static containers. Each method is a one-line delegation to the exact internal <c>BuiltInFunctions</c> method
-    /// <c>FunctionRegistry.Default</c> binds, so phase 1 D13's semantics (invariant culture, uniform null rules,
-    /// never-throw, phase 4 D3's sanctioned <c>range</c> step guard) exist once and ride the delegation. Pure static
-    /// methods; thread-safe; no state. Kept in lockstep with the registry by <c>DefaultFunctionLockstepTests</c>.
+    /// Public façade for the 18 default built-in functions (35 overloads) in generated code: <c>BuiltInFunctions</c>
+    /// is internal and consumer assemblies have no IVT. Each method delegates to the internal equivalent; semantics
+    /// (invariant culture, uniform null rules, never-throw) exist once. <c>[ExportFunctions]</c> exports bind
+    /// directly to their public containers. Thread-safe; no state.
     /// </summary>
     public static class PrecompiledFunctions
     {
@@ -48,14 +44,22 @@ namespace Heddle.Precompiled
         public static double Max(double a, double b) => BuiltInFunctions.Max(a, b);
         public static decimal Max(decimal a, decimal b) => BuiltInFunctions.Max(a, b);
 
+        public static int Round(int value) => BuiltInFunctions.Round(value);
+        public static int Round(int value, int digits) => BuiltInFunctions.Round(value, digits);
+        public static long Round(long value) => BuiltInFunctions.Round(value);
+        public static long Round(long value, int digits) => BuiltInFunctions.Round(value, digits);
         public static double Round(double value) => BuiltInFunctions.Round(value);
         public static double Round(double value, int digits) => BuiltInFunctions.Round(value, digits);
         public static decimal Round(decimal value) => BuiltInFunctions.Round(value);
         public static decimal Round(decimal value, int digits) => BuiltInFunctions.Round(value, digits);
 
+        public static int Floor(int value) => BuiltInFunctions.Floor(value);
+        public static long Floor(long value) => BuiltInFunctions.Floor(value);
         public static double Floor(double value) => BuiltInFunctions.Floor(value);
         public static decimal Floor(decimal value) => BuiltInFunctions.Floor(value);
 
+        public static int Ceil(int value) => BuiltInFunctions.Ceil(value);
+        public static long Ceil(long value) => BuiltInFunctions.Ceil(value);
         public static double Ceil(double value) => BuiltInFunctions.Ceil(value);
         public static decimal Ceil(decimal value) => BuiltInFunctions.Ceil(value);
 

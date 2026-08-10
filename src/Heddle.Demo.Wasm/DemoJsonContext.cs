@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace Heddle.Demo.Wasm
 {
-    /// <summary>Source-generated System.Text.Json context (phase 9 D6): trim-safe, no reflection warm-up. camelCase
+    /// <summary>Source-generated System.Text.Json context: trim-safe, no reflection warm-up. camelCase
     /// property names, nulls omitted (so RenderResult emits exactly one of html/error).</summary>
     [JsonSourceGenerationOptions(
         PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,

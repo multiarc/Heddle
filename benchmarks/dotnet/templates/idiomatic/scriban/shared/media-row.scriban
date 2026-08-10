@@ -1,0 +1,20 @@
+{{## Idiomatic Scriban -- fragment-heavy media-row partial.
+
+     Patterns followed, from Scriban's own documentation:
+       language          https://github.com/scriban/scriban/blob/master/doc/language.md
+       builtins/html     https://github.com/scriban/scriban/blob/master/doc/builtins.md#html-functions
+       runtime/includes  https://github.com/scriban/scriban/blob/master/doc/runtime.md
+
+     Renders one media row from the scope-shared loop variable `item`; the image source and
+     the caption are composed template-side as literal-plus-substitution -- the
+     model carries data, never display strings. Checked by the functional verifier, not the
+     byte gate. Note the multi-line comment delimiters: the single-line form ends at the
+     first newline, which would leave the doc URLs to parse as expressions. ##}}
+
+<div class="media-row">
+  <img src="/img/{{ item.name }}.jpg" alt="{{ item.name }}" />
+  <div class="media-body">
+    <h4>{{ item.name }}</h4>
+    <p>Caption for {{ item.name }}</p>
+  </div>
+</div>

@@ -3,8 +3,8 @@ using System.Collections.Generic;
 namespace Heddle.LanguageServices
 {
     /// <summary>
-    /// Item classes completion produces (D12); the protocol layer maps each to the numeric LSP
-    /// <c>CompletionItemKind</c> pinned in protocol.md (Property → 10, Definition → 7, Extension → 3,
+    /// Item classes completion produces; the protocol layer maps each to the numeric LSP
+    /// <c>CompletionItemKind</c> (Property → 10, Definition → 7, Extension → 3,
     /// Function → 3, Prop → 5, Keyword → 14).
     /// </summary>
     public enum CompletionItemKind
@@ -17,7 +17,7 @@ namespace Heddle.LanguageServices
         Keyword
     }
 
-    /// <summary>One completion item; label/detail/insert-text semantics per the protocol.md item-shapes table.</summary>
+    /// <summary>One completion item: a label, an optional detail line, and the text to insert.</summary>
     public sealed class CompletionItem
     {
         internal CompletionItem(string label, CompletionItemKind kind, string detail, string insertText)
@@ -31,7 +31,7 @@ namespace Heddle.LanguageServices
         public string Label { get; }
         public CompletionItemKind Kind { get; }
 
-        /// <summary>CLR type, header/overload signature, prop declaration, or "varies by call site" (D13); null
+        /// <summary>CLR type, header/overload signature, prop declaration, or "varies by call site"; null
         /// for keyword items.</summary>
         public string Detail { get; }
 
@@ -41,8 +41,8 @@ namespace Heddle.LanguageServices
     }
 
     /// <summary>
-    /// Completion outcome for one offset (D12/D13). Immutable; items are fully materialized — no resolve
-    /// round-trip (D7).
+    /// Completion outcome for one offset. Immutable; items are fully materialized — no resolve
+    /// round-trip.
     /// </summary>
     public sealed class CompletionResult
     {
@@ -57,7 +57,7 @@ namespace Heddle.LanguageServices
         public IReadOnlyList<CompletionItem> Items { get; }
     }
 
-    /// <summary>Hover payload (D15): markdown content plus the hovered token's span.</summary>
+    /// <summary>Hover information for a location.</summary>
     public sealed class HoverResult
     {
         internal HoverResult(string markdown, int offset, int length)
@@ -72,7 +72,7 @@ namespace Heddle.LanguageServices
         public int Length { get; }
     }
 
-    /// <summary>Go-to-definition target (D16), projected onto one LSP Location.</summary>
+    /// <summary>Go-to-definition target location.</summary>
     public sealed class DefinitionTarget
     {
         internal DefinitionTarget(string sourcePath, int offset, int length)

@@ -1,0 +1,17 @@
+{
+  "workload": "encoded-loop",
+  "suite": "encoded",
+  "values": [
+    { "text": "tag-0&amp;&#39;0&#39;", "count": 1 },
+    { "text": "item &lt;4999&gt; &amp;", "count": 1 },
+    { "text": "<tr><td data-tag=\"", "count": 5000 },
+    { "text": "こんにちは", "count": 5000 }
+  ],
+  "markers": [
+    "tag-0&amp;&#39;0&#39;",
+    "item &lt;2500&gt;",
+    "こんにちは 4999"
+  ],
+  "forbidden": ["<script>alert(", "<angle>"],
+  "required": [{ "text": "&lt;angle&gt;", "minCount": 5000 }]
+}

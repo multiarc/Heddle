@@ -6,8 +6,12 @@
     <Nullable>disable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
     <IsPackable>false</IsPackable>
-    <!-- Phase 9 D5: the demo picker reflects over these models for completion/hover/render, so the whole
-         assembly is trim-rooted by the WASM host (TrimmerRootAssembly). Keep it POCO-only. -->
+    <!-- Strong-named like every other first-party assembly: unsigned, it draws CS8002 in the signed
+         Heddle.LanguageServices.Tests that references it. -->
+    <SignAssembly>true</SignAssembly>
+    <AssemblyOriginatorKeyFile>..\..\heddle.snk</AssemblyOriginatorKeyFile>
+    <!-- The demo picker reflects over these models, so the WASM host trim-roots the whole assembly
+         (TrimmerRootAssembly). Keep it POCO-only. -->
   </PropertyGroup>
 
 </Project>

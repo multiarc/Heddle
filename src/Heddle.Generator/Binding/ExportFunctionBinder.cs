@@ -1,0 +1,329 @@
+using System.Collections.Generic;
+using Heddle.Language.Expressions;
+using Microsoft.CodeAnalysis;
+
+namespace Heddle.Generator.Binding
+{
+    /// <summary>
+    /// Resolves an <c>[ExportFunctions]</c> call with the <b>shared</b> <see cref="OverloadRank"/> core.
+    /// <para>Without parameter-type metadata the shared ranker has nothing to rank and the emitted call falls to
+    /// the consumer's C# compiler, whose betterness rules are not Heddle's flat Pareto rank.
+    /// <c>FunctionExportResolver</c> discovers full signatures, so an
+    /// export call ranks exactly as a built-in does: degrade when the ranker reports ambiguity or inapplicability,
+    /// otherwise emit cast-pinned to the winning signature so the consumer's compiler has no choice left to make.</para>
+    /// </summary>
+    internal static class ExportFunctionBinder
+    {
+        internal sealed class Binding
+        {
+            public FunctionExportResolver.ExportOverloadInfo Overload;
+
+            /// <summary>Per-argument cast to the chosen parameter type (<c>global::</c>-qualified), or null when the
+            /// argument already matches exactly. For an expanded bind the tail entries target the element type.</summary>
+            public string[] ArgumentCasts;
+
+            public ITypeSymbol ReturnType;
+
+            /// <summary>True when the bind used the params-expanded tier, so the emitted call must spell the tail as
+            /// an explicitly typed array creation.</summary>
+            public bool Expanded;
+
+            /// <summary>The <c>global::</c>-qualified element type of the expanded array; null unless
+            /// <see cref="Expanded"/>.</summary>
+            public string ParamsElementTypeName;
+        }
+
+        /// <summary>The symbol-side rank model, shared with the indexer-candidate match so "convertible" means the
+        /// same thing wherever the engine's <c>ConversionRank</c> is being mirrored.</summary>
+        internal sealed class SymbolRankModel : IRankModel<ITypeSymbol>
+        {
+            private readonly SymbolTypeFacts _facts;
+
+            internal SymbolRankModel(SymbolTypeFacts facts) => _facts = facts;
+
+            public bool AreSame(ITypeSymbol a, ITypeSymbol b) => SymbolEqualityComparer.Default.Equals(a, b);
+
+            public bool IsObject(ITypeSymbol type) => _facts.IsObject(type);
+
+            public bool IsValueType(ITypeSymbol type) => _facts.IsValueType(type);
+
+            public bool TryGetNullableUnderlying(ITypeSymbol type, out ITypeSymbol underlying) =>
+                _facts.TryGetNullableUnderlying(type, out underlying);
+
+            public NumericKind KindOf(ITypeSymbol type) => _facts.GetNumericKind(type);
+
+            /// <summary>The reference-conversion arm, answered by the same CLR relation the rest of the binder
+            /// uses — the generator can decide it here (unlike the default table's name-keyed model, which has to
+            /// answer false).</summary>
+            public bool IsReferenceAssignable(ITypeSymbol from, ITypeSymbol to) =>
+                !_facts.IsValueType(from) && _facts.IsAssignableFrom(to, from);
+        }
+
+        /// <summary>Ranks the merged overload set. Returns null (degrade to dynamic) when any argument cannot be
+        /// typed, no overload is applicable, or when multiple overloads tie (the flat Pareto front has &gt; 1 member).
+        /// <paramref name="refusal"/> distinguishes ambiguous/inapplicable over typed arguments (reports <c>HED7025</c>)
+        /// from untypeable arguments (silent degrade).
+        /// <para><paramref name="argTypes"/> carries the caller's own symbol for an argument it resolved — a member
+        /// path, a call's declared return — and is what the engine ranks on: <c>NativeExpressionCompiler</c> hands
+        /// <c>OverloadRank</c> the compiled expression's <c>Type</c>, not a descriptor of it. The
+        /// <see cref="OperandKind"/> estimate names the numeric primitives, <c>bool</c> and <c>string</c> and nothing
+        /// else, so a struct, an enum, a class and <c>object</c> all arrived here indistinguishable from an argument
+        /// nothing had resolved. Entries may be null, and then the descriptor answers as before.</para></summary>
+        internal static Binding TryBind(SymbolTypeFacts facts, SymbolTypeResolver resolver, string name,
+            IReadOnlyList<FunctionExportResolver.ExportOverloadInfo> overloads, IReadOnlyList<OperandKind> argKinds,
+            IReadOnlyList<ITypeSymbol> argTypes, out BindRefusal refusal)
+        {
+            refusal = BindRefusal.Unproven;
+            if (facts?.Compilation == null || overloads == null || overloads.Count == 0)
+                return null;
+
+            var model = new SymbolRankModel(facts);
+            var args = new RankArgument<ITypeSymbol>[argKinds.Count];
+            var typed = new bool[argKinds.Count];
+            bool allTyped = true;
+            for (int i = 0; i < argKinds.Count; i++)
+            {
+                if (argKinds[i].Category == OperandCategory.NullLiteral)
+                {
+                    args[i] = RankArgument<ITypeSymbol>.Null();
+                    typed[i] = true;
+                    continue;
+                }
+
+                var type = argTypes != null && i < argTypes.Count && argTypes[i] != null
+                    ? argTypes[i]
+                    : ToSymbol(facts.Compilation, argKinds[i]);
+                if (type == null || type.TypeKind == TypeKind.Dynamic || type.TypeKind == TypeKind.Error)
+                {
+                    allTyped = false;
+                    continue;
+                }
+
+                args[i] = RankArgument<ITypeSymbol>.Of(type);
+                typed[i] = true;
+            }
+
+            // One candidate — no overload to choose, so no ranking is imposed, and the ordinary single-overload
+            // export stays in reach with the arguments nothing here can type (`this`, a chained value, embedded C#).
+            // What is NOT skipped with the choice is whether the candidate is applicable: the engine runs the ranker
+            // over one candidate as over ten, so `only("ab")` against a sole `only(int)` is HED1012 there, while
+            // binding it here emitted CS1503 into the consumer's build. An argument that WAS typed and converts to
+            // nothing rules the candidate out on its own, whatever the others turn out to be, because applicability
+            // is decided argument by argument — which is why the cure for the arguments this used to bind past is to
+            // type them (see `argTypes`) rather than to delete the shortcut: deleting it sends every genuinely
+            // untypeable argument to a degrade.
+            if (overloads.Count == 1 && overloads[0].Method.Parameters.Length == argKinds.Count &&
+                !ExcludedByTypedArguments(model, overloads[0].Method, args, typed))
+            {
+                refusal = BindRefusal.Bound;
+                return new Binding
+                {
+                    Overload = overloads[0],
+                    ArgumentCasts = new string[argKinds.Count],
+                    ReturnType = overloads[0].Method.ReturnType
+                };
+            }
+
+            if (!allTyped)
+                // Untypeable argument: degrade before ranking, so front describes host registry only.
+                return null;
+
+            var candidates = new RankCandidate<ITypeSymbol>[overloads.Count];
+            for (int i = 0; i < overloads.Count; i++)
+            {
+                var method = overloads[i].Method;
+                var parameterTypes = new ITypeSymbol[method.Parameters.Length];
+                for (int p = 0; p < method.Parameters.Length; p++)
+                    parameterTypes[p] = method.Parameters[p].Type;
+
+                bool hasParams = method.Parameters.Length > 0 &&
+                                 method.Parameters[method.Parameters.Length - 1].IsParams;
+                ITypeSymbol elementType = null;
+                if (hasParams &&
+                    method.Parameters[method.Parameters.Length - 1].Type is IArrayTypeSymbol array)
+                    elementType = array.ElementType;
+                else
+                    hasParams = false;
+
+                candidates[i] = new RankCandidate<ITypeSymbol>(parameterTypes, hasParams, elementType);
+            }
+
+            var binding = OverloadRank.Bind(model, candidates, args);
+            if (binding.Outcome != BindOutcome.Bound)
+            {
+                refusal = Refuse(name, binding.Outcome, overloads, args);
+                return null;
+            }
+
+            var winner = overloads[binding.Index];
+            if (!TryComputeCasts(winner.Method, resolver, args, binding.Expanded, out var casts,
+                    out var elementName))
+                return null;
+
+            refusal = BindRefusal.Bound;
+            return new Binding
+            {
+                Overload = winner,
+                ArgumentCasts = casts,
+                ReturnType = winner.Method.ReturnType,
+                Expanded = binding.Expanded,
+                ParamsElementTypeName = elementName
+            };
+        }
+
+        /// <summary>
+        /// The per-argument pinned casts for a call bound to <paramref name="method"/> — under an expanded bind the
+        /// tail arguments pin to the params element type, whose <c>global::</c> spelling comes back in
+        /// <paramref name="paramsElementTypeName"/> because the array creation writes it even when no element needs
+        /// a cast. False degrades the call: every cast target is a name written into the consumer's assembly, so it
+        /// goes through the same classifier every other spelled name does — a parameter type this assembly may not
+        /// name is CS0122 or CS0619 against a .g.cs nobody can edit, while the engine binds the call reflectively
+        /// and renders it fine.
+        /// </summary>
+        internal static bool TryComputeCasts(IMethodSymbol method, SymbolTypeResolver resolver,
+            IReadOnlyList<RankArgument<ITypeSymbol>> args, bool expanded, out string[] casts,
+            out string paramsElementTypeName)
+        {
+            casts = null;
+            paramsElementTypeName = null;
+            int fixedCount = expanded ? method.Parameters.Length - 1 : args.Count;
+            ITypeSymbol elementType = null;
+            if (expanded)
+            {
+                elementType = ((IArrayTypeSymbol)method.Parameters[fixedCount].Type).ElementType;
+                if (resolver != null && resolver.ClassifyTypeName(elementType, out _) !=
+                    SymbolTypeResolver.NameFault.None)
+                    return false;
+                paramsElementTypeName = elementType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+            }
+
+            var result = new string[args.Count];
+            for (int i = 0; i < args.Count; i++)
+            {
+                var target = i < fixedCount ? method.Parameters[i].Type : elementType;
+                if (args[i].IsNullLiteral || SymbolEqualityComparer.Default.Equals(args[i].Type, target))
+                    continue;
+                if (resolver != null && resolver.ClassifyTypeName(target, out _) !=
+                    SymbolTypeResolver.NameFault.None)
+                    return false;
+
+                result[i] = target.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+            }
+
+            casts = result;
+            return true;
+        }
+
+        /// <summary>
+        /// Whether an argument the estimator could type rules <paramref name="method"/> out. A candidate is
+        /// applicable only if every argument converts to its parameter, and the shared ranker decides that argument
+        /// by argument, so one that converts to nothing settles the candidate without the untyped arguments being
+        /// known. Both tiers of the ranker's two-tier bind have to say no: an argument at or past the fixed count of
+        /// a <c>params</c> signature may convert to the element type instead.
+        /// </summary>
+        private static bool ExcludedByTypedArguments(IRankModel<ITypeSymbol> model, IMethodSymbol method,
+            RankArgument<ITypeSymbol>[] args, bool[] typed)
+        {
+            var parameters = method.Parameters;
+            var paramsElement = parameters.Length > 0 && parameters[parameters.Length - 1].IsParams
+                ? (parameters[parameters.Length - 1].Type as IArrayTypeSymbol)?.ElementType
+                : null;
+
+            for (int i = 0; i < args.Length; i++)
+            {
+                if (!typed[i] ||
+                    OverloadRank.ConversionRank(model, args[i], parameters[i].Type) >= 0)
+                    continue;
+                if (paramsElement != null && i >= parameters.Length - 1 &&
+                    OverloadRank.ConversionRank(model, args[i], paramsElement) >= 0)
+                    continue;
+                return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>Formats <c>HED7025</c> payload to match the runtime's verdict message. Candidates are every
+        /// discovered overload of the name across containers.</summary>
+        private static BindRefusal Refuse(string name, BindOutcome outcome,
+            IReadOnlyList<FunctionExportResolver.ExportOverloadInfo> overloads,
+            IReadOnlyList<RankArgument<ITypeSymbol>> args)
+        {
+            var candidates = new List<string>(overloads.Count);
+            foreach (var overload in overloads)
+            {
+                var parts = new List<string>(overload.Method.Parameters.Length);
+                foreach (var parameter in overload.Method.Parameters)
+                    parts.Add(Display(parameter.Type));
+                candidates.Add(name + "(" + string.Join(", ", parts) + ")");
+            }
+
+            var candidateText = string.Join(", ", candidates);
+            if (outcome == BindOutcome.Ambiguous)
+                return BindRefusal.ProvenIllegal(
+                    "The call to function '" + name + "' is ambiguous between: " + candidateText + ".",
+                    Heddle.Data.HeddleDiagnosticIds.AmbiguousFunctionCall);
+
+            var argTexts = new List<string>(args.Count);
+            foreach (var arg in args)
+                argTexts.Add(arg.IsNullLiteral ? "null" : Display(arg.Type));
+            return BindRefusal.ProvenIllegal(
+                "No overload of function '" + name + "' takes (" + string.Join(", ", argTexts) + "). Candidates: " +
+                candidateText + ".",
+                Heddle.Data.HeddleDiagnosticIds.NoFunctionOverload);
+        }
+
+        /// <summary>Signature-text spelling for a parameter/argument type: the C# alias where one exists (so the
+        /// build error reads the way the runtime's <c>HED1013</c> reads), else the minimally-qualified name.</summary>
+        private static string Display(ITypeSymbol type) =>
+            type == null ? "?" : type.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
+
+        /// <summary>Maps the estimator's <see cref="OperandKind"/> back onto a compilation type symbol. Only the
+        /// categories the estimator can type precisely are mapped; everything else answers null, which degrades.</summary>
+        internal static ITypeSymbol ToSymbol(Compilation compilation, OperandKind kind)
+        {
+            ITypeSymbol underlying;
+            switch (kind.Category)
+            {
+                case OperandCategory.Bool:
+                    underlying = compilation.GetSpecialType(SpecialType.System_Boolean);
+                    break;
+                case OperandCategory.String:
+                    return compilation.GetSpecialType(SpecialType.System_String);
+                case OperandCategory.Numeric:
+                    underlying = NumericSymbol(compilation, kind.Kind);
+                    break;
+                default:
+                    return null;
+            }
+
+            if (underlying == null)
+                return null;
+            if (!kind.IsNullable)
+                return underlying;
+
+            var nullable = compilation.GetTypeByMetadataName("System.Nullable`1");
+            return nullable?.Construct(underlying);
+        }
+
+        private static ITypeSymbol NumericSymbol(Compilation compilation, NumericKind kind)
+        {
+            switch (kind)
+            {
+                case NumericKind.SByte: return compilation.GetSpecialType(SpecialType.System_SByte);
+                case NumericKind.Byte: return compilation.GetSpecialType(SpecialType.System_Byte);
+                case NumericKind.Int16: return compilation.GetSpecialType(SpecialType.System_Int16);
+                case NumericKind.UInt16: return compilation.GetSpecialType(SpecialType.System_UInt16);
+                case NumericKind.Int32: return compilation.GetSpecialType(SpecialType.System_Int32);
+                case NumericKind.UInt32: return compilation.GetSpecialType(SpecialType.System_UInt32);
+                case NumericKind.Int64: return compilation.GetSpecialType(SpecialType.System_Int64);
+                case NumericKind.UInt64: return compilation.GetSpecialType(SpecialType.System_UInt64);
+                case NumericKind.Char: return compilation.GetSpecialType(SpecialType.System_Char);
+                case NumericKind.Single: return compilation.GetSpecialType(SpecialType.System_Single);
+                case NumericKind.Double: return compilation.GetSpecialType(SpecialType.System_Double);
+                case NumericKind.Decimal: return compilation.GetSpecialType(SpecialType.System_Decimal);
+                default: return null;
+            }
+        }
+    }
+}

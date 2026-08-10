@@ -1,0 +1,29 @@
+{%- comment -%}
+  Idiomatic Liquid -- composed-page (DotLiquid dialect).
+
+  Patterns followed, from the engines' own documentation:
+    Liquid language reference   https://shopify.github.io/liquid/
+    DotLiquid                   http://dotliquidmarkup.org/
+
+  Capture-then-include layout composition: the slider body is captured into
+  body_content, then the layout partial is included and splices it at its live slot.
+
+  Authored the way the docs teach rather than to match the oracle byte-for-byte: readable
+  whitespace and Liquid's own control-flow tags. Checked by the functional verifier, not
+  the byte gate.
+{%- endcomment -%}
+
+{% capture body_content %}
+  <div class="slider-wrapper theme-default">
+    <div id="slider" class="nivoSlider">
+    </div>
+    <div class="home-content">
+      <div>
+        <a href="/products/gluten-free">
+          <img src="/files/homepage/homebtmbanners/gluten-hp.jpg" width="984" border="0" />
+        </a>
+      </div>
+    </div>
+  </div>
+{% endcapture %}
+{% include 'layout' %}

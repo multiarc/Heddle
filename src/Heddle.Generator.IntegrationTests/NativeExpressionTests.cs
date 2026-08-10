@@ -6,9 +6,8 @@ using Xunit;
 namespace Heddle.Generator.IntegrationTests
 {
     /// <summary>
-    /// Phase 7 WI5 differential (D20): native expressions (generated-code.md example 2) — arithmetic, comparison,
-    /// coalesce, ternary, and value-typed member paths with the boxed-default null-safety (<c>@(Count)</c> on a null
-    /// model renders <c>0</c>, not empty). Rendered byte-identically to the dynamic engine.
+    /// Native expressions — arithmetic, comparison, coalesce, ternary, and value-typed member paths with the boxed-default
+    /// null-safety (<c>@(Count)</c> on a null model renders <c>0</c>, not empty). Rendered byte-identically to the dynamic engine.
     /// </summary>
     public class NativeExpressionTests
     {

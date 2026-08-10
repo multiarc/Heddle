@@ -3,9 +3,8 @@ using System.Collections.Generic;
 
 namespace Heddle.Demo.Models
 {
-    // The published blog corpus, EXACTLY as docs/language-reference.md defines it. The docs and the demo must
-    // never drift: completion/hover in the browser reflect over these types, so member names here are the demo's
-    // contract. POCOs only — the assembly is fully trim-rooted by the WASM host.
+    // Member names here are the demo's contract for browser completion/hover. POCOs only — the assembly is
+    // fully trim-rooted by the WASM host.
 
     public class Blog
     {

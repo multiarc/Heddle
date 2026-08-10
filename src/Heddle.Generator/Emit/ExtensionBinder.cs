@@ -1,27 +1,25 @@
 using System.Collections.Generic;
+using Heddle.Attributes;
+using Heddle.Generator.Binding;
+using Heddle.Language.Binding;
 using Microsoft.CodeAnalysis;
 
 namespace Heddle.Generator.Emit
 {
-    /// <summary>Mirror of <c>Heddle.Attributes.BranchRole</c>. The generator cannot reference the runtime
-    /// <c>Heddle</c> assembly, so the values are pinned here and decoded from the attribute's constructor
-    /// argument (read out of Roslyn symbol metadata as a raw <see cref="int"/>); renumbering is a
-    /// cross-assembly breaking change.</summary>
-    internal enum BranchRole { Opener = 0, Continuation = 1, Terminal = 2 }
-
     /// <summary>
-    /// Build-time custom-extension binder (phase 7 D9 / WI6): scans the compilation's own and referenced assemblies
-    /// for <c>[Heddle.Attributes.ExtensionName]</c> types deriving from <c>AbstractExtension</c>, mapping each name to
-    /// the concrete type the generated code constructs. Extensions are <b>bound, never inlined</b> (D9) — a logic or
+    /// Build-time custom-extension binder: scans the compilation's own and referenced assemblies for
+    /// <c>[Heddle.Attributes.ExtensionName]</c> types deriving from <c>AbstractExtension</c>, mapping each name to
+    /// the concrete type the generated code constructs. Extensions are <b>bound, never inlined</b> — a logic or
     /// security fix in the extension package reaches precompiled templates by updating the reference, no regeneration.
-    /// <para>Two refusals are recorded per D22: a bound extension <b>outside the engine assembly</b> that overrides
-    /// the compile-time hooks <c>InitStart</c>/<c>CompleteInit</c> cannot be reproduced by <c>Bind</c> (which
-    /// reproduces the <i>base</i> behavior only) → <c>HED7015</c>; and an engine-assembly extension with such an
-    /// override that the emitter has no pinned knowledge of stays a safe dynamic fallback (never a mis-emit).</para>
+    /// <para>The binder reports what an extension <i>is</i>, never what the emitter may do with it: whether it
+    /// overrides the compile-time hooks <c>InitStart</c>/<c>CompleteInit</c>, what encoding attributes it carries,
+    /// what it declares it accepts. Whether an override can be reproduced is the emitter's question, answered by
+    /// the shared table's row — never by a name list here, which was both hardcoded and, for five of the nine
+    /// extensions that share one hook body, silently incomplete.</para>
     /// </summary>
     internal sealed class ExtensionBinder
     {
-        /// <summary>Phase 8 (WI5): one decoded <c>[Prop]</c> declaration of a parameter-declaring extension,
+        /// <summary>One decoded <c>[Prop]</c> declaration of a parameter-declaring extension,
         /// read over the base-type chain (outermost base first — <c>[Prop]</c> is <c>Inherited = true</c> and
         /// Roslyn does not surface inherited attributes). The emitter's <c>ResolveExtensionPropLayout</c> builds
         /// its parallel layout (and detects every malformed condition → HED7017) from these.</summary>
@@ -32,14 +30,11 @@ namespace Heddle.Generator.Emit
             public string Name;
 
             /// <summary>The declared parameter type symbol (<c>typeof</c> constructor argument 1); may be
-            /// <c>null</c> when the argument was <c>null</c> — see <see cref="TypeUnusable"/>.</summary>
+            /// <c>null</c> when the argument was <c>null</c>, which the shared prop-layout core reports as
+            /// <see cref="Heddle.Data.PropFault.TypeUnusable"/>.</summary>
             public ITypeSymbol Type;
 
-            /// <summary>True when the type argument is unusable (null / unbound generic / pointer) — HED7017's
-            /// twin of the dynamic tier's HED5010.</summary>
-            public bool TypeUnusable;
-
-            /// <summary>Derived optionality (D3): <c>Default != null || Optional</c>.</summary>
+            /// <summary>Derived optionality: <c>Default != null || Optional</c>.</summary>
             public bool HasDefault;
 
             /// <summary>The decoded <c>Default</c> named-argument value (boxed primitive/string/enum-underlying;
@@ -58,29 +53,62 @@ namespace Heddle.Generator.Emit
             public int Level;
         }
 
+        /// <summary>The metadata name of the base type every Heddle extension derives from — what the engine
+        /// assembly is identified <i>by</i>. It is a type name, not an extension name: nothing here decides
+        /// whether a particular extension exists.</summary>
+        private const string AbstractExtensionMetadataName = "Heddle.Core.AbstractExtension";
+
         private static readonly IReadOnlyList<PropParameter> EmptyParameters = new PropParameter[0];
+
+        private static readonly IReadOnlyList<ITypeSymbol> EmptyDataTypes = new ITypeSymbol[0];
 
         internal readonly struct Info
         {
-            public Info(string globalName, string aqnSansVersion, string assemblyName, bool overridesHook,
+            public Info(string globalName, string bareTypeName, string aqnSansVersion, string assemblyName,
+                bool overridesHook,
                 bool isEngineAssembly, BranchRole? role, bool hasScopeChannel,
-                bool hasEncodeOutput = false, bool hasNotEncode = false,
-                IReadOnlyList<PropParameter> parameters = null)
+                bool hasSlotProjection, bool hasChildTemplateHost,
+                bool hasEncodeOutput = false, bool hasNotEncode = false, bool isZeroOutput = false,
+                IReadOnlyList<PropParameter> parameters = null, INamedTypeSymbol typeSymbol = null,
+                IReadOnlyList<ITypeSymbol> acceptedDataTypes = null, string precompileUnsupportedReason = null)
             {
+                PrecompileUnsupportedReason = precompileUnsupportedReason;
+                TypeSymbol = typeSymbol;
+                AcceptedDataTypes = acceptedDataTypes ?? EmptyDataTypes;
                 GlobalName = globalName;
+                BareTypeName = bareTypeName;
                 AqnSansVersion = aqnSansVersion;
                 AssemblyName = assemblyName;
                 OverridesHook = overridesHook;
                 IsEngineAssembly = isEngineAssembly;
                 Role = role;
                 HasScopeChannel = hasScopeChannel;
+                HasSlotProjection = hasSlotProjection;
+                HasChildTemplateHost = hasChildTemplateHost;
                 HasEncodeOutput = hasEncodeOutput;
                 HasNotEncode = hasNotEncode;
+                IsZeroOutput = isZeroOutput;
                 Parameters = parameters ?? EmptyParameters;
             }
 
+            /// <summary>The bound extension's type symbol — the assignability edge the shared registration
+            /// precedence rule needs when a later candidate claims the same name.</summary>
+            public INamedTypeSymbol TypeSymbol { get; }
+
+            /// <summary>The types the extension declares it accepts as its call value — every <c>[DataType]</c> over
+            /// the base chain, which is what <c>HeddleCompiler</c> reads with <c>inherit: true</c> and checks the
+            /// call value against before it compiles the call at all. Empty means the extension accepts anything.
+            /// </summary>
+            public IReadOnlyList<ITypeSymbol> AcceptedDataTypes { get; }
+
             /// <summary><c>global::</c>-qualified type name for the generated <c>new …()</c>.</summary>
             public string GlobalName { get; }
+
+            /// <summary>The CLR full type name (<c>Ns.Outer+Inner</c>) from the shared
+            /// <see cref="Heddle.Precompiled.AqnFormatter"/> — the manifest binding row's type half. It is
+            /// <b>not</b> the <c>global::</c>-stripped display string, which spells a nested type with a dot and a
+            /// generic container with angle brackets, neither of which reflection ever produces.</summary>
+            public string BareTypeName { get; }
 
             /// <summary>AQN sans version (<c>Ns.Type, Assembly</c>) for the manifest <c>ExtensionBindings</c> row.</summary>
             public string AqnSansVersion { get; }
@@ -98,19 +126,44 @@ namespace Heddle.Generator.Emit
             /// <summary>The type (or a base) carries <c>[ScopeChannel]</c>.</summary>
             public bool HasScopeChannel { get; }
 
-            /// <summary>Phase 8 (WI5/WI5b): the type (or a base) carries <c>[EncodeOutput]</c> — the symbolic
+            /// <summary>The type (or a base) carries <c>[SlotProjection]</c> — it consumes the enclosing
+            /// definition's slot parameter and projects the caller's content. The emitter dispatches the slot
+            /// channel on this, not on the name the extension is called by. False against an older engine
+            /// reference that predates the attribute, which takes the call down the ordinary bound-extension
+            /// route.</summary>
+            public bool HasSlotProjection { get; }
+
+            /// <summary>The type (or a base) carries <c>[ChildTemplateHost]</c> — its body names a second
+            /// template, which it resolves and compiles at compile time and hosts at render. The emitter
+            /// dispatches the child-template route on this, not on the name the extension is called by. False
+            /// against an older engine reference that predates the attribute, which takes the call down the
+            /// ordinary bound-extension route.</summary>
+            public bool HasChildTemplateHost { get; }
+
+            /// <summary>The type (or a base) carries <c>[EncodeOutput]</c> — the symbolic
             /// mirror of <c>InitializeTemplate</c>'s <c>IsHaveAttribute&lt;EncodeOutputAttribute&gt;(true)</c>.
             /// Feeds the derived render type of both the parameterized and the plain custom bind.</summary>
             public bool HasEncodeOutput { get; }
 
-            /// <summary>Phase 8 (WI5/WI5b): the type (or a base) carries <c>[NotEncode]</c>. Structurally dead
+            /// <summary>The type (or a base) carries <c>[NotEncode]</c>. Structurally dead
             /// (the attribute targets properties only) — retained to mirror the dynamic tier's expression
             /// verbatim; both dead branches agree.</summary>
             public bool HasNotEncode { get; }
 
-            /// <summary>Phase 8 (WI5): the decoded <c>[Prop]</c> declarations, base-chain outermost-first;
+            /// <summary>The type (or a base) carries <c>[ZeroOutput]</c> — it emits nothing
+            /// and its block is removed from the piece stream, the declarative form of the runtime's
+            /// null-<c>InitStart</c> protocol. False against an older engine reference that predates the
+            /// attribute, which keeps the emitter on its built-in name list.</summary>
+            public bool IsZeroOutput { get; }
+
+            /// <summary>The decoded <c>[Prop]</c> declarations, base-chain outermost-first;
             /// empty for a parameter-less extension (or against an older engine reference).</summary>
             public IReadOnlyList<PropParameter> Parameters { get; }
+
+            /// <summary>The reason the type (or a base) declares with <c>[PrecompileUnsupported]</c>, or
+            /// <c>null</c>. An empty declared reason reads back as the empty string, which is still a declaration —
+            /// so the test is against <c>null</c>, never against emptiness.</summary>
+            public string PrecompileUnsupportedReason { get; }
 
             /// <summary>Reads the channel — hosting bodies must provision a locals frame.</summary>
             public bool IsBranchParticipant =>
@@ -118,124 +171,488 @@ namespace Heddle.Generator.Emit
         }
 
         private readonly Dictionary<string, Info> _byName;
+        private readonly Dictionary<string, string> _unbindable;
         private readonly List<string> _driftTypes;
 
-        private ExtensionBinder(Dictionary<string, Info> byName, List<string> driftTypes)
+        private ExtensionBinder(Dictionary<string, Info> byName, Dictionary<string, string> unbindable,
+            List<string> driftTypes, IAssemblySymbol engineAssembly = null)
         {
             _byName = byName;
+            _unbindable = unbindable;
             _driftTypes = driftTypes;
+            EngineAssemblyName = engineAssembly?.Identity.Name ?? string.Empty;
         }
+
+        /// <summary>Simple name of the assembly the engine <i>is</i> — the one declaring
+        /// <c>AbstractExtension</c>, resolved by <see cref="EngineAssemblyOf"/> rather than spelled — for the
+        /// manifest rows whose bound type the emitter names itself. Empty when no engine is referenced, which is
+        /// also the state in which no such row can be written.</summary>
+        public string EngineAssemblyName { get; }
+
+        /// <summary>The engine assembly of a compilation: the one declaring <c>AbstractExtension</c>. An assembly
+        /// <i>name</i> answers this question wrongly under ILMerge, an extern alias and a rename alike; the
+        /// declaring symbol answers it correctly under all three.</summary>
+        public static IAssemblySymbol EngineAssemblyOf(Compilation compilation) =>
+            compilation?.GetTypeByMetadataName(AbstractExtensionMetadataName)?.ContainingAssembly;
 
         public bool TryResolve(string name, out Info info) => _byName.TryGetValue(name, out info);
 
-        /// <summary>D-ROLE-5 drift (§6.5): display names of extension types classified as
+        /// <summary>Every bound name with what this compilation resolved it to. Engine observation reads it to make
+        /// the loaded engine's process-global registry answer for <b>this</b> compilation or not at all.</summary>
+        public IEnumerable<KeyValuePair<string, Info>> ByName => _byName;
+
+        /// <summary>The distinct assembly simple names bound extensions come from, excluding the compilation's own
+        /// — that one reaches a loaded engine as the emitted intermediate assembly, not as a reference.</summary>
+        public IReadOnlyList<string> ExtensionAssemblyNames
+        {
+            get
+            {
+                var names = new List<string>();
+                var seen = new HashSet<string>(System.StringComparer.OrdinalIgnoreCase);
+                foreach (var info in _byName.Values)
+                    if (!string.IsNullOrEmpty(info.AssemblyName) && seen.Add(info.AssemblyName))
+                        names.Add(info.AssemblyName);
+                return names;
+            }
+        }
+
+        /// <summary>The name resolves to a type under the <b>runtime's</b> discovery predicate
+        /// (implements <c>IExtension</c> and carries an inherited <c>[ExtensionName]</c>) but the generator cannot
+        /// reproduce its render protocol, or two unrelated types claim it. The recorded reason feeds the degrade
+        /// message; such a call is never <c>HED7006</c>, because the runtime <em>will</em> find it.</summary>
+        public bool TryGetUnbindableReason(string name, out string reason) =>
+            _unbindable.TryGetValue(name, out reason);
+
+        /// <summary>True when the name resolves to something under the runtime's own discovery rule — bindable or
+        /// not. <c>HED7006</c> ("the runtime will not find it either") fires only when this is false.</summary>
+        public bool IsKnownToRuntime(string name) =>
+            name != null && (_byName.ContainsKey(name) || _unbindable.ContainsKey(name));
+
+        /// <summary>Display names of extension types classified as
         /// <see cref="BranchRole.Continuation"/>/<see cref="BranchRole.Terminal"/> that do <b>not</b> carry
         /// <c>[ScopeChannel]</c> — they cannot read the branch state at render time (HED7016).</summary>
         public IReadOnlyList<string> DriftTypes => _driftTypes;
 
+        /// <summary>One type that satisfies the <b>runtime's</b> discovery predicate — implements
+        /// <c>IExtension</c> and carries an <c>[ExtensionName]</c> read with <c>inherit: true</c>. Discovery and
+        /// <i>bindability</i> are two independent axes: the generator can only reproduce the render protocol of a
+        /// non-abstract class deriving from <c>AbstractExtension</c>, so a candidate that fails that test is
+        /// discovered (the runtime finds it) but not bound (the call degrades to dynamic).</summary>
+        private sealed class Candidate
+        {
+            public INamedTypeSymbol Type;
+            public List<string> Names;
+            public bool Replaces;
+            public bool Bindable;
+            public string UnbindableReason;
+            public int OrderingKey;
+        }
+
         public static ExtensionBinder Build(Compilation compilation)
         {
             var byName = new Dictionary<string, Info>(System.StringComparer.Ordinal);
+            var unbindable = new Dictionary<string, string>(System.StringComparer.Ordinal);
             var driftTypes = new List<string>();
             if (compilation == null)
-                return new ExtensionBinder(byName, driftTypes);
+                return new ExtensionBinder(byName, unbindable, driftTypes);
 
             var nameAttr = compilation.GetTypeByMetadataName("Heddle.Attributes.ExtensionNameAttribute");
-            var abstractExtension = compilation.GetTypeByMetadataName("Heddle.Core.AbstractExtension");
+            var abstractExtension = compilation.GetTypeByMetadataName(AbstractExtensionMetadataName);
             if (nameAttr == null || abstractExtension == null)
-                return new ExtensionBinder(byName, driftTypes);
+                return new ExtensionBinder(byName, unbindable, driftTypes);
 
-            // All of these may be null against an older engine reference that predates the attribute — then
-            // every Info.Role is null, HasScopeChannel/HasEncodeOutput/HasNotEncode false, and Parameters empty;
-            // the reads below degrade safely.
+            // Attribute symbols may be null against an older engine reference; reads degrade safely.
             var symbols = new AttrSymbols
             {
                 NameAttr = nameAttr,
                 AbstractExtension = abstractExtension,
+                ExtensionInterface = compilation.GetTypeByMetadataName("Heddle.Runtime.IExtension"),
+                ReplaceAttr = compilation.GetTypeByMetadataName("Heddle.Attributes.ExtensionReplaceAttribute"),
+                DataTypeAttr = compilation.GetTypeByMetadataName("Heddle.Attributes.DataTypeAttribute"),
+                ChainedTypeAttr = compilation.GetTypeByMetadataName("Heddle.Attributes.ChainedTypeAttribute"),
                 RoleAttr = compilation.GetTypeByMetadataName("Heddle.Attributes.BranchRoleAttribute"),
+                PrecompileUnsupportedAttr =
+                    compilation.GetTypeByMetadataName("Heddle.Attributes.PrecompileUnsupportedAttribute"),
                 ScopeChannelAttr = compilation.GetTypeByMetadataName("Heddle.Attributes.ScopeChannelAttribute"),
+                SlotProjectionAttr = compilation.GetTypeByMetadataName("Heddle.Attributes.SlotProjectionAttribute"),
+                ChildTemplateHostAttr =
+                    compilation.GetTypeByMetadataName("Heddle.Attributes.ChildTemplateHostAttribute"),
                 EncodeOutputAttr = compilation.GetTypeByMetadataName("Heddle.Attributes.EncodeOutputAttribute"),
                 NotEncodeAttr = compilation.GetTypeByMetadataName("Heddle.Attributes.NotEncodeAttribute"),
+                ZeroOutputAttr = compilation.GetTypeByMetadataName("Heddle.Attributes.ZeroOutputAttribute"),
                 PropAttr = compilation.GetTypeByMetadataName("Heddle.Attributes.PropAttribute")
             };
 
-            var assemblies = new List<IAssemblySymbol> { compilation.Assembly };
-            assemblies.AddRange(compilation.SourceModule.ReferencedAssemblySymbols);
+            // Engine assembly first; the host's assemblies then walk same order as runtime to let subclasses override built-ins.
+            var assemblies = new List<IAssemblySymbol>();
+            var engine = abstractExtension.ContainingAssembly;
+            if (engine != null)
+                assemblies.Add(engine);
+            if (!SymbolEqualityComparer.Default.Equals(compilation.Assembly, engine))
+                assemblies.Add(compilation.Assembly);
+            foreach (var referenced in compilation.SourceModule.ReferencedAssemblySymbols)
+                if (!SymbolEqualityComparer.Default.Equals(referenced, engine))
+                    assemblies.Add(referenced);
 
+            var exportAttr = compilation.GetTypeByMetadataName("Heddle.Attributes.ExportExtensionsAttribute");
+            var candidates = new List<Candidate>();
             foreach (var assembly in assemblies)
-                CollectTypes(assembly.GlobalNamespace, symbols, byName, driftTypes);
+            {
+                var perAssembly = new List<Candidate>();
+                CollectExported(assembly, SymbolEqualityComparer.Default.Equals(assembly, engine), exportAttr,
+                    symbols, perAssembly);
+                candidates.AddRange(StableOrderBy(perAssembly, c => c.OrderingKey));
+            }
 
-            return new ExtensionBinder(byName, driftTypes);
+            foreach (var candidate in StableOrderBy(candidates, c => c.Replaces ? 1 : 0))
+                Register(candidate, symbols, byName, unbindable, driftTypes);
+
+            return new ExtensionBinder(byName, unbindable, driftTypes, engine);
         }
+
+        /// <summary>Stable order by a small integer key — <c>List.Sort</c> is unstable and LINQ is not
+        /// available to netstandard2.0 without pulling in the whole namespace.</summary>
+        private static List<Candidate> StableOrderBy(List<Candidate> source, System.Func<Candidate, int> key)
+        {
+            var indexed = new List<KeyValuePair<int, Candidate>>(source.Count);
+            for (int i = 0; i < source.Count; i++)
+                indexed.Add(new KeyValuePair<int, Candidate>(i, source[i]));
+            indexed.Sort((a, b) =>
+            {
+                var byKey = key(a.Value).CompareTo(key(b.Value));
+                return byKey != 0 ? byKey : a.Key.CompareTo(b.Key);
+            });
+
+            var result = new List<Candidate>(source.Count);
+            foreach (var pair in indexed)
+                result.Add(pair.Value);
+            return result;
+        }
+
+        private static void Register(Candidate candidate, AttrSymbols symbols, Dictionary<string, Info> byName,
+            Dictionary<string, string> unbindable, List<string> driftTypes)
+        {
+            Info info = default;
+            bool built = false;
+
+            foreach (var name in candidate.Names)
+            {
+                // The empty name is a name: it is what the unnamed carrier resolves under, and the emitter binds
+                // that carrier through the binder rather than spelling the engine's type for it.
+                if (!candidate.Bindable)
+                {
+                    // Name must not reach HED7006 — runtime will find it.
+                    if (!byName.ContainsKey(name) && !unbindable.ContainsKey(name))
+                        unbindable[name] = candidate.UnbindableReason;
+                    continue;
+                }
+
+                if (!built)
+                {
+                    info = BuildInfo(candidate.Type, symbols);
+                    built = true;
+
+                    if (info.IsBranchParticipant && !info.HasScopeChannel)
+                        driftTypes.Add(info.GlobalName);
+                }
+
+                bool hasIncumbent = byName.TryGetValue(name, out var incumbent);
+                var verdict = ExtensionRegistrationRules.ResolveForBuild(
+                    hasIncumbent,
+                    candidate.Replaces,
+                    hasIncumbent && SymbolTypeFacts.HierarchyAssignable(IncumbentType(incumbent, candidate), candidate.Type),
+                    hasIncumbent && SymbolTypeFacts.HierarchyAssignable(candidate.Type, IncumbentType(incumbent, candidate)));
+
+                switch (verdict)
+                {
+                    case ExtensionRegistrationVerdict.Register:
+                    case ExtensionRegistrationVerdict.Replace:
+                        byName[name] = info;
+                        unbindable.Remove(name);
+                        break;
+                    case ExtensionRegistrationVerdict.KeepIncumbent:
+                        break;
+                    default:
+                        // Host wiring error: degrade to dynamic instead of failing the build.
+                        byName.Remove(name);
+                        unbindable[name] = "extension name '" + name + "' is claimed by unrelated types (" +
+                                           incumbent.BareTypeName + ", " + SymbolTypeIdentity.FullName(candidate.Type) +
+                                           ") — the runtime would raise TemplateOverrideException";
+                        break;
+                }
+            }
+        }
+
+        private static INamedTypeSymbol IncumbentType(Info incumbent, Candidate candidate) =>
+            incumbent.TypeSymbol ?? candidate.Type;
 
         private sealed class AttrSymbols
         {
             public INamedTypeSymbol NameAttr;
             public INamedTypeSymbol AbstractExtension;
+            public INamedTypeSymbol ExtensionInterface;
+            public INamedTypeSymbol ReplaceAttr;
+            public INamedTypeSymbol DataTypeAttr;
+            public INamedTypeSymbol ChainedTypeAttr;
             public INamedTypeSymbol RoleAttr;
             public INamedTypeSymbol ScopeChannelAttr;
+            public INamedTypeSymbol SlotProjectionAttr;
+            public INamedTypeSymbol ChildTemplateHostAttr;
             public INamedTypeSymbol EncodeOutputAttr;
             public INamedTypeSymbol NotEncodeAttr;
+            public INamedTypeSymbol ZeroOutputAttr;
             public INamedTypeSymbol PropAttr;
+            public INamedTypeSymbol PrecompileUnsupportedAttr;
         }
 
-        private static void CollectTypes(INamespaceSymbol ns, AttrSymbols symbols,
-            Dictionary<string, Info> byName, List<string> driftTypes)
+        /// <summary>
+        /// The <b>discovery scope</b> of one assembly, as the runtime's <c>TemplateFactory.ObtainExtensions</c> defines it.
+        /// <list type="bullet">
+        /// <item><description>The <b>engine</b> assembly is scanned whole and unconditionally — that is
+        /// <c>LoadBaseExtensions</c>, and <c>Heddle</c> carries no <c>[ExportExtensions]</c> on
+        /// itself.</description></item>
+        /// <item><description>Any other assembly contributes <b>only</b> what its
+        /// <c>[assembly: ExportExtensions(...)]</c> attributes name; the parameterless <c>All</c> form contributes
+        /// the whole assembly and short-circuits its remaining attributes, mirroring the runtime's
+        /// <c>break</c>.</description></item>
+        /// <item><description>An assembly with <b>no</b> such attribute contributes nothing.</description></item>
+        /// </list>
+        /// <para>Unconditional scans (used previously) bound extensions the runtime would never register: the
+        /// manifest recorded a name the live registry cannot resolve, and the gauntlet's extension-identity check
+        /// turned every render of every such template into a silent, permanent fallback.</para>
+        /// </summary>
+        private static void CollectExported(IAssemblySymbol assembly, bool isEngine, INamedTypeSymbol exportAttr,
+            AttrSymbols symbols, List<Candidate> candidates)
         {
-            foreach (var type in ns.GetTypeMembers())
-                InspectType(type, symbols, byName, driftTypes);
-            foreach (var child in ns.GetNamespaceMembers())
-                CollectTypes(child, symbols, byName, driftTypes);
-        }
-
-        private static void InspectType(INamedTypeSymbol type, AttrSymbols symbols,
-            Dictionary<string, Info> byName, List<string> driftTypes)
-        {
-            var nameAttr = symbols.NameAttr;
-            var abstractExtension = symbols.AbstractExtension;
-            if (type.IsAbstract || type.TypeKind != TypeKind.Class || !DerivesFrom(type, abstractExtension))
-                return;
-
-            var names = new List<string>();
-            foreach (var attr in type.GetAttributes())
+            if (isEngine)
             {
-                if (!SymbolEqualityComparer.Default.Equals(attr.AttributeClass, nameAttr))
-                    continue;
-                if (attr.ConstructorArguments.Length == 1 && attr.ConstructorArguments[0].Value is string n)
-                    names.Add(n);
+                CollectTypes(assembly.GlobalNamespace, symbols, candidates);
+                return;
             }
 
+            if (exportAttr == null)
+                return;   // an engine reference predating the attribute — nothing outside it can be exported
+
+            foreach (var attr in assembly.GetAttributes())
+            {
+                if (!SymbolEqualityComparer.Default.Equals(attr.AttributeClass, exportAttr))
+                    continue;
+
+                // Parameterless constructor = All; stops reading this assembly's attributes.
+                if (attr.ConstructorArguments.Length == 0)
+                {
+                    CollectTypes(assembly.GlobalNamespace, symbols, candidates);
+                    return;
+                }
+
+                foreach (var exported in ExportedTypes(attr))
+                    InspectType(exported, symbols, candidates);
+            }
+        }
+
+        /// <summary>The types an <c>[ExportExtensions(...)]</c> occurrence names. The runtime hands exactly these to
+        /// <c>LoadExtensions</c>, which applies the same discovery predicate — so a named type that is not an
+        /// extension contributes nothing, and nested types are <b>not</b> walked into (only the named type itself
+        /// is offered).</summary>
+        private static IEnumerable<INamedTypeSymbol> ExportedTypes(AttributeData attr)
+        {
+            foreach (var arg in attr.ConstructorArguments)
+            {
+                if (arg.Kind == TypedConstantKind.Type && arg.Value is INamedTypeSymbol single)
+                {
+                    yield return single;
+                }
+                else if (arg.Kind == TypedConstantKind.Array)
+                {
+                    foreach (var item in arg.Values)
+                        if (item.Kind == TypedConstantKind.Type && item.Value is INamedTypeSymbol many)
+                            yield return many;
+                }
+            }
+        }
+
+        /// <summary>Walks namespaces and nested types; omitting nested types caused runtime/build divergence.</summary>
+        private static void CollectTypes(INamespaceSymbol ns, AttrSymbols symbols, List<Candidate> candidates)
+        {
+            foreach (var type in ns.GetTypeMembers())
+                CollectTypeAndNested(type, symbols, candidates);
+            foreach (var child in ns.GetNamespaceMembers())
+                CollectTypes(child, symbols, candidates);
+        }
+
+        private static void CollectTypeAndNested(INamedTypeSymbol type, AttrSymbols symbols, List<Candidate> candidates)
+        {
+            InspectType(type, symbols, candidates);
+            foreach (var nested in type.GetTypeMembers())
+                CollectTypeAndNested(nested, symbols, candidates);
+        }
+
+        private static void InspectType(INamedTypeSymbol type, AttrSymbols symbols, List<Candidate> candidates)
+        {
+            if (!ImplementsExtension(type, symbols))
+                return;
+
+            var names = ReadExtensionNames(type, symbols.NameAttr);
             if (names.Count == 0)
                 return;
 
+            // Bindability (generator's constraint, applied after discovery): code reproduces AbstractExtension protocol only.
+            string unbindableReason = null;
+            if (type.IsAbstract || type.TypeKind != TypeKind.Class)
+                unbindableReason = "extension type '" + SymbolTypeIdentity.FullName(type) + "' is not instantiable";
+            else if (!DerivesFrom(type, symbols.AbstractExtension))
+                unbindableReason = "extension type '" + SymbolTypeIdentity.FullName(type) +
+                                   "' implements IExtension directly (not via AbstractExtension)";
+
+            candidates.Add(new Candidate
+            {
+                Type = type,
+                Names = names,
+                Replaces = HasDeclaredAttribute(type, symbols.ReplaceAttr),
+                Bindable = unbindableReason == null,
+                UnbindableReason = unbindableReason,
+                OrderingKey = ExtensionRegistrationRules.OrderingKey(
+                    HasInterfaceTypeArgument(type, symbols.DataTypeAttr),
+                    HasInterfaceTypeArgument(type, symbols.ChainedTypeAttr))
+            });
+        }
+
+        private static Info BuildInfo(INamedTypeSymbol type, AttrSymbols symbols)
+        {
             var global = type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-            var bare = global.StartsWith("global::", System.StringComparison.Ordinal)
-                ? global.Substring("global::".Length)
-                : global;
-            var assemblyName = type.ContainingAssembly?.Identity.Name ?? string.Empty;
-            var info = new Info(global, bare + ", " + assemblyName, assemblyName,
-                OverridesCompileTimeHook(type, abstractExtension),
-                string.Equals(assemblyName, "Heddle", System.StringComparison.Ordinal),
+            var assemblyName = SymbolTypeIdentity.AssemblyNameOf(type);
+            return new Info(global, SymbolTypeIdentity.FullName(type), SymbolTypeIdentity.AqnSansVersion(type),
+                assemblyName,
+                OverridesCompileTimeHook(type, symbols.AbstractExtension),
+                SymbolEqualityComparer.Default.Equals(
+                    type.ContainingAssembly, symbols.AbstractExtension.ContainingAssembly),
                 ReadBranchRole(type, symbols.RoleAttr),
                 HasAttribute(type, symbols.ScopeChannelAttr),
+                HasAttribute(type, symbols.SlotProjectionAttr),
+                HasAttribute(type, symbols.ChildTemplateHostAttr),
                 HasAttribute(type, symbols.EncodeOutputAttr),
                 HasAttribute(type, symbols.NotEncodeAttr),
-                ReadPropParameters(type, symbols.PropAttr));
+                HasAttribute(type, symbols.ZeroOutputAttr),
+                ReadPropParameters(type, symbols.PropAttr),
+                type,
+                ReadDataTypes(type, symbols.DataTypeAttr),
+                ReadPrecompileUnsupported(type, symbols.PrecompileUnsupportedAttr));
+        }
 
-            // D-ROLE-5 drift (§6.5): a Continuation/Terminal that cannot read the channel it depends on. Additive;
-            // no built-in violates R11, so this is empty for engine-only compilations.
-            if (info.IsBranchParticipant && !info.HasScopeChannel)
-                driftTypes.Add(type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat));
-
-            foreach (var name in names)
+        /// <summary>Reads <c>[PrecompileUnsupported]</c> over the base-type chain — the attribute is
+        /// <c>Inherited = true</c> and the runtime reads it that way too, so a subclass of a disowned extension is
+        /// disowned. Returns the declared reason, the empty string for a declaration with none, or <c>null</c> when
+        /// there is no declaration at all.</summary>
+        private static string ReadPrecompileUnsupported(INamedTypeSymbol type, INamedTypeSymbol attrType)
+        {
+            if (attrType == null)
+                return null;
+            for (var t = type; t != null; t = t.BaseType)
             {
-                if (name.Length == 0)
-                    continue; // the unnamed carrier is emitted directly, not through the custom binder.
-                // First registration wins (mirrors the engine's LoadExtensions precedence closure enough for the
-                // build-time bind target; divergence from a runtime [ExtensionReplace] is what the gauntlet polices).
-                if (!byName.ContainsKey(name))
-                    byName[name] = info;
+                foreach (var attr in t.GetAttributes())
+                {
+                    if (!SymbolEqualityComparer.Default.Equals(attr.AttributeClass, attrType))
+                        continue;
+                    return attr.ConstructorArguments.Length == 1
+                        ? attr.ConstructorArguments[0].Value as string ?? string.Empty
+                        : string.Empty;
+                }
             }
+
+            return null;
+        }
+
+        /// <summary>Reads every <c>[DataType]</c> over the base-type chain — the attribute is repeatable and the
+        /// runtime reads it with <c>inherit: true</c>, so a subclass accepts what its base accepted as well as what
+        /// it declares itself.</summary>
+        private static IReadOnlyList<ITypeSymbol> ReadDataTypes(INamedTypeSymbol type, INamedTypeSymbol attrType)
+        {
+            if (attrType == null)
+                return EmptyDataTypes;
+
+            List<ITypeSymbol> accepted = null;
+            for (var t = type; t != null; t = t.BaseType)
+            foreach (var attr in t.GetAttributes())
+            {
+                if (!SymbolEqualityComparer.Default.Equals(attr.AttributeClass, attrType) ||
+                    attr.ConstructorArguments.Length != 1 ||
+                    !(attr.ConstructorArguments[0].Value is ITypeSymbol accepts))
+                    continue;
+                accepted ??= new List<ITypeSymbol>();
+                accepted.Add(accepts);
+            }
+
+            return (IReadOnlyList<ITypeSymbol>) accepted ?? EmptyDataTypes;
+        }
+
+        /// <summary>The symbol-side twin of <c>Type.IsImplement&lt;IExtension&gt;()</c> — the transitive interface
+        /// set. Falls back to the <c>AbstractExtension</c> derivation test when the interface symbol is
+        /// unresolvable (an older engine reference).</summary>
+        private static bool ImplementsExtension(INamedTypeSymbol type, AttrSymbols symbols)
+        {
+            if (symbols.ExtensionInterface == null)
+                return DerivesFrom(type, symbols.AbstractExtension);
+
+            foreach (var iface in type.AllInterfaces)
+                if (SymbolEqualityComparer.Default.Equals(iface, symbols.ExtensionInterface))
+                    return true;
+            return false;
+        }
+
+        /// <summary>Reads <c>[ExtensionName]</c> over the base-type chain — the attribute is
+        /// <c>Inherited = true</c> and the runtime reads it with <c>inherit: true</c>, so
+        /// <c>class MyIf : IfExtension</c> registers under <c>"if"</c>. The base-chain walk unifies the reading of
+        /// <c>[ExtensionName]</c>, <c>[BranchRole]</c>, <c>[ScopeChannel]</c> and <c>[Prop]</c>.
+        /// <para>Most-derived layer first, matching reflection's <c>inherit: true</c> enumeration order for a
+        /// class-targeted attribute; the runtime's own dictionary keys the names, so order affects only the
+        /// sequence in which one type's several names are offered.</para></summary>
+        private static List<string> ReadExtensionNames(INamedTypeSymbol type, INamedTypeSymbol nameAttr)
+        {
+            var names = new List<string>();
+            for (var t = type; t != null; t = t.BaseType)
+            {
+                foreach (var attr in t.GetAttributes())
+                {
+                    if (!SymbolEqualityComparer.Default.Equals(attr.AttributeClass, nameAttr))
+                        continue;
+                    if (attr.ConstructorArguments.Length == 1 && attr.ConstructorArguments[0].Value is string n &&
+                        !names.Contains(n))
+                        names.Add(n);
+                }
+            }
+
+            return names;
+        }
+
+        /// <summary>Declared-only attribute presence — <c>[ExtensionReplace]</c> is the one attribute the runtime
+        /// reads <b>without</b> <c>inherit: true</c> (<c>TemplateFactory.LoadExtensions</c>), so a subclass of a
+        /// replacing extension does not itself replace.</summary>
+        private static bool HasDeclaredAttribute(INamedTypeSymbol type, INamedTypeSymbol attrType)
+        {
+            if (attrType == null)
+                return false;
+            foreach (var attr in type.GetAttributes())
+                if (SymbolEqualityComparer.Default.Equals(attr.AttributeClass, attrType))
+                    return true;
+            return false;
+        }
+
+        /// <summary>The runtime's ordering probe: does any inherited <c>[DataType]</c>/<c>[ChainedType]</c> name an
+        /// interface? (<c>LoadExtensions</c>' <c>OrderBy</c>/<c>ThenBy</c>.)</summary>
+        private static bool HasInterfaceTypeArgument(INamedTypeSymbol type, INamedTypeSymbol attrType)
+        {
+            if (attrType == null)
+                return false;
+
+            for (var t = type; t != null; t = t.BaseType)
+                foreach (var attr in t.GetAttributes())
+                    if (SymbolEqualityComparer.Default.Equals(attr.AttributeClass, attrType) &&
+                        attr.ConstructorArguments.Length >= 1 &&
+                        attr.ConstructorArguments[0].Value is ITypeSymbol arg &&
+                        arg.TypeKind == TypeKind.Interface)
+                        return true;
+
+            return false;
         }
 
         /// <summary>Reads <c>[BranchRole]</c> walking the base-type chain — Roslyn's <c>GetAttributes()</c> does
@@ -271,7 +688,7 @@ namespace Heddle.Generator.Emit
             return false;
         }
 
-        /// <summary>Phase 8 (WI5): decodes the extension's <c>[Prop]</c> declarations over the base-type chain,
+        /// <summary>Decodes the extension's <c>[Prop]</c> declarations over the base-type chain,
         /// outermost base first ([Prop] is <c>Inherited = true</c>; Roslyn surfaces no inherited attributes) —
         /// the same layer order <c>PropLayout.ResolveFromExtension</c> walks on the dynamic tier. Degrades to an
         /// empty list when the attribute symbol is unresolvable (older engine reference).</summary>
@@ -281,8 +698,9 @@ namespace Heddle.Generator.Emit
             if (propAttr == null)
                 return EmptyParameters;
 
+            // Must stop at System.Object to match the dynamic tier's layer-count logic.
             var layers = new List<INamedTypeSymbol>();
-            for (var t = type; t != null; t = t.BaseType)
+            for (var t = type; t != null && t.SpecialType != SpecialType.System_Object; t = t.BaseType)
                 layers.Add(t);
             layers.Reverse();
 
@@ -295,22 +713,16 @@ namespace Heddle.Generator.Emit
                         continue;
                     if (attr.ConstructorArguments.Length != 2)
                         continue;
-                    // A null name is ADMITTED (not skipped): dropping it would silently treat the extension as
-                    // parameter-less while the dynamic tier rejects the declaration — ResolveExtensionPropLayout
-                    // diagnoses it as HED7017 (the dynamic tier's HED5015 name-validity twin).
+                    // Null names are admitted; they diverge from the dynamic tier only if skipped.
                     var name = attr.ConstructorArguments[0].Value as string;
 
+                    // Type usability uses SymbolTypeFacts.IsUsableAsPropType to match the dynamic tier.
                     var typeSymbol = attr.ConstructorArguments[1].Value as ITypeSymbol;
-                    bool unusable = typeSymbol == null ||
-                                    typeSymbol.TypeKind == TypeKind.Pointer ||
-                                    (typeSymbol is INamedTypeSymbol named && named.IsUnboundGenericType) ||
-                                    typeSymbol is IErrorTypeSymbol;
 
                     var parameter = new PropParameter
                     {
                         Name = name,
                         Type = typeSymbol,
-                        TypeUnusable = unusable,
                         Level = level
                     };
 
@@ -318,8 +730,6 @@ namespace Heddle.Generator.Emit
                     {
                         if (namedArg.Key == "Default" && !namedArg.Value.IsNull)
                         {
-                            // A typeof default decodes as an ITypeSymbol value; primitives/strings/enums as their
-                            // boxed CLR value. DefaultType is the argument's own type — the HED5009-twin source.
                             parameter.DefaultValue = namedArg.Value.Value;
                             parameter.DefaultType = namedArg.Value.Type;
                         }

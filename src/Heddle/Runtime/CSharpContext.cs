@@ -9,7 +9,6 @@ using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.DotNet.PlatformAbstractions;
 using Microsoft.Extensions.FileProviders;
 using Heddle.Data;
 using Heddle.Exceptions;
@@ -22,9 +21,7 @@ namespace Heddle.Runtime
 {
     public class CSharpContext
     {
-        // Phase 9 D4: the only Microsoft.CodeAnalysis-typed static of this class lives in a nested holder so it is
-        // reached (and its type-initializer run) only from the C#-tier body behind the feature switch — a trimmed
-        // publish with the switch off drops the holder with the rest of the Roslyn graph.
+        // Roslyn statics live in a nested holder so they initialize only when C# tier is enabled and can be trimmed when disabled.
         private static class RoslynDisplay
         {
             internal static readonly SymbolDisplayFormat Format =
@@ -39,9 +36,6 @@ namespace Heddle.Runtime
         }
 
         private static readonly HeddleTemplate PreparseGenerator;
-
-        private static readonly ConcurrentDictionary<string, Tuple<OptionalValue<object>, ExType>> PrecompilationCache =
-            new ConcurrentDictionary<string, Tuple<OptionalValue<object>, ExType>>();
 
         static CSharpContext()
         {
@@ -134,10 +128,7 @@ namespace Heddle.Runtime
                     $"[{expressionOptions.Position}]<{expressionOptions.ExtensionName}> Expression cannot be null or empty");
             }
 
-            // Phase 9 D4 — the parse-time Roslyn entry. When the C#-tier feature switch is trimmed off, this is a
-            // constant-true early return, so the Roslyn body below (and the ITypeSymbol-typed ResolveTypeReference)
-            // become dead code the linker removes. The method still records the C# expression; the single HED9001 is
-            // surfaced later by ContextCompilation.Compile. Behavior is identical when the switch is left on (default).
+            // When feature switch is trimmed off, this becomes constant-true and Roslyn code below becomes dead code removed by linker.
             if (!HeddleFeatures.CSharpTierEnabled)
             {
                 objectType = ExType.Dynamic;
@@ -171,10 +162,32 @@ namespace Heddle.Runtime
                 throw new TemplateCompileException("Cannot compile base C# generation templates",
                     InitErrors.Errors);
             var generatedCode = PreparseGenerator.Generate(expressionOptions);
-            var result = PrecompilationCache.GetOrAdd(generatedCode, code =>
+            if (!PreparseCache.TryGet(generatedCode, AssemblyHelper.Generation, out var cached))
+            {
+                var firstDiagnostic = context.CompileErrors.Count;
+                // The generation comes back out of the compile rather than being read around it: it is the one the
+                // reference set was taken at, so the entry can only ever be stamped with the set it was built from.
+                var preparsed = Preparse(generatedCode, context, expressionOptions, out var generation);
+                cached = new PreparseResult(preparsed.Item1, preparsed.Item2,
+                    context.CompileErrors.Skip(firstDiagnostic).Select(e => e.Error).ToArray(), generation);
+                PreparseCache.Store(generatedCode, cached);
+            }
+            else
+            {
+                foreach (var message in cached.Diagnostics)
+                    context.CompileErrors.Add(message.ToError(expressionOptions.Position));
+            }
+
+            objectType = cached.Type;
+            return cached.Value;
+        }
+
+        private Tuple<OptionalValue<object>, ExType> Preparse(string code, CompileContext context,
+            ExpressionOptions expressionOptions, out int generation)
+        {
             {
                 var tree = CSharpSyntaxTree.ParseText(code);
-                var assemblySet = AssemblyHelper.GetApplicationReferences();
+                var assemblySet = AssemblyHelper.GetApplicationReferences(out generation);
                 var compilation = CSharpCompilation.Create(null, new[] {tree}, assemblySet);
                 var diagnostics = compilation.GetDiagnostics();
                 if (diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error))
@@ -185,11 +198,7 @@ namespace Heddle.Runtime
                         typeof(object));
                 }
 
-                // The expression we evaluate is the body of the generated PreProcessData wrapper:
-                //   return <Expression>;
-                // A statement-bodied lambda (or any nested 'return') in <Expression> adds further
-                // ReturnStatementSyntax nodes, so we must select the wrapper's own return - the one whose
-                // immediate parent is the method body block - rather than assuming a single return exists.
+                // Select the wrapper's return (parent is method body block), not any return in the expression itself.
                 var syntax = tree.GetRoot().DescendantNodes()
                     .OfType<ReturnStatementSyntax>()
                     .First(r => r.Parent is BlockSyntax block
@@ -213,9 +222,7 @@ namespace Heddle.Runtime
 
                 var objType = ResolveTypeReference(context, expressionOptions, typeInfo.Type);
                 return new Tuple<OptionalValue<object>, ExType>(new OptionalValue<object>(null, false), objType);
-            });
-            objectType = result.Item2;
-            return result.Item1;
+            }
         }
 
         private ExType ResolveTypeReference(CompileContext context,

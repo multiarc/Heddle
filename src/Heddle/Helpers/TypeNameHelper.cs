@@ -7,15 +7,15 @@ namespace Heddle.Helpers
     internal static class TypeNameHelper
     {
         private static readonly string[][] Keywords = new string[][] {
-            null,           // 1 character 
-            new string[] {  // 2 characters
+            null,
+            new string[] {
                 "as",
                 "do",
                 "if",
                 "in",
                 "is",
             },
-            new string[] {  // 3 characters
+            new string[] {
                 "for",
                 "int",
                 "new",
@@ -23,7 +23,7 @@ namespace Heddle.Helpers
                 "ref",
                 "try",
             },
-            new string[] {  // 4 characters
+            new string[] {
                 "base",
                 "bool",
                 "byte",
@@ -40,7 +40,7 @@ namespace Heddle.Helpers
                 "uint",
                 "void",
             },
-            new string[] {  // 5 characters
+            new string[] {
                 "break",
                 "catch",
                 "class",
@@ -56,7 +56,7 @@ namespace Heddle.Helpers
                 "using",
                 "while",
             },
-            new string[] {  // 6 characters
+            new string[] {
                 "double",
                 "extern",
                 "object",
@@ -73,7 +73,7 @@ namespace Heddle.Helpers
                 "unsafe",
                 "ushort",
             },
-            new string[] {  // 7 characters 
+            new string[] {
                 "checked",
                 "decimal",
                 "default",
@@ -82,7 +82,7 @@ namespace Heddle.Helpers
                 "private",
                 "virtual",
             },
-            new string[] {  // 8 characters 
+            new string[] {
                 "abstract",
                 "continue",
                 "delegate",
@@ -94,7 +94,7 @@ namespace Heddle.Helpers
                 "readonly",
                 "volatile",
             },
-            new string[] {  // 9 characters
+            new string[] {
                 "__arglist",
                 "__makeref",
                 "__reftype",
@@ -103,132 +103,75 @@ namespace Heddle.Helpers
                 "protected",
                 "unchecked",
             },
-            new string[] {  // 10 characters
+            new string[] {
                 "__refvalue",
                 "stackalloc",
             },
         };
 
+        /// <summary>
+        /// The reflection-free C# spelling of a type's name: nested types joined with <c>.</c>, generic arity
+        /// expanded, identifiers escaped where they collide with keywords. Does not use keyword aliases—that
+        /// responsibility is <see cref="CSharpTypeNames"/>'s alone. Used in error and generated code which is
+        /// string-compared, so it must stay consistent.
+        /// </summary>
         public static string GetBaseTypeOutput(Type typeRef)
         {
-            string s = typeRef.Name;
-            if (s.Length == 0)
+            if (typeRef.Name.Length == 0)
+                return "void";
+
+            ExStringBuilder sb = new ExStringBuilder();
+
+            string baseType = typeRef.Name;
+
+            int lastIndex = 0;
+            int currentTypeArgStart = 0;
+            for (int i = 0; i < baseType.Length; i++)
             {
-                s = "void";
-                return s;
-            }
+                switch (baseType[i])
+                {
+                    case '+':
+                    case '.':
+                        sb.Append((string) CreateEscapedIdentifier(baseType.Substring(lastIndex, i - lastIndex)));
+                        sb.Append(".");
+                        i++;
+                        lastIndex = i;
+                        break;
 
-            string lowerCaseString = s.ToLowerInvariant();
-
-            switch (lowerCaseString)
-            {
-                case "system.int16":
-                    s = "short";
-                    break;
-                case "system.int32":
-                    s = "int";
-                    break;
-                case "system.int64":
-                    s = "long";
-                    break;
-                case "system.string":
-                    s = "string";
-                    break;
-                case "system.object":
-                    s = "object";
-                    break;
-                case "system.boolean":
-                    s = "bool";
-                    break;
-                case "system.void":
-                    s = "void";
-                    break;
-                case "system.char":
-                    s = "char";
-                    break;
-                case "system.byte":
-                    s = "byte";
-                    break;
-                case "system.uint16":
-                    s = "ushort";
-                    break;
-                case "system.uint32":
-                    s = "uint";
-                    break;
-                case "system.uint64":
-                    s = "ulong";
-                    break;
-                case "system.sbyte":
-                    s = "sbyte";
-                    break;
-                case "system.single":
-                    s = "float";
-                    break;
-                case "system.double":
-                    s = "double";
-                    break;
-                case "system.decimal":
-                    s = "decimal";
-                    break;
-                default:
-                    // replace + with . for nested classes. 
-                    //
-                    ExStringBuilder sb = new ExStringBuilder();
-
-                    string baseType = typeRef.Name;
-
-                    int lastIndex = 0;
-                    int currentTypeArgStart = 0;
-                    for (int i = 0; i < baseType.Length; i++)
-                    {
-                        switch (baseType[i])
+                    case '`':
+                        sb.Append((string) CreateEscapedIdentifier(baseType.Substring(lastIndex, i - lastIndex)));
+                        i++;    // skip the '
+                        int numTypeArgs = 0;
+                        while (i < baseType.Length && baseType[i] >= '0' && baseType[i] <= '9')
                         {
-                            case '+':
-                            case '.':
-                                sb.Append((string) CreateEscapedIdentifier(baseType.Substring(lastIndex, i - lastIndex)));
-                                sb.Append(".");
-                                i++;
-                                lastIndex = i;
-                                break;
-
-                            case '`':
-                                sb.Append((string) CreateEscapedIdentifier(baseType.Substring(lastIndex, i - lastIndex)));
-                                i++;    // skip the '
-                                int numTypeArgs = 0;
-                                while (i < baseType.Length && baseType[i] >= '0' && baseType[i] <= '9')
-                                {
-                                    numTypeArgs = numTypeArgs * 10 + (baseType[i] - '0');
-                                    i++;
-                                }
-
-                                GetTypeArgumentsOutput(typeRef.GetTypeInfo().GenericTypeArguments, currentTypeArgStart, numTypeArgs, sb);
-                                currentTypeArgStart += numTypeArgs;
-
-                                // Arity can be in the middle of a nested type name, so we might have a . or + after it. 
-                                // Skip it if so. 
-                                if (i < baseType.Length && (baseType[i] == '+' || baseType[i] == '.'))
-                                {
-                                    sb.Append(".");
-                                    i++;
-                                }
-
-                                lastIndex = i;
-                                break;
+                            numTypeArgs = numTypeArgs * 10 + (baseType[i] - '0');
+                            i++;
                         }
-                    }
 
-                    if (lastIndex < baseType.Length)
-                        sb.Append((string) CreateEscapedIdentifier(baseType.Substring(lastIndex)));
+                        GetTypeArgumentsOutput(typeRef.GetTypeInfo().GenericTypeArguments, currentTypeArgStart, numTypeArgs, sb);
+                        currentTypeArgStart += numTypeArgs;
 
-                    return sb.ToString();
+                        // Arity can appear mid-nested-type-name followed by . or +, so skip it.
+                        if (i < baseType.Length && (baseType[i] == '+' || baseType[i] == '.'))
+                        {
+                            sb.Append(".");
+                            i++;
+                        }
+
+                        lastIndex = i;
+                        break;
+                }
             }
-            return s;
+
+            if (lastIndex < baseType.Length)
+                sb.Append((string) CreateEscapedIdentifier(baseType.Substring(lastIndex)));
+
+            return sb.ToString();
         }
 
         private static string CreateEscapedIdentifier(string name)
         {
-            // Any identifier started with two consecutive underscores are 
-            // reserved by CSharp.
+            // Identifiers starting with two underscores are reserved by C#.
             if (IsKeyword(name) || IsPrefixTwoUnderscore(name))
             {
                 return "@" + name;
@@ -265,8 +208,7 @@ namespace Heddle.Helpers
                     sb.Append(", ");
                 }
 
-                // it's possible that we call GetTypeArgumentsOutput with an empty typeArguments collection.  This is the case
-                // for open types, so we want to just output the brackets and commas. 
+                // For open types, typeArguments may be empty; output brackets and commas regardless.
                 if (i < typeArguments.Length)
                     sb.Append(typeArguments[i].GetTypeOutput());
             }

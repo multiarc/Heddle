@@ -65,22 +65,60 @@ setting). Because it is a single file, it is the editor‑agnostic carrier.
   "rootPath": "Views",
   "outputProfile": "html",
   "expressionMode": "native",
-  "fileNamePostfix": ".heddle"
+  "fileNamePostfix": ".heddle",
+  "trimDirectiveLines": true,
+  "maxRecursionCount": 100
 }
 ```
 
-| Field | Meaning |
+The editor follows the same configuration surface the engine permits: every compile option that
+affects analysis has a key here, and its name is the option's own name camel‑cased, with the same
+default the engine and the build tier use.
+
+The options with **no** key are exactly these eleven, each for a stated reason — the list is gated
+against the parity test's own exclusion set, so it cannot quietly fall out of date:
+
+| Option | Why it has no key |
 | --- | --- |
-| `assemblies` | Model assemblies for typed completion/hover, **and** the input of the one‑shot export scan (see below). Relative to the workspace root. |
-| `rootPath` | Template root for `@<<` import and `@partial` resolution (`TemplateOptions.RootPath`). |
-| `outputProfile` | `text` or `html` — so diagnostics match your host's compile options. |
-| `expressionMode` | `memberPathsOnly` / `native` / `fullCSharp`. |
-| `fileNamePostfix` | Template file name postfix. |
+| `TemplateName` | Per‑document identity; the analyzer derives it from the file being analyzed. |
+| `FullPath` | Computed from `RootPath`/`TemplateName`/`FileNamePostfix` — not an input. |
+| `Functions` | A `FunctionRegistry` object with no literal JSON form; represented by `assemblies`, which the one‑shot export scan reads. |
+| `Data` | Render input (the model instance); analysis compiles, never renders. |
+| `Encoder` | Render‑time output encoding, object‑valued; changes rendered bytes, never a diagnostic. |
+| `RenderBudget` | Per‑render resource limits, object‑valued; no lint depends on them. |
+| `ValidateModelType` | Retained for source compatibility but no longer read — the render‑time model‑type check is always on; analysis has no data anyway. |
+| `PrecompiledMismatchPolicy` | Selects run‑tier fallback vs throw; the analyzer never consults the precompiled registry. |
+| `EnableFileChangeCheck` | The runtime's file watcher; the editor owns document versioning itself. |
+| `ProvideLanguageFeatures` | Always on in the LSP — the analyzer's operating mode, not a workspace choice. |
+| `AllowCSharp` | Obsolete bridge over `ExpressionMode`; wiring both would let a config contradict itself. |
+
+| Field | Meaning | Default |
+| --- | --- | --- |
+| `assemblies` | Model assemblies for typed completion/hover, **and** the input of the one‑shot export scan (see below). Relative to the workspace root. | none |
+| `rootPath` | Template root for `@<<` import and `@partial` resolution (`TemplateOptions.RootPath`). | the workspace root |
+| `outputProfile` | `text` or `html` — so diagnostics match your host's compile options. | `html` |
+| `expressionMode` | `memberPathsOnly` / `native` / `fullCSharp`. | `native` |
+| `fileNamePostfix` | Template file name postfix. | empty |
+| `trimDirectiveLines` | Whether whole‑line directives swallow their line (`TemplateOptions.TrimDirectiveLines`). | `true` |
+| `maxRecursionCount` | Compile‑time recursion bound (`TemplateOptions.MaxRecursionCount`). | `100` |
+
+An unrecognized value never breaks editing: the option keeps its default and the server writes a
+log line naming the accepted values (visible in the client's Heddle output channel). A key of the
+wrong JSON type is ignored the same way.
+
+::: warning The default output profile is `html`
+Before 2.0.x the editor defaulted to `text` while the engine and the build tier defaulted to `html`,
+so a workspace with no `outputProfile` never saw the encoding lints (`HED2004` and friends) its
+build of record produces. The editor now defaults to `html` like everything else. If your templates
+really are text‑profile, set `"outputProfile": "text"` — that is the opt‑out, and it is also what
+your host should be passing.
+:::
 
 The VS Code extension contributes mirror settings (`heddle.model.assemblies`,
 `heddle.workspace.rootPath`, `heddle.compile.outputProfile`, `heddle.compile.expressionMode`,
-`heddle.compile.fileNamePostfix`, plus `heddle.server.path` and `heddle.trace.server`) and forwards
-them to the server.
+`heddle.compile.fileNamePostfix`, `heddle.compile.trimDirectiveLines`,
+`heddle.compile.maxRecursionCount`, plus `heddle.server.path` and `heddle.trace.server`) and
+forwards them to the server.
 
 **Types are stale until rebuild.** The editor loads your model assemblies as they are on disk;
 rebuild your project to pick up type changes.
@@ -97,9 +135,18 @@ runs a **one‑shot scan** of the configured `assemblies`:
   exported functions register into the workspace registry, so their calls resolve (no false
   "unknown function"), complete with real signatures, and participate in expression typing.
 
-For runtime parity, call
-[`FunctionRegistry.RegisterFrom(assembly)`](custom-extensions.md#declaratively-exporting-functions)
-on the same assemblies in your host startup — the editor and the host then see one set.
+For runtime parity, do the same two registrations on the same assemblies in your host startup — a
+`new FunctionRegistry()` filled with
+[`RegisterFrom(assembly)`](custom-extensions.md#declaratively-exporting-functions) and assigned to
+`TemplateOptions.Functions`, plus
+[`HeddleTemplate.Register(assembly)`](csharp-api.md#registration-register). The editor and the host
+then see one set.
+
+**And the build tier is the third reader of the same declarations.** `assemblies` is how the editor is told
+which model assemblies to load; the build tier is told by a reference, which
+[`[HeddleModelAssembly(typeof(T))]`](precompilation.md#assemblies-the-build-must-see) makes exist and
+`HeddleTemplate.Register` reads at startup. Declaring it once covers the run and build tiers; point
+`assemblies` at the same DLLs and all three agree about what `@model Foo` names.
 
 **The scan is one‑shot per server process.** A new export, a changed extension body, or an
 `assemblies` change after load requires a **server restart** (VS Code: *Heddle: Restart Language

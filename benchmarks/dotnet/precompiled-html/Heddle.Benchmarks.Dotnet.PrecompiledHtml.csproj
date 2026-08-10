@@ -1,0 +1,75 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The Html-profile precompiled satellite.
+
+    HeddleOutputProfile is compilation-wide by design, and the harness project compiles the six raw
+    workloads under Text. The two ENCODED workloads need Html — including them there produced a
+    manifest claiming OutputProfile.Text for fortunes-encoded, i.e. a precompiled template that
+    would not escape. The constraint is real; the answer is a second compilation, not a workaround
+    inside the first: this satellite compiles ONLY the two encoded templates under Html and hands
+    the harness their manifest. The harness registers both assemblies and discovers 8/8 coverage
+    the same way it discovered 6/8 — from the manifests, never assumed.
+
+    The template SOURCES stay where they live, under the harness's controlled tree; this project
+    holds no copies. Keys derive relative to HeddleTemplateRoot (pointed at that same tree), so the
+    satellite's manifest rows are `fortunes-encoded.heddle` / `encoded-loop.heddle` — exactly the
+    keys the harness's KeyFor() asks for, and disjoint from the six the Text-profile manifest owns.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <IsPackable>false</IsPackable>
+    <AssemblyName>Heddle.Benchmarks.Dotnet.PrecompiledHtml</AssemblyName>
+    <RootNamespace>Heddle.Benchmarks.Dotnet.PrecompiledHtml</RootNamespace>
+    <!-- Same reviewability rule as the harness: generated code is written to disk. -->
+    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+    <CompilerGeneratedFilesOutputPath>$(BaseIntermediateOutputPath)generated</CompilerGeneratedFilesOutputPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\Heddle\Heddle.csproj" />
+    <ProjectReference Include="..\..\..\src\Heddle.Generator\Heddle.Generator.csproj"
+                      OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+  <!-- A ProjectReference does not bring the package's buildTransitive props/targets; imported
+       explicitly, exactly as the harness project does. -->
+  <Import Project="..\..\..\src\Heddle.Generator\build\Heddle.Generator.props" />
+
+  <PropertyGroup>
+    <!-- The one property this satellite exists to flip. Everything else matches the harness so the
+         parity gate compares like with like. -->
+    <HeddleOutputProfile>Html</HeddleOutputProfile>
+    <HeddleExpressionMode>Native</HeddleExpressionMode>
+    <HeddleGeneratedNamespace>Heddle.Benchmarks.Dotnet.Generated.Html</HeddleGeneratedNamespace>
+    <HeddleTemplateRoot>$(MSBuildProjectDirectory)/../templates/controlled/heddle</HeddleTemplateRoot>
+    <EnableDefaultHeddleTemplates>false</EnableDefaultHeddleTemplates>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <HeddleTemplate Include="..\templates\controlled\heddle\fortunes-encoded.heddle">
+      <Precompile>true</Precompile>
+    </HeddleTemplate>
+    <HeddleTemplate Include="..\templates\controlled\heddle\encoded-loop.heddle">
+      <Precompile>true</Precompile>
+    </HeddleTemplate>
+  </ItemGroup>
+
+  <!-- The generator's generation-time dependencies, reproduced by hand for the same reason the
+       harness reproduces them: a ProjectReference-as-Analyzer contributes only the generator
+       assembly itself. -->
+  <Target Name="_AddHeddleGeneratorDependencies" BeforeTargets="CoreCompile"
+          DependsOnTargets="ResolveProjectReferences">
+    <ItemGroup>
+      <Analyzer Include="$(MSBuildThisFileDirectory)..\..\..\src\Heddle.Generator\bin\$(Configuration)\netstandard2.0\Heddle.Language.dll"
+                Condition="Exists('$(MSBuildThisFileDirectory)..\..\..\src\Heddle.Generator\bin\$(Configuration)\netstandard2.0\Heddle.Language.dll')" />
+      <Analyzer Include="$(NuGetPackageRoot)antlr4.runtime.standard\4.13.1\lib\netstandard2.0\Antlr4.Runtime.Standard.dll"
+                Condition="Exists('$(NuGetPackageRoot)antlr4.runtime.standard\4.13.1\lib\netstandard2.0\Antlr4.Runtime.Standard.dll')" />
+    </ItemGroup>
+  </Target>
+
+  <Import Project="..\..\..\src\Heddle.Generator\build\Heddle.Generator.targets" />
+
+</Project>

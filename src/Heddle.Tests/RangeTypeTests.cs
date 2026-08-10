@@ -4,10 +4,10 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Phase 6 (post-2.0) unit rows for the <see cref="Heddle.Models.Range"/> value type: value
-    /// equality/hashing, the D4 readable <c>ToString()</c> (the phase's sole intentional
-    /// rendered-byte change class), and the <c>FromSystemRange</c> interop (net6.0+ only —
-    /// <c>System.Range</c> does not exist on netstandard2.0/net48).
+    /// Unit rows for the <see cref="Heddle.Models.Range"/> value type: value equality/hashing, a readable
+    /// <c>ToString()</c> (the sole intentional rendered-byte change to this class), and the
+    /// <c>FromSystemRange</c> interop (net6.0+ only — <c>System.Range</c> does not exist on
+    /// netstandard2.0/net48).
     /// </summary>
     public class RangeTypeTests
     {
@@ -37,7 +37,7 @@ namespace Heddle.Tests
             Assert.Equal(new Heddle.Models.Range(5, 2).GetHashCode(), new Heddle.Models.Range(5, 2, 1).GetHashCode());
         }
 
-        [Fact] // D4 exact strings
+        [Fact]
         public void ToStringMirrorsTheCallForm()
         {
             Assert.Equal("range(2, 10, 2)", new Heddle.Models.Range(2, 10, 2).ToString());
@@ -45,8 +45,8 @@ namespace Heddle.Tests
             Assert.Equal("range(5, 2)", new Heddle.Models.Range(5, 2).ToString());
         }
 
-#if NET6_0_OR_GREATER
-        [Fact] // D3 interop — TFMs where System.Range exists
+#if NET8_0_OR_GREATER
+        [Fact]
         public void FromSystemRangeMapsFromStartEndpoints()
         {
             var range = Heddle.Models.Range.FromSystemRange(2..10);

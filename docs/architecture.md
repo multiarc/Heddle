@@ -155,8 +155,9 @@ DLR call sites (see below).
   ([`CompiledParameter`](../src/Heddle/Runtime/Parameters/CompiledParameter.cs)). This is
   also where C# expressions are **bound to the model's types**; the
   [`CompileScope`](../src/Heddle/Runtime)/`CSharpContext` track imported namespaces
-  (`@using`) and the model type (`@model`, `:: Type`). `CompileScope.Compile()` runs that
-  Roslyn pass.
+  (`@using`) and the model type (`@model`, `:: Type`). The Roslyn pass is run by
+  `ContextCompilation.Compile`, an internal extension method over `CompileScope` — not a member of
+  `CompileScope`, which exposes no compile entry point of its own.
 - Errors from either path are collected as `HeddleCompileError`s rather than thrown, and surfaced
   through [`HeddleCompileResult`](../src/Heddle/Data/HeddleCompileResult.cs).
 
@@ -186,16 +187,21 @@ length‑based on net8+ and count‑based on older targets).
 
 ## Performance characteristics
 
-The repository's [BenchmarkDotNet suite](../src/Heddle.Performance) measures Heddle against four
-other .NET template engines (Fluid, Scriban, DotLiquid, Handlebars.Net) — all four rendering
-byte‑identical parity‑checked output over a component‑heavy composition workload — plus ASP.NET Core
-Razor, which renders a larger, different page and is **not** under the parity assertion
-(`[MemoryDiagnoser]` enabled). In the run of **2026‑07‑11** (commit `8341bb67`; AMD Ryzen 9 9950X,
+The repository's [BenchmarkDotNet suite](../benchmarks/dotnet) measures Heddle against five
+other .NET template engines (Fluid, Scriban, DotLiquid, Handlebars.Net and ASP.NET Core Razor) over
+a component‑heavy composition workload, every one of them rendering byte‑identical parity‑checked
+output (`[MemoryDiagnoser]` enabled). Razor joined the parity assertion on 2026‑07‑25
+(benchmarks amendment E5); before that it rendered a larger,
+different page outside every gate. The published
+2026‑07‑25 cross‑stack run is the first to measure it under parity:
+**Heddle 30.52 μs vs Razor 41.66 μs**, with Heddle fastest of all six .NET engines on that
+workload. The 2026‑07‑11 figures below are the older intra‑.NET record, and their Razor pairing
+describes the pre‑parity workload. In the run of **2026‑07‑11** (commit `8341bb67`; AMD Ryzen 9 9950X,
 .NET 10.0.9, BenchmarkDotNet 0.15.8) Heddle rendered that page in **32.50 μs / 227.86 KB** — the
 fastest of the six and tied‑least on allocation (within 0.3 KB of Handlebars.Net); the next engine (Fluid) took 2.0× as long and
 Scriban 11.7× with 5.07× the allocation. The full render and compile‑cost tables, environment
 header, and raw artifacts live in the [README Performance section](../README.md#performance) and
-[docs/benchmarks/2026-07-11](benchmarks/2026-07-11/). The reasons Heddle leads on the render path are
+docs/benchmarks/2026-07-11. The reasons Heddle leads on the render path are
 structural, not incidental:
 
 - **Execution‑ready document, not per‑call activation.** Each template becomes a
@@ -214,7 +220,7 @@ structural, not incidental:
   `[MethodImpl(AggressiveInlining)]` transforms, avoiding per‑scope heap allocation as the
   renderer descends into elements and subtemplates.
 - **Composition is near‑free at run time.** Splitting a page into independent reusable templates
-  recombined by a layout (see the benchmark's `@<<{{layout.heddle}}` import + `<body:body>`
+  recombined by a layout (see the benchmark's `@<<{{shared/layout.heddle}}` import + `<body:body>`
   override) renders through one pre‑built extension node per definition invocation — no per‑render
   lookup, activation, or buffer indirection — unlike Razor sections, whose layout/section binding
   adds indirection. See
@@ -225,9 +231,9 @@ compilation (member accessors), and Roslyn (embedded C#), so it is not cheap —
 "compile once, render many." In the same 2026‑07‑11 run, cold‑compiling the layout + home
 templates took **264.99 μs / 1,339.67 KB** for Heddle versus single‑digit microseconds for the
 Liquid engines (Fluid 3.65 μs, Scriban 4.68 μs, DotLiquid 7.21 μs) — a cost amortized across every
-cached render. Compile cost is benchmarked via
-[TemplateParseBenchmarks](../src/Heddle.Performance/TemplateParseBenchmarks.cs) and the runners in
-[src/Heddle.Performance/Runners](../src/Heddle.Performance/Runners/README.md); full table in the
+cached render. Compile cost is benchmarked by the harness's cold sidebar
+(`dotnet run -c Release --project benchmarks/dotnet -- bench-cold`), which measures parse and
+compile as separate rows because they are separate steps; full table in the
 [README](../README.md#performance).
 
 ---
@@ -247,7 +253,7 @@ cached render. Compile cost is benchmarked via
 | `Heddle/LanguageTemplates` | `.tcs` resources used to emit C# for Roslyn. |
 | [src/Heddle.Language](../src/Heddle.Language) | ANTLR grammar + generated lexer/parser + editor assets. |
 | [src/Heddle.Tests](../src/Heddle.Tests) | xUnit tests + `.heddle` fixtures. |
-| [src/Heddle.Performance](../src/Heddle.Performance) | BenchmarkDotNet benchmarks. |
+| [benchmarks/dotnet](../benchmarks/dotnet) | BenchmarkDotNet benchmarks — the cross-stack .NET leg. Not in `Heddle.sln`. |
 
 ---
 

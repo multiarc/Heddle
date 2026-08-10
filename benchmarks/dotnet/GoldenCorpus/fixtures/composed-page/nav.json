@@ -1,0 +1,955 @@
+{
+  "menus": [
+    {
+      "tabs": [
+        {
+          "label": "Shop All Products",
+          "href": "#",
+          "css": "shop-all-products",
+          "has_dropdown": true,
+          "dropdown_css": "dropdown_2columns",
+          "columns": [
+            {
+              "sections": [
+                {
+                  "title": "FISH",
+                  "href": "",
+                  "title_linked": false,
+                  "links": [
+                    { "label": "Salmon", "href": "/products/wild-salmon" },
+                    { "label": "Halibut", "href": "/products/wild-alaskan-halibut" },
+                    { "label": "Cod", "href": "/products/wild-alaskan-cod" },
+                    { "label": "Sablefish", "href": "/products/wild-alaskan-sablefish-aka-black-cod-butterfish" },
+                    { "label": "Tuna", "href": "/products/wild-tuna" },
+                    { "label": "Smoked Fish and Lox", "href": "/products/smoked-fish-and-lox" },
+                    { "label": "Sausage, Burgers and Bacon", "href": "/products/wild-salmon-sausage-bacon-and-burgers" },
+                    { "label": "Petrale Sole", "href": "/product/wild-petrale-sole-portions-4-6-oz-1-lb-bags" }
+                  ]
+                },
+                {
+                  "title": "SHELLFISH",
+                  "href": "/products/wild-and-eco-grown-shellfish",
+                  "title_linked": true,
+                  "links": [
+                    { "label": "Scallops", "href": "/products/wild-sea-scallops" },
+                    { "label": "Clams, Oysters and Mussels", "href": "/products/cultured-shellfish-mussels-clams-oysters" },
+                    { "label": "Wild Shrimp", "href": "/product/oregon-pink-shrimp-cooked" },
+                    { "label": "Spot Prawns", "href": "/products/wild-pacific-spot-prawns" },
+                    { "label": "Crab", "href": "/products/crab" },
+                    { "label": "Lobster", "href": "/products/wild-maine-lobster" },
+                    { "label": "Calamari", "href": "/product/wild-pacific-calamari-8-oz" },
+                    { "label": "See All", "href": "/products/wild-and-eco-grown-shellfish" }
+                  ]
+                },
+                {
+                  "title": "MEAT",
+                  "href": "",
+                  "title_linked": false,
+                  "links": [
+                    { "label": "Pork - coming soon", "href": "/product/coming-soon-paleo-pork" },
+                    { "label": "Grass-Fed Bison", "href": "/products/grass-fed-bison" },
+                    { "label": "Grass Fed Beef", "href": "/products/organic-grass-fed-beef-by-skagit-river-ranch" },
+                    { "label": "Heritage Chicken", "href": "/products/heritage-chicken" },
+                    { "label": "Bone Broth", "href": "/products/bone-broth-fish-chicken-and-beef" },
+                    { "label": "Burgers and Hotdogs: Fish and Meat", "href": "/products/burgers-and-hot-dogs" }
+                  ]
+                }
+              ]
+            },
+            {
+              "sections": [
+                {
+                  "title": "CANNED AND POUCHED",
+                  "href": "/products/canned-and-pouched-wild-seafood",
+                  "title_linked": true,
+                  "links": [
+                    { "label": "Salmon", "href": "/products/wild-canned-sockeye-salmon" },
+                    { "label": "Sardines", "href": "/products/canned-wild-portuguese-sardines-bone-in-and-fillets" },
+                    { "label": "Tuna", "href": "/products/canned-and-pouched-tuna" },
+                    { "label": "Anchovies", "href": "/products/anchovies" },
+                    { "label": "Shrimp", "href": "/products/wild-oregon-tiny-pink-shrimp" },
+                    { "label": "Crab", "href": "/products/canned-wild-pacific-dungeness-crab" },
+                    { "label": "Mackerel", "href": "/products/canned-wild-portuguese-mackerel" },
+                    { "label": "Mussels", "href": "/products/smoked-mussels-cultured" },
+                    { "label": "Canned Samplers", "href": "/products/canned-wild-seafood-samplers" },
+                    { "label": "See All", "href": "/products/canned-and-pouched-wild-seafood" }
+                  ]
+                },
+                {
+                  "title": "ORGANIC FOODS AND SEASONINGS",
+                  "href": "/products/organic-food-meat-and-poultry",
+                  "title_linked": true,
+                  "links": [
+                    { "label": "Broth, Soups and Meals", "href": "/products/meals-broth-and-soups-organic-and-natural" },
+                    { "label": "Frozen Berries", "href": "/products/organic-berries-frozen" },
+                    { "label": "Oils and Vinegars", "href": "/products/organic-oils-and-vinegar" },
+                    { "label": "Garlic, Marinades and Seasonings", "href": "/products/organic-marinade-rub-mixes-and-seasonings" },
+                    { "label": "Natural Jerky - Salmon and Bison", "href": "/products/natural-jerky" },
+                    { "label": "Dried Fruit", "href": "/products/organic-dried-fruits" },
+                    { "label": "Chocolate", "href": "/products/organic-extra-dark-chocolate" },
+                    { "label": "Trail Mix", "href": "/products/organic-trail-mix" },
+                    { "label": "Seaweed and Kelp", "href": "/products/seaweed-salad-and-kelp-cubes" },
+                    { "label": "See All", "href": "/products/organic-food-meat-and-poultry" }
+                  ]
+                }
+              ]
+            },
+            {
+              "sections": [
+                {
+                  "title": "OMEGA-3s AND SUPPLEMENTS",
+                  "href": "/products/omega-3s-herbs-tests-vitamin-d-and-astaxanthin",
+                  "title_linked": true,
+                  "links": [
+                    { "label": "Omega-3 Wild Salmon Oil", "href": "/products/omega-3-wild-salmon-oil-supplements" },
+                    { "label": "Vitamin D3 + Omega-3 Combos", "href": "/products/vitamin-d3-omega-3-combos" },
+                    { "label": "High DHA Brain Care Therapy", "href": "/product/high-dha-brain-care-vitamin-d3" },
+                    { "label": "Daily Dose Packs", "href": "/products/daily-supplement-packs" },
+                    { "label": "Omega-3 Krill Oil", "href": "/products/omega-3-krill-oil" },
+                    { "label": "Vital Omega-3/6 Test Kit", "href": "/products/vital-omega-3-6-hufa-test" },
+                    { "label": "Curcumin in Wild Salmon Oil", "href": "/product/curcumin-in-wild-alaskan-salmon-oil-250mg-120-ct" },
+                    { "label": "See All", "href": "/products/omega-3s-herbs-tests-vitamin-d-and-astaxanthin" }
+                  ]
+                },
+                {
+                  "title": "SAMPLERS AND GIFT PACKS",
+                  "href": "",
+                  "title_linked": false,
+                  "links": [
+                    { "label": "Samplers", "href": "/products/samplers" },
+                    { "label": "Health Advisor Packs", "href": "/products/health-advisors-packs" },
+                    { "label": "Pet Treats", "href": "/products/pet-products" },
+                    { "label": "Healthy Mom and Baby", "href": "/content/healthy-mom-baby" },
+                    { "label": "Doctors Favorites", "href": "/products/doctors-favorites" },
+                    { "label": "All Gifts and Packs", "href": "/products/gift-packs-and-certificates" },
+                    { "label": "Gift Certificates", "href": "/products/gift-certificates" }
+                  ]
+                },
+                {
+                  "title": "COOKS TOOLS AND BOOKS",
+                  "href": "",
+                  "title_linked": false,
+                  "links": [
+                    { "label": "Gift Certificates", "href": "/product/vital-choice-gift-certificate?cat=278" },
+                    { "label": "Cooks Tools and Books", "href": "/products/cookbooks-and-cooking-accessories" },
+                    { "label": "Grilling Accessories", "href": "/products/grilling-accessories" }
+                  ]
+                }
+              ]
+            },
+            {
+              "sections": [
+                {
+                  "title": "SPECIAL OFFERS / VALUE PICKS",
+                  "href": "/products/special-offers",
+                  "title_linked": true,
+                  "links": []
+                },
+                {
+                  "title": "NEW PRODUCTS",
+                  "href": "/products/new-at-vital-choice",
+                  "title_linked": true,
+                  "links": []
+                },
+                {
+                  "title": "TOP SELLERS",
+                  "href": "/products/top-sellers",
+                  "title_linked": true,
+                  "links": []
+                },
+                {
+                  "title": "RANDYS PICKS",
+                  "href": "/products/randy-s-picks",
+                  "title_linked": true,
+                  "links": []
+                },
+                {
+                  "title": "GIFT CERTIFICATES",
+                  "href": "/products/gift-certificates",
+                  "title_linked": true,
+                  "links": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Wild Salmon",
+          "href": "#",
+          "css": "wild-salmon",
+          "has_dropdown": true,
+          "dropdown_css": "dropdown_2columns",
+          "columns": [
+            {
+              "sections": [
+                {
+                  "title": "Wild Salmon",
+                  "href": "/products/wild-salmon",
+                  "title_linked": true,
+                  "links": [
+                    { "label": "Wild Alaskan Sockeye Salmon", "href": "/products/wild-alaskan-sockeye-salmon" },
+                    { "label": "Arctic Keta", "href": "/products/artic-keta-salmon" },
+                    { "label": "Wild Pacific King Salmon", "href": "/products/wild-pacific-king-salmon" },
+                    { "label": "Wild Alaskan Silver Salmon", "href": "/products/wild-alaskan-silver-salmon" },
+                    { "label": "Wild Salmon Samplers", "href": "/products/wild-salmon-samplers" },
+                    { "label": "Seared Sockeye Salmon (Tataki)", "href": "/products/seared-sockeye-salmon-tataki" },
+                    { "label": "Ikura Wild Salmon Caviar", "href": "/products/ikura-wild-salmon-caviar" },
+                    { "label": "Wild Salmon Jerky Strips", "href": "/products/wild-salmon-jerky-strips" }
+                  ]
+                }
+              ]
+            },
+            {
+              "sections": [
+                {
+                  "title": "WILD CANNED SOCKEYE SALMON",
+                  "href": "/products/wild-canned-sockeye-salmon",
+                  "title_linked": true,
+                  "links": []
+                },
+                {
+                  "title": "SAUSAGE, BACON, AND BURGERS",
+                  "href": "/products/wild-salmon-sausage-bacon-and-burgers",
+                  "title_linked": true,
+                  "links": []
+                },
+                {
+                  "title": "SMOKED FISH AND LOX",
+                  "href": "/products/smoked-fish-and-lox",
+                  "title_linked": true,
+                  "links": []
+                },
+                {
+                  "title": "OMEGA-3 WILD SALMON OIL",
+                  "href": "/products/omega-3-wild-salmon-oil-supplements",
+                  "title_linked": true,
+                  "links": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Supplements",
+          "href": "#",
+          "css": "supplements",
+          "has_dropdown": true,
+          "dropdown_css": "dropdown_2columns",
+          "columns": [
+            {
+              "sections": [
+                {
+                  "title": "OMEGA-3S AND SUPPLEMENTS",
+                  "href": "/products/omega-3s-herbs-tests-vitamin-d-and-astaxanthin",
+                  "title_linked": true,
+                  "links": [
+                    { "label": "Omega-3 Wild Salmon Oil", "href": "/products/omega-3-wild-salmon-oil-supplements" },
+                    { "label": "Vitamin D3 + Omega-3 Combos", "href": "/products/vitamin-d3-omega-3-combos" },
+                    { "label": "High DHA Brain Care Therapy", "href": "/product/high-dha-prenatal-therapy-vitamin-d3-180-softgels" },
+                    { "label": "Daily Dose Packs", "href": "/products/daily-supplement-packs" },
+                    { "label": "Omega-3 Krill Oil", "href": "/products/omega-3-krill-oil" },
+                    { "label": "Vital Omega-3/6 Test Kit", "href": "/products/vital-omega-3-6-hufa-test" },
+                    { "label": "Curcumin in Wild Salmon Oil", "href": "/product/curcumin-in-wild-alaskan-salmon-oil-250mg-120-ct" },
+                    { "label": "See All", "href": "/products/omega-3s-herbs-tests-vitamin-d-and-astaxanthin" }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "About Vital Choice",
+          "href": "#",
+          "css": "about-vital-choice",
+          "has_dropdown": true,
+          "dropdown_css": "dropdown_2columns",
+          "columns": [
+            {
+              "sections": [
+                {
+                  "title": "WHO WE ARE: OUR STORY",
+                  "href": "",
+                  "title_linked": false,
+                  "links": [
+                    { "label": "About Vital Choice", "href": "/content/about-vital-choice" },
+                    { "label": "Our Mission", "href": "/content/our-mission" },
+                    { "label": "Customer and Expert Reviews", "href": "/content/what-are-people-saying-about-vital-choice" }
+                  ]
+                }
+              ]
+            },
+            {
+              "sections": [
+                {
+                  "title": "WHY WE ARE DIFFERENT",
+                  "href": "",
+                  "title_linked": false,
+                  "links": [
+                    { "label": "Purity Standards", "href": "/content/purity-story" },
+                    { "label": "Vital Green Eco Programs", "href": "/content/vital-green-environmental-stewardship-program" },
+                    { "label": "Sustainable Seafood", "href": "/content/sustainability" }
+                  ]
+                }
+              ]
+            },
+            {
+              "sections": [
+                {
+                  "title": "WHAT WE BELIEVE",
+                  "href": "",
+                  "title_linked": false,
+                  "links": [
+                    { "label": "A Letter from Randy Hartnell", "href": "/content/a-letter-from-randy-hartnell" },
+                    { "label": "Randys Podcasts", "href": "/content/the-antidote-podcast-series" },
+                    { "label": "Giving Back", "href": "/content/giving-back-to-the-community" }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Learn",
+          "href": "#",
+          "css": "learn",
+          "has_dropdown": true,
+          "dropdown_css": "dropdown_2columns",
+          "columns": [
+            {
+              "sections": [
+                {
+                  "title": "RECOMMENDED READING",
+                  "href": "",
+                  "title_linked": false,
+                  "links": [
+                    { "label": "Newsletter Sign-up", "href": "/content/newsletter-sign-up" },
+                    { "label": "Newsletter Articles Archive", "href": "/articles/" },
+                    { "label": "FAQs", "href": "/faqs" }
+                  ]
+                }
+              ]
+            },
+            {
+              "sections": [
+                {
+                  "title": "HEALTH AND NUTRITION",
+                  "href": "",
+                  "title_linked": false,
+                  "links": [
+                    { "label": "Take the Vital Omega-3/6 Test", "href": "/product/the-vital-omega-3-6-hufa-test-trade" },
+                    { "label": "Omega-3 Facts", "href": "/content/omega-3-facts-sources" },
+                    { "label": "Seafood Benefits", "href": "/content/health-benefits-of-fish" },
+                    { "label": "Omega 3/6 Balance", "href": "/content/omega-3-6-balance-scores-how-to-use-them" },
+                    { "label": "Healthy Mom and Baby", "href": "/content/healthy-mom-baby" }
+                  ]
+                }
+              ]
+            },
+            {
+              "sections": [
+                {
+                  "title": "ABOUT VITAL CHOICE PRODUCTS",
+                  "href": "",
+                  "title_linked": false,
+                  "links": [
+                    { "label": "How to Prepare Seafood", "href": "/content/cooking-tips" },
+                    { "label": "Kosher and Organic Certification", "href": "/content/about-vital-choice#Organic" },
+                    { "label": "The Flash-Frozen Advantage", "href": "/content/about-vital-choice#Flash-Frozen" },
+                    { "label": "Seafood Purity and Safety", "href": "/content/purity-story" },
+                    { "label": "Superior Salmon, Naturally", "href": "/content/about-vital-choice#Superior%20Salmon" }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Cook",
+          "href": "#",
+          "css": "cook",
+          "has_dropdown": true,
+          "dropdown_css": "dropdown_2columns",
+          "columns": [
+            {
+              "sections": [
+                {
+                  "title": "COOKING VIDEOS",
+                  "href": "/recipe/vital-choice-seafood-cooking-videos",
+                  "title_linked": true,
+                  "links": []
+                },
+                {
+                  "title": "CELEBRITY CHEF VIDEOS",
+                  "href": "",
+                  "title_linked": false,
+                  "links": [
+                    { "label": "Becky Selengut", "href": "/recipes/becky-selengut" },
+                    { "label": "Myra Kornfeld", "href": "/recipes/myra-kornfeld" },
+                    { "label": "Rebecca Katz", "href": "/recipes/rebecca-katz" }
+                  ]
+                }
+              ]
+            },
+            {
+              "sections": [
+                {
+                  "title": "RECIPES BY CATEGORY",
+                  "href": "",
+                  "title_linked": false,
+                  "links": [
+                    { "label": "Salmon", "href": "/recipes/wild-salmon" },
+                    { "label": "Shellfish", "href": "/recipes/shellfish" },
+                    { "label": "Grass Fed Beef", "href": "/recipes/grass-fed-beef" },
+                    { "label": "Chicken", "href": "/recipes/heritage-chicken" },
+                    { "label": "See All Recipes", "href": "/content/in-the-kitchen" }
+                  ]
+                }
+              ]
+            },
+            {
+              "sections": [
+                {
+                  "title": "SEAFOOD HOW-TO VIDEOS",
+                  "href": "",
+                  "title_linked": false,
+                  "links": [
+                    { "label": "How-to Broil Salmon", "href": "/recipe/how-to-broil-salmon" },
+                    { "label": "How-to Saute Salmon", "href": "/recipe/how-to-saut-salmon" },
+                    { "label": "How-to Clean Spot Prawns", "href": "/recipe/how-to-clean-spot-prawns" },
+                    { "label": "See All Videos", "href": "/content/in-the-kitchen" }
+                  ]
+                },
+                {
+                  "title": "GUIDE: HOW-TO PREPARE SEAFOOD",
+                  "href": "/content/cooking-tips",
+                  "title_linked": true,
+                  "links": []
+                },
+                {
+                  "title": "SEE ALL RECIPES AND VIDEOS",
+                  "href": "/content/in-the-kitchen",
+                  "title_linked": true,
+                  "links": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tabs": [
+        {
+          "label": "Shop All Products",
+          "href": "#",
+          "css": "shop-all-products",
+          "has_dropdown": true,
+          "dropdown_css": "dropdown_2columns",
+          "columns": [
+            {
+              "sections": [
+                {
+                  "title": "FISH",
+                  "href": "",
+                  "title_linked": false,
+                  "links": [
+                    { "label": "Salmon", "href": "/products/wild-salmon" },
+                    { "label": "Halibut", "href": "/products/wild-alaskan-halibut" },
+                    { "label": "Cod", "href": "/products/wild-alaskan-cod" },
+                    { "label": "Sablefish", "href": "/products/wild-alaskan-sablefish-aka-black-cod-butterfish" },
+                    { "label": "Tuna", "href": "/products/wild-tuna" },
+                    { "label": "Smoked Fish and Lox", "href": "/products/smoked-fish-and-lox" },
+                    { "label": "Sausages,Dogs, Burgers and Bacon", "href": "/products/wild-salmon-sausage-bacon-and-burgers" },
+                    { "label": "Petrale Sole", "href": "/product/wild-petrale-sole-portions-4-6-oz-1-lb-bags" }
+                  ]
+                },
+                {
+                  "title": "SHELLFISH",
+                  "href": "/products/wild-and-eco-grown-shellfish",
+                  "title_linked": true,
+                  "links": [
+                    { "label": "Scallops", "href": "/products/wild-sea-scallops" },
+                    { "label": "Clams, Oysters and Mussels", "href": "/products/cultured-shellfish-mussels-clams-oysters" },
+                    { "label": "Wild Shrimp", "href": "/product/oregon-pink-shrimp-cooked" },
+                    { "label": "Spot Prawns", "href": "/products/wild-pacific-spot-prawns" },
+                    { "label": "Crab", "href": "/products/crab" },
+                    { "label": "Lobster", "href": "/products/wild-maine-lobster" },
+                    { "label": "Calamari", "href": "/product/wild-pacific-calamari-8-oz" },
+                    { "label": "See All", "href": "/products/wild-and-eco-grown-shellfish" }
+                  ]
+                },
+                {
+                  "title": "MEAT",
+                  "href": "",
+                  "title_linked": false,
+                  "links": [
+                    { "label": "Paleo-Friendly Pork", "href": "/products/paleo-friendly-pork" },
+                    { "label": "Grass-Fed Bison", "href": "/products/grass-fed-bison" },
+                    { "label": "Grass Fed Beef", "href": "/products/organic-grass-fed-beef-by-skagit-river-ranch" },
+                    { "label": "Heritage Chicken", "href": "/products/heritage-chicken" },
+                    { "label": "Bone Broth", "href": "/products/bone-broth-fish-chicken-and-beef" },
+                    { "label": "Burgers and Hotdogs: Fish and Meat", "href": "/products/burgers-and-hot-dogs" }
+                  ]
+                }
+              ]
+            },
+            {
+              "sections": [
+                {
+                  "title": "CANNED AND POUCHED",
+                  "href": "/products/canned-and-pouched-wild-seafood",
+                  "title_linked": true,
+                  "links": [
+                    { "label": "Salmon", "href": "/products/wild-canned-sockeye-salmon" },
+                    { "label": "Sardines", "href": "/products/canned-wild-portuguese-sardines-bone-in-and-fillets" },
+                    { "label": "Tuna", "href": "/products/canned-and-pouched-tuna" },
+                    { "label": "Anchovies", "href": "/products/anchovies" },
+                    { "label": "Shrimp", "href": "/products/wild-oregon-tiny-pink-shrimp" },
+                    { "label": "Crab", "href": "/products/canned-wild-pacific-dungeness-crab" },
+                    { "label": "Mackerel", "href": "/products/canned-wild-portuguese-mackerel" },
+                    { "label": "Mussels", "href": "/products/smoked-mussels-cultured" },
+                    { "label": "Canned Samplers", "href": "/products/canned-wild-seafood-samplers" },
+                    { "label": "See All", "href": "/products/canned-and-pouched-wild-seafood" }
+                  ]
+                },
+                {
+                  "title": "ORGANIC FOODS AND SEASONINGS",
+                  "href": "/products/organic-food-meat-and-poultry",
+                  "title_linked": true,
+                  "links": [
+                    { "label": "Broth, Soups and Meals", "href": "/products/meals-broth-and-soups-organic-and-natural" },
+                    { "label": "Frozen Berries", "href": "/products/organic-berries-frozen" },
+                    { "label": "Oils and Vinegars", "href": "/products/organic-oils-and-vinegar" },
+                    { "label": "Garlic, Marinades and Seasonings", "href": "/products/organic-marinade-rub-mixes-and-seasonings" },
+                    { "label": "Natural Jerky - Salmon and Bison", "href": "/products/natural-jerky" },
+                    { "label": "Dried Fruit", "href": "/products/organic-dried-fruits" },
+                    { "label": "Chocolate", "href": "/products/organic-extra-dark-chocolate" },
+                    { "label": "Trail Mix", "href": "/products/organic-trail-mix" },
+                    { "label": "Seaweed and Kelp", "href": "/products/seaweed-salad-and-kelp-cubes" },
+                    { "label": "See All", "href": "/products/organic-food-meat-and-poultry" }
+                  ]
+                }
+              ]
+            },
+            {
+              "sections": [
+                {
+                  "title": "OMEGA-3s AND SUPPLEMENTS",
+                  "href": "/products/omega-3s-herbs-tests-vitamin-d-and-astaxanthin",
+                  "title_linked": true,
+                  "links": [
+                    { "label": "Omega-3 Wild Salmon Oil", "href": "/products/omega-3-wild-salmon-oil-supplements" },
+                    { "label": "Vitamin D3 + Omega-3 Combos", "href": "/products/vitamin-d3-omega-3-combos" },
+                    { "label": "High DHA Brain Care Therapy", "href": "/product/high-dha-brain-care-vitamin-d3" },
+                    { "label": "Daily Dose Packs", "href": "/products/daily-supplement-packs" },
+                    { "label": "Omega-3 Krill Oil", "href": "/products/omega-3-krill-oil" },
+                    { "label": "Vital Omega-3/6 Test Kit", "href": "/products/vital-omega-3-6-hufa-test" },
+                    { "label": "Curcumin in Wild Salmon Oil", "href": "/product/curcumin-in-wild-alaskan-salmon-oil-250mg-120-ct" },
+                    { "label": "See All", "href": "/products/omega-3s-herbs-tests-vitamin-d-and-astaxanthin" }
+                  ]
+                },
+                {
+                  "title": "SAMPLERS AND GIFT PACKS",
+                  "href": "",
+                  "title_linked": false,
+                  "links": [
+                    { "label": "Samplers", "href": "/products/samplers" },
+                    { "label": "Health Advisor Packs", "href": "/products/health-advisors-packs" },
+                    { "label": "Pet Treats", "href": "/products/pet-products" },
+                    { "label": "Healthy Mom and Baby", "href": "/content/healthy-mom-baby" },
+                    { "label": "Doctors Favorites", "href": "/products/doctors-favorites" },
+                    { "label": "All Gifts and Packs", "href": "/products/gift-packs-and-certificates" },
+                    { "label": "Gift Certificates", "href": "/products/gift-certificates" }
+                  ]
+                },
+                {
+                  "title": "COOKS TOOLS AND BOOKS",
+                  "href": "",
+                  "title_linked": false,
+                  "links": [
+                    { "label": "Gift Certificates", "href": "/product/vital-choice-gift-certificate?cat=278" },
+                    { "label": "Cooks Tools and Books", "href": "/products/cookbooks-and-cooking-accessories" },
+                    { "label": "Grilling Accessories", "href": "/products/grilling-accessories" }
+                  ]
+                }
+              ]
+            },
+            {
+              "sections": [
+                {
+                  "title": "SPECIAL OFFERS / VALUE PICKS",
+                  "href": "/products/special-offers",
+                  "title_linked": true,
+                  "links": []
+                },
+                {
+                  "title": "NEW PRODUCTS",
+                  "href": "/products/new-at-vital-choice",
+                  "title_linked": true,
+                  "links": []
+                },
+                {
+                  "title": "TOP SELLERS",
+                  "href": "/products/top-sellers",
+                  "title_linked": true,
+                  "links": []
+                },
+                {
+                  "title": "RANDYS PICKS",
+                  "href": "/products/randy-s-picks",
+                  "title_linked": true,
+                  "links": []
+                },
+                {
+                  "title": "GIFT CERTIFICATES",
+                  "href": "/products/gift-certificates",
+                  "title_linked": true,
+                  "links": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Wild Salmon",
+          "href": "#",
+          "css": "wild-salmon",
+          "has_dropdown": true,
+          "dropdown_css": "dropdown_2columns",
+          "columns": [
+            {
+              "sections": [
+                {
+                  "title": "Wild Salmon",
+                  "href": "/products/wild-salmon",
+                  "title_linked": true,
+                  "links": [
+                    { "label": "Wild Alaskan Sockeye Salmon", "href": "/products/wild-alaskan-sockeye-salmon" },
+                    { "label": "Arctic Keta", "href": "/products/artic-keta-salmon" },
+                    { "label": "Wild Pacific King Salmon", "href": "/products/wild-pacific-king-salmon" },
+                    { "label": "Wild Alaskan Silver Salmon", "href": "/products/wild-alaskan-silver-salmon" },
+                    { "label": "Wild Salmon Samplers", "href": "/products/wild-salmon-samplers" },
+                    { "label": "Seared Sockeye Salmon (Tataki)", "href": "/products/seared-sockeye-salmon-tataki" },
+                    { "label": "Ikura Wild Salmon Caviar", "href": "/products/ikura-wild-salmon-caviar" },
+                    { "label": "Coming Soon: Wild Salmon Dogs", "href": "/products/wild-salmon-hot-dogs" }
+                  ]
+                }
+              ]
+            },
+            {
+              "sections": [
+                {
+                  "title": "WILD SALMON SAMPLERS",
+                  "href": "/products/wild-salmon-samplers",
+                  "title_linked": true,
+                  "links": []
+                },
+                {
+                  "title": "WILD CANNED SOCKEYE SALMON",
+                  "href": "/products/wild-canned-sockeye-salmon",
+                  "title_linked": true,
+                  "links": []
+                },
+                {
+                  "title": "SAUSAGE, BACON, AND BURGERS",
+                  "href": "/products/wild-salmon-sausage-bacon-and-burgers",
+                  "title_linked": true,
+                  "links": []
+                },
+                {
+                  "title": "SMOKED FISH AND LOX",
+                  "href": "/products/smoked-fish-and-lox",
+                  "title_linked": true,
+                  "links": []
+                },
+                {
+                  "title": "OMEGA-3 WILD SALMON OIL",
+                  "href": "/products/omega-3-wild-salmon-oil-supplements",
+                  "title_linked": true,
+                  "links": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Supplements",
+          "href": "#",
+          "css": "supplements",
+          "has_dropdown": true,
+          "dropdown_css": "dropdown_2columns",
+          "columns": [
+            {
+              "sections": [
+                {
+                  "title": "OMEGA-3S AND SUPPLEMENTS",
+                  "href": "/products/omega-3s-herbs-tests-vitamin-d-and-astaxanthin",
+                  "title_linked": true,
+                  "links": [
+                    { "label": "Omega-3 Wild Salmon Oil", "href": "/products/omega-3-wild-salmon-oil-supplements" },
+                    { "label": "Vitamin D3 + Omega-3 Combos", "href": "/products/vitamin-d3-omega-3-combos" },
+                    { "label": "High DHA Brain Care Therapy", "href": "/product/high-dha-prenatal-therapy-vitamin-d3-180-softgels" },
+                    { "label": "Daily Dose Packs", "href": "/products/daily-supplement-packs" },
+                    { "label": "Omega-3 Krill Oil", "href": "/products/omega-3-krill-oil" },
+                    { "label": "Vital Omega-3/6 Test Kit", "href": "/products/vital-omega-3-6-hufa-test" },
+                    { "label": "Curcumin in Wild Salmon Oil", "href": "/product/curcumin-in-wild-alaskan-salmon-oil-250mg-120-ct" },
+                    { "label": "See All", "href": "/products/omega-3s-herbs-tests-vitamin-d-and-astaxanthin" }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "About Vital Choice",
+          "href": "#",
+          "css": "about-vital-choice",
+          "has_dropdown": true,
+          "dropdown_css": "dropdown_2columns",
+          "columns": [
+            {
+              "sections": [
+                {
+                  "title": "WHO WE ARE: OUR STORY",
+                  "href": "",
+                  "title_linked": false,
+                  "links": [
+                    { "label": "About Vital Choice", "href": "/content/about-vital-choice" },
+                    { "label": "Our Mission", "href": "/content/our-mission" },
+                    { "label": "Customer and Expert Reviews", "href": "/content/what-are-people-saying-about-vital-choice" }
+                  ]
+                }
+              ]
+            },
+            {
+              "sections": [
+                {
+                  "title": "WHY WE ARE DIFFERENT",
+                  "href": "",
+                  "title_linked": false,
+                  "links": [
+                    { "label": "Purity Standards", "href": "/content/purity-story" },
+                    { "label": "Vital Green Eco Programs", "href": "/content/vital-green-environmental-stewardship-program" },
+                    { "label": "Sustainable Seafood", "href": "/content/sustainability" }
+                  ]
+                }
+              ]
+            },
+            {
+              "sections": [
+                {
+                  "title": "WHAT WE BELIEVE",
+                  "href": "",
+                  "title_linked": false,
+                  "links": [
+                    { "label": "A Letter from Randy Hartnell", "href": "/content/a-letter-from-randy-hartnell" },
+                    { "label": "Randys Podcasts", "href": "/content/the-antidote-podcast-series" },
+                    { "label": "Giving Back", "href": "/content/giving-back-to-the-community" }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Learn",
+          "href": "#",
+          "css": "learn",
+          "has_dropdown": true,
+          "dropdown_css": "dropdown_2columns",
+          "columns": [
+            {
+              "sections": [
+                {
+                  "title": "RECOMMENDED READING",
+                  "href": "",
+                  "title_linked": false,
+                  "links": [
+                    { "label": "Newsletter Sign-up", "href": "/content/newsletter-sign-up" },
+                    { "label": "Newsletter Articles Archive", "href": "/articles/" },
+                    { "label": "FAQs", "href": "/faqs" }
+                  ]
+                }
+              ]
+            },
+            {
+              "sections": [
+                {
+                  "title": "HEALTH AND NUTRITION",
+                  "href": "",
+                  "title_linked": false,
+                  "links": [
+                    { "label": "Take the Vital Omega-3/6 Test", "href": "/product/the-vital-omega-3-6-hufa-test-trade" },
+                    { "label": "Omega-3 Facts", "href": "/content/omega-3-facts-sources" },
+                    { "label": "Seafood Benefits", "href": "/content/health-benefits-of-fish" },
+                    { "label": "Omega 3/6 Balance", "href": "/content/omega-3-6-balance-scores-how-to-use-them" },
+                    { "label": "Healthy Mom and Baby", "href": "/content/healthy-mom-baby" }
+                  ]
+                }
+              ]
+            },
+            {
+              "sections": [
+                {
+                  "title": "ABOUT VITAL CHOICE PRODUCTS",
+                  "href": "",
+                  "title_linked": false,
+                  "links": [
+                    { "label": "How to Prepare Seafood", "href": "/content/cooking-tips" },
+                    { "label": "Kosher and Organic Certification", "href": "/content/about-vital-choice#Organic" },
+                    { "label": "The Flash-Frozen Advantage", "href": "/content/about-vital-choice#Flash-Frozen" },
+                    { "label": "Seafood Purity and Safety", "href": "/content/purity-story" },
+                    { "label": "Superior Salmon, Naturally", "href": "/content/about-vital-choice#Superior%20Salmon" }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Cook",
+          "href": "#",
+          "css": "cook",
+          "has_dropdown": true,
+          "dropdown_css": "dropdown_2columns",
+          "columns": [
+            {
+              "sections": [
+                {
+                  "title": "COOKING VIDEOS",
+                  "href": "/recipe/vital-choice-seafood-cooking-videos",
+                  "title_linked": true,
+                  "links": []
+                },
+                {
+                  "title": "CELEBRITY CHEF VIDEOS",
+                  "href": "",
+                  "title_linked": false,
+                  "links": [
+                    { "label": "Becky Selengut", "href": "/recipes/becky-selengut" },
+                    { "label": "Myra Kornfeld", "href": "/recipes/myra-kornfeld" },
+                    { "label": "Rebecca Katz", "href": "/recipes/rebecca-katz" }
+                  ]
+                }
+              ]
+            },
+            {
+              "sections": [
+                {
+                  "title": "RECIPES BY CATEGORY",
+                  "href": "",
+                  "title_linked": false,
+                  "links": [
+                    { "label": "Salmon", "href": "/recipes/wild-salmon" },
+                    { "label": "Shellfish", "href": "/recipes/shellfish" },
+                    { "label": "Grass Fed Beef", "href": "/recipes/grass-fed-beef" },
+                    { "label": "Chicken", "href": "/recipes/heritage-chicken" },
+                    { "label": "See All Recipes", "href": "/content/in-the-kitchen" }
+                  ]
+                }
+              ]
+            },
+            {
+              "sections": [
+                {
+                  "title": "SEAFOOD HOW-TO VIDEOS",
+                  "href": "",
+                  "title_linked": false,
+                  "links": [
+                    { "label": "How-to Broil Salmon", "href": "/recipe/how-to-broil-salmon" },
+                    { "label": "How-to Saute Salmon", "href": "/recipe/how-to-saut-salmon" },
+                    { "label": "How-to Clean Spot Prawns", "href": "/recipe/how-to-clean-spot-prawns" },
+                    { "label": "See All Videos", "href": "/content/in-the-kitchen" }
+                  ]
+                },
+                {
+                  "title": "GUIDE: HOW-TO PREPARE SEAFOOD",
+                  "href": "/content/cooking-tips",
+                  "title_linked": true,
+                  "links": []
+                },
+                {
+                  "title": "SEE ALL RECIPES AND VIDEOS",
+                  "href": "/content/in-the-kitchen",
+                  "title_linked": true,
+                  "links": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "footer_columns": [
+    {
+      "sections": [
+        {
+          "title": "Need Help?",
+          "href": "",
+          "title_linked": false,
+          "links": [
+            { "label": "Customer Service", "href": "/content/contact-customer-service" },
+            { "label": "Request a Catalog", "href": "/content/request-catalog" },
+            { "label": "Customer Rewards", "href": "/content/HealthWise-Rewards-Program" },
+            { "label": "Returns and Exchanges", "href": "/content/the-vital-choice-guarantee" },
+            { "label": "Shipping Information", "href": "/content/shipping-information" }
+          ]
+        }
+      ]
+    },
+    {
+      "sections": [
+        {
+          "title": "Our Company",
+          "href": "",
+          "title_linked": false,
+          "links": [
+            { "label": "About Us", "href": "/content/About-Vital-Choice" },
+            { "label": "Guarantee", "href": "/content/the-vital-choice-guarantee" },
+            { "label": "Testimonials", "href": "/content/what-are-people-saying-about-vital-choice" },
+            { "label": "Purity Standards", "href": "/content/Purity-Story" },
+            { "label": "Sustainability Policy", "href": "/content/Sustainability" },
+            { "label": "Vital Green", "href": "/content/Vital-Green-Environmental-Stewardship-Program" },
+            { "label": "News Room", "href": "/content/News-Room" },
+            { "label": "Giving Back", "href": "/content/Giving-Back-to-the-Community" },
+            { "label": "Privacy Policy", "href": "/content/privacy-policy" },
+            { "label": "Careers", "href": "/content/Careers" }
+          ]
+        }
+      ]
+    },
+    {
+      "sections": [
+        {
+          "title": "Programs",
+          "href": "",
+          "title_linked": false,
+          "links": [
+            { "label": "Affiliate Accounts", "href": "/content/Web-Affiliate-Program" },
+            { "label": "Customer Rewards", "href": "/content/HealthWise-Rewards-Program" },
+            { "label": "Wholesale Accounts", "href": "/content/wholesale-registration" }
+          ]
+        }
+      ]
+    },
+    {
+      "sections": [
+        {
+          "title": "Learn",
+          "href": "",
+          "title_linked": false,
+          "links": [
+            { "label": "FAQs", "href": "/faqs" },
+            { "label": "Recipes", "href": "/content/in-the-kitchen" },
+            { "label": "Seafood Cooking Tips", "href": "/content/Seafood-Storage-Cooking-Tips" },
+            { "label": "Newsletter Archive", "href": "/articles" },
+            { "label": "Healthy Mom and Baby", "href": "/content/Healthy-Mom-Baby" },
+            { "label": "Seafood Health Benefits", "href": "/content/Health-Benefits-of-Fish" },
+            { "label": "Omega-3 Facts and Sources", "href": "/content/omega-3-facts-sources" }
+          ]
+        }
+      ]
+    }
+  ]
+}

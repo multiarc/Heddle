@@ -1,0 +1,155 @@
+<Project>
+
+  <!-- Everything the three Roslyn-version variants of the generator share. The variant dimension is the
+       Microsoft.CodeAnalysis reference, NOT the target framework: every variant stays netstandard2.0 so the
+       net48 compiler hosts (VS 2022 / msbuild.exe) can load whichever versioned analyzer folder they select.
+       Each variant csproj sets HeddleRoslynApiVersion BEFORE importing this file; the versions mirror
+       src/Heddle/Heddle.csproj's per-TFM pins exactly (4.1.0 / 4.11.0 / 5.3.0) so the tier that emits C# and
+       the tier that compiles it agree on the compiler generation per runtime.
+       API use beyond the 4.1.0 floor must be guarded: ROSLYN_4_11_OR_GREATER / ROSLYN_5_3_OR_GREATER are
+       defined by the variants that can bind it. -->
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+
+    <!-- All variants produce the same assembly identity: same name, same key, so InternalsVisibleTo and the
+         strong-name grant hold regardless of which variant a test leg or a consumer's compiler loads. -->
+    <AssemblyName>Heddle.Generator</AssemblyName>
+    <RootNamespace>Heddle.Generator</RootNamespace>
+
+    <IsRoslynComponent>true</IsRoslynComponent>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+    <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+
+    <SignAssembly>true</SignAssembly>
+    <AssemblyOriginatorKeyFile>$(MSBuildThisFileDirectory)..\..\heddle.snk</AssemblyOriginatorKeyFile>
+
+    <!-- Analyzer projects that ProjectReference another project trigger this warning; the DLLs are packed
+         into analyzers/dotnet/roslyn*/cs by the packable project's targets.
+         RS2008: this incremental source generator reports build diagnostics but is not distributed as a
+         versioned analyzer package with AnalyzerReleases.{Shipped,Unreleased}.md tracking; the HED7xxx IDs
+         are governed by the repository's diagnostic-ID registry instead. -->
+    <NoWarn>$(NoWarn);RS1038;NU5128;RS2008</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- White-box binder unit tests (ExtensionBinder / Info are internal). Signed with the shared key. -->
+    <InternalsVisibleTo Include="Heddle.Generator.Tests, PublicKey=00240000048000009400000006020000002400005253413100040000010001008F699CB432AD3DC770F9147DE37911B49099706C36AF5F14DB7C2031DD216FFAE283B63A2591814F371929AB231C4A82BCBFAC9803C37B96AE90DC703F4159E8B6AC6E2E9F364F072D1BA2FC5B79F26ACF3BD61637D2DB47F409E2B07CF3F49E988BF2C5F6DDAE6D8F804C770601CCE3F3CEA11F7D61A3583109D9AD3244F6C6" />
+    <!-- The differential/partial suites call the production SanitizeName rather than mirroring it.
+         Same signing key as the line above. -->
+    <InternalsVisibleTo Include="Heddle.Generator.IntegrationTests, PublicKey=00240000048000009400000006020000002400005253413100040000010001008F699CB432AD3DC770F9147DE37911B49099706C36AF5F14DB7C2031DD216FFAE283B63A2591814F371929AB231C4A82BCBFAC9803C37B96AE90DC703F4159E8B6AC6E2E9F364F072D1BA2FC5B79F26ACF3BD61637D2DB47F409E2B07CF3F49E988BF2C5F6DDAE6D8F804C770601CCE3F3CEA11F7D61A3583109D9AD3244F6C6" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The host compiler provides Microsoft.CodeAnalysis; never shipped. Version is the variant dimension. -->
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="$(HeddleRoslynApiVersion)" PrivateAssets="all" />
+    <PackageReference Include="Antlr4.Runtime.Standard" Version="4.13.1" GeneratePathProperty="true" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The ANTLR front end (generated lexer/parser). Referenced for compile; bundled into the analyzer
+         folder for pack (packable project's targets). -->
+    <ProjectReference Include="$(MSBuildThisFileDirectory)..\Heddle.Language\Heddle.Language.csproj" />
+  </ItemGroup>
+
+  <!-- All three csprojs share this directory, so the SDK's default Compile glob already gives each of them the
+       generator's own sources; only the cross-project links below need stating. -->
+
+  <!-- The same parse pipeline the runtime compiles, linked in so parse knowledge exists exactly once. Excludes the
+       `*.Runtime.cs` halves — the partials reaching into the runtime's CompileContext, which is not linked. -->
+  <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)..\Heddle\Language\**\*.cs" Exclude="$(MSBuildThisFileDirectory)..\Heddle\Language\**\*.Runtime.cs">
+      <Link>Shared\Language\%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </Compile>
+    <Compile Include="$(MSBuildThisFileDirectory)..\Heddle\Strings\Core\BlockPosition.cs" Link="Shared\Strings\BlockPosition.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\Heddle\Data\CompileError.cs" Link="Shared\Data\CompileError.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\Heddle\Data\HeddleCompileError.cs" Link="Shared\Data\HeddleCompileError.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\Heddle\Data\HeddleCompileWarning.cs" Link="Shared\Data\HeddleCompileWarning.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\Heddle\Data\HeddleDiagnosticIds.cs" Link="Shared\Data\HeddleDiagnosticIds.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\Heddle\Data\HeddleDiagnosticCatalog.cs" Link="Shared\Data\HeddleDiagnosticCatalog.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\Heddle\Helpers\CSharpTypeNames.cs" Link="Shared\Helpers\CSharpTypeNames.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\Heddle\Data\LinePosition.cs" Link="Shared\Data\LinePosition.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\Heddle\Data\LineIndex.cs" Link="Shared\Data\LineIndex.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\Heddle\Exceptions\TemplateCompileException.cs" Link="Shared\Exceptions\TemplateCompileException.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\Heddle\Exceptions\TemplateParseException.cs" Link="Shared\Exceptions\TemplateParseException.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\Heddle\Precompiled\TemplateKey.cs" Link="Shared\Precompiled\TemplateKey.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\Heddle\Precompiled\DefaultFunctionTable.cs" Link="Shared\Precompiled\DefaultFunctionTable.cs" />
+    <!-- The pipeline-level generator↔runtime contracts, stated once. -->
+    <Compile Include="$(MSBuildThisFileDirectory)..\Heddle\Precompiled\ContentHash.cs" Link="Shared\Precompiled\ContentHash.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\Heddle\Precompiled\PrecompiledSchema.cs" Link="Shared\Precompiled\PrecompiledSchema.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\Heddle\Precompiled\PrecompiledOptionsFingerprint.cs" Link="Shared\Precompiled\PrecompiledOptionsFingerprint.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\Heddle\Precompiled\PrecompiledCapabilities.cs" Link="Shared\Precompiled\PrecompiledCapabilities.cs" />
+    <!-- Linked, not restated, so the emitted member name is the real enum member: a rename breaks this compile
+         instead of producing a manifest that will not compile in the consumer. -->
+    <Compile Include="$(MSBuildThisFileDirectory)..\Heddle\Precompiled\PrecompiledLinePathForm.cs" Link="Shared\Precompiled\PrecompiledLinePathForm.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\Heddle\Precompiled\PrecompiledCallShape.cs" Link="Shared\Precompiled\PrecompiledCallShape.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\Heddle\Precompiled\ObserveMode.cs" Link="Shared\Precompiled\ObserveMode.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\Heddle\Precompiled\HeddleBuildOptions.cs" Link="Shared\Precompiled\HeddleBuildOptions.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\Heddle\Data\OutputProfile.cs" Link="Shared\Data\OutputProfile.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\Heddle\Data\ExpressionMode.cs" Link="Shared\Data\ExpressionMode.cs" />
+    <!-- The encoding-deciding rules, beside the enums they interpret. -->
+    <Compile Include="$(MSBuildThisFileDirectory)..\Heddle\Data\RenderType.cs" Link="Shared\Data\RenderType.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\Heddle\Data\OutputProfileRules.cs" Link="Shared\Data\OutputProfileRules.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\Heddle\Data\RenderTypeRules.cs" Link="Shared\Data\RenderTypeRules.cs" />
+    <!-- The binding-layer contracts, stated once. BranchRole is linked rather than mirrored because its numeric
+         values are a cross-assembly contract. -->
+    <Compile Include="$(MSBuildThisFileDirectory)..\Heddle\Precompiled\AqnFormatter.cs" Link="Shared\Precompiled\AqnFormatter.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\Heddle\Attributes\BranchRole.cs" Link="Shared\Attributes\BranchRole.cs" />
+  </ItemGroup>
+
+  <!-- The compile-input manifest. What ends up in Heddle.Generator.dll is the sources in this directory PLUS
+       every linked file above, so a gate that walks the directory sees about a third of the assembly and misses
+       the largest name table in it. The list of files the compiler is actually given is written here and embedded,
+       so the gate reads it off the built assembly instead of guessing at a directory. Written and added to
+       @(EmbeddedResource) in one target, hooked ahead of AssignTargetPaths: a resource added later than
+       _GenerateCompileInputs (which itself runs before BeforeCompile) never reaches csc. Not the PDB document
+       table: documents are emitted per sequence point, so a file carrying only constants and no method body need
+       not appear, and a hole in the enumerator is worse than no enumerator. -->
+  <UsingTask TaskName="HeddleWriteSortedRelativePaths" TaskFactory="RoslynCodeTaskFactory"
+             AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <Paths ParameterType="System.String[]" Required="true" />
+      <RepoRoot ParameterType="System.String" Required="true" />
+      <Destination ParameterType="System.String" Required="true" />
+    </ParameterGroup>
+    <Task>
+      <Code Type="Fragment" Language="cs"><![CDATA[
+        var root = RepoRoot.Replace('\\', '/');
+        if (!root.EndsWith("/", StringComparison.Ordinal))
+            root += "/";
+        var relative = new SortedSet<string>(StringComparer.Ordinal);
+        foreach (var path in Paths)
+        {
+            var full = Path.GetFullPath(path).Replace('\\', '/');
+            relative.Add(full.StartsWith(root, StringComparison.OrdinalIgnoreCase)
+                ? full.Substring(root.Length)
+                : full);
+        }
+
+        var text = string.Join("\n", relative.ToArray()) + "\n";
+        var destination = Path.GetFullPath(Destination);
+        Directory.CreateDirectory(Path.GetDirectoryName(destination));
+        if (!System.IO.File.Exists(destination) || System.IO.File.ReadAllText(destination) != text)
+            System.IO.File.WriteAllText(destination, text);
+      ]]></Code>
+    </Task>
+  </UsingTask>
+
+  <Target Name="HeddleWriteCompileManifest" BeforeTargets="AssignTargetPaths">
+    <PropertyGroup>
+      <HeddleCompileManifestPath>$([System.IO.Path]::Combine('$(MSBuildProjectDirectory)', '$(IntermediateOutputPath)', 'Heddle.Generator.CompileInputs.txt'))</HeddleCompileManifestPath>
+    </PropertyGroup>
+    <HeddleWriteSortedRelativePaths Paths="@(Compile->'%(FullPath)')"
+                                    RepoRoot="$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../..'))"
+                                    Destination="$(HeddleCompileManifestPath)" />
+    <ItemGroup>
+      <EmbeddedResource Include="$(HeddleCompileManifestPath)" LogicalName="Heddle.Generator.CompileInputs.txt" />
+      <FileWrites Include="$(HeddleCompileManifestPath)" />
+    </ItemGroup>
+  </Target>
+
+</Project>

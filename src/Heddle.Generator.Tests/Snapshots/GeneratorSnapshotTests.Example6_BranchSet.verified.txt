@@ -6,15 +6,15 @@ namespace Heddle.Generated
 {
     public static class Branch
     {
-        /// <summary>Typed entry point — the recommended host API (phase 7 D11).</summary>
+        /// <summary>Typed entry point — the recommended host API.</summary>
         public static string Generate(global::System.Version model, object chained = null, object callerData = null)
             => global::Heddle.Precompiled.PrecompiledRuntime.GenerateString(Root, model, chained, callerData);
 
-        /// <summary>Renders into a TextWriter with no full-output materialization (phase 8).</summary>
+        /// <summary>Renders into a TextWriter with no full-output materialization.</summary>
         public static void Generate(global::System.Version model, global::System.IO.TextWriter writer, object chained = null, object callerData = null)
             => global::Heddle.Precompiled.PrecompiledRuntime.GenerateToWriter(Root, model, chained, callerData, writer);
 
-        /// <summary>Renders UTF-8 into an IBufferWriter&lt;byte&gt; with no full-output materialization (phase 8).</summary>
+        /// <summary>Renders UTF-8 into an IBufferWriter&lt;byte&gt; with no full-output materialization.</summary>
         public static void Generate(global::System.Version model, global::System.Buffers.IBufferWriter<byte> writer, object chained = null, object callerData = null)
             => global::Heddle.Precompiled.PrecompiledRuntime.GenerateUtf8(Root, model, chained, callerData, writer);
 
@@ -25,19 +25,49 @@ namespace Heddle.Generated
         internal const string P1 = "small";
         internal const string P2 = "\n";
 
-        private static readonly global::Heddle.Extensions.IfExtension E0 = global::Heddle.Precompiled.PrecompiledRuntime.Bind(
-            new global::Heddle.Extensions.IfExtension(), body: new Body1(), global::Heddle.Data.RenderType.Raw, needsLocals: false, line: 2, column: 2);
-        private static readonly global::Heddle.Extensions.ElseExtension E1 = global::Heddle.Precompiled.PrecompiledRuntime.Bind(
-            new global::Heddle.Extensions.ElseExtension(), body: new Body2(), global::Heddle.Data.RenderType.Raw, needsLocals: false, line: 2, column: 23);
+        internal static readonly global::Heddle.Precompiled.PrecompiledInitSite S0 = new global::Heddle.Precompiled.PrecompiledInitSite
+        {
+            ExtensionName = "if",
+            PositionStart = 30, PositionLength = 13,
+            SourceText = "@if(Major >0){{big}}",
+            Body = new global::Heddle.Precompiled.PrecompiledInitBody { RawText = "big", ShapedText = "big", NeedsLocals = false, TypeAgnostic = false, AssumedDataType = typeof(global::System.Version), AssumedChainedType = null },
+            DefinitionSlotType = null,
+            DataType = typeof(bool), ChainedType = null, ParentType = typeof(global::System.Version),
+            ModelType = typeof(global::System.Version), RootModelType = typeof(global::System.Version), SlotType = null,
+            OutputProfile = global::Heddle.Data.OutputProfile.Html, ExpressionMode = global::Heddle.Data.ExpressionMode.Native,
+            TrimDirectiveLines = true, MaxRecursionCount = 100,
+            Namespaces = null,
+            CallShape = global::Heddle.Precompiled.PrecompiledCallShape.NativeExpression, HasPropArguments = false,
+            RootReference = false, InsideDefinition = false
+        };
+        private static readonly global::Heddle.Core.AbstractExtension E0 = global::Heddle.Precompiled.PrecompiledRuntime.Init(
+            () => new global::Heddle.Extensions.IfExtension(), S0, null);
+        internal static readonly global::Heddle.Precompiled.PrecompiledInitSite S1 = new global::Heddle.Precompiled.PrecompiledInitSite
+        {
+            ExtensionName = "else",
+            PositionStart = 51, PositionLength = 6,
+            SourceText = "@else(){{small}}",
+            Body = new global::Heddle.Precompiled.PrecompiledInitBody { RawText = "small", ShapedText = "small", NeedsLocals = false, TypeAgnostic = false, AssumedDataType = typeof(global::System.Version), AssumedChainedType = null },
+            DefinitionSlotType = null,
+            DataType = typeof(global::System.Version), ChainedType = null, ParentType = typeof(global::System.Version),
+            ModelType = typeof(global::System.Version), RootModelType = typeof(global::System.Version), SlotType = null,
+            OutputProfile = global::Heddle.Data.OutputProfile.Html, ExpressionMode = global::Heddle.Data.ExpressionMode.Native,
+            TrimDirectiveLines = true, MaxRecursionCount = 100,
+            Namespaces = null,
+            CallShape = global::Heddle.Precompiled.PrecompiledCallShape.None, HasPropArguments = false,
+            RootReference = false, InsideDefinition = false
+        };
+        private static readonly global::Heddle.Core.AbstractExtension E1 = global::Heddle.Precompiled.PrecompiledRuntime.Init(
+            () => new global::Heddle.Extensions.ElseExtension(), S1, null);
 
         private sealed class Body0 : global::Heddle.Runtime.IProcessStrategy
         {
             public void Render(in global::Heddle.Data.Scope scope)
             {
                 var m = (global::System.Version)scope.ModelData;
-#line (2, 2) - (2, 15) "branch.heddle"
-                E0.RenderData(scope.Model((object)(((m == null ? default(int) : m.Major) > 0))));
-#line (2, 23) - (2, 29) "branch.heddle"
+#line (2, 2) - (2, 15) "views/branch.heddle"
+                E0.RenderData(scope.Model((object)(unchecked(((m?.Major ?? default(int)) > 0)))));
+#line (2, 23) - (2, 29) "views/branch.heddle"
                 E1.RenderData(scope.Model(scope.ModelData));
 #line hidden
                 scope.Renderer.Render(P2);
@@ -47,46 +77,12 @@ namespace Heddle.Generated
             public string Execute(in global::Heddle.Data.Scope scope)
             {
                 var m = (global::System.Version)scope.ModelData;
-#line (2, 2) - (2, 15) "branch.heddle"
-                var v0 = E0.ProcessData(scope.Model((object)(((m == null ? default(int) : m.Major) > 0)))) as string ?? string.Empty;
-#line (2, 23) - (2, 29) "branch.heddle"
+#line (2, 2) - (2, 15) "views/branch.heddle"
+                var v0 = E0.ProcessData(scope.Model((object)(unchecked(((m?.Major ?? default(int)) > 0))))) as string ?? string.Empty;
+#line (2, 23) - (2, 29) "views/branch.heddle"
                 var v1 = E1.ProcessData(scope.Model(scope.ModelData)) as string ?? string.Empty;
 #line hidden
                 return string.Concat(v0, v1, P2);
-#line default
-            }
-        }
-
-        private sealed class Body1 : global::Heddle.Runtime.IProcessStrategy
-        {
-            public void Render(in global::Heddle.Data.Scope scope)
-            {
-#line hidden
-                scope.Renderer.Render(P0);
-#line default
-            }
-
-            public string Execute(in global::Heddle.Data.Scope scope)
-            {
-#line hidden
-                return P0;
-#line default
-            }
-        }
-
-        private sealed class Body2 : global::Heddle.Runtime.IProcessStrategy
-        {
-            public void Render(in global::Heddle.Data.Scope scope)
-            {
-#line hidden
-                scope.Renderer.Render(P1);
-#line default
-            }
-
-            public string Execute(in global::Heddle.Data.Scope scope)
-            {
-#line hidden
-                return P1;
 #line default
             }
         }
@@ -99,8 +95,8 @@ namespace Heddle.Generated
 #pragma warning disable
 [assembly: global::Heddle.Precompiled.HeddleCompiledTemplates(
     manifestType:  typeof(global::Heddle.Generated.__HeddleManifest),
-    schemaVersion: 2,
-    engineVersion: "2.0.0")]
+    schemaVersion: 3,
+    engineVersion: "2.1.0")]
 
 namespace Heddle.Generated
 {
@@ -124,7 +120,11 @@ namespace Heddle.Generated
                     extensionBindings: new global::Heddle.Precompiled.PrecompiledExtensionBinding[] { new global::Heddle.Precompiled.PrecompiledExtensionBinding("else", "Heddle.Extensions.ElseExtension, Heddle"), new global::Heddle.Precompiled.PrecompiledExtensionBinding("if", "Heddle.Extensions.IfExtension, Heddle") },
                     functionBindings: global::System.Array.Empty<global::Heddle.Precompiled.PrecompiledFunctionBinding>(),
                     capabilities: global::Heddle.Precompiled.PrecompiledCapabilities.StringOutput,
-                    strategy: global::Heddle.Generated.Branch.Root)
+                    strategy: global::Heddle.Generated.Branch.Root,
+                    registeredName: null,
+                    linePathForm: global::Heddle.Precompiled.PrecompiledLinePathForm.TemplatePath,
+                    modelTypeIsAmbient: false,
+                    initSites: new global::Heddle.Precompiled.PrecompiledInitSite[] { global::Heddle.Generated.Branch.S0, global::Heddle.Generated.Branch.S1 })
                 ,
             };
         }
@@ -132,4 +132,4 @@ namespace Heddle.Generated
 }
 
 // ==== diagnostics ====
-(none)
+HED7018 Warning (none): Heddle template 'views/branch.heddle' is not under the template root '<unset>', so its directory is dropped and it registers under the flattened key 'branch.heddle'. Set HeddleTemplateRoot to a directory containing it, or give the item an explicit Key metadata.

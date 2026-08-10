@@ -1,11 +1,13 @@
+using System;
 using System.Collections.Generic;
+using Heddle.Data;
+using Heddle.Precompiled;
 using Microsoft.CodeAnalysis.Diagnostics;
 
 namespace Heddle.Generator.Pipeline
 {
-    /// <summary>Reads the compilation-wide <c>build_property.Heddle*</c> options into a <see cref="GlobalConfig"/>
-    /// (phase 7 D14/D16). Unparsable enum/int values are collected as <c>HED7009</c> candidates (the generator never
-    /// guesses a default from a typo).</summary>
+    /// <summary>Reads the compilation-wide <c>build_property.Heddle*</c> options into a <see cref="GlobalConfig"/>.
+    /// Unparsable enum/int values are collected as <c>HED7009</c> candidates (the generator never guesses a default from a typo).</summary>
     internal static class ConfigReader
     {
         public struct OptionError
@@ -24,57 +26,65 @@ namespace Heddle.Generator.Pipeline
 
         public static GlobalConfig Read(AnalyzerConfigOptions options, List<OptionError> errors)
         {
-            var profile = ReadEnum(options, "HeddleOutputProfile", "Html",
-                new[] { "Text", "Html" }, errors);
-            var mode = ReadEnum(options, "HeddleExpressionMode", "Native",
-                new[] { "MemberPathsOnly", "Native", "FullCSharp" }, errors);
-            var trim = ReadBool(options, "HeddleTrimDirectiveLines", true, errors);
-            var maxRecursion = ReadPositiveInt(options, "HeddleMaxRecursionCount", 100, errors);
-            var root = ReadString(options, "HeddleTemplateRoot", "");
-            var ns = ReadString(options, "HeddleGeneratedNamespace", "");
-            var emitU8 = ReadBool(options, "HeddleEmitUtf8Pieces", false, errors);
+            Func<string, string> lookup = name =>
+                options.TryGetValue(HeddleBuildOptions.BuildPropertyPrefix + name, out var value) ? value : null;
 
-            return new GlobalConfig(profile, mode, trim, maxRecursion, root, ns, emitU8);
+            var profile = ReadEnum<OutputProfile>(lookup, HeddleBuildOptions.OutputProfileProperty,
+                HeddleBuildOptions.DefaultOutputProfile, errors);
+            var mode = ReadEnum<ExpressionMode>(lookup, HeddleBuildOptions.ExpressionModeProperty,
+                HeddleBuildOptions.DefaultExpressionMode, errors);
+            var trim = ReadBool(lookup, HeddleBuildOptions.TrimDirectiveLinesProperty,
+                HeddleBuildOptions.DefaultTrimDirectiveLines, errors);
+            var maxRecursion = ReadPositiveInt(lookup, HeddleBuildOptions.MaxRecursionCountProperty,
+                HeddleBuildOptions.DefaultMaxRecursionCount, errors);
+            var root = HeddleBuildOptions.ReadString(lookup(HeddleBuildOptions.TemplateRootProperty),
+                HeddleBuildOptions.DefaultTemplateRoot);
+            var ns = HeddleBuildOptions.ReadString(lookup(HeddleBuildOptions.GeneratedNamespaceProperty),
+                HeddleBuildOptions.DefaultGeneratedNamespace);
+            var emitU8 = ReadBool(lookup, HeddleBuildOptions.EmitUtf8PiecesProperty,
+                HeddleBuildOptions.DefaultEmitUtf8Pieces, errors);
+            var nodeFallback = ReadBool(lookup, HeddleBuildOptions.NodeFallbackProperty,
+                HeddleBuildOptions.DefaultNodeFallback, errors);
+            var observe = ReadEnum<ObserveMode>(lookup, HeddleBuildOptions.ObserveEngineProperty,
+                HeddleBuildOptions.DefaultObserveMode, errors);
+            var observePath = HeddleBuildOptions.ReadString(
+                lookup(HeddleBuildOptions.ObserveIntermediatePathProperty),
+                HeddleBuildOptions.DefaultObserveIntermediatePath);
+            var observeImplementations = HeddleBuildOptions.ReadString(
+                lookup(HeddleBuildOptions.ObserveImplementationPathProperty),
+                HeddleBuildOptions.DefaultObserveImplementationPath);
+
+            return new GlobalConfig(profile, mode, trim, maxRecursion, root, ns, emitU8, nodeFallback, observe,
+                observePath, observeImplementations);
         }
 
-        private static string ReadString(AnalyzerConfigOptions options, string name, string fallback)
+        private static TEnum ReadEnum<TEnum>(Func<string, string> lookup, string name, TEnum fallback,
+            List<OptionError> errors) where TEnum : struct
         {
-            return options.TryGetValue("build_property." + name, out var value) && !string.IsNullOrEmpty(value)
-                ? value
-                : fallback;
-        }
-
-        private static string ReadEnum(AnalyzerConfigOptions options, string name, string fallback,
-            string[] allowed, List<OptionError> errors)
-        {
-            if (!options.TryGetValue("build_property." + name, out var value) || string.IsNullOrEmpty(value))
-                return fallback;
-            foreach (var candidate in allowed)
-                if (string.Equals(candidate, value, System.StringComparison.OrdinalIgnoreCase))
-                    return candidate;
-            errors.Add(new OptionError(value, name, string.Join("|", allowed)));
+            var raw = lookup(name);
+            if (HeddleBuildOptions.TryReadEnum(raw, fallback, out var value))
+                return value;
+            errors.Add(new OptionError(raw, name, HeddleBuildOptions.ExpectedValues<TEnum>()));
             return fallback;
         }
 
-        private static bool ReadBool(AnalyzerConfigOptions options, string name, bool fallback,
+        private static bool ReadBool(Func<string, string> lookup, string name, bool fallback,
             List<OptionError> errors)
         {
-            if (!options.TryGetValue("build_property." + name, out var value) || string.IsNullOrEmpty(value))
-                return fallback;
-            if (bool.TryParse(value, out var parsed))
-                return parsed;
-            errors.Add(new OptionError(value, name, "true|false"));
+            var raw = lookup(name);
+            if (HeddleBuildOptions.TryReadBool(raw, fallback, out var value))
+                return value;
+            errors.Add(new OptionError(raw, name, HeddleBuildOptions.ExpectedBool));
             return fallback;
         }
 
-        private static int ReadPositiveInt(AnalyzerConfigOptions options, string name, int fallback,
+        private static int ReadPositiveInt(Func<string, string> lookup, string name, int fallback,
             List<OptionError> errors)
         {
-            if (!options.TryGetValue("build_property." + name, out var value) || string.IsNullOrEmpty(value))
-                return fallback;
-            if (int.TryParse(value, out var parsed) && parsed > 0)
-                return parsed;
-            errors.Add(new OptionError(value, name, "a positive integer"));
+            var raw = lookup(name);
+            if (HeddleBuildOptions.TryReadPositiveInt(raw, fallback, out var value))
+                return value;
+            errors.Add(new OptionError(raw, name, HeddleBuildOptions.ExpectedPositiveInt));
             return fallback;
         }
     }

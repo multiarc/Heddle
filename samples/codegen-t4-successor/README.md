@@ -14,6 +14,17 @@ dotnet run --project samples/codegen-t4-successor
 It turns the template into `Heddle.Generated.Templates_Report` (emitted under `generated/` via
 `EmitCompilerGeneratedFiles`), which `Program.cs` invokes to render the report.
 
+It also demonstrates the per-item `<HeddleTemplate>` metadata that only work end to end from a real project.
+`templates/report.heddle` carries **no** `@model` directive — its item declares
+`ModelType="Heddle.Samples.Codegen.BuildInfo"`, which types the template from the project file: the generated
+entry point takes a `BuildInfo` model (the golden pins the typed signature).
+`templates/_banner.heddle` carries `Precompile="false"` (import-only: no entry point, no manifest row) and
+`Name="Banner"`, an **additional** import name — the partial keeps its path-derived key *and* answers to `Banner`,
+so `report.heddle`'s `@<<{{Banner}}` and `@<<{{templates/_banner.heddle}}` both resolve. `Name` is not a rename:
+the generated entry class is still `Templates_Report`. This sample is the **behavioural gate** for that wiring —
+the generator's own test suites inject the metadata directly and never cross `Heddle.Generator.targets`, so if a
+metadatum stops flowing from MSBuild again the import stops resolving and this build fails with `HED7011`.
+
 The program also runs a **structural dependency check**: `Heddle.Generator.dll` (the code generator) must not be
 present in the runtime output — it is a build-time dependency only.
 

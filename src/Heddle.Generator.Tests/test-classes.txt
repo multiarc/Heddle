@@ -1,0 +1,44 @@
+# Every class in Heddle.Generator.Tests that declares a [Fact] or [Theory], ordinal-sorted.
+# Set-equality asserted by TestClassInventoryTests. A class added or removed here is the diff a
+# reviewer reads; nothing in this file measures how many tests a class carries.
+Heddle.Generator.Tests.AliasTableLockstepTests
+Heddle.Generator.Tests.AmbientModelTypeManifestTests
+Heddle.Generator.Tests.AssignabilityCorpusSymbolTests
+Heddle.Generator.Tests.BodyTypingRulesTests
+Heddle.Generator.Tests.BranchRoleDriftDiagnosticTests
+Heddle.Generator.Tests.CallTargetAdoptionTests
+Heddle.Generator.Tests.CollectedRefusalDiagnosticTests
+Heddle.Generator.Tests.ConsumerParseOptionsTests
+Heddle.Generator.Tests.ContradictoryEncodingAttributeTests
+Heddle.Generator.Tests.DefaultConvertibleLockstepTests
+Heddle.Generator.Tests.DiagnosticCatalogTests
+Heddle.Generator.Tests.DiagnosticProjectionCorpusGeneratorTests
+Heddle.Generator.Tests.DocumentShaperAdapterTests
+Heddle.Generator.Tests.DocumentShapingCharacterizationTests
+Heddle.Generator.Tests.EmbeddedCSharpFragmentShapeTests
+Heddle.Generator.Tests.EmitterSharedRuleAdoptionTests
+Heddle.Generator.Tests.EngineObservationTests
+Heddle.Generator.Tests.ExportDiscoveryTests
+Heddle.Generator.Tests.ExportExtensionsScopeTests
+Heddle.Generator.Tests.ExtensionAgnosticismTests
+Heddle.Generator.Tests.ExtensionBinderRoleTests
+Heddle.Generator.Tests.ExtensionDiscoveryTests
+Heddle.Generator.Tests.ExtensionRoleDispatchTests
+Heddle.Generator.Tests.ForwardedDiagnosticTests
+Heddle.Generator.Tests.GeneratorNumericTableAdoptionTests
+Heddle.Generator.Tests.GeneratorSnapshotTests
+Heddle.Generator.Tests.HeddleGeneratorTests
+Heddle.Generator.Tests.LineMapperAgreementTests
+Heddle.Generator.Tests.LoneSurrogateScanTests
+Heddle.Generator.Tests.MemberVisibilitySymbolConformanceTests
+Heddle.Generator.Tests.MetadataAccessibilityProbeTests
+Heddle.Generator.Tests.ModelTypeMetadataTests
+Heddle.Generator.Tests.PathMemoizationTests
+Heddle.Generator.Tests.PipelineDiagnosticsTests
+Heddle.Generator.Tests.PropLayoutCoreSymbolTests
+Heddle.Generator.Tests.RefusalConstructionGateTests
+Heddle.Generator.Tests.SymbolTypeIndexCacheTests
+Heddle.Generator.Tests.TemplateNameMetadataTests
+Heddle.Generator.Tests.TestClassInventoryTests
+Heddle.Generator.Tests.TypeNameVerdictTests
+Heddle.Generator.Tests.TypeSpellingSymbolLockstepTests

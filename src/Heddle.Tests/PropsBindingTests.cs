@@ -11,12 +11,12 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// The D10 binding matrix (B01–B14) plus the frozen-array identity assertions and the zero-Roslyn proof for
-    /// props fixtures. Errors are asserted as positioned diagnostics (HED* id), never bare "compilation failed".
+    /// The prop binding matrix plus the frozen-array identity assertions and the zero-Roslyn proof for props
+    /// fixtures. Errors are asserted as positioned diagnostics (HED* id), never bare "compilation failed".
     /// </summary>
     public class PropsBindingTests
     {
-        // The D1 card, trimmed to isolate binding: body echoes the two props and the model's Title.
+        // Trimmed to isolate binding.
         private const string Card =
             "@% <card(style: string = \"plain\", compact: bool = false)>{{[@(style)|@(compact)|@(Title)]}} :: PropArticle %@\n";
 
@@ -42,7 +42,7 @@ namespace Heddle.Tests
                 e => Assert.NotEqual(default, e.Position));
         }
 
-        [Fact] // B01
+        [Fact]
         public void PropsHonoredBodySeesModel()
         {
             var t = Compile(Card + "@card(Article, style: \"wide\", compact: true)", typeof(PropRoot));
@@ -50,7 +50,7 @@ namespace Heddle.Tests
             Assert.Equal("[wide|True|T]", t.Generate(Root()).Trim());
         }
 
-        [Fact] // B02
+        [Fact]
         public void AllDefaultsRender()
         {
             var t = Compile(Card + "@card(Article)", typeof(PropRoot));
@@ -58,7 +58,7 @@ namespace Heddle.Tests
             Assert.Equal("[plain|False|T]", t.Generate(Root()).Trim());
         }
 
-        [Fact] // B02 (frozen-array identity, white-box)
+        [Fact]
         public void AllConstantBinderReturnsSharedFrozenArray()
         {
             var frozen = new object[] { "plain", false };
@@ -68,7 +68,7 @@ namespace Heddle.Tests
             Assert.Same(binder.Bind(Scope.Null), binder.Bind(Scope.Null));
         }
 
-        [Fact] // B02 (dynamic sites clone)
+        [Fact]
         public void DynamicBinderClonesPerInvocation()
         {
             var frozen = new object[] { "plain", null };
@@ -82,7 +82,7 @@ namespace Heddle.Tests
             Assert.Equal("x", a[1]);
         }
 
-        [Fact] // B03
+        [Fact]
         public void RootReferenceValue()
         {
             var t = Compile(Card + "@card(Article, style: ::Site.DefaultCardStyle)", typeof(PropRoot));
@@ -90,7 +90,7 @@ namespace Heddle.Tests
             Assert.Equal("[rooted|False|T]", t.Generate(Root()).Trim());
         }
 
-        [Fact] // B04
+        [Fact]
         public void UnknownPropListsDeclaredNames()
         {
             var t = Compile(Card + "@card(Article, stlye: \"x\")", typeof(PropRoot));
@@ -100,49 +100,49 @@ namespace Heddle.Tests
                      e.Error.Contains("compact"));
         }
 
-        [Fact] // B05
+        [Fact]
         public void MistypedArgumentIsError()
         {
             var t = Compile(Card + "@card(Article, compact: \"yes\")", typeof(PropRoot));
             AssertError(t, HeddleDiagnosticIds.PropTypeMismatch);
         }
 
-        [Fact] // B06
+        [Fact]
         public void MissingRequiredProp()
         {
             var t = Compile("@% <hero(title: string)>{{@(title)}} :: PropArticle %@\n@hero(Article)", typeof(PropRoot));
             AssertError(t, HeddleDiagnosticIds.MissingRequiredProp);
         }
 
-        [Fact] // B07
+        [Fact]
         public void DuplicateArgumentAtSecondOccurrence()
         {
             var t = Compile(Card + "@card(Article, style: \"a\", style: \"b\")", typeof(PropRoot));
             AssertError(t, HeddleDiagnosticIds.DuplicatePropArgument);
         }
 
-        [Fact] // B08
+        [Fact]
         public void NamedArgumentsOnExtensionTarget()
         {
             var t = Compile("@list(Menu.Options, sep: \", \"){{@(Label)}}", typeof(PropRoot));
             AssertError(t, HeddleDiagnosticIds.NamedArgumentsNotSupported);
         }
 
-        [Fact] // B08 (function target)
+        [Fact]
         public void NamedArgumentsOnFunctionTarget()
         {
             var t = Compile("@upper(Article, style: \"x\")", typeof(PropRoot));
             AssertError(t, HeddleDiagnosticIds.NamedArgumentsNotSupported);
         }
 
-        [Fact] // B09
+        [Fact]
         public void NamedArgumentsOnPropLessDefinition()
         {
             var t = Compile("@% <plain>{{x}} :: PropArticle %@\n@plain(Article, a: 1)", typeof(PropRoot));
             AssertError(t, HeddleDiagnosticIds.DefinitionHasNoProps);
         }
 
-        [Fact] // B10 (no narrowing)
+        [Fact]
         public void NarrowingArgumentIsError()
         {
             var t = Compile("@% <pad(width: int)>{{@(width)}} :: PropWidening %@\n@pad(this, width: Count)",
@@ -150,7 +150,7 @@ namespace Heddle.Tests
             AssertError(t, HeddleDiagnosticIds.PropTypeMismatch);
         }
 
-        [Fact] // B10 (widening binds)
+        [Fact]
         public void WideningArgumentBinds()
         {
             var t = Compile("@% <pad(width: int)>{{@(width)}} :: PropWidening %@\n@pad(this, width: B)",
@@ -159,7 +159,7 @@ namespace Heddle.Tests
             Assert.Equal("7", t.Generate(new PropWidening { B = 7 }).Trim());
         }
 
-        [Fact] // B11 (null default legal for reference type)
+        [Fact]
         public void NullDefaultForReferenceType()
         {
             var t = Compile("@% <opt(tag: string = null)>{{[@(tag)]}} :: PropArticle %@\n@opt(Article)",
@@ -168,7 +168,7 @@ namespace Heddle.Tests
             Assert.Equal("[]", t.Generate(Root()).Trim());
         }
 
-        [Fact] // B12 (int literal widens into a double default)
+        [Fact]
         public void IntLiteralWidensIntoDoubleDefault()
         {
             var t = Compile("@% <n(x: double = 1)>{{@(x)}} :: PropArticle %@\n@n(Article)", typeof(PropRoot));
@@ -176,7 +176,7 @@ namespace Heddle.Tests
             Assert.Equal("1", t.Generate(Root()).Trim());
         }
 
-        [Fact] // B13 (named args under MemberPathsOnly → HED1014)
+        [Fact]
         public void NamedArgsUnderMemberPathsOnly()
         {
             var t = Compile(Card + "@card(Article, style: \"x\")", typeof(PropRoot),
@@ -184,14 +184,14 @@ namespace Heddle.Tests
             AssertError(t, HeddleDiagnosticIds.NativeExpressionsDisabled);
         }
 
-        [Fact] // B14 (default chain enforces required props)
+        [Fact]
         public void DefaultChainEnforcesRequiredProps()
         {
             var t = Compile("@% <card(style: string)> -> (Article) {{[@(style)]}} :: PropArticle %@", typeof(PropRoot));
             AssertError(t, HeddleDiagnosticIds.MissingRequiredProp);
         }
 
-        [Fact] // zero-Roslyn proof (success criterion 1)
+        [Fact] // Zero-Roslyn proof
         public void PropsCompileWithoutRoslyn()
         {
             using var scope = new CompileScope(new CompileContext(

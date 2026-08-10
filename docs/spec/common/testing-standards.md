@@ -25,12 +25,82 @@ Every work item in every spec runs the same loop:
 Each spec carries its **TDD verdict** (which parts are test-first versus test-with) and
 must not weaken it.
 
+## Running the suites
+
+Test projects are xUnit v3 on Microsoft Testing Platform: each one is a stand-alone executable that
+hosts its own runner. Three consequences, all of which bite silently if ignored:
+
+- **`dotnet test` needs `--project` or `--solution`.** The directory form (`dotnet test src/Foo`) is
+  rejected outright, so it fails loudly rather than testing nothing.
+- **Filters are MTP syntax** — `--filter-method`, `--filter-class`, `--filter-namespace`,
+  `--filter-trait`, after a `--` separator. A VSTest-style `--filter FullyQualifiedName~X` is not
+  understood. A filter that matches nothing exits **8**, so a stale filter can no longer pass by
+  running nothing, which is how several checks in this repo came to be documented as pinned while
+  nothing executed them.
+- **Every CI leg goes through the same wrapper.** `.github/scripts/dotnet-test-guarded.sh <project>`
+  adds `--fail-skips on`, so a skipped test fails its leg: a skip is a test that stopped testing, and
+  CI is the wrong place to learn that quietly. Explicit tests are reported as *not run* rather than
+  skipped and are unaffected, which is why the confirmed-red protocol below uses them.
+
+**Test-count floors were tried and withdrawn.** Nine CI legs once passed
+`--minimum-expected-tests <n>`, a per-suite number maintained by hand in two workflow files. It failed
+at its own job in three separate ways, and all three are on the record here rather than left for
+someone to rediscover: the floors *drifted* — one commit added six tests, raised the number in
+`dotnet.yml` and left `lsp.yml` alone, after which the Release-only leg tolerated a six-test regression
+in silence for four commits; a floor *names nothing* when it reddens ("expected 2161, got 2160" is not
+a review artifact) and is satisfied by editing a digit; and it *punishes the skip protocol* directly,
+because quarantining one test for a known defect turns a leg red for a reason that has nothing to do
+with the change under test.
+
+What replaced it is a membership gate rather than a size gate: each suite checks in
+`src/<Suite>/test-classes.txt`, one line per type declaring a `[Fact]`/`[Theory]`, ordinal-sorted, and
+that suite's own `TestClassInventoryTests` asserts it against `Assembly.GetTypes()` by **set
+equality** — so a red gate names the class that appeared or vanished, and going green requires saying
+where its coverage went. It does **not** notice a single `[Fact]` deleted from a class that still
+exists; the unit of the gate is the class, because the class is the unit a whole file of coverage
+disappears in. This is deliberately the same shape as corpus membership, which is set-equality gated
+for the same reasons and never a count or a floor.
+
+The runner also randomises test order per run. Order-dependent tests therefore fail intermittently
+rather than never, which is a feature: it found one on the first run after the migration.
+
+## A reported issue becomes a test, whichever way it turns out
+
+Every finding is measured before it is believed, and the measurement decides the test's shape. A
+report is a claim, not a result: findings in this repository have been overturned as often as they
+have been confirmed, and both outcomes are worth the same test.
+
+Write the test first, run it, and then read the outcome:
+
+- **Confirmed red** — the defect reproduces, and the fix is not part of this change. Check the test
+  in **explicit**, with the reason and its owner in the doc comment above it:
+  `[Fact(Explicit = true)]`, one line of `<summary>` naming the defect, its owner, and the fix that
+  un-marks it. Explicit, not `Skip`: the platform reports an explicit test as *not run*, which is a
+  different state from skipped, so it survives the `--fail-skips on` every CI leg passes while a
+  genuine unplanned skip does not — the distinction is what lets a deliberate quarantine and an
+  accidental one be told apart at all. Rehearse it red first (`--explicit only` runs exactly these)
+  and check *why* it went red: a test that fails for the wrong reason pins nothing. The explicit list
+  is the pending-work list, and dropping the marker is the fixer's acceptance evidence.
+- **Overturned, green, and the behaviour is what it should be** — **keep the test open.** There is
+  nothing to fix, so there is nothing to skip. The test stays as a normal running test: it is now
+  the pin that stops the behaviour regressing, and the record that the claim was checked rather
+  than dismissed. Say in its doc comment what was claimed and why it does not hold — that is what
+  stops the same report arriving again next cycle.
+- **Green, but you are not sure the current behaviour is the intended one** — do not guess, and do
+  not quietly pick one. A test asserting the wrong contract is worse than no test, because it makes
+  the wrong behaviour permanent. **Ask the maintainer** what the expected outcome is, then write the
+  test to that answer.
+
+A green test proves nothing on its own. Whichever way it lands, pair it with a near-neighbour that
+must behave the *other* way, so the row cannot be satisfied by a blanket refusal or a blanket
+acceptance — and confirm the assertion is answered by the arm it names, not by a different one.
+
 ## Suite homes
 
 | Home | Framework | Role |
 | --- | --- | --- |
-| [src/Heddle.Tests](../../../src/Heddle.Tests) | xUnit, `dotnet test` | Unit, integration, golden-file, negative/security, and concurrency tests. Multi-targets `net6.0;net8.0;net10.0` (+ `net48` on Windows) — new tests must pass on **all** TFMs. |
-| [src/Heddle.Performance](../../../src/Heddle.Performance) | BenchmarkDotNet (`[MemoryDiagnoser]`) | Render/compile benchmarks incl. the Razor head-to-head. Hot-path changes add or extend benchmarks here. |
+| [src/Heddle.Tests](../../../src/Heddle.Tests) | xUnit v3 (MTP), `dotnet test --project` | Unit, integration, golden-file, negative/security, and concurrency tests. Multi-targets `net8.0;net10.0` (+ `net48` on Windows) — new tests must pass on **all** TFMs. |
+| [benchmarks/dotnet](../../../benchmarks/dotnet) | BenchmarkDotNet (`[MemoryDiagnoser]`), behind a gate | The cross-stack .NET leg and the Heddle-internal suites. Not in `Heddle.sln`, and it reaches the engine through its public surface only. Hot-path changes add or extend benchmarks here; a cell cannot be timed without passing the parity gate first. |
 | [`samples/` gallery](../../../samples/README.md) | Per-sample CI jobs with golden assertions | The demo/integration item of each user-visible change. The harness (comparer, workflow, conventions) exists; each spec owns its sample per the gallery conventions. |
 
 ## Fixtures and goldens
@@ -69,18 +139,52 @@ must not weaken it.
 The gate every spec runs before merge, in one combined invocation:
 
 1. `dotnet build -c Release` — whole solution, all TFMs.
-2. `dotnet test src/Heddle.Tests` — full suite, all TFMs, zero failures; golden
-   comparisons byte-identical for templates the change does not intentionally touch.
+2. `dotnet test --project src/Heddle.Tests/Heddle.Tests.csproj` — full suite, all TFMs, zero
+   failures; golden comparisons byte-identical for templates the change does not intentionally
+   touch. Run the suites serially: they share process-global engine state.
 3. **Grammar-stability check** for specs that declare no grammar change (the default):
    `src/Heddle.Language/generated/` has no diff. A spec licensed to change grammar instead commits exactly one regen
    alongside the `.g4` change and diff-reviews it.
 4. **Benchmarks when a hot path is touched**: run the affected
-   [Heddle.Performance](../../../src/Heddle.Performance) benchmarks before/after on the
+   [benchmarks/dotnet](../../../benchmarks/dotnet) suites before/after on the
    same machine. Acceptance: allocated bytes must not increase, and mean time must not
    regress beyond BenchmarkDotNet's reported error for that benchmark. An intentional
    trade-off needs maintainer ratification recorded in the owning spec.
 5. Docs build when docs pages changed: `cd docs && npm run docs:build` (run from an
    uppercase-drive cwd on Windows; `preserveSymlinks` is already configured).
+
+**Both configurations, not just Debug.** The engine carries `#if DEBUG` arms that change *runtime*
+behaviour rather than only diagnostics — the model-type guard is unconditional under `DEBUG` and
+opt-in under `Release` — so a Debug-only run is structurally unable to see a Release-only failure.
+One survived in the generator integration suite for exactly that reason: every suite in that series
+was verified in Debug. Each suite therefore carries **both legs**, all TFMs — where one is missing the
+table says so rather than leaving the reader to infer coverage that is not there:
+
+| Suite | Debug | Release |
+| --- | --- | --- |
+| `src/Heddle.Tests` | [`dotnet.yml`](../../../.github/workflows/dotnet.yml), its own named leg, Linux **and** Windows | [`lsp.yml`](../../../.github/workflows/lsp.yml), Windows only |
+| `src/Heddle.LanguageServices.Tests` | same | [`lsp.yml`](../../../.github/workflows/lsp.yml), Windows only |
+| `src/Heddle.Generator.Tests` | same | [`dotnet.yml`](../../../.github/workflows/dotnet.yml), Linux **and** Windows |
+| `src/Heddle.Generator.IntegrationTests` | same | [`dotnet.yml`](../../../.github/workflows/dotnet.yml), Linux **and** Windows |
+| `src/Heddle.Tool.Tests` | same | **not covered** — a known gap, recorded rather than implied away |
+
+A test whose expectation genuinely differs by configuration writes **both** arms behind `#if DEBUG` /
+`#if !DEBUG`, so each configuration's behaviour is pinned and neither is left to whichever build the
+author happened to run. Making the expectation explicit — asking for the option the assertion needs —
+is the fix; deleting the assertion is not.
+
+**Rendered numbers are culture-dependent, and a golden is not.** The default value-to-text render is
+the value's own `ToString()`, so decimal separators, group separators, digit substitution and the
+negative sign all come from `CultureInfo.CurrentCulture` (ar-SA prefixes U+061C to a negative sign;
+de-DE and tr-TR use a decimal comma). Both tiers reach text through that same call, so they do not
+diverge — but a committed golden or an inline expected-text literal is written in one culture and
+compares byte-for-byte. A test asserting rendered numeric text either **pins the culture it renders
+under** (the right answer wherever the expectation is a committed golden this suite may not
+regenerate) or **builds its expectation under the ambient culture** from typed literals (the right
+answer wherever the culture is not the subject and pinning it would discard coverage — notably a
+cross-tier differential, where agreeing under the host's own culture is the thing only that test can
+observe). Changing the render to make such a test pass is a golden/engine change and goes through
+review, never through the test.
 
 ## Test authoring conventions
 
@@ -99,3 +203,125 @@ The gate every spec runs before merge, in one combined invocation:
 - Tests are exempt from DRY pressure (see
   [coding standards](coding-standards.md#dry-applied)): repeat setup where it makes a
   failing test diagnosable at a glance.
+
+## Precompiled-tier posture
+
+> Added by amendment E8 (generator ↔ engine
+> code-sharing program, phase 0). Normative for every spec whose work touches the source
+> generator, the precompiled registry, or the resolver.
+
+The precompiled tier and the dynamic engine render byte-identical output *by design*, so a
+precompiled→dynamic fallback is invisible in output. A test that does not pin the tier is
+therefore not evidence about the tier it claims to test — two shipped drifts (the content-hash
+input mismatch and the nested/generic AQN mismatch) reached release precisely that way. The rule:
+
+- **End-to-end precompiled tests pin the precompiled tier.** A test that renders real generator
+  output through registration → resolver → gauntlet runs under
+  `TemplateOptions.PrecompiledMismatchPolicy = Strict` **and** a fallback sentinel hooked onto
+  `PrecompiledTemplates.OnFallback`; any fallback raised during the test fails it. In the
+  generator integration suite the two guards are packaged as `FallbackGuard` /
+  `DifferentialHarness.RenderViaResolver`.
+- **Fallback is tested only where fallback is the subject, and the expectation is declared.**
+  A build-time degrade is declared with `DifferentialHarness.ExpectDegrade(gen, key)`; a
+  run-time fallback with `FallbackGuard.Expect(key, reason)`. Nothing else may fall back —
+  the complete set of tests that expect a fallback must stay enumerable by grepping those two
+  APIs.
+- **New feature areas contribute their templates to the gauntlet-crossing corpus** rather than
+  re-plumbing their own suites. Feature suites keep direct-invoke isolation (a red test points
+  at the emitter, not at five layers of plumbing); the corpus sweep carries the tier posture
+  for every template that precompiles, with at least one pass file-backed so the staleness /
+  content-hash path is exercised.
+- **A guarded fixture that fails because of a known, owned defect is quarantined, never
+  weakened.** It ships `[Fact(Explicit = true)]` with the owning work item and the defect in its doc
+  comment, and the owning work item drops the marker as acceptance evidence. An unexplained or
+  orphaned explicit test is a review failure — and a `Skip` in its place fails the leg outright,
+  which is the point: quarantine is a decision someone made, not a state a suite drifts into.
+
+## Test-input single-sourcing
+
+> Added by amendment E9 (generator ↔ engine
+> code-sharing program, phase 7). Normative for every spec that adds tests exercising the same
+> language construct on more than one tier (build tier, run tier, editor).
+
+**A duplicate test input is a duplicate rule one level up.** The code-sharing program removed rules
+the generator and the runtime each maintained as two hand-kept copies, because nothing forced the
+copies to agree. A template shape written as an inline string in a generator test *and again* as an
+inline string in a runtime test drifts for exactly the same reason, and the consequence is worse:
+the two tiers are then verified against two texts, so the premise of a differential test — that
+both tiers were handed identical input — silently stops holding, and no assertion anywhere notices.
+The rule:
+
+- **A template shape that more than one tier verifies exists exactly once**, as a file in the
+  shared test corpus, and every consuming suite reads that file. Both tiers compile the same bytes.
+  Copying a template literal from one suite into another is the defect this rule names, not a
+  shortcut.
+- **Every corpus entry declares its intent, and the declaration is total.** An entry says how the
+  build tier must classify it (precompiles / degrades to a marker / falls back safely / front-end
+  error) and how it may be exercised (standalone and byte-compared / with a named model / resolve-only,
+  for shapes no tier can render standalone), with a one-line justification. Intent is *declared*,
+  never inferred from a filename: negative probes that must fail to compile and deliberate-degrade
+  shapes that must not precompile are ordinary corpus members, and a sweep that assumed otherwise
+  would either break or quietly widen what counts as precompiled. Completeness is asserted in both
+  directions — an entry with no declaration and a declaration with no entry are each a red test.
+- **Corpus membership is gated by set equality against the declaration, never by a count or a
+  floor.** A count can be made green by editing one digit; set equality can only be made green by
+  naming the file whose classification changed and writing down why. Floors are worse still — this
+  repo has shipped a `>= 25` floor against an actual 40, which let fifteen templates stop
+  precompiling silently.
+- **Proximity still wins where it genuinely wins.** A one-line probe, a diagnostic-position probe
+  whose assertion pins offsets into that literal, and a constructed or `[Theory]`-generated template
+  stay inline: a template next to its assertion is better test code, and those cases gain no
+  cross-tier coverage. The rule targets shapes two tiers verify, not every string literal.
+- **Shared test *inputs* are reached from the consumer's own output directory**, never by walking up
+  out of `bin/<cfg>/<tfm>` into a sibling project. Path traversal to another project's inputs
+  encodes the configuration name, the TFM directory and the project nesting as assumptions, and its
+  failure mode is a test that finds nothing and passes.
+
+  **A build copy is not a second home.** Copying an input into a consumer's output directory so a test
+  can read it at run time says nothing about where the input is *stored*, and creates no ownership
+  problem to solve by relocating it. Inputs live in tracked folders; which project directory holds them
+  is a filing detail. This rule constrains how a test *reaches* an input, never where the repository
+  keeps it.
+
+  **The rule is about inputs, and inputs are what git stores** — templates, goldens, fixtures. A test
+  that reads another project's *output* — a compiled assembly, a generated file — is doing something
+  else and is not covered here: build artifacts legitimately live outside the consumer's own output
+  directory, because the thing that produced them decides where they go. Such a read carries its own
+  obligation instead: it must be **conflict-free and it must fail loudly on a miss**. Order the build
+  with a `ProjectReference` (`ReferenceOutputAssembly="false"` where only ordering is wanted), and
+  assert the artifact was found rather than returning early — the silent-pass failure mode above is
+  the one thing both cases share, and it is the part that actually bites.
+- **What moves is byte-identical, and its encoding is pinned by a gate.** A move is proven a rename;
+  a merge of two tiers' near-identical copies resolves and *records* every difference (a divergence
+  found while merging is a drift finding, not a formatting nit). Line endings are pinned in
+  [`.gitattributes`](../../../.gitattributes) per the rule above; byte-order marks are independent
+  of that pin and get their own assertion, because a BOM-bearing fixture is either deliberate
+  coverage or an accident and the two must be distinguishable.
+
+## Documentation currency
+
+Prose is an artifact with a maintainer, and a wrong sentence in a normative document is a latent bug
+rather than an untidiness — one has already been demonstrated to instruct a reader into breaking
+working code.
+
+- **A change that alters an observable behaviour names the documents that describe it, in the same
+  landing, and either updates them or records why not.** For four surfaces the named list is derived
+  rather than remembered: diagnostic ids (`DiagnosticIdTests` — every shipped id named in a published
+  page, and in the page the registry's owner column links), option names and defaults
+  (`WorkspaceOptionParityTests` — the documented settings table and the editor's contributed defaults),
+  public members (`PublicApiDocMentionTests` — documented `Type.Member` mentions against the API
+  goldens), and versions (`VersionConsistencyTests`). Links and line citations are covered separately
+  (`DocumentationLinkTests`). For everything else the list is a review obligation, and the rule's value
+  is that it exists to be pointed at.
+- **What cannot be gated is dated.** A document whose claims have been verified against source carries
+  a footer naming the commit and the date, and marks the individual claims some gate covers. That
+  marker is what makes documentation authority conditional: a marked claim outranks the
+  implementations, an unmarked one is evidence of intent, so a contradiction between it and both tiers
+  agreeing is investigated and recorded rather than obeyed.
+- **Recorded so the gap is not later mistaken for an oversight, the following are *not* gateable:**
+  prose accuracy about behaviour no test observes; the accuracy of a rationale or a design argument;
+  overstatement ("all", "every", "never", "exactly one") except where the quantity is machine-
+  countable; whether a document's *omissions* matter; and the ordering and emphasis choices that make
+  prose useful or misleading without any individual sentence being false. Pretending otherwise
+  produces either a gate that checks something trivial and calls it coverage, or a gate people
+  disable.

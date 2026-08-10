@@ -12,7 +12,7 @@ namespace Heddle.LanguageServices.Tests
     /// </summary>
     internal static class CorpusFixture
     {
-        internal const char Cursor = '§'; // §
+        internal const char Cursor = '§';
 
         internal static string ModelAssemblyPath =>
             Path.Combine(AppContext.BaseDirectory, "Heddle.LanguageServices.Tests.Corpus.dll");

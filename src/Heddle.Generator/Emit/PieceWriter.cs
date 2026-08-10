@@ -1,74 +1,42 @@
 using System.Text;
+using Heddle.Language.Expressions;
 
 namespace Heddle.Generator.Emit
 {
-    /// <summary>The single static-piece emission hook (phase 7 D15). Every static piece is emitted as the string
-    /// constant, and — when <c>HeddleEmitUtf8Pieces=true</c> and the language version supports it and the piece has
-    /// no unpaired surrogate (HED7005) — the compiler-embedded <c>"…"u8</c> twin. Because both forms come from this
-    /// one hook, the same generated type serves the v1 string path and phase 8's byte sink.</summary>
+    /// <summary>Emits static string pieces and optional UTF8 twins. States <i>what</i> a piece emits, never <i>how</i> — escaping and surrogate detection are <see cref="CSharpEscape"/>'s duties.</summary>
     internal static class PieceWriter
     {
-        /// <summary>Emits <c>internal const string Pn = "…";</c> and, when enabled, the u8 twin.</summary>
-        public static void EmitPiece(CodeWriter w, int index, string piece, bool emitUtf8, bool utf8Supported)
+        public static void EmitPiece(CodeWriter w, int index, string piece, bool emitUtf8, bool utf8Supported,
+            bool utf8LiteralSyntax)
         {
-            var literal = Escape(piece);
+            var literal = CSharpEscape.StringLiteral(piece);
             w.Line($"internal const string P{index} = {literal};");
-            if (emitUtf8 && utf8Supported && !HasLoneSurrogate(piece))
+            if (!emitUtf8 || !utf8Supported || CSharpEscape.HasLoneSurrogate(piece))
+                return;
+
+            if (utf8LiteralSyntax)
+            {
                 w.Line($"internal static global::System.ReadOnlySpan<byte> P{index}U8 => {literal}u8;");
-        }
-
-        /// <summary>Escapes a string as a regular (non-verbatim) C# string literal. Quotes, backslashes and control
-        /// characters are escaped; the u8 twin reuses the identical text with the <c>u8</c> suffix, so both encode
-        /// the same code points.</summary>
-        public static string Escape(string value)
-        {
-            var sb = new StringBuilder(value.Length + 2);
-            sb.Append('"');
-            foreach (var c in value)
-            {
-                switch (c)
-                {
-                    case '"': sb.Append("\\\""); break;
-                    case '\\': sb.Append("\\\\"); break;
-                    case '\n': sb.Append("\\n"); break;
-                    case '\r': sb.Append("\\r"); break;
-                    case '\t': sb.Append("\\t"); break;
-                    case '\0': sb.Append("\\0"); break;
-                    case '\a': sb.Append("\\a"); break;
-                    case '\b': sb.Append("\\b"); break;
-                    case '\f': sb.Append("\\f"); break;
-                    case '\v': sb.Append("\\v"); break;
-                    default:
-                        if (c < 0x20)
-                            sb.Append("\\u").Append(((int) c).ToString("x4"));
-                        else
-                            sb.Append(c);
-                        break;
-                }
+                return;
             }
 
-            sb.Append('"');
-            return sb.ToString();
-        }
-
-        public static bool HasLoneSurrogate(string value)
-        {
-            for (int i = 0; i < value.Length; i++)
+            // A consumer whose language version predates C# 11 cannot parse a u8 suffix. The constant-array
+            // ReadOnlySpan property below compiles to the very same metadata blob (Roslyn has emitted constant
+            // byte arrays in span position that way since C# 7.3), so only the SOURCE spelling is older — the
+            // IL and the render path are identical to the u8 twin.
+            var bytes = Encoding.UTF8.GetBytes(piece);
+            var line = new StringBuilder();
+            line.Append("internal static global::System.ReadOnlySpan<byte> P").Append(index)
+                .Append("U8 => new byte[] { ");
+            for (var i = 0; i < bytes.Length; i++)
             {
-                char c = value[i];
-                if (char.IsHighSurrogate(c))
-                {
-                    if (i + 1 >= value.Length || !char.IsLowSurrogate(value[i + 1]))
-                        return true;
-                    i++;
-                }
-                else if (char.IsLowSurrogate(c))
-                {
-                    return true;
-                }
+                if (i > 0)
+                    line.Append(", ");
+                line.Append(bytes[i]);
             }
 
-            return false;
+            line.Append(" };");
+            w.Line(line.ToString());
         }
     }
 }

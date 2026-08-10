@@ -8,9 +8,8 @@ using Heddle.Runtime;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Custom extensions used by the phase 3 branching tests to observe the local-context frame and the
-    /// public <see cref="Scope.Publish"/>/<see cref="Scope.TryRead"/> channel. Registered directly through
-    /// the public <see cref="TemplateFactory.AddExtensions"/> to avoid assembly-scan timing.
+    /// Test extensions that observe the local-context frame and <see cref="Scope.Publish"/>/<see cref="Scope.TryRead"/> channel.
+    /// Registered via <see cref="TemplateFactory.AddExtensions"/> to avoid assembly-scan timing.
     /// </summary>
     internal static class BranchTestExtensions
     {
@@ -114,8 +113,8 @@ namespace Heddle.Tests
     }
 
     /// <summary>
-    /// A <c>[ScopeChannel]</c> publisher that drives a set by publishing <c>new BranchState(true)</c> through
-    /// the public channel, so a following <c>@else</c> stays silent (roadmap success criterion 7).
+    /// A <c>[ScopeChannel]</c> publisher that drives a branch set by publishing <c>new BranchState(true)</c>;
+    /// silences a following <c>@else</c> branch.
     /// </summary>
     [ExtensionName("branchdriver")]
     [ScopeChannel]

@@ -1,0 +1,10 @@
+{# Idiomatic Tera card partial the one fragment kind with nested
+   composition - it renders the badge and price sub-partials against the row's promo
+  . Patterns follow the Tera docs (keats.github.io/tera): "Include" (nested
+   includes rendered with the current context); default auto-escaping left on. #}
+<article class="card">
+  <h3>{{ item.name }}</h3>
+  {% include "idiomatic/tera/shared/fragment-heavy-badge.html" %}
+  {% include "idiomatic/tera/shared/fragment-heavy-price.html" %}
+  <p class="v">{{ item.value }}</p>
+</article>

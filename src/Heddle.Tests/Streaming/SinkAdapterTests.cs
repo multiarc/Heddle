@@ -7,8 +7,8 @@ using Xunit;
 namespace Heddle.Tests.Streaming
 {
     /// <summary>
-    /// Phase 8 WI2 — adapter-level tests for <see cref="Utf8ScopeRenderer"/> and <see cref="TextWriterScopeRenderer"/>,
-    /// independent of the engine. Pins the D5 two-tier transcode (single-call ≤ 5 461 UTF-16 units, chunked above),
+    /// Adapter-level tests for <see cref="Utf8ScopeRenderer"/> and <see cref="TextWriterScopeRenderer"/>,
+    /// independent of the engine. Pins the two-tier transcode (single-call ≤ 5 461 UTF-16 units, chunked above),
     /// the tier boundary rows, the <c>RenderUtf8</c> straight copy, and GetSpan-contract compliance via the stingy
     /// writer. The oracle is always <c>Encoding.UTF8.GetBytes(input)</c>. Runs on every test TFM incl. net48.
     /// </summary>
@@ -21,15 +21,15 @@ namespace Heddle.Tests.Streaming
         {
             var data = new TheoryData<string>
             {
-                "",                                             // empty (skipped)
-                "</h1>\n  <p>Made by ",                         // 19 ASCII, tier 1
-                Repeat("П", 1200),                          // 1 200 Cyrillic (2-byte), tier 1
-                Ascii(3000) + Repeat("😀", 500),       // 3000 ASCII + 500 emoji pairs (4 B), tier 1 (4000 units)
-                Ascii(5461),                                     // tier boundary (tier 1)
-                Ascii(5462),                                     // one over the boundary (tier 2)
-                Ascii(100_000),                                  // tier 2, ASCII
-                Repeat("中", 100_000),                       // tier 2, CJK (3-byte)
-                "Café — Привет! 😀🌍", // mixed scripts + emoji
+                "",
+                "</h1>\n  <p>Made by ",
+                Repeat("П", 1200),
+                Ascii(3000) + Repeat("😀", 500),
+                Ascii(5461),
+                Ascii(5462),
+                Ascii(100_000),
+                Repeat("中", 100_000),
+                "Café — Привет! 😀🌍",
             };
             return data;
         }
@@ -47,7 +47,7 @@ namespace Heddle.Tests.Streaming
         [MemberData(nameof(TierCorpus))]
         public void Utf8_StingyWriter_ByteExact(string input)
         {
-            // Exactly-sizeHint spans, fresh each call — the GetSpan-contract stress. Byte output must be identical.
+            // Tests GetSpan contract with exact-sized spans.
             var w = new StingyBufferWriter();
             new Utf8ScopeRenderer(w).Render(input);
             Assert.Equal(Encoding.UTF8.GetBytes(input), w.ToArray());
@@ -85,7 +85,7 @@ namespace Heddle.Tests.Streaming
         [Fact]
         public void Utf8_MultipleRendersConcatenate()
         {
-            // Chunked and single-call writes interleave in call order with no state crossing a Render boundary.
+            // Multiple renders must concatenate without state crossing render boundaries.
             var w = new TestBufferWriter();
             var r = new Utf8ScopeRenderer(w);
             r.Render(Ascii(6000));              // tier 2
@@ -131,8 +131,7 @@ namespace Heddle.Tests.Streaming
         [Fact]
         public void Utf8_LoneSurrogate_ReplacedWithFffd()
         {
-            // A dynamic value may carry a lone surrogate at run time (HED7005 only guards static pieces). Encoding.UTF8
-            // replaces it with U+FFFD (EF BF BD), identically in the adapter and in the oracle — D5 ill-formed parity.
+            // HED7005 guards only static surrogates; dynamic ones are replaced with U+FFFD by Encoding.UTF8.
             var input = "a\uD83Db";   // lone high surrogate
             var w = new TestBufferWriter();
             new Utf8ScopeRenderer(w).Render(input);

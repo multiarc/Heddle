@@ -1,0 +1,4 @@
+@model(){{Acme.Models.Ticket}}
+Ticket @(Reference)
+Passenger: @(Passenger)
+Seat: @(Seat)

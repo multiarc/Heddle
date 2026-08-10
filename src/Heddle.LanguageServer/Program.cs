@@ -8,8 +8,8 @@ using StreamJsonRpc;
 namespace Heddle.LanguageServer
 {
     /// <summary>
-    /// The <c>heddle-lsp</c> entry point (phase 6 D6): stdio, header-delimited, source-generated STJ over
-    /// StreamJsonRpc. <c>--version</c> prints the informational version and exits 0.
+    /// The <c>heddle-lsp</c> entry point: stdio, header-delimited JSON-RPC using source-generated System.Text.Json
+    /// over StreamJsonRpc. The <c>--version</c> flag prints the informational version and exits 0.
     /// </summary>
     internal static class Program
     {

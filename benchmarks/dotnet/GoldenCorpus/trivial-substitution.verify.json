@@ -1,0 +1,19 @@
+{
+  "workload": "trivial-substitution",
+  "suite": "raw",
+  "values": [
+    { "text": "Heddle Handbook", "count": 1 },
+    { "text": "HB-2001", "count": 1 },
+    { "text": "A concise field guide to the engine.", "count": 1 },
+    { "text": "4.8", "count": 1 }
+  ],
+  "markers": [
+    "<article>",
+    "<h1>",
+    "class=\"sku\"",
+    "class=\"rating\"",
+    "</article>"
+  ],
+  "forbidden": [],
+  "required": []
+}

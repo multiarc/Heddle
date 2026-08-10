@@ -7,8 +7,8 @@ using Xunit;
 namespace Heddle.LanguageServices.Tests
 {
     /// <summary>
-    /// The phase 6 diagnostics scenario matrix (success criterion 2): engine <c>HED*</c> diagnostics projected
-    /// with ID + span, the D25 import re-anchoring, and the D24 exported-function resolution (no false HED1001).
+    /// Diagnostics projection scenarios: engine <c>HED*</c> diagnostics are projected with ID + span,
+    /// imported diagnostics are re-anchored to the import site, and exported functions are resolved (no false HED1001).
     /// </summary>
     public class LanguageServiceDiagnosticsTests
     {
@@ -49,7 +49,7 @@ namespace Heddle.LanguageServices.Tests
         [Fact]
         public void ScannedExportedFunctionCallDrawsNoHed1001()
         {
-            // titlecase is a D24-scanned export → registered in the workspace registry, so the engine resolves it.
+            // titlecase is a scanned export registered in the workspace registry, so the engine resolves it.
             var a = Analyze("@model(){{Corpus.Blog}}\n@(titlecase(Title))");
             Assert.DoesNotContain(a.Diagnostics, x => x.Id == "HED1001");
         }
@@ -73,7 +73,24 @@ namespace Heddle.LanguageServices.Tests
             Assert.Equal(0, d.Length);
         }
 
-        // ---- Phase 8 (WI7): extension parameters surface transitively through HeddleCompiler.Compile ----
+        /// <summary>
+        /// A buffer whose import does not exist yet is an ordinary editing state — the path is half typed, or the
+        /// file is mid-rename. The read runs inside the parse tree walk, which the analyzer's own guard does not
+        /// cover, so it threw straight out of the analysis and the document got no diagnostics at all: not for the
+        /// missing import, and not for anything else in it either.
+        /// </summary>
+        [Fact]
+        public void AMissingImportIsReportedInsteadOfEndingTheAnalysis()
+        {
+            var a = Analyze("@model(){{Corpus.Blog}}\n@<<{{no-such-lib.heddle}}@\\\n@(Nonexistent)",
+                rootPath: CorpusDir);
+
+            Assert.Contains(a.Diagnostics, x => x.Id == "HED4009");
+            // The rest of the document is still analysed.
+            Assert.Contains(a.Diagnostics, x => x.Id == "HED0001");
+        }
+
+        // ---- Extension parameters surface transitively through HeddleCompiler.Compile ----
 
         [Fact]
         public void ParameterDeclaringExtensionCallCompilesCleanInLsp()

@@ -6,7 +6,7 @@ using System.Text.Json.Serialization.Metadata;
 namespace Heddle.Demo.Wasm
 {
     /// <summary>
-    /// The browser shell (phase 9 D6): JSON in, JSON out. Contains marshalling only — every behavior lives in
+    /// The browser shell: JSON in, JSON out. Contains marshalling only — every behavior lives in
     /// <see cref="DemoHost"/> (tested on CoreCLR by DemoContractTests). The worker calls these through
     /// <c>getAssemblyExports(...).Heddle.Demo.Wasm.DemoInterop.*</c>.
     /// </summary>

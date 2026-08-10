@@ -5,14 +5,15 @@ using Heddle.Data;
 using Heddle.Language;
 using Heddle.Runtime;
 using Xunit;
+using Heddle.TestCorpus;
 
 namespace Heddle.Tests
 {
     /// <summary>
-    /// The double-render warning HED4002 (phase 4 D4/D5): a by-name call to a definition carrying a default
-    /// output (<c>-&gt; chain</c>) warns once per call site, naming the definition and its declaration
-    /// position; the default chain's own self-call is exempt; override layering warns in both directions; a
-    /// derived-name call does not. The corpus scan (D5) pins exactly the two vc-test true positives.
+    /// The double-render warning HED4002: a by-name call to a definition carrying a default output
+    /// (<c>-&gt; chain</c>) warns once per call site, naming the definition and its declaration position;
+    /// the default chain's own self-call is exempt; override layering warns in both directions; a derived-name
+    /// call does not.
     /// </summary>
     public class DoubleRenderWarningTests
     {
@@ -29,7 +30,7 @@ namespace Heddle.Tests
         private static int WarningCount(HeddleTemplate t) =>
             t.Context.CompileWarnings.Count(w => w.DiagnosticId == HeddleDiagnosticIds.DefinitionRendersTwice);
 
-        [Fact] // W01
+        [Fact]
         public void W01_DefaultOutputAlsoCalledByNameWarnsOnce()
         {
             var t = Compile("@%\n<card> -> ()\n{{CARD}}\n%@\n@card()");
@@ -42,44 +43,44 @@ namespace Heddle.Tests
             Assert.True(warning.Position.StartIndex > 0, "warning is positioned at the by-name call, not the declaration");
         }
 
-        [Fact] // W02
+        [Fact]
         public void W02_NoDefaultOutputDoesNotWarn()
         {
             Assert.Equal(0, WarningCount(Compile("@%\n<card>\n{{CARD}}\n%@\n@card()")));
         }
 
-        [Fact] // W03
+        [Fact]
         public void W03_SelfCallExemptWhenNotCalledByName()
         {
             Assert.Equal(0, WarningCount(Compile("@%\n<card> -> ()\n{{CARD}}\n%@")));
         }
 
-        [Fact] // W04
+        [Fact]
         public void W04_TwoCallsProduceTwoWarnings()
         {
             Assert.Equal(2, WarningCount(Compile("@%\n<card> -> ()\n{{CARD}}\n%@\n@card()\n@card()")));
         }
 
-        [Fact] // W05
+        [Fact]
         public void W05_CallBeforeFullOverrideWarns()
         {
             Assert.Equal(1, WarningCount(Compile("@%\n<a> -> ()\n{{A}}\n%@\n@a()\n@%\n<a:a>\n{{A2}}\n%@")));
         }
 
-        [Fact] // W06
+        [Fact]
         public void W06_CallAfterFullOverrideStillWarns()
         {
-            // HasDefaultOutput survives OverrideWith — the base's default chain still renders at document end.
+            // Base's default chain persists after override.
             Assert.Equal(1, WarningCount(Compile("@%\n<a> -> ()\n{{A}}\n%@\n@%\n<a:a>\n{{A2}}\n%@\n@a()")));
         }
 
-        [Fact] // W07
+        [Fact]
         public void W07_DerivedNameCallDoesNotWarn()
         {
             Assert.Equal(0, WarningCount(Compile("@%\n<a> -> ()\n{{A}}\n<b:a>\n{{B}}\n%@\n@b()")));
         }
 
-        [Fact] // W08 — full-corpus scan (D5)
+        [Fact]
         public void W08_CorpusScanReportsExactlyTheTwoVcTestHits()
         {
             HeddleTemplate.Configure(typeof(DoubleRenderWarningTests).GetTypeInfo().Assembly);
@@ -99,8 +100,7 @@ namespace Heddle.Tests
                     }
                     catch
                     {
-                        // A fixture that needs specific host setup may throw; warnings collected before the
-                        // throw are still counted. Only vc-test carries the -> + by-name pattern (D5 sweep).
+                        // Host setup may fail; warnings collected before the throw still count.
                     }
 
                     hits = scope.CompileWarnings.Count(w => w.DiagnosticId == HeddleDiagnosticIds.DefinitionRendersTwice);
@@ -111,7 +111,7 @@ namespace Heddle.Tests
             }
         }
 
-        [Fact] // ergo-double-render golden — the warning does not alter output (D5 in miniature)
+        [Fact]
         public void ErgoDoubleRenderGolden()
         {
             HeddleTemplate.Configure(typeof(DoubleRenderWarningTests).GetTypeInfo().Assembly);
@@ -120,7 +120,7 @@ namespace Heddle.Tests
             Assert.True(t.CompileResult.Success, t.CompileResult.ToString());
             Assert.Equal(1, WarningCount(t));
             var actual = t.Generate(null);
-            File.WriteAllText("TestTemplate/test-ergo-double-render.html", actual);
+            File.WriteAllText(TestCorpusIndex.WrittenArtifactPath("test-ergo-double-render.html"), actual);
             var expected = File.ReadAllText("TestTemplate/generated-ergo-double-render.html").Replace("\r\n", "\n");
             Assert.Equal(expected, actual);
         }

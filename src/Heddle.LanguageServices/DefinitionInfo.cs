@@ -3,7 +3,7 @@ using Heddle.Data;
 
 namespace Heddle.LanguageServices
 {
-    /// <summary>One prop of a definition (phase 5 declaration, resolved).</summary>
+    /// <summary>One declared prop of a definition, resolved.</summary>
     public sealed class PropInfo
     {
         internal PropInfo(string name, string typeName, ExType type, bool isRequired, object defaultValue,
@@ -27,7 +27,7 @@ namespace Heddle.LanguageServices
         public int DeclarationLength { get; }
     }
 
-    /// <summary>One named content region of a definition (phase 7), projected from the parse model.</summary>
+    /// <summary>One named content region of a definition, projected from the parse model.</summary>
     public sealed class RegionInfo
     {
         internal RegionInfo(string name, bool isPublic, string typeName, ExType type,
@@ -58,8 +58,8 @@ namespace Heddle.LanguageServices
 
     /// <summary>
     /// One definition visible in a document. <see cref="ModelType"/> is null when unresolved or abstract;
-    /// <see cref="IsPinned"/> = <c>:: Type</c> resolving to non-object (D13); <see cref="Props"/> are
-    /// inheritance-flattened (phase 5 D6 rules).
+    /// <see cref="IsPinned"/> = <c>:: Type</c> resolving to non-object; <see cref="Props"/> are
+    /// inheritance-flattened.
     /// </summary>
     public sealed class DefinitionInfo
     {
@@ -91,7 +91,7 @@ namespace Heddle.LanguageServices
         public string SlotTypeName { get; }
         public string BaseName { get; }
 
-        /// <summary>Phase 7: the definition's directly-declared named content regions (declaration order) —
+        /// <summary>The definition's directly-declared named content regions, in declaration order —
         /// public <c>&lt;:name&gt;</c> regions a call site may override, plus its private inner regions.</summary>
         public IReadOnlyList<RegionInfo> Regions { get; }
     }

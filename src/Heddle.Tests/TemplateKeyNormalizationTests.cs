@@ -5,10 +5,8 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// The phase 7 D1 key-normalization gate: the pinned cross-OS round-trip table from
-    /// identity-and-metadata.md § normalization test table. <see cref="TemplateKey.Normalize"/> is a pure
-    /// function, so these rows hold identically on every OS by construction — the table proves it stays that
-    /// way. Each row's rationale names the algorithm step(s) it exercises.
+    /// Pinned cross-OS round-trip table for <see cref="TemplateKey.Normalize"/> (pure function, so rows hold identically).
+    /// Each row's rationale names the algorithm step(s) it exercises.
     /// </summary>
     public class TemplateKeyNormalizationTests
     {
@@ -58,8 +56,7 @@ namespace Heddle.Tests
         }
 
         /// <summary>
-        /// N06 vs N01: case-only twins are distinct keys under ordinal comparison — the companion of the
-        /// build-time <c>HED7003</c> / lookup-time <c>HED7103</c> case-mismatch diagnostics.
+        /// Case-only twins are distinct (ordinal comparison), pairing with <c>HED7003</c>/<c>HED7103</c> diagnostics.
         /// </summary>
         [Fact]
         public void CaseOnlyTwinsAreDistinctKeys()

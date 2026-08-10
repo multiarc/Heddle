@@ -1,0 +1,21 @@
+﻿goos: windows
+goarch: amd64
+pkg: heddle.dev/benchmarks/go/suites
+cpu: AMD Ryzen 9 9950X 16-Core Processor            
+                         Γöé results\bench-coldparse-20260722.txt Γöé
+                         Γöé                sec/op                Γöé
+ColdParse/stdlib-text-32                            40.55┬╡ ┬▒ 1%
+ColdParse/stdlib-html-32                            6.472┬╡ ┬▒ 2%
+geomean                                             16.20┬╡
+
+                         Γöé results\bench-coldparse-20260722.txt Γöé
+                         Γöé                 B/op                 Γöé
+ColdParse/stdlib-text-32                           45.48Ki ┬▒ 0%
+ColdParse/stdlib-html-32                           9.859Ki ┬▒ 0%
+geomean                                            21.18Ki
+
+                         Γöé results\bench-coldparse-20260722.txt Γöé
+                         Γöé              allocs/op               Γöé
+ColdParse/stdlib-text-32                             764.0 ┬▒ 0%
+ColdParse/stdlib-html-32                             147.0 ┬▒ 0%
+geomean                                              335.1

@@ -1,0 +1,15 @@
+<% /* idiomatic Eta implementation (Phase 4).
+      Patterns followed: https://eta.js.org/docs/4.x.x/syntax/cheatsheet,
+      https://eta.js.org/docs/4.x.x/syntax/layouts-and-blocks (layout, it.body),
+      https://eta.js.org/docs/4.x.x/api/overview (loadTemplate, render). */ %>
+<article>
+  <h1><%= it.title %></h1>
+  <p class="sku"><%= it.sku %></p>
+  <p class="price"><%= it.price %></p>
+  <p class="brand"><%= it.brand %></p>
+  <p class="cat"><%= it.category %></p>
+  <p class="avail"><%= it.availability %></p>
+  <a class="link" href="<%= it.url %>"><img src="<%= it.image_url %>"></a>
+  <p class="sum"><%= it.summary %></p>
+  <p class="rating"><%= it.rating %></p>
+</article>

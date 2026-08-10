@@ -1,0 +1,10 @@
+{# Idiomatic Askama media-row partial. One of the
+   four dispatched fragment kinds; the image source ("/img/" + name + ".jpg") and the
+   caption ("Caption for " + name) are template-composed literal-plus-substitution. #}
+<div class="media-row">
+  <img src="/img/{{ item.name }}.jpg" alt="{{ item.name }}" />
+  <div class="media-body">
+    <h4>{{ item.name }}</h4>
+    <p>Caption for {{ item.name }}</p>
+  </div>
+</div>

@@ -1,30 +1,77 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <!-- net48 is Windows-only: .NET Framework under mono on Linux has no practical value and is unstable. -->
     <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
+    <TargetFrameworks Condition="'$(OS)' == 'Windows_NT'">net48;net8.0;net10.0</TargetFrameworks>
     <LangVersion>latest</LangVersion>
     <Nullable>disable</Nullable>
     <IsPackable>false</IsPackable>
+    <!-- xUnit v3 test projects are stand-alone executables that host their own runner. -->
+    <OutputType>Exe</OutputType>
+    <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
     <SignAssembly>true</SignAssembly>
     <AssemblyOriginatorKeyFile>..\..\heddle.snk</AssemblyOriginatorKeyFile>
-    <!-- B2-R7: the marker TextEncoder in EncoderDifferentialTests overrides the unsafe char* members. -->
+    <!-- The marker TextEncoder in EncoderDifferentialTests overrides the unsafe char* members. -->
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-  </PropertyGroup>
+      <!-- xUnit1051 wants TestContext.Current.CancellationToken threaded through every call that accepts one.
+         Here those are synchronous Roslyn calls (ParseText, GetDiagnostics) and short-lived fixture I/O in a
+         suite whose tests run in milliseconds, so there is no hang for a token to shorten, only 46 call sites
+         to churn. Revisit if a long-running or genuinely cancellable test is added. -->
+    <NoWarn>$(NoWarn);xUnit1051</NoWarn>
+</PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
-    <PackageReference Include="xunit" Version="2.9.3" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
+    <PackageReference Include="xunit.v3" Version="3.2.2" />
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The generator under test, driven as an analyzer through CSharpGeneratorDriver (D19), and the runtime so
-         the differential harness can compile+load generated code and render on both backends (WI9). -->
-    <ProjectReference Include="..\Heddle.Generator\Heddle.Generator.csproj" />
+    <!-- The generator under test, driven as an analyzer through CSharpGeneratorDriver, and the runtime so the
+         differential harness can compile+load generated code and render on both backends.
+         Aliased because the runtime's OutputProfile/ExpressionMode/fingerprint/capabilities sources are linked into
+         the generator, so those type names exist in both assemblies. The alias keeps every unqualified use in this
+         suite bound to the runtime copy; DifferentialHarness reaches the generator through it. -->
+    <!-- Each test TFM consumes the generator VARIANT its real-world compiler host would select (see the same
+         mapping in Heddle.Generator.Tests.csproj). -->
+    <ProjectReference Include="..\Heddle.Generator\Heddle.Generator.csproj" Aliases="generator"
+                      Condition="'$(TargetFramework)' == 'net48'" />
+    <ProjectReference Include="..\Heddle.Generator\Heddle.Generator.Roslyn411.csproj" Aliases="generator"
+                      Condition="'$(TargetFramework)' == 'net8.0'" />
+    <ProjectReference Include="..\Heddle.Generator\Heddle.Generator.Roslyn530.csproj" Aliases="generator"
+                      Condition="'$(TargetFramework)' == 'net10.0'" />
     <ProjectReference Include="..\Heddle\Heddle.csproj" />
+    <!-- The engine test MODELS, as a file on disk that this suite hands to the compilations it creates.
+         `ReferenceOutputAssembly="false"` is the point of the shape, not a detail: this suite hands hand-filtered
+         reference sets to those compilations (it already strips Heddle.Generator to avoid CS0433 on the linked
+         types), and pulling Heddle.Tests and its transitive graph into its own compile would put a second set of
+         names in scope for no benefit — the test loads the DLL by path at run time, not by reference.
+
+         `OutputItemType="Content" CopyToOutputDirectory="PreserveNewest"` copies Heddle.Tests.dll into this
+         project's own output, so the lookup is `Path.Combine(AppContext.BaseDirectory, "Heddle.Tests.dll")` rather
+         than a string-replace on this assembly's location to guess a sibling's build directory.
+
+         The reference is also the BUILD ORDER edge. Without it nothing orders this project after Heddle.Tests, and
+         under `dotnet test Heddle.sln` this suite's VSTest run could start before or during that build —
+         reproduced, not theorised: 1 of 30 solution runs failed three sweep cases on the corpus-not-found
+         hard failure. -->
+    <ProjectReference Include="..\Heddle.Tests\Heddle.Tests.csproj" ReferenceOutputAssembly="false"
+                      OutputItemType="Content" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
+
+  <ItemGroup>
+    <!-- The projection-equivalence corpus, linked as the other two host suites link it. This suite is the only
+         one that can run both tiers over the same bytes in one process, which is what the text-parity arm needs. -->
+    <Compile Include="..\Heddle.Tests\DiagnosticCorpusVectors.cs" Link="Shared\DiagnosticCorpusVectors.cs" />
+    <!-- The TPA-or-AppDomain reference closure, stated once for both generator suites. -->
+    <Compile Include="..\Heddle.Generator.Tests\HostAssemblies.cs" Link="Shared\HostAssemblies.cs" />
+  </ItemGroup>
+
+  <!-- The shared test corpus, copied into this project's output directory under TestTemplate\, replacing the
+       assembly-path rewrite plus `../../..` climb out of bin/<cfg>/<tfm> that three suites triplicated. The files
+       stay in src/Heddle.Tests/TestTemplate/; this is a build copy, not a second home for the input. -->
+  <Import Project="..\TestCorpus\TestCorpus.props" />
+
+  <!-- The test-class inventory gate: this suite's classes, checked in and set-equality asserted. -->
+  <Import Project="..\TestInventory\TestInventory.props" />
 
 </Project>

@@ -5,11 +5,12 @@ using Heddle.Data;
 using Heddle.Runtime;
 using Heddle.Tests.Data;
 using Xunit;
+using Heddle.TestCorpus;
 
 namespace Heddle.Tests
 {
     /// <summary>
-    /// The directive-line trimming torture corpus (phase 4 D6–D8). Every row is rendered with the option OFF
+    /// The directive-line trimming torture corpus. Every row is rendered with the option OFF
     /// (byte-identical current output — the compatibility guarantee) and ON (the whole-line rule). Covers
     /// LF/CRLF/CR, indentation, trailing spaces, shared lines, <c>@\</c> idempotence, comment remnants,
     /// multi-line definitions, <c>@&lt;&lt;</c> lines, <c>@profile</c> lines, <c>@param</c> non-eligibility,
@@ -57,7 +58,7 @@ namespace Heddle.Tests
             Assert.Equal(expectedOn, Render(template, typeof(object), null, trim: true));
         }
 
-        [Fact] // T12 — parse-time import line (output-free target, see the phase 4 ledger correction)
+        [Fact] // T12 — parse-time import line (output-free target)
         public void T12_ImportLineTrims()
         {
             const string template = "@<<{{ergo-import-empty.heddle}}\nX";
@@ -65,7 +66,7 @@ namespace Heddle.Tests
             Assert.Equal("X", Render(template, typeof(object), null, trim: true));
         }
 
-        [Fact] // T13 — phase 2 body-form @profile() directive trims; @(V) encodes under Html
+        [Fact] // T13 — body-form @profile() directive trims; @(V) encodes under Html
         public void T13_ProfileBodyFormTrims()
         {
             const string template = "@profile(){{html}}\n@(V)";
@@ -102,18 +103,18 @@ namespace Heddle.Tests
             Assert.Equal("\n  body", Render(template, typeof(FModel), model, trim: true));
         }
 
-        [Fact] // ergo-trim-preamble golden pair (roadmap criterion 3)
+        [Fact]
         public void ErgoTrimPreambleGoldenPair()
         {
             HeddleTemplate.Configure(typeof(TrimDirectiveLinesTests).GetTypeInfo().Assembly);
             var document = File.ReadAllText("TestTemplate/ergo-trim-preamble.heddle").Replace("\r\n", "\n");
 
             var off = Render(document, typeof(TestDataStructure), new TestDataStructure(), trim: false);
-            File.WriteAllText("TestTemplate/test-ergo-trim-off.html", off);
+            File.WriteAllText(TestCorpusIndex.WrittenArtifactPath("test-ergo-trim-off.html"), off);
             Assert.Equal(File.ReadAllText("TestTemplate/generated-ergo-trim-off.html").Replace("\r\n", "\n"), off);
 
             var on = Render(document, typeof(TestDataStructure), new TestDataStructure(), trim: true);
-            File.WriteAllText("TestTemplate/test-ergo-trim-on.html", on);
+            File.WriteAllText(TestCorpusIndex.WrittenArtifactPath("test-ergo-trim-on.html"), on);
             Assert.Equal(File.ReadAllText("TestTemplate/generated-ergo-trim-on.html").Replace("\r\n", "\n"), on);
         }
 

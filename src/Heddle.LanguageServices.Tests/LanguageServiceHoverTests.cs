@@ -3,7 +3,7 @@ using Xunit;
 
 namespace Heddle.LanguageServices.Tests
 {
-    /// <summary>Phase 6 D15 hover: member CLR types, definition signatures, function overloads (success criterion 4).</summary>
+    /// <summary>Hover information: member CLR types, definition signatures, and function overloads.</summary>
     public class LanguageServiceHoverTests
     {
         private const string Path = "doc.heddle";

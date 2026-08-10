@@ -19,7 +19,7 @@ namespace Heddle.Data
         internal readonly ScopeLocals Locals;
 
         /// <summary>
-        /// <para>Phase 5 (D7) — the per-invocation props carriage of a props-declaring definition body; a shared
+        /// <para>The per-invocation props carriage of a props-declaring definition body; a shared
         /// frozen array for all-constant call sites (zero alloc) or a per-invocation clone otherwise. <c>null</c>
         /// for every prop-less execution (the common case). Copied unchanged by all transforms; replaced only by
         /// <see cref="WithProps"/>. Never written after construction and never exposed publicly.</para>
@@ -27,18 +27,19 @@ namespace Heddle.Data
         internal readonly object[] PropsData;
 
         /// <summary>
-        /// <para>Phase 5 — the projected-content carrier of a slot-declaring definition body (a
-        /// <c>SlotContent</c>, typed <see cref="object"/> here to avoid a Core→Data dependency cycle). <c>null</c>
-        /// for every non-slot execution. Preserved by all transforms so a slot-mode <c>@out(expr)</c> nested in a
-        /// body (e.g. inside <c>@list</c>) can still reach it; installed only by <see cref="WithSlot"/>.</para>
-        /// <para>Amends phase 5 D11's "carrier on the chained channel" — the chained channel is overwritten by
-        /// looping extensions (<c>@list</c>/<c>@for</c> thread the index there), so it cannot reach an
-        /// <c>@out</c> nested in a loop body; a preserved field can (see the amendments ledger).</para>
+        /// <para>The caller content of the enclosing slot-declaring definition body, which a
+        /// <c>[SlotProjection]</c> extension renders through instead of through its own body. <c>null</c> for every
+        /// non-slot execution, and a projection that finds it <c>null</c> has no slot to project into. Preserved by
+        /// all transforms so a projection nested in a body (e.g. inside <c>@list</c>) can still reach it; installed
+        /// by the engine at the definition invocation and never by an extension.</para>
+        /// <para>A dedicated field rather than the chained channel: the chained channel is overwritten by
+        /// looping extensions (<c>@list</c>/<c>@for</c> thread the index there), so it cannot reach a
+        /// projection nested in a loop body; a preserved field can.</para>
         /// </summary>
-        internal readonly object SlotCarrier;
+        public readonly ISlotContent SlotCarrier;
 
         /// <summary>
-        /// <para>Phase 8 (D2) — the per-invocation bound values of a parameter-declaring extension's <c>[Prop]</c>
+        /// <para>The per-invocation bound values of a parameter-declaring extension's <c>[Prop]</c>
         /// layout: the shared frozen array for all-constant call sites (zero alloc) or a per-invocation clone.
         /// <c>null</c> for every parameter-less execution (the common case). Copied unchanged by all transforms;
         /// installed only by <see cref="WithExtensionParameters"/>. Separate from <see cref="PropsData"/> so an
@@ -47,7 +48,7 @@ namespace Heddle.Data
         internal readonly object[] ExtensionParameterValues;
 
         /// <summary>
-        /// <para>Phase 8 (D2) — the immutable per-call-site name→index map for
+        /// <para>The immutable per-call-site name→index map for
         /// <see cref="TryGetParameter"/>/<see cref="GetParameter"/>; built once at bind, shared across renders and
         /// threads. <c>null</c> when no parameter frame is active.</para>
         /// </summary>
@@ -58,7 +59,7 @@ namespace Heddle.Data
             "provisions one for bodies that contain it.";
 
         internal Scope(object root, object data, object model, object chained, IScopeRenderer renderer,
-            object parent = null, ScopeLocals locals = null, object[] props = null, object slot = null,
+            object parent = null, ScopeLocals locals = null, object[] props = null, ISlotContent slot = null,
             object[] extensionParameterValues = null, ExtensionParameterMap extensionParameters = null)
         {
             RootData = root;
@@ -109,40 +110,28 @@ namespace Heddle.Data
             return new Scope(RootData, CallerData, ModelData, ChainedData, renderer, ParentModelData, Locals, PropsData, SlotCarrier, ExtensionParameterValues, ExtensionParameters);
         }
 
-        /// <summary>
-        /// Returns a copy with only the local-context frame replaced (all data fields carried over).
-        /// Called only by the frame-installation points (root generate and the body-execution funnel).
-        /// </summary>
+        /// <summary>Returns a copy with only the local-context frame replaced.</summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal readonly Scope WithLocals(ScopeLocals locals)
         {
             return new Scope(RootData, CallerData, ModelData, ChainedData, Renderer, ParentModelData, locals, PropsData, SlotCarrier, ExtensionParameterValues, ExtensionParameters);
         }
 
-        /// <summary>
-        /// Returns a copy with only the props carriage replaced (all other fields carried over). Called only by
-        /// the props-installation point (<c>DefinitionBaseExtension</c>). See D7.
-        /// </summary>
+        /// <summary>Returns a copy with only the props carriage replaced.</summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal readonly Scope WithProps(object[] props)
         {
             return new Scope(RootData, CallerData, ModelData, ChainedData, Renderer, ParentModelData, Locals, props, SlotCarrier, ExtensionParameterValues, ExtensionParameters);
         }
 
-        /// <summary>
-        /// Returns a copy with only the slot carrier replaced (all other fields carried over). Called only by
-        /// the slot-installation point (<c>DefinitionBaseExtension</c> in slot mode). See D11.
-        /// </summary>
+        /// <summary>Returns a copy with only the slot carrier replaced.</summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal readonly Scope WithSlot(object slot)
+        internal readonly Scope WithSlot(ISlotContent slot)
         {
             return new Scope(RootData, CallerData, ModelData, ChainedData, Renderer, ParentModelData, Locals, PropsData, slot, ExtensionParameterValues, ExtensionParameters);
         }
 
-        /// <summary>
-        /// Returns a copy with only the extension-parameter frame replaced (all other fields carried over).
-        /// Called only by the parameter-installation point (<c>ExtensionParameterCarrier</c>). Phase 8 D2.
-        /// </summary>
+        /// <summary>Returns a copy with only the extension-parameter frame replaced.</summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal readonly Scope WithExtensionParameters(object[] values, ExtensionParameterMap map)
         {
@@ -150,7 +139,7 @@ namespace Heddle.Data
         }
 
         /// <summary>
-        /// <para>Reads a declared extension parameter by name (phase 8). Returns <c>false</c> (never throws) when
+        /// <para>Reads a declared extension parameter by name. Returns <c>false</c> (never throws) when
         /// the current scope carries no parameter frame or <paramref name="name"/> was not declared by a
         /// <c>[Prop]</c> on the rendering extension.</para>
         /// </summary>
@@ -172,7 +161,7 @@ namespace Heddle.Data
         }
 
         /// <summary>
-        /// <para>Reads a declared extension parameter by name (phase 8), returning its bound value — which may be
+        /// <para>Reads a declared extension parameter by name, returning its bound value — which may be
         /// <c>null</c> for a null default. Throws <see cref="ArgumentException"/> when <paramref name="name"/> is
         /// not a declared parameter of the extension whose frame is active — an author bug (the name never matched
         /// a <c>[Prop]</c>). The no-frame case (read outside a parameter-declaring extension's render) is one
@@ -262,14 +251,13 @@ namespace Heddle.Data
             return Locals.TryGet(key, out value);
         }
 
-        /// <summary>Zero-boxing branch-slot write. Silent no-op when no frame exists (the opportunistic
-        /// <c>@if</c>/<c>@ifnot</c> path — safe because a frameless body provably has no reader).</summary>
+        /// <summary>Silent no-op when no frame exists.</summary>
         internal void PublishBranch(in BranchState state)
         {
             Locals?.SetBranch(state);
         }
 
-        /// <summary><c>false</c> when no frame exists or the branch slot is empty; never throws.</summary>
+        /// <summary>Returns <c>false</c> when no frame exists or the branch slot is empty.</summary>
         internal bool TryReadBranch(out BranchState state)
         {
             if (Locals != null)
@@ -279,7 +267,7 @@ namespace Heddle.Data
             return false;
         }
 
-        /// <summary>Empties the branch slot (the terminal <c>@else</c> action); no-op when no frame exists.</summary>
+        /// <summary>Empties the branch slot; no-op when no frame exists.</summary>
         internal void ClearBranch()
         {
             Locals?.ClearBranch();

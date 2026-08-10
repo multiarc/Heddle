@@ -1,18 +1,132 @@
 <Project>
 
-  <!-- Phase 7 D12: default-include .heddle templates unless the consumer opts out. -->
+  <!-- The extension below is the XML twin of TemplateKey.TemplateExtension, which is normative; MSBuild cannot
+       reference the const, so the two are kept in step by review. -->
   <ItemGroup Condition="'$(EnableDefaultHeddleTemplates)' != 'false'">
     <HeddleTemplate Include="**\*.heddle" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder);bin\**;obj\**" />
   </ItemGroup>
 
-  <!-- Map HeddleTemplate items to AdditionalFiles carrying the per-item metadata the generator reads. -->
+  <!-- `Include="@(HeddleTemplate)"` is an item transform, so Key, Name and Precompile are already copied.
+       Do NOT restate them as `<Key>%(HeddleTemplate.Key)</Key>`: outside a target a cross-item `%(Other.Metadata)`
+       reference evaluates to the empty string, so each such element overwrites the metadatum the transform just
+       copied. That made every per-item metadatum inert from a real csproj — mapping it explicitly is what unmapped
+       it. Guarded structurally by
+       `PipelineContractTests.EveryDeclaredItemMetadataIsReadByTheGeneratorAndNotNulledByTheTargets`, and
+       behaviourally by `samples/codegen-t4-successor`, whose import-only partial is imported by its `Name` and so
+       fails the build with HED7011 in CI if the metadatum stops flowing. -->
   <ItemGroup>
     <AdditionalFiles Include="@(HeddleTemplate)">
-      <Key>%(HeddleTemplate.Key)</Key>
-      <Name>%(HeddleTemplate.Name)</Name>
-      <Precompile>%(HeddleTemplate.Precompile)</Precompile>
       <HeddleTemplate>true</HeddleTemplate>
     </AdditionalFiles>
   </ItemGroup>
+
+  <!-- The escape hatch for assemblies the build must see, NOT the primary form. The primary form is
+       `[assembly: HeddleModelAssembly(typeof(T))]` in the consuming project's own source, because a typeof cannot
+       be spelled without a reference and so the C# compiler enforces it; these items exist for the cases that
+       cannot carry one — a templates-only project that must not take a source dependency, or a model assembly
+       with no compile-time-nameable public type.
+
+       They are appended to @(ReferencePath), so the item's job is to reach the COMPILER, not the generator. That
+       is deliberate and load-bearing: `SymbolTypeIndex.Build` already indexes
+       `compilation.SourceModule.ReferencedAssemblySymbols`, so an assembly that reaches @(ReferencePath) is
+       indexed with zero new generator code, and build output stays a function of the compilation's declared
+       inputs rather than of a path some generator read at some point in the build. That is why there is no
+       `CompilerVisibleItem` here and none is needed.
+
+       An item carries the obligation the attribute discharges for free: the host still makes its own
+       HeddleTemplate.Register call, because nothing in the item reaches the runtime.
+
+       Absent items add nothing, so an unset item set is byte-identical output. No metadata is restated on the
+       transform — see the @(HeddleTemplate) note above for why that would delete it. Guarded by
+       `PipelineContractTests.EveryDeclaredAssemblyItemReachesTheCompilerThroughReferencePath`. -->
+  <Target Name="_HeddleAddDeclaredAssemblyReferences"
+          AfterTargets="ResolveAssemblyReferences"
+          BeforeTargets="CoreCompile">
+    <ItemGroup>
+      <ReferencePath Include="@(HeddleModelAssembly)" />
+      <ReferencePath Include="@(HeddleExtensionAssembly)" />
+    </ItemGroup>
+  </Target>
+
+  <!-- Where engine observation may write its content-addressed intermediate assemblies, and the target that makes
+       the directory exist. Both halves belong here rather than in the props: $(IntermediateOutputPath) is not
+       defined at props-evaluation time, and RS1035 bans System.IO.Directory in an analyzer, so the generator can
+       open a FileStream in this directory but can never create it. A path that does not exist is observation being
+       unavailable — a tier, never an error.
+       The files under it are content-addressed and therefore immutable: a changed input produces a different
+       filename, so Assembly.LoadFrom's permanent lock is always on a file nothing will ever rewrite. They are
+       deliberately NOT added to @(FileWrites): a locked file in the Clean list fails Clean on Windows, and an
+       accumulating cache under obj/ is the cheaper of the two problems. _HeddleCleanObserveCache removes what it
+       can and shrugs at the rest. -->
+  <PropertyGroup Condition="'$(HeddleObserveIntermediatePath)' == '' and '$(HeddleObserveEngine)' != 'Off'">
+    <_HeddleObserveBase>$(IntermediateOutputPath)</_HeddleObserveBase>
+    <_HeddleObserveBase Condition="'$(_HeddleObserveBase)' == ''">$(BaseIntermediateOutputPath)</_HeddleObserveBase>
+    <_HeddleObserveBase Condition="'$(_HeddleObserveBase)' == ''">obj/</_HeddleObserveBase>
+    <HeddleObserveIntermediatePath>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)/$(_HeddleObserveBase)heddle/observe'))</HeddleObserveIntermediatePath>
+  </PropertyGroup>
+
+  <Target Name="_HeddleCreateObserveCache" BeforeTargets="CoreCompile" Condition="'$(HeddleObserveIntermediatePath)' != ''">
+    <MakeDir Directories="$(HeddleObserveIntermediatePath)" ContinueOnError="true" />
+  </Target>
+
+  <!-- The implementation image behind every reference the compiler is handed as a REFERENCE ASSEMBLY.
+       A ProjectReference resolves to the referenced project's real output in @(ReferencePath) and to its generated
+       reference assembly in %(ReferencePath.ReferenceAssembly); CoreCompile passes the latter, which carries no
+       method bodies and so cannot be executed. Observation has to run the engine, so it needs the former.
+
+       Unlike @(HeddleModelAssembly) above, this must NOT go to @(ReferencePath): the compiler already has these
+       assemblies — as reference assemblies — and appending the implementations would hand it two images of one
+       identity. So it takes the other route the compilation's declared inputs offer, the one
+       $(HeddleObserveIntermediatePath) already takes: a CompilerVisibleProperty, which the compiler writes into the
+       generated .editorconfig and passes as an analyzer config input. The generator still reads nothing it was not
+       given, and build output stays a function of the compilation's declared inputs.
+
+       Only the items that actually carry %(ReferenceAssembly) are listed — for everything else the compiler already
+       has the implementation, so there is nothing to substitute. The generator matches each entry to the compilation
+       by ASSEMBLY IDENTITY and ignores anything that does not match exactly, so the order this list arrives in
+       cannot decide an answer. Project references are built before this project compiles, so every path here names
+       a file that already exists; one that does not simply contributes nothing.
+
+       The separator is '|', NOT the ';' an item transform would use by default. A CompilerVisibleProperty is
+       delivered through the generated .editorconfig, and an editorconfig value ends at the first ';' or '#' — the
+       parser reads the rest as a comment. A ';'-joined list therefore arrives at the generator truncated to its
+       first entry, silently and with no diagnostic anywhere. '|' is not a legal path character on Windows and is
+       not comment syntax, so it survives the round trip; the generator splits on it.
+
+       Guarded by `PipelineContractTests.EveryCompilerVisiblePropertyIsReadByTheConfigReader`, which holds the
+       property to the reader, and by `EngineObservationTests.TheImplementationListIsSplitOnTheBarAndOnNothingElse`,
+       which holds the reader to the separator. -->
+  <Target Name="_HeddleResolveObserveImplementationPath"
+          AfterTargets="ResolveAssemblyReferences"
+          BeforeTargets="GenerateMSBuildEditorConfigFileCore;CoreCompile"
+          Condition="'$(HeddleObserveEngine)' != 'Off' and '$(HeddleObserveImplementationPath)' == ''">
+    <ItemGroup>
+      <_HeddleObserveImplementation Include="@(ReferencePath)" Condition="'%(ReferencePath.ReferenceAssembly)' != ''" />
+    </ItemGroup>
+    <PropertyGroup>
+      <HeddleObserveImplementationPath>@(_HeddleObserveImplementation->'%(FullPath)', '|')</HeddleObserveImplementationPath>
+    </PropertyGroup>
+  </Target>
+
+  <Target Name="_HeddleCleanObserveCache" AfterTargets="CoreClean" Condition="'$(HeddleObserveIntermediatePath)' != ''">
+    <ItemGroup>
+      <_HeddleObserveCacheFile Include="$(HeddleObserveIntermediatePath)/**" />
+    </ItemGroup>
+    <Delete Files="@(_HeddleObserveCacheFile)" ContinueOnError="true" />
+  </Target>
+
+  <!-- The package ships one generator per Roslyn API version under analyzers/dotnet/roslyn{4.1,4.11,5.3}/cs.
+       A host that understands component versioning selects exactly one folder — the highest its compiler
+       supports. A host that does not (SDKs before 6, old NuGet) loads every folder at once, which would run
+       three copies of the generator and triple every diagnostic; this trims those hosts back to the 4.1 floor,
+       the only variant their compilers can bind anyway. -->
+  <Target Name="_HeddleRemoveVersionedRoslynAnalyzers"
+          Condition="'$(SupportsRoslynComponentVersioning)' != 'true'"
+          AfterTargets="ResolvePackageDependenciesForBuild;ResolveNuGetPackageAssets">
+    <ItemGroup>
+      <Analyzer Remove="@(Analyzer)"
+                Condition="$([System.String]::Copy('%(Analyzer.Identity)').Contains('roslyn4.11')) or $([System.String]::Copy('%(Analyzer.Identity)').Contains('roslyn5.3'))" />
+    </ItemGroup>
+  </Target>
 
 </Project>

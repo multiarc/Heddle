@@ -13,14 +13,41 @@
 # output — failing on Windows while Linux (LF everywhere) passes. Pin every such root to LF so the
 # byte comparison holds identically on both platforms regardless of the developer's autocrlf setting.
 # All files under these roots are text (verified: no binaries). New golden/fixture roots MUST be
-# added here in the same change that introduces them — see docs/spec/common/testing-standards.md.
+# added here in the same change that introduces them.
+#
+# eol=lf pins line endings and says nothing about byte-order marks; the two are independent, and a
+# BOM drift can pass every eol=lf check there is. Templates carrying a deliberate UTF-8 BOM declare
+# it in src/TestCorpus/CorpusIntent.cs, gated by CorpusIntentGateTests.
 samples/**/golden/**                              text eol=lf
 src/Heddle.Tests/TestTemplate/**                  text eol=lf
+src/Heddle.Tests/TestOutput/**                    text eol=lf
 src/Heddle.Tests/Streaming/**                     text eol=lf
 src/Heddle.Generator.Tests/Snapshots/**           text eol=lf
 src/Heddle.Generator.IntegrationTests/Fixtures/** text eol=lf
 src/Heddle.LanguageServices.Tests/Corpus/**       text eol=lf
 src/Heddle.Demo.Wasm/contract-fixtures/**         text eol=lf
+
+# The per-suite test-class inventories are read line by line and compared as a set on both platforms.
+# Reading normalises CRLF, but pinning them keeps the diff a reviewer sees identical everywhere.
+src/*/test-classes.txt                            text eol=lf
+
+# Golden oracle corpus: the *.golden.html files intentionally end WITHOUT a trailing newline and must
+# round-trip byte-exact on every platform, so they are pinned -text (no smudging at all) rather than
+# eol=lf. The JSON sidecars are ordinary LF text.
+benchmarks/dotnet/GoldenCorpus/*.golden.html -text
+benchmarks/dotnet/GoldenCorpus/*.verify.json text eol=lf
+benchmarks/dotnet/GoldenCorpus/manifest.json text eol=lf
+# Exported model fixtures are hash-recorded in the manifest like the goldens; LF text.
+benchmarks/dotnet/GoldenCorpus/fixtures/**   text eol=lf
+
+# Rust benchmark harness: composed-page fragment data must round-trip byte-exact (-text); template
+# files are ordinary LF text (the harness erases their line endings, but LF keeps diffs clean).
+benchmarks/rust/templates/** text eol=lf
+
+# Python benchmark harness: template files are committed LF on every platform — Mako passes a literal
+# \r\n in a template file through into rendered output, so LF-pinning keeps checked-in bytes equal to
+# authored bytes.
+benchmarks/python/templates/** text eol=lf
 
 # Custom for Visual Studio
 *.cs     diff=csharp

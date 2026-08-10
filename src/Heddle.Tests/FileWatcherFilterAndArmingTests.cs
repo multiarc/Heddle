@@ -9,12 +9,7 @@ using Xunit;
 
 namespace Heddle.Tests
 {
-    /// <summary>
-    /// Shared plumbing for the phase 1 file-watcher fixtures: a fresh temp directory per test (the
-    /// committed <c>TestTemplate/</c> fixtures are read-only inputs and are never rewritten), reflection
-    /// access to the private watcher/handler members (the deterministic tests drive the exact production
-    /// <c>Reload()</c> path synchronously), and a polling <c>WaitFor</c> for the FSW-timed tests.
-    /// </summary>
+    /// <summary>Test support for file-watcher fixtures: temp directories, reflection access to private members, and polling.</summary>
     internal static class FileWatcherTestSupport
     {
         public static string NewTempDir()
@@ -24,9 +19,7 @@ namespace Heddle.Tests
             return dir;
         }
 
-        /// <summary>A per-test watched-file stem, unique across concurrently running tests AND across the
-        /// parallel per-TFM test hosts — no two watchers can ever agree on a file name, so a write in one
-        /// process can never be picked up by another's watcher.</summary>
+        /// <summary>Per-test stem unique across concurrent and parallel test hosts; prevents cross-process watcher collision.</summary>
         public static string NewStem() => "home-" + Guid.NewGuid().ToString("N").Substring(0, 8);
 
         public static void CleanupDir(string dir)
@@ -61,8 +54,7 @@ namespace Heddle.Tests
             return (FileSystemWatcher)field.GetValue(template);
         }
 
-        /// <summary>Disables the real watcher so a deterministic test's file rewrite cannot race the
-        /// reflection-invoked handler with an OS-delivered duplicate event.</summary>
+        /// <summary>Disables the watcher to prevent race between reflection-invoked and OS-delivered events.</summary>
         public static void Disarm(HeddleTemplate template)
         {
             var watcher = GetWatcher(template);
@@ -101,9 +93,7 @@ namespace Heddle.Tests
             return (RuntimeDocument)field.GetValue(template);
         }
 
-        /// <summary>Retries a file operation that can transiently collide with the engine's own reload read
-        /// (the watcher callback holds the file open briefly while re-reading it) — the same sharing-violation
-        /// window real editors face on Windows.</summary>
+        /// <summary>Retries file operations that collide with the engine's reload read.</summary>
         public static void RetryIO(Action operation, int timeoutMs = 5000)
         {
             var sw = Stopwatch.StartNew();
@@ -121,8 +111,7 @@ namespace Heddle.Tests
             }
         }
 
-        /// <summary>Polls <paramref name="condition"/> until it holds or the timeout elapses; returns whether
-        /// it held. FSW-timed tests assert the return with context.</summary>
+        /// <summary>Polls until <paramref name="condition"/> or timeout; FSW-timed tests assert the result.</summary>
         public static bool WaitFor(Func<bool> condition, int timeoutMs = 10000)
         {
             var sw = Stopwatch.StartNew();
@@ -136,18 +125,13 @@ namespace Heddle.Tests
         }
     }
 
-    /// <summary>
-    /// Phase 1 D1/D2 — the watcher filter is built from the same file name the reader reads
-    /// (<c>TemplateName + FileNamePostfix</c>) and the watcher is armed (<c>EnableRaisingEvents</c>);
-    /// non-file and flag-off compiles install no watcher at all.
-    /// </summary>
+    /// <summary>Tests watcher filter initialization and arming rules.</summary>
     public class FileWatcherFilterAndArmingTests
     {
         // Per-test watched-file stem: isolates this test from concurrent tests and parallel TFM hosts.
         private readonly string _stem = FileWatcherTestSupport.NewStem();
 
-        /// <summary>D1 + D2: a file compile of <c>home</c> + <c>.heddle</c> with the flag on watches
-        /// <c>home.heddle</c> (not the postfix-less <c>home</c> of the old bug) and is armed.</summary>
+        /// <summary>Watches <c>home.heddle</c> (not postfix-less) and is armed when flag on.</summary>
         [Fact]
         public void FilterEqualsTemplateNamePlusPostfix()
         {

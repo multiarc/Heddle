@@ -1,0 +1,34 @@
+// Workload 5 — conditional-heavy, templ controlled port: byte-parity with the shared
+// golden after normalization. The note text is composed IN THE TEMPLATE as the literal
+// "note " plus the Seq substitution (the model carries data only).
+// Every branch body is a complete dense element; the four-way chain uses
+// templ's Go-statement if/else if/else syntax, which requires the chain on its own lines —
+// that whitespace sits between elements and is N3/N3b-erased.
+package controlled
+
+import "heddle.dev/benchmarks/go/internal/model"
+
+templ conditionalHeavy(m model.ConditionalModel) {
+	<ul class="matrix">
+		for _, r := range m.Rows {
+			<li>
+				if r.IsBronze {
+					<span class="t0">bronze</span>
+				} else if r.IsSilver {
+					<span class="t1">silver</span>
+				} else if r.IsGold {
+					<span class="t2">gold</span>
+				} else {
+					<span class="t3">platinum</span>
+				}
+				<em>{ r.Name }</em>
+				if r.HasNote {
+					<small>note { r.Seq }</small>
+				}
+				if r.IsActive {
+					<b>active</b>
+				}
+			</li>
+		}
+	</ul>
+}

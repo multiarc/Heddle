@@ -9,7 +9,7 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Phase 7 WI1 (D4 step 1): the front-end <see cref="ParserSettings"/>/<c>ImportReader</c> seam. Asserts the
+    /// The front-end <see cref="ParserSettings"/>/<c>ImportReader</c> seam. Asserts the
     /// build-time entry (<see cref="DocumentParser.Parse(string, ParserSettings, out string)"/> with an in-memory
     /// <c>ImportReader</c>) produces a <see cref="ParseContext"/> byte-identical to the runtime file-IO path, so the
     /// same shared front-end source can compile into the generator without disk access.
@@ -31,11 +31,9 @@ namespace Heddle.Tests
             {
                 File.WriteAllText(Path.Combine(root, "lib.heddle"), ImportBody);
 
-                // Runtime file-IO path (the pre-seam behavior, via the CompileContext adapter).
                 var fileContext = DocumentParser.Parse(MainTemplate,
                     new CompileContext(new TemplateOptions { RootPath = root }), out var fileClean);
 
-                // Build-time seam path: same content served from memory, never from disk.
                 var settings = new ParserSettings
                 {
                     RootPath = "<none>",
@@ -65,13 +63,12 @@ namespace Heddle.Tests
         public void SeamErrorsLandOnParseContextNotCompileContext()
         {
             // A parse-time semantic error (duplicate definition) now flows to ParseContext.Errors and is copied
-            // into CompileContext.CompileErrors by the adapter — the single copy point of the D4 seam.
+            // into CompileContext.CompileErrors by the adapter — the single copy point for the front-end seam.
             const string duplicate = "@%<a>{{x}} :: dynamic%@@%<a>{{y}} :: dynamic%@";
             var compileContext = new CompileContext(new TemplateOptions());
             var context = DocumentParser.Parse(duplicate, compileContext, out _);
 
             Assert.NotEmpty(context.Errors);
-            // Same references copied through: the compile context sees exactly the front-end's errors.
             Assert.Equal(context.Errors.Count, compileContext.CompileErrors.Count);
             Assert.Same(context.Errors[0], compileContext.CompileErrors[0]);
         }

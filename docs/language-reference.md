@@ -528,6 +528,14 @@ Two well‑known identifiers are available in embedded C#:
 There is also a `chained` value available to extensions such as `@for` (the loop index);
 see [`Scope`](csharp-api.md#scope-the-data-view-during-rendering).
 
+> **Arithmetic is unchecked.** An embedded C# expression is compiled inside `unchecked(…)`, so an
+> overflow wraps rather than throwing — including a constant overflow, which C# would otherwise reject
+> at compile time (`CS0220`). This matches [native expressions](native-expressions.md), which are built
+> from the unchecked expression-tree factories, and it is what lets a
+> [precompiled](precompilation.md) template behave the same when the consuming project sets
+> `<CheckForOverflowUnderflow>true</CheckForOverflowUnderflow>` — a setting the template knows nothing
+> about. Write the check yourself (`checked(…)`) if you want one.
+
 > **Parser nuance.** A C# expression is just a run of C# tokens up to the matching `)`, so
 > nested parentheses inside it (as in `@Foo(1)`) are part of the expression. The named call
 > form `@x(@Foo(1))` and the unnamed form `@(@Foo(1))` therefore classify those tokens
@@ -653,6 +661,12 @@ Generic and array type names are recognized by the lexer's type rule
 (`ID_TYPE`, [HeddleLexer.g4](../src/Heddle.Language/HeddleLexer.g4)), which accepts
 `Namespace.Type<T1, T2>[]` forms.
 
+The annotation also constrains the **call site**: when a call passes a member path or a prop —
+`@article_card(Featured)` — that value's static type must be assignable to the annotated type,
+or the template fails to compile with **HED0004** naming both. Other call forms are not checked,
+because they reach the definition with no static type to compare against it: a literal, `this`,
+a computed expression, a chain, and a path that goes through a `dynamic` hop.
+
 ### Abstract definitions and late type binding
 
 The annotation is **optional**, and leaving it off is a feature, not a shortcut. A definition
@@ -715,7 +729,8 @@ default**:
 ```
 
 - **Types** resolve exactly like a `:: Type` annotation (C# keyword types, dotted names,
-  generics, arrays — `List<string>`, `int[]`).
+  generics, arrays — `List<string>`, `int[]`). A type name that does not resolve is **HED5010**.
+- **Prop names are unique within one header** — declaring the same name twice is **HED5007**.
 - **Defaults are literals only** — the phase‑1 literal forms (`"…"`, `42`, `1.5`, `true`,
   `'c'`, `null`, and a leading `-` on a number). A default must be convertible to the prop's
   type under the same rule call‑site arguments use; `<card(style: string = "plain")>` is fine,
@@ -890,7 +905,7 @@ rendered entry point must be the final page and a page can't easily become a bas
 In Heddle the relationship is symmetric — `layout` knows nothing about `home`, any template that
 exposes regions can serve as a base for anything, and because it all compiles into a single
 execution‑ready document, **this composition costs nothing at render time**. (The
-[performance benchmark](../src/Heddle.Performance) uses exactly this `home` + `layout`
+[performance benchmark](../benchmarks/dotnet) uses exactly this `home` + `layout`
 shape.) See [Architecture → Performance](architecture.md#performance-characteristics).
 
 ---
@@ -951,7 +966,10 @@ Rules:
 - **Region-context scope.** An override body runs in the **region's own context** — the
   component's props (`@(theme)`, `@(title)`) plus the region's model (`@(Title)` against
   `Article`) — exactly like the default body it replaces. An `@out(value)` inside a region body
-  is the ordinary "no slot" error (**HED5012**); a region is not the host of the component's slot.
+  is the ordinary "no slot" error (**HED5012**); a region does not inherit the component's slot.
+  A region that declares a slot **of its own** (`<r(out:: T)>`) is a slot definition like any other:
+  inside it `@out(value)` projects that region's caller content, and a bare `@out()` there is
+  **HED5013**.
 - **Self- and sibling calls.** Inside a fill body, calling the region's **own** name renders the
   region's *default* (no recursion); calling a **sibling** region resolves that sibling's fill
   (or default) — exactly like the default body it replaces.
@@ -964,6 +982,20 @@ Rules:
   scope at the call site stays a **normal override** (the local override wins — it is never
   rerouted to a region fill); a `<x:x>` naming neither a region nor anything in scope keeps
   today's *"Base definition x couldn't be found"* error.
+- **One body, whatever calls it.** A region's body is compiled **once per component body**, against
+  the model of whichever call site inside that body reaches it first; a later call site's value is cast
+  to that same model. So an untyped `<:r>` called both directly and from inside `@list(Items){{@r()}}`
+  renders the *component's* members at both call sites — and if the element's type is not the
+  component's, the cast fails at render. Declare a separate region per model rather than calling one
+  region from two places that hand it different types.
+  The **fill scope is not part of that identity either**: two calls in one component body that fill the
+  same region differently share the body the first of them compiled, fills included. Fill once per
+  component body, or move the second call to document scope, where each call parses its own copy.
+- **What the model is.** A region declaring `:: T` runs its body against `T`. A region declaring
+  `dynamic`, `object`, `System.Object` — or nothing at all — runs it against the value its call site
+  passes, because all four resolve to `System.Object` and none of them says anything about the model.
+  The one thing `dynamic` still changes is a call site that passes a member path: as everywhere else,
+  that reaches the model accessor's dynamic exit and the body's reads bind at render.
 - **Both backends.** Region defaults **and** overridden fills precompile natively under the
   source generator and render byte-identically to the dynamic engine.
 
@@ -983,7 +1015,8 @@ inline body attached to a call.
 ```
 
 Because the body is itself a full template, subtemplates may contain text, output blocks,
-nested definitions, imports, and raw blocks — to any depth. A call hands its subtemplate to
+nested definitions, imports, and raw blocks — nested as deeply as you like within the compiler's
+depth limit (see [Imports](#imports---)). A call hands its subtemplate to
 its extension; `@list(Articles){{ … }}`, for instance, renders its body once per element with
 the element as the current model:
 
@@ -1080,6 +1113,13 @@ The path between `{{ }}` is resolved relative to `TemplateOptions.RootPath` (an 
 wins, per `Path.Combine`). The path is taken **verbatim** — no trimming — so keep the braces
 tight (`@<<{{layout.heddle}}`); a stray space inside becomes part of the filename.
 
+An import path is **not** a template key, and the key idioms do not apply to it: write the
+extension (`@<<{{lib.heddle}}`, not `@<<{{lib}}`), and do not spell it `~/lib.heddle` or
+`/lib.heddle` expecting "from the root" — `Path.Combine` reads the first as a literal `~`
+directory and the second as an absolute path. `.` and `..` segments *are* reduced, because
+`Path.GetFullPath` reduces them. The precompiler refuses the spellings the key grammar would
+rename, so a template that resolves on one tier resolves on both.
+
 **`@<<{{ path }}` — the composition import.** Handled at parse time by dedicated `@<<` syntax
 ([HeddleMainListener.ExitImport_block](../src/Heddle/Language/HeddleMainListener.cs)). It parses
 the referenced file, **merges its definitions** into the current document (callable after the
@@ -1091,6 +1131,52 @@ a library of definitions or a layout across templates. A `@<<` import must appea
 level** of a document — nesting it inside a subtemplate (an `@if`/`@for` body, an output block, or
 a definition body) is a compile error (**`HED4004`**), because composition merges definitions and
 re‑bases chains into the document as a whole and has no well‑defined meaning at a nested scope.
+
+An import that names a file the engine cannot read — not there yet, renamed, or a path the platform
+rejects — is a compile error (**`HED4009`**) positioned at the `@<<` directive, naming the read
+failure; that import is skipped and the rest of the document still compiles. This is the ordinary
+state of a document being edited, which is why it is a diagnostic rather than a thrown error: an
+editor analysing the buffer keeps reporting everything else about it.
+
+Imports may nest, and two branches may import the same library. What they may not do is form a
+**cycle** — an import that reaches a document already being imported. That is a compile error
+(**`HED4006`**) naming the chain that closes it; the repeated import is skipped and the rest of the
+document still compiles.
+
+Depth has a limit in the same spirit. Nesting beyond what the compiler can carry is a compile error
+(**`HED4007`**) rather than something that exhausts its stack, and the limit is a fixed count rather than
+a measurement of available memory, so a template behaves the same on every host. Two bounds apply:
+
+- **Parse nesting — 300 levels**, counted in grammar rules rather than in constructs you can see. A block
+  such as `@if(...){{ … }}` costs about three, so roughly a hundred nested blocks reach it; a chain of
+  operators in one expression costs one each. The figure is set against the smallest stack the engine can
+  be hosted on — a 1 MB thread, which is the Windows and thread-pool default — rather than the largest, so
+  that it is reached before the stack is. It remains far above hand-written templates, where a few dozen
+  levels of nesting is already unusual.
+- **`@<<` import nesting — 64 levels.** Imports are counted separately because each one parses another
+  document in place. This bounds the depth of a chain, not how many imports a document may have: a file
+  with hundreds of sibling imports is unaffected.
+- **`@<<` imports expanded — 1024 in total, per document compiled.** Depth is not the only way an import
+  graph grows. Each repeat of an import is parsed again — that is what lets it contribute its output at
+  each position — so a file imported from two places in a document that is itself imported from two
+  places multiplies out: sixteen such levels are acyclic, well inside the depth limit, and expand to a
+  hundred thousand parses. Past the total, the remaining imports are skipped and a compile error
+  (**`HED4008`**) says so once. Ordinary composition is nowhere near it; reaching it means a library is
+  being pulled in along many paths at once, and naming it in one place fixes the multiplication.
+
+The same bounds apply at build time in the source generator, where an unbounded parse would take down the
+compiler rather than fail the build.
+
+**Why the limit is where it is.** Prefix operators (`!`, `-`, `+`, `~`) and the right-associative `?:`
+and `??` are parsed by recursive descent, so each one costs a stack frame — far more stack per level than
+a block does. The bound is set below where those shapes exhaust a 1 MB thread, which is the Windows and
+thread-pool default, so it is reached first there.
+
+**Known limit.** That bound covers the parser's descent only. A long run of prefix operators also drives
+ANTLR's *prediction* into deep recursion, which the counter cannot see — the rule depth is still in single
+figures when the stack runs out — so a sufficiently long run terminates the process at any stack size.
+This is upstream ([antlr/antlr4#744](https://github.com/antlr/antlr4/issues/744)) and no fixed count fixes
+it. If you compile untrusted templates, put a size limit in front of the compiler.
 
 **`@import(){{ path }}` — removed.** The old compile‑time include
 ([ImportExtension.cs](../src/Heddle/Extensions/Archived/ImportExtension.cs)) merged nothing into the
@@ -1270,8 +1356,8 @@ slightly between a definition header and a body. For the full picture see
   [Output profiles](#output-profiles) and
   [Built‑in Extensions → Output profiles](built-in-extensions.md#output-profiles).
 - **Recursion is capped** by `TemplateOptions.MaxRecursionCount` (default 100).
-- **Type mismatches and unknown members fail at compile time** (or, in `DEBUG`, when
-  `Generate` is given a model of the wrong type) — see
+- **Type mismatches and unknown members fail at compile time** (or, when `Generate` is
+  given a model of the wrong type, with a `TemplateProcessingException` at render) — see
   [error handling](csharp-api.md#errors-and-diagnostics).
 
 Continue to the **[Built‑in Extensions](built-in-extensions.md)** reference for the helpers

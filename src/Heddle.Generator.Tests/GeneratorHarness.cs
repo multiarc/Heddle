@@ -91,13 +91,70 @@ namespace Heddle.Generator.Tests
 
     internal static class GeneratorHarness
     {
+        /// <summary>
+        /// Adds the assembly-level export declaration a probe compilation needs to be a <b>realistic</b> host assembly.
+        /// Since the generator honours <c>[ExportExtensions]</c> — because the runtime does — a probe that declares
+        /// extension types and no attribute declares extensions the runtime would never register, and the binder
+        /// correctly ignores them. Probes that exist to exercise discovery therefore export everything, which is the
+        /// parameterless <c>All</c> form.
+        /// <para>The attribute is inserted after the source's <c>using</c> directives (C# requires that) and is declared
+        /// here once rather than repeated per probe: a duplicated test input is a duplicate rule one level up.</para>
+        /// </summary>
+        public static string WithAllExtensionsExported(string source)
+        {
+            const string attribute = "[assembly: Heddle.Attributes.ExportExtensions]";
+            var lines = source.Replace("\r\n", "\n").Split('\n').ToList();
+
+            var insertAt = 0;
+            for (var i = 0; i < lines.Count; i++)
+                if (lines[i].TrimStart().StartsWith("using ", StringComparison.Ordinal))
+                    insertAt = i + 1;
+
+            lines.Insert(insertAt, attribute);
+            return string.Join("\n", lines);
+        }
+
+        /// <summary>
+        /// Where these runs may write observation's content-addressed intermediate assemblies.
+        /// <para>Every real build has one: <c>Heddle.Generator.targets</c> sets
+        /// <c>$(HeddleObserveIntermediatePath)</c> for any project that has not turned observation off. A harness
+        /// without one is a harness unlike every consumer — and since a body's typing now comes from the observed
+        /// compile rather than from a table of names, it is the difference between the emitter reading a hook and
+        /// reading nothing at all. A test that wants the nowhere-to-write case declares the key empty and gets it.
+        /// </para>
+        /// </summary>
+        private static readonly string ObserveDirectory = CreateObserveDirectory();
+
+        private static string CreateObserveDirectory()
+        {
+            var path = Path.Combine(Path.GetTempPath(), "heddle-observe-harness", Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(path);
+            return path;
+        }
+
+        /// <summary>The caller's global options with the observe directory filled in where the caller did not name
+        /// one — never overwriting a value a test chose, empty included.</summary>
+        private static Dictionary<string, string> WithObserveDefaults(Dictionary<string, string> globalOptions)
+        {
+            const string key = "build_property.HeddleObserveIntermediatePath";
+            var merged = globalOptions == null
+                ? new Dictionary<string, string>()
+                : new Dictionary<string, string>(globalOptions);
+            if (!merged.ContainsKey(key))
+                merged[key] = ObserveDirectory;
+            return merged;
+        }
+
         private static readonly IReadOnlyList<MetadataReference> References = BuildReferences();
 
         private static IReadOnlyList<MetadataReference> BuildReferences()
         {
-            var tpa = (string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES");
+            var tpa = Heddle.Generator.Tests.HostAssemblies.TrustedOrLoaded();
             var refs = tpa.Split(Path.PathSeparator)
                 .Where(p => !string.IsNullOrEmpty(p) && File.Exists(p))
+                // Exclude the generator itself; it embeds the runtime types, causing CS0433 if both are referenced.
+                .Where(p => !string.Equals(Path.GetFileNameWithoutExtension(p), "Heddle.Generator",
+                    StringComparison.OrdinalIgnoreCase))
                 .Select(p => (MetadataReference)MetadataReference.CreateFromFile(p))
                 .ToList();
             refs.Add(MetadataReference.CreateFromFile(
@@ -116,33 +173,70 @@ namespace Heddle.Generator.Tests
             return RunTexts(texts, globalOptions, perFileOptions);
         }
 
-        public static GeneratorRun RunTexts(
-            IReadOnlyList<AdditionalText> texts,
+        /// <summary>A run whose compilation carries C# sources — needed by anything that depends on an
+        /// assembly-level attribute (<c>[assembly: ExportFunctions(...)]</c>) or on source-declared extension
+        /// types, which an empty compilation cannot express.</summary>
+        public static GeneratorRun RunWithSources(
+            IReadOnlyList<(string path, string content)> templates,
+            IReadOnlyList<string> sources,
+            Dictionary<string, string> globalOptions = null,
+            Dictionary<string, Dictionary<string, string>> perFileOptions = null,
+            CSharpParseOptions parseOptions = null)
+        {
+            var options = parseOptions ?? CSharpParseOptions.Default;
+            var trees = sources.Select(src => CSharpSyntaxTree.ParseText(src, options)).ToArray();
+            return RunTexts(templates.Select(t => (AdditionalText)new TestAdditionalText(t.path, t.content)).ToList(),
+                globalOptions, perFileOptions, syntaxTrees: trees, parseOptions: options);
+        }
+
+        /// <summary>A compilation in which the <c>Heddle</c> assembly is not visible among
+        /// <c>ReferencedAssemblySymbols</c> — the aliased/embedded/ILMerged shape. The generated manifest is not
+        /// compiled here (it cannot be, without the runtime types); only the generator's own output and diagnostics
+        /// are under test.</summary>
+        public static GeneratorRun RunWithoutHeddleReference(
+            IReadOnlyList<(string path, string content)> templates,
             Dictionary<string, string> globalOptions = null,
             Dictionary<string, Dictionary<string, string>> perFileOptions = null)
         {
+            var references = References
+                .Where(r => !(r.Display ?? string.Empty).EndsWith("Heddle.dll", StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            return RunTexts(templates.Select(t => (AdditionalText)new TestAdditionalText(t.path, t.content)).ToList(),
+                globalOptions, perFileOptions, references);
+        }
+
+        public static GeneratorRun RunTexts(
+            IReadOnlyList<AdditionalText> texts,
+            Dictionary<string, string> globalOptions = null,
+            Dictionary<string, Dictionary<string, string>> perFileOptions = null,
+            IReadOnlyList<MetadataReference> references = null,
+            IReadOnlyList<SyntaxTree> syntaxTrees = null,
+            CSharpParseOptions parseOptions = null)
+        {
             var compilation = CSharpCompilation.Create("HeddleGenTest",
-                Array.Empty<SyntaxTree>(),
-                References,
+                syntaxTrees ?? (IEnumerable<SyntaxTree>) Array.Empty<SyntaxTree>(),
+                references ?? References,
                 new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 
             var additionalTexts = texts.ToImmutableArray();
 
             var optionsProvider = new TestConfigOptionsProvider(
-                globalOptions ?? new Dictionary<string, string>(),
+                WithObserveDefaults(globalOptions),
                 perFileOptions ?? new Dictionary<string, Dictionary<string, string>>());
 
             var driver = CSharpGeneratorDriver.Create(
                 new[] { new HeddleTemplateGenerator().AsSourceGenerator() },
                 additionalTexts,
-                parseOptions: CSharpParseOptions.Default,
+                // The driver parses generated sources into this same compilation, so it has to agree with the
+                // trees already in it exactly as the real build's driver does.
+                parseOptions: parseOptions ?? CSharpParseOptions.Default,
                 optionsProvider: optionsProvider);
 
             var updated = driver.RunGeneratorsAndUpdateCompilation(compilation, out var output, out var diagnostics);
             return new GeneratorRun(output, diagnostics, updated.GetRunResult());
         }
 
-        /// <summary>Runs the generator and returns the driver (D19) for a <c>Verify.SourceGenerators</c> snapshot of
+        /// <summary>Runs the generator and returns the driver for a <c>Verify.SourceGenerators</c> snapshot of
         /// the generated sources and diagnostics.</summary>
         public static GeneratorDriver RunDriver(
             IReadOnlyList<(string path, string content)> templates,
@@ -159,7 +253,7 @@ namespace Heddle.Generator.Tests
                 .ToImmutableArray();
 
             var optionsProvider = new TestConfigOptionsProvider(
-                globalOptions ?? new Dictionary<string, string>(),
+                WithObserveDefaults(globalOptions),
                 perFileOptions ?? new Dictionary<string, Dictionary<string, string>>());
 
             GeneratorDriver driver = CSharpGeneratorDriver.Create(

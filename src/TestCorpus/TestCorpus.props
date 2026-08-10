@@ -1,0 +1,56 @@
+<!--
+  The shared test corpus: the SHARING MECHANISM, not a second home.
+
+  The corpus stays in `src/Heddle.Tests/TestTemplate/`. Copying an input into a consumer's output directory
+  so a test can read it is a build copy, not a second home for that input, and which project directory
+  holds a git-tracked test input is a filing detail rather than a correctness property.
+
+  This directory holds only the wiring, and deliberately belongs to no project: no csproj's default
+  Compile/None glob reaches `src/TestCorpus/`, so all four consuming test projects import it on identical terms.
+
+  What that buys:
+
+    * Every consumer gets its own copy under its own output directory's `TestTemplate/`, so no test rewrites
+      its assembly path to name a sibling project and climb out of `bin/<cfg>/<tfm>` — the shape that once
+      silently no-op'd five integration tests. Locating the corpus is
+      `Path.Combine(AppContext.BaseDirectory, "TestTemplate")` and nothing else.
+
+    * The generator suites read the same files the engine suites do, which is what lets a template cross the
+      precompiled gauntlet at all.
+
+    * One glob replaces 112 hand-listed `<None Update="TestTemplate\…">` rows, where a file added without its
+      row silently never reached any output directory.
+
+  The link folder is named `TestTemplate` so every existing read path is unchanged.
+
+  NOT globbed: `src/Heddle.Tests/TestOutput/`, the checked-in artifacts tests once wrote back into the corpus
+  directory. A directory several projects copy from must not also be one tests write into, because "the corpus
+  is input" is what makes byte-neutrality checkable — see TestCorpusIndex.WrittenArtifactPath.
+
+  OUT OF SCOPE: `benchmarks/**` and `samples/**` have their own contracts — the benchmark harnesses carry a
+  separate, gated corpus of their own under `benchmarks/dotnet/GoldenCorpus/`, and nothing here feeds it.
+  `src/Heddle.LanguageServices.Tests/Corpus` stays separate — editor-tier templates.
+-->
+<Project>
+
+  <PropertyGroup>
+    <!-- The one place the corpus's physical location is written down. Everything else — every consumer,
+         every test — reaches it through its own output directory. -->
+    <TestCorpusSourceDir>$(MSBuildThisFileDirectory)..\Heddle.Tests\TestTemplate\</TestCorpusSourceDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="$(TestCorpusSourceDir)**\*"
+             Link="TestTemplate\%(RecursiveDir)%(Filename)%(Extension)"
+             CopyToOutputDirectory="PreserveNewest"
+             Visible="true" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The single accessor and the single intent table, compiled into every consumer rather than triplicated
+         per suite — the same shape the shared test vectors already use. -->
+    <Compile Include="$(MSBuildThisFileDirectory)TestCorpusIndex.cs" Link="TestCorpus\TestCorpusIndex.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)CorpusIntent.cs" Link="TestCorpus\CorpusIntent.cs" />
+  </ItemGroup>
+
+</Project>

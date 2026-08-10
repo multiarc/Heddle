@@ -4,7 +4,7 @@ using System.IO;
 namespace Heddle.Samples
 {
     /// <summary>
-    /// Shared capture-mode plumbing for every gallery sample (phase 9 D11). Linked into each sample csproj so the
+    /// Shared capture-mode plumbing for every gallery sample. Linked into each sample csproj so the
     /// `--capture out` convention resolves identically everywhere: the directory is taken relative to the sample's
     /// own source folder (discovered from the running assembly), not the shell's current directory — so
     /// `dotnet run --project samples/X -- --capture out` writes to `samples/X/out` no matter where it was invoked.

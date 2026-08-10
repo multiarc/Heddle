@@ -5,9 +5,6 @@ using Heddle.Language;
 using Heddle.Strings.Core;
 
 namespace Heddle.Runtime {
-    /// <summary>
-    /// Interface that should be implemented in every Template
-    /// </summary>
     public interface IExtension: IDisposable {
         void SetUpRenderType(RenderType renderType);
 

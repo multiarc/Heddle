@@ -12,8 +12,8 @@ using Xunit;
 namespace Heddle.LanguageServices.Tests
 {
     /// <summary>
-    /// Phase 6 process/lifecycle checks: <c>--version</c> from the built server, and the CI cold-start guard
-    /// (initialize → first publishDiagnostics on the benchmark-sized home page under the automated 5 s bound).
+    /// Process/lifecycle checks: <c>--version</c> from the built server, and cold-start initialization
+    /// to first diagnostic completion within the 5-second CI bound.
     /// </summary>
     public class ServerLifecycleTests
     {

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using Heddle.Language.Binding;
 
 namespace Heddle.Runtime.Expressions
 {
@@ -79,33 +80,25 @@ namespace Heddle.Runtime.Expressions
                 throw new ArgumentNullException(nameof(name));
             if (staticMethod == null)
                 throw new ArgumentNullException(nameof(staticMethod));
-            if (!staticMethod.IsStatic)
-                throw new ArgumentException("A registered function method must be static.", nameof(staticMethod));
-            if (staticMethod.ContainsGenericParameters)
-                throw new ArgumentException("A registered function method must not be an open generic.", nameof(staticMethod));
-            if (staticMethod.ReturnType == typeof(void))
-                throw new ArgumentException("A registered function method must return a value.", nameof(staticMethod));
-            foreach (var parameter in staticMethod.GetParameters())
-            {
-                if (parameter.ParameterType.IsByRef || parameter.ParameterType.IsPointer)
-                    throw new ArgumentException("A registered function method must not have ref/out/pointer parameters.", nameof(staticMethod));
-            }
+            // Shared ExportRules predicate keeps generator manifest counts in sync with this method's rejections.
+            var rejection = ExportRules.Evaluate(DescribeMethod(staticMethod));
+            if (rejection != ExportRejection.None)
+                throw new ArgumentException(ExportRules.RejectionMessage(rejection), nameof(staticMethod));
 
             EnsureMutable();
             AddOrReplace(FunctionEntry.FromMethod(name, staticMethod));
         }
 
-        /// <summary>True when a function with this exact name is registered.</summary>
         public bool Contains(string name)
         {
             return name != null && _functions.ContainsKey(name);
         }
 
         /// <summary>
-        /// <para>Registers every function the assembly exports via <c>[assembly: ExportFunctions(...)]</c> (phase 6
-        /// D24): for each container, each eligible public static method under its lowercase-invariant name, through
+        /// <para>Registers every function the assembly exports via <c>[assembly: ExportFunctions(...)]</c>: for each
+        /// container, each eligible public static method under its lowercase-invariant name, through
         /// the exact <see cref="Register(string, MethodInfo)"/> path (replace-on-exact-signature, overloads ranked
-        /// per phase 1 D12).</para>
+        /// by the shared overload rules).</para>
         /// <para>Throws <see cref="InvalidOperationException"/> when frozen and <see cref="ArgumentException"/> for
         /// an invalid export (non-public/non-static container, or an ineligible method — named in the message).
         /// Idempotent per assembly; not thread-safe pre-freeze (same rule as <see cref="Register(string, MethodInfo)"/>).</para>
@@ -131,17 +124,16 @@ namespace Heddle.Runtime.Expressions
 
             bool isStaticClass = container.IsClass && container.IsAbstract && container.IsSealed;
             bool isPublic = container.IsPublic || container.IsNestedPublic;
-            if (!isStaticClass || !isPublic)
-                throw new ArgumentException(
-                    $"[ExportFunctions] container '{container.FullName}' must be a public static class.");
+            if (!ExportRules.IsContainerEligible(isStaticClass, isPublic))
+                throw new ArgumentException(ExportRules.ContainerIneligibleMessage(container.FullName));
 
             foreach (var method in container.GetMethods(BindingFlags.Public | BindingFlags.Static |
                                                         BindingFlags.DeclaredOnly))
             {
-                if (method.IsSpecialName)
+                if (!ExportRules.IsCandidate(DescribeMethod(method)))
                     continue; // operators / property accessors are not exportable functions
 
-                var name = method.Name.ToLowerInvariant();
+                var name = ExportRules.FunctionName(method.Name);
                 try
                 {
                     Register(name, method);
@@ -149,15 +141,51 @@ namespace Heddle.Runtime.Expressions
                 catch (ArgumentException e)
                 {
                     throw new ArgumentException(
-                        $"[ExportFunctions] method '{container.FullName}.{method.Name}' is not an eligible function: {e.Message}",
+                        ExportRules.MethodIneligibleMessage(container.FullName, method.Name,
+                            ExportRules.Evaluate(DescribeMethod(method))),
                         e);
                 }
             }
         }
 
+        /// <summary>The shared eligibility record for one reflected method — the reflection adapter of
+        /// <see cref="ExportedMethodFacts"/>. <c>ParameterTypeKeys</c> uses <c>Type.FullName</c>, which is <b>not</b>
+        /// the spelling the symbol side produces — a constructed generic is
+        /// <c>List`1[[System.Int32, …]]</c> here and <c>System.Collections.Generic.List&lt;int&gt;</c> there. What
+        /// has to agree is not the text but which pairs of types the key tells apart, because
+        /// <see cref="ExportRules.SameSignature"/> decides how many overloads a container exports on each side and
+        /// the manifest compares the counts. This side is the one that can see less, so the symbol side is written
+        /// to lose the same distinctions: tuple element names, which are not in metadata, and <c>dynamic</c>, which
+        /// is <see cref="object"/> here.</summary>
+        internal static ExportedMethodFacts DescribeMethod(MethodInfo method)
+        {
+            var parameters = method.GetParameters();
+            var keys = new string[parameters.Length];
+            bool byRefOrPointer = false;
+            for (int i = 0; i < parameters.Length; i++)
+            {
+                var type = parameters[i].ParameterType;
+                if (type.IsByRef || type.IsPointer)
+                    byRefOrPointer = true;
+                keys[i] = type.FullName ?? type.Name;
+            }
+
+            return new ExportedMethodFacts
+            {
+                Name = method.Name,
+                IsStatic = method.IsStatic,
+                IsPublic = method.IsPublic,
+                IsOpenGeneric = method.ContainsGenericParameters,
+                ReturnsVoid = method.ReturnType == typeof(void),
+                HasByRefOrPointerParameter = byRefOrPointer,
+                IsSpecialName = method.IsSpecialName,
+                ParameterTypeKeys = keys
+            };
+        }
+
         /// <summary>
-        /// Enumerates every registered overload as <c>(Name, Method, ParameterTypes, ReturnType)</c> (phase 6 D3;
-        /// feeds LSP completion and hover). <c>Method</c> is the static <see cref="MethodInfo"/> for method
+        /// Enumerates every registered overload as <c>(Name, Method, ParameterTypes, ReturnType)</c> (feeds LSP
+        /// completion and hover). <c>Method</c> is the static <see cref="MethodInfo"/> for method
         /// registrations (incl. built-ins) and the delegate's target method for delegate registrations;
         /// <c>ParameterTypes</c>/<c>ReturnType</c> are always populated.
         /// </summary>

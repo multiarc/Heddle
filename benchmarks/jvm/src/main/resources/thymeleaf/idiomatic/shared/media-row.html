@@ -1,0 +1,15 @@
+<!--/*
+  Idiomatic Thymeleaf authoring — official doc citations:
+  https://www.thymeleaf.org/doc/tutorials/3.1/usingthymeleaf.html
+    §4.8 (literal substitutions: |...| — the image source and caption are composed
+    by the template from the row's name), §5.2 (setting specific
+    attributes: th:src, th:alt), §8.1 (defining fragments),
+    §12 (unescaped text: th:utext)
+*/-->
+<div class="media-row" th:fragment="media_row(item)">
+    <img th:src="|/img/${item.name}.jpg|" th:alt="${item.name}" src="/img/placeholder.jpg" alt="placeholder" />
+    <div class="media-body">
+        <h4 th:utext="${item.name}">media name</h4>
+        <p th:utext="|Caption for ${item.name}|">Caption for media name</p>
+    </div>
+</div>

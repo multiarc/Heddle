@@ -1,0 +1,9 @@
+<% /* idiomatic Eta implementation (Phase 4).
+      Patterns followed: https://eta.js.org/docs/4.x.x/syntax/cheatsheet,
+      https://eta.js.org/docs/4.x.x/syntax/layouts-and-blocks (layout, it.body),
+      https://eta.js.org/docs/4.x.x/api/overview (loadTemplate, render). */ %>
+<section class="tile">
+  <h3><%= it.name %></h3>
+  <p class="v"><%= it.value %></p>
+  <span class="badge"><%= it.badge %></span>
+</section>

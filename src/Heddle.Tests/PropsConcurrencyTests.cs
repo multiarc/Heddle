@@ -36,7 +36,7 @@ namespace Heddle.Tests
         [Fact]
         public void ParallelRendersWithDynamicPropsAreIsolated()
         {
-            // The named argument reads a caller-scope member (D8), so it is dynamic → the binder clones per
+            // Named arguments read caller-scope members, making them dynamic, so the binder clones per
             // invocation. Opposite values per thread must never cross-contaminate.
             var t = Compile(
                 "@% <label(text: string = \"def\")>{{[@(text)]}} :: PropArticle %@\n@label(Article, text: style)",

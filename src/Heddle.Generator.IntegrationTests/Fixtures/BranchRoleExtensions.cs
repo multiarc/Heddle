@@ -3,24 +3,72 @@ using Heddle.Attributes;
 using Heddle.Core;
 using Heddle.Data;
 using Heddle.Exceptions;
+using Heddle.Runtime;
 
-// Exports the custom branch-role trio (and the bodiless zebra-style participant) to the dynamic backend so a
-// custom-trio template resolves the same [ExtensionName] types on both tiers — the WI6 (§8.3) universality gate.
+// AgingExtension is deprecated on purpose — naming it here is the warning a host would get, and the point of the
+// fixture is that a warning does not make the name unwritable.
+#pragma warning disable 618
+
 [assembly: ExportExtensions(
     typeof(Heddle.Generator.IntegrationTests.Fixtures.YellExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.BellowExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.IncludeExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.ProjectExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.ScannerExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.ChainedTypeProbeExtension),
     typeof(Heddle.Generator.IntegrationTests.Fixtures.BeginExtension),
     typeof(Heddle.Generator.IntegrationTests.Fixtures.BetweenExtension),
     typeof(Heddle.Generator.IntegrationTests.Fixtures.FinishExtension),
     typeof(Heddle.Generator.IntegrationTests.Fixtures.FlagExtension),
     typeof(Heddle.Generator.IntegrationTests.Fixtures.GateExtension),
     typeof(Heddle.Generator.IntegrationTests.Fixtures.RowExtension),
-    // Phase 8 (WI9): the extension-parameter fixtures the cross-tier differential renders on the dynamic side.
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.PeekExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.NoteExtension),
     typeof(Heddle.Generator.IntegrationTests.Fixtures.GridExtension),
     typeof(Heddle.Generator.IntegrationTests.Fixtures.GridReqExtension),
     typeof(Heddle.Generator.IntegrationTests.Fixtures.EncodedGridExtension),
     typeof(Heddle.Generator.IntegrationTests.Fixtures.EncodedBareExtension),
     typeof(Heddle.Generator.IntegrationTests.Fixtures.NarrowItemExtension),
-    typeof(Heddle.Generator.IntegrationTests.Fixtures.NullableNarrowItemExtension))]
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.NullableNarrowItemExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.NullableLiftDefaultExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.BoxedDefaultExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.DriftContainer.NestedYellExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.DriftBaseExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.DriftInheritedExtension),
+    // These nine were never exported before, closing the discovery-scope gap by making the export list the single source of truth.
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.HookedExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.MalformedDupExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.MalformedReservedExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.MalformedNullNameExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.MalformedDefaultExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.MalformedTypeExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.WideningItemExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.NullableIfaceItemExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.NullableWidenItemExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.NullableEnumItemExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.NullableValueTypeItemExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.TakesNullableIntExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.TakesObjectSequenceExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.TakesObjectArrayExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.TakesIntArrayExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.TakesStringOrIntExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.BadgedExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.EnumDefaultExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.EnumZeroDefaultExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.ByteEnumDefaultExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.NullableEnumDefaultExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.ObjectEnumDefaultExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.EnumIntDefaultExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.InternalEnumDefaultExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.NarrowDefaultsExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.EscapedPropNamesExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.UnspellablePropNamesExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.NonFiniteDoubleDefaultExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.NonFiniteFloatDefaultExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.FiniteDoubleDefaultExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.SecretExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.BoxedExtension),
+    typeof(Heddle.Generator.IntegrationTests.Fixtures.AgingExtension))]
 
 namespace Heddle.Generator.IntegrationTests.Fixtures
 {
@@ -31,7 +79,7 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
     {
         public static bool Truthy(object value) => value != null && (!(value is bool b) || b);
 
-        /// <summary>Opportunistic publish (R11): an opener carries no <c>[ScopeChannel]</c>, so a set with no
+        /// <summary>Opportunistic publish: an opener carries no <c>[ScopeChannel]</c>, so a set with no
         /// participant sibling provisions no frame and <see cref="Scope.Publish"/> throws — swallowed, mirroring
         /// the built-in openers' frameless no-op.</summary>
         public static void TryPublish(in Scope scope, bool satisfied)
@@ -53,8 +101,8 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
         }
     }
 
-    /// <summary>Opener — canonical shape with the <c>InitStart</c> parent-model override (R12). Because it overrides a
-    /// compile-time hook, the emitter degrades a call to it to the dynamic tier (no HED7015, §6.3.3).</summary>
+    /// <summary>Opener — canonical shape with the <c>InitStart</c> parent-model override. Because it overrides a
+    /// compile-time hook, the emitter degrades a call to it to the dynamic tier.</summary>
     [ExtensionName("begin")]
     [BranchRole(BranchRole.Opener)]
     public sealed class BeginExtension : AbstractExtension
@@ -173,10 +221,45 @@ namespace Heddle.Generator.IntegrationTests.Fixtures
         }
     }
 
+    /// <summary>
+    /// A CUSTOM zero-output extension. Its <c>InitStart</c> returns <c>null</c> — the runtime protocol that makes
+    /// the compiler drop the block — and it declares <c>[ZeroOutput]</c>, the symbol-readable form of the same fact.
+    /// The generator classifies zero-output by reading <c>[ZeroOutput]</c>, so custom directives (like this one) and
+    /// built-in directives are handled consistently.
+    /// </summary>
+    [ExtensionName("note")]
+    [ZeroOutput]
+    public sealed class NoteExtension : AbstractExtension
+    {
+        public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType, ExType parent)
+            => null;
+
+        public override object ProcessData(in Scope scope) => null;
+
+        public override void RenderData(in Scope scope)
+        {
+        }
+    }
+
+    /// <summary>
+    /// The per-carrier locals probe. A roleless, <b>non</b>-<c>[ScopeChannel]</c> extension that READS the local
+    /// channel — the read twin of <see cref="FlagExtension"/>'s opportunistic publish. Because it carries no
+    /// <c>[ScopeChannel]</c>, neither tier counts it as a participant, so a body containing only <c>@flag</c> +
+    /// <c>@peek</c> is classified as non-participating on both tiers. What it renders therefore reports,
+    /// byte-for-byte, <em>whether that body was given a frame anyway</em>.
+    /// </summary>
+    [ExtensionName("peek")]
+    public sealed class PeekExtension : AbstractExtension
+    {
+        public override object ProcessData(in Scope scope) =>
+            BranchTrioSupport.ReadSatisfied(scope, out var present) || present ? "seen" : "unseen";
+
+        public override void RenderData(in Scope scope) => scope.Renderer.Render((string) ProcessData(scope));
+    }
+
     /// <summary>A roleless bodiless <c>[ScopeChannel]</c> participant (the documented "zebra" pattern): publishes to
-    /// a private key each sibling flips. Binds directly on the precompiled tier; the §5.3.3a fix makes the hosting
-    /// body provision a locals frame (keyed off <c>HasScopeChannel</c>) so <see cref="Scope.Publish"/> no longer
-    /// throws at render.</summary>
+    /// a private key each sibling flips. Binds directly on the precompiled tier; the hosting body provisions a locals
+    /// frame (keyed off <c>HasScopeChannel</c>) so <see cref="Scope.Publish"/> no longer throws at render.</summary>
     [ExtensionName("row")]
     [ScopeChannel]
     public sealed class RowExtension : AbstractExtension

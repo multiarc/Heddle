@@ -1,0 +1,5 @@
+{# Idiomatic Tera nav partial one navigation link. Patterns follow
+   the Tera docs (keats.github.io/tera): "Include" (partial rendered with the including
+   scope's current context, referencing its loop variable); default auto-escaping left on
+   (nav values contain no characters HTML escaping rewrites, so escaping is byte-neutral). #}
+<li class="nav-link"><a href="{{ link.href }}">{{ link.label }}</a></li>

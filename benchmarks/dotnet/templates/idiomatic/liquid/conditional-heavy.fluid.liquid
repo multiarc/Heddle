@@ -1,0 +1,26 @@
+{%- comment -%}
+  Idiomatic Liquid -- conditional-heavy (Fluid).
+
+  Patterns followed, from the engines' own documentation:
+    Liquid language reference   https://shopify.github.io/liquid/
+    Fluid                       https://github.com/sebastienros/fluid#readme
+
+  The note text is composed by the template as `note ` + the seq substitution (the
+  model carries data only). Authored the way the docs teach rather than to match the oracle
+  byte-for-byte. Checked by the functional verifier, not the byte gate.
+{%- endcomment -%}
+
+<ul class="matrix">
+  {% for r in rows %}
+    <li>
+      {% if r.is_bronze %}<span class="t0">bronze</span>
+      {% elsif r.is_silver %}<span class="t1">silver</span>
+      {% elsif r.is_gold %}<span class="t2">gold</span>
+      {% else %}<span class="t3">platinum</span>
+      {% endif %}
+      <em>{{ r.name }}</em>
+      {% if r.has_note %}<small>note {{ r.seq }}</small>{% endif %}
+      {% if r.is_active %}<b>active</b>{% endif %}
+    </li>
+  {% endfor %}
+</ul>

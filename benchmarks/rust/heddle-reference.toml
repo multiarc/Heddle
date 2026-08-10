@@ -1,0 +1,41 @@
+# Heddle reference wall-time values for the `summarize` tool.
+#
+# Schema (normative):
+#   pending    = bool     # true while no published run exists to transcribe from
+#   source-run = string   # date of the published run these values come from
+#   [workloads]           # workload id -> Heddle wall time in ns/render, transcribed once
+#   <workload-id> = <ns>  # from the published run and reviewed in diff
+#
+# A standing ruling (2026-07-21, since discharged) held while no run was published: this file
+# carried the schema but no values, and `pending = true` made `summarize` fail loudly
+# ("no published Heddle reference run exists yet") rather than emit tables with fabricated
+# Heddle numbers.
+#
+# SOURCE RUN CAVEAT (2026-07-25). These values come from
+# `docs/benchmarks/2026-07-25/`, which is a **Linux, off-protocol validation run** — not a run on
+# the pinned Windows protocol machine. It is used because it is the
+# published run: its .NET anchor measured all eight workloads in the same session, on the same
+# machine and in the same tuned state as the Rust figures `summarize` compares against, which is
+# the property the ratio column actually needs. When a protocol-machine run is published, repoint
+# `source-run` and re-transcribe — and note that the absolute values will move materially (this
+# run had CPU boost off), even though ordering has so far proved stable.
+#
+# Provenance: each value is the BenchmarkDotNet `Mean` of `RenderHeddle` from
+# `docs/benchmarks/2026-07-25/dotnet/results/<the .NET leg's per-workload report CSV>`,
+# converted to ns/render (the only arithmetic applied). The harness dispersion published
+# alongside these figures is BDN's `Error` and `StdDev`, quoted in the comments below.
+# Suite mapping is pinned; do not re-derive it here — the mapping is the contract, not a
+# convenience.
+
+pending = false
+source-run = "2026-07-25"
+
+[workloads]
+composed-page = 30520.0         # 30.52 μs  (Error 1.151 μs, StdDev 1.076 μs)  TextRenderBenchmarks
+trivial-substitution = 164.6    # 164.6 ns  (Error 0.27 ns, StdDev 0.21 ns)  SubstitutionRenderBenchmarks
+large-loop = 379300.0           # 379.3 μs  (Error 3.66 μs, StdDev 3.42 μs)  LoopRenderBenchmarks
+mixed-page = 3591.0             # 3.591 μs  (Error 0.0026 μs, StdDev 0.0025 μs)  MixedRenderBenchmarks
+conditional-heavy = 19780.0     # 19.78 μs  (Error 0.021 μs, StdDev 0.017 μs)  ConditionalRenderBenchmarks
+fragment-heavy = 3907.0         # 3.907 μs  (Error 0.0031 μs, StdDev 0.0029 μs)  FragmentRenderBenchmarks
+fortunes-encoded = 938.7        # 938.7 ns  (Error 4.77 ns, StdDev 4.46 ns)  FortunesRenderBenchmarks
+encoded-loop = 1882000.0        # 1.882 ms  (Error 0.0122 ms, StdDev 0.0102 ms)  EncodedLoopRenderBenchmarks

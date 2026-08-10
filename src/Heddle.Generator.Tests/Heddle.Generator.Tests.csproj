@@ -1,34 +1,68 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <!-- net48 is Windows-only: .NET Framework under mono on Linux has no practical value and is unstable. -->
     <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
+    <TargetFrameworks Condition="'$(OS)' == 'Windows_NT'">net48;net8.0;net10.0</TargetFrameworks>
     <LangVersion>latest</LangVersion>
     <Nullable>disable</Nullable>
     <IsPackable>false</IsPackable>
+    <!-- xUnit v3 test projects are stand-alone executables that host their own runner. -->
+    <OutputType>Exe</OutputType>
+    <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
     <SignAssembly>true</SignAssembly>
     <AssemblyOriginatorKeyFile>..\..\heddle.snk</AssemblyOriginatorKeyFile>
-  </PropertyGroup>
+      <!-- xUnit1051 wants TestContext.Current.CancellationToken threaded through every call that accepts one.
+         Here those are synchronous Roslyn calls (ParseText, GetDiagnostics) and short-lived fixture I/O in a
+         suite whose tests run in milliseconds, so there is no hang for a token to shorten, only 46 call sites
+         to churn. Revisit if a long-running or genuinely cancellable test is added. -->
+    <NoWarn>$(NoWarn);xUnit1051</NoWarn>
+</PropertyGroup>
 
   <ItemGroup>
     <!-- Microsoft.CodeAnalysis.CSharp (with CSharpGeneratorDriver) flows transitively from the Heddle runtime
          reference at the matching per-TFM version, avoiding a downgrade conflict. -->
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.8.1" />
-    <PackageReference Include="xunit" Version="2.9.3" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-    <!-- D19: Verify.SourceGenerators snapshots over CSharpGeneratorDriver (multi-file outputs + diagnostics). -->
-    <PackageReference Include="Verify.Xunit" Version="31.12.5" />
+    <!-- Except on net48: Heddle's netstandard2.0 leg brings 4.1.0, but Verify.SourceGenerators' net48 asset
+         needs 4.9+, and a real net48 VS host runs a NEWER Roslyn than the 4.1-built generator variant it loads
+         anyway — that forward-hosting is the shape this leg exists to exercise, so the host is pinned to the
+         same 4.11.0 the repo pins for net8.0. -->
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.11.0"
+                      Condition="'$(TargetFramework)' == 'net48'" />
+    <PackageReference Include="xunit.v3" Version="3.2.2" />
+    <!-- Snapshots over CSharpGeneratorDriver: multi-file outputs plus diagnostics. -->
+    <PackageReference Include="Verify.XunitV3" Version="31.28.0" />
     <PackageReference Include="Verify.SourceGenerators" Version="2.5.0" />
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The generator under test; also referenced as a normal assembly so tests can instantiate it and drive it
-         through CSharpGeneratorDriver (D19). -->
-    <ProjectReference Include="..\Heddle.Generator\Heddle.Generator.csproj" />
+    <!-- The generator under test; also referenced as a normal assembly so tests can instantiate and drive it. -->
+    <!-- `gen` alias (in addition to global): the generator links the shared Heddle.Language sources, so
+         ParseContext/DocumentParser/DocumentShaping exist in BOTH referenced assemblies. Shaping tests that drive
+         the generator's copy disambiguate with `extern alias gen;`; every other test keeps the global alias. -->
+    <!-- Each test TFM consumes the generator VARIANT its real-world compiler host would select: net48 hosts
+         (VS 2022, msbuild.exe) load the Roslyn 4.1 floor, a .NET 8 SDK host the 4.11 build, a .NET 10 SDK host
+         the 5.3 build. This also keeps Microsoft.CodeAnalysis at one version per leg, because Heddle.csproj pins
+         the same versions for the matching TFMs. -->
+    <ProjectReference Include="..\Heddle.Generator\Heddle.Generator.csproj" Aliases="global,gen"
+                      Condition="'$(TargetFramework)' == 'net48'" />
+    <ProjectReference Include="..\Heddle.Generator\Heddle.Generator.Roslyn411.csproj" Aliases="global,gen"
+                      Condition="'$(TargetFramework)' == 'net8.0'" />
+    <ProjectReference Include="..\Heddle.Generator\Heddle.Generator.Roslyn530.csproj" Aliases="global,gen"
+                      Condition="'$(TargetFramework)' == 'net10.0'" />
     <!-- The runtime, so generated code (the manifest, referencing Heddle.Precompiled types) compiles. -->
     <ProjectReference Include="..\Heddle\Heddle.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <!-- The line-rule golden vectors, authored once in Heddle.Tests and asserted by every surface that maps an
+         offset to a position. Plain data, no Heddle dependency. -->
+    <Compile Include="..\Heddle.Tests\LineIndexVectors.cs" Link="Shared\LineIndexVectors.cs" />
+    <Compile Include="..\Heddle.Tests\DiagnosticCorpusVectors.cs" Link="Shared\DiagnosticCorpusVectors.cs" />
+    <!-- The prop-default conversion vectors, authored once and driven through both tiers' tables. -->
+    <Compile Include="..\Heddle.Tests\PropDefaultConversionVectors.cs" Link="Shared\PropDefaultConversionVectors.cs" />
+  </ItemGroup>
+
+  <!-- The test-class inventory gate: this suite's classes, checked in and set-equality asserted. -->
+  <Import Project="..\TestInventory\TestInventory.props" />
 
 </Project>

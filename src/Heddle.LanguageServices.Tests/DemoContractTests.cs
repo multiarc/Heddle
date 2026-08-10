@@ -10,10 +10,9 @@ using Xunit;
 namespace Heddle.LanguageServices.Tests
 {
     /// <summary>
-    /// Phase 9 D14 — the cross-host facade contract. One shared fixture set
-    /// (<c>src/Heddle.Demo.Wasm/contract-fixtures/*.json</c>) asserted against <see cref="DemoHost"/> on ordinary
-    /// CoreCLR; the same fixtures are asserted browser-side by the Playwright S3/S4 scenarios. Facade drift between
-    /// the LSP server and the browser host now breaks a test on both sides of the boundary.
+    /// Tests the cross-host facade contract: a shared fixture set
+    /// (<c>src/Heddle.Demo.Wasm/contract-fixtures/*.json</c>) is asserted against <see cref="DemoHost"/> on CoreCLR
+    /// and browser-side. Facade drift between the LSP server and browser host breaks tests on both sides.
     /// </summary>
     public class DemoContractTests
     {
@@ -72,14 +71,13 @@ namespace Heddle.LanguageServices.Tests
             var result = host.Complete(path, offset);
             var byKind = result.Items;
 
-            // Property items are matched EXACTLY as a set (label+detail+insertText) — the scope-type members.
+            // Property items as unordered set.
             var actualProps = byKind.Where(i => i.Kind == "property")
                 .Select(i => (i.Label, i.Detail, i.InsertText)).OrderBy(t => t.Label, StringComparer.Ordinal).ToList();
             var expectedProps = (fixture.ExpectProperties ?? new List<ItemSpec>())
                 .Select(p => (p.Label, p.Detail, p.InsertText)).OrderBy(t => t.Label, StringComparer.Ordinal).ToList();
             Assert.Equal(expectedProps, actualProps);
 
-            // Prop (named-argument) items matched exactly, when the fixture pins them.
             if (fixture.ExpectProps != null)
             {
                 var actualPropArgs = byKind.Where(i => i.Kind == "prop")
@@ -89,15 +87,13 @@ namespace Heddle.LanguageServices.Tests
                 Assert.Equal(expectedPropArgs, actualPropArgs);
             }
 
-            // Keyword items matched exactly as a set.
             var actualKeywords = byKind.Where(i => i.Kind == "keyword").Select(i => i.Label)
                 .OrderBy(l => l, StringComparer.Ordinal).ToList();
             var expectedKeywords = (fixture.ExpectKeywords ?? new List<string>())
                 .OrderBy(l => l, StringComparer.Ordinal).ToList();
             Assert.Equal(expectedKeywords, actualKeywords);
 
-            // Function items: the pinned subset must be present (the registry list is asserted exactly by the
-            // engine's own DefaultFunctionLockstep suite; here we assert the projection surfaces them).
+            // Pinned functions must be present in the projection.
             var actualFunctions = new HashSet<string>(byKind.Where(i => i.Kind == "function").Select(i => i.Label));
             foreach (var fn in fixture.ExpectFunctions ?? new List<string>())
                 Assert.Contains(fn, actualFunctions);

@@ -49,11 +49,94 @@ the lines the change needs. Concretely, the established style is:
   `src/Heddle.Language/generated/` comes from `generate_cs.cmd` (ANTLR 4.13.1) and is
   committed as generated. A grammar change is always `.g4` edit → regen → commit both.
 
+## Comments
+
+The complete rule set for comments in this repository. It applies to inline `//`, `/* */`, and XML
+doc comments, in product code and tests alike, and to existing code the moment you touch it.
+
+**Every commentable file, not only `.cs`.** MSBuild `<!-- -->` comments in `.csproj` / `.props` /
+`.targets`, and `#` comments in `.gitattributes` / `.gitignore`, are held to the same rules — the first
+sweep of these rules was scoped to `.cs` and left every build file citing plans and decision ids, which
+is how the gap was found. So is any comment the build **emits**: a citation written into generated code
+ships into every consumer's output, where an internal document reference means nothing at all.
+
+### C1 — Default to no comment
+
+Before writing or keeping one, try to make it unnecessary: a clearer name, a named local instead of
+an inline expression, an extracted method whose name is the sentence you were about to write, an
+early return that removes the case you were about to explain. Better code beats a comment about
+worse code. The comment is the last resort, not the polite thing to add on the way past.
+
+### C2 — Write one only when the code cannot carry the meaning
+
+Three kinds earn their place:
+
+- a **why** no naming can express — a guard against a real failure, an ordering that matters, a
+  deliberate omission that reads like a bug, a workaround for external behaviour;
+- a **constraint a future edit would silently violate** — "must stay ordinal", "must stay in sync
+  with X";
+- a **test's scenario**, where the test name cannot carry it alone.
+
+### C3 — Delete anything that carries no meaning
+
+Restating the line below it, narrating what the reader can see, section markers (`// helpers`),
+and comments that exist so a member "has documentation". Deleting these loses nothing; leaving them
+costs every future reader the time to discover that.
+
+### C4 — Never cite a document
+
+No comment may reference a spec, a doc filename, a plan, a phase, a decision id (`D2`, `F8`, `OQ4`,
+`WI9`), an open-question number, a ledger entry, a research area, a commit, or a ticket. If the
+reason needs a name, name the **behaviour**, not the document that ratified it.
+
+```csharp
+// Good — says why, so the guard survives a reader who has never seen a plan.
+// Rendering protection: an extension that cannot produce a string contributes nothing.
+public string Execute(in Scope scope) => _processor.ProcessData(scope) as string ?? string.Empty;
+
+// Bad — a citation is not a reason, and it rots the moment the document is renumbered.
+// Phase 2 D6 / Q1.2: the coercion rail (see docs/spec/common/cross-cutting-decisions.md).
+```
+
+**The reference direction is one-way: specs point at code, code never points back.** A spec citing
+`SymbolTypeIndexCache.cs` or a test name makes the rule findable from the document. The reverse
+duplicates the decision into a second place nothing keeps in sync, and turns every renumbering into
+a small lie in a dozen files.
+
+### C5 — Keep what survives short
+
+One or two sentences carrying the load-bearing fact. A decision recorded at paragraph length in a
+comment belongs in a spec, with only its consequence in the code.
+
+### C6 — Public API documentation is exempt from C1–C3, not from being useful
+
+A public member is documented. Its job is to tell a caller what they cannot see: the contract, the
+units, what counts as valid input, what happens on failure, what the caller now owns. Delete prose
+that restates the signature — `/// <summary>Gets the name.</summary>` answers nothing. Calibrate the
+length to the contract: too long and it drowns in prose nobody finishes; too short and it is
+decoration.
+
+### C7 — Never weaken a test to satisfy C1–C5
+
+A test's doc comment is often the only record of *why an assertion is shaped as it is* — reference
+identity rather than equality, a reopening condition, a mutation-testing result. Those are reasons
+under C2, not provenance under C4. Strip the citation; keep the reason.
+
+### C8 — What is not a comment citation
+
+Keep `<see cref="..."/>` and `<paramref>` — code-to-code links, and removing them can break doc
+builds. Keep diagnostic ids (`HED7025`) and type or member names: those name real code. What goes is
+the *document* around them.
+
+**The test for all of it:** read as someone who has never seen the change. If the comment tells them
+something the code cannot, keep it. If it tells them what they would have known anyway, delete it —
+and where the code is *why* they would not have known, fix the code instead.
+
 ## Language and target frameworks
 
 - Libraries ([Heddle](../../../src/Heddle/Heddle.csproj),
   [Heddle.Language](../../../src/Heddle.Language/Heddle.Language.csproj)) target
-  `netstandard2.0;net6.0;net8.0;net10.0`; tests add `net48` on Windows. **New engine code
+  `netstandard2.0;net8.0;net10.0`; tests add `net48` on Windows. **New engine code
   must compile and behave correctly on `netstandard2.0`** — modern BCL APIs need either a
   conditional package reference (the csproj already has per-TFM groups) or an `#if` fallback.
 - `LangVersion` is `latest`: C# 14 language features are usable on **all** TFMs when they
@@ -90,7 +173,7 @@ must not erode it:
 - `[MethodImpl(MethodImplOptions.AggressiveInlining)]` on tiny, provably-hot transforms
   only — with a benchmark that justifies it.
 - **Perf claims are proven by BenchmarkDotNet** in
-  [src/Heddle.Performance](../../../src/Heddle.Performance), not asserted. Any change that
+  [benchmarks/dotnet](../../../benchmarks/dotnet), not asserted. Any change that
   touches a hot path runs the suite as part of its regression gate (see
   [testing standards](testing-standards.md#regression-gates)).
 - Compile-time cost is "compile once, render many" — moderate compile-path allocation is
@@ -122,8 +205,8 @@ Anchored in the
   they affect (`language-reference.md`, `custom-extensions.md`,
   `built-in-extensions.md`, `csharp-api.md` — whichever apply).
 - Options enums follow the existing shape (`OutputProfile`-style simple enums);
-  extension points follow the registry pattern (`[ExtensionName]`, `Configure`) rather
-  than inventing parallel mechanisms.
+  extension points follow the registry pattern (`[ExtensionName]`, `HeddleTemplate.Register`)
+  rather than inventing parallel mechanisms.
 - Thread safety contract: extension instances are shared across concurrent renders —
   **no mutable per-render state on extension instances**; per-render state lives in the
   `Scope` lineage. Every spec that adds state names where it lives and why that is safe.
@@ -201,6 +284,27 @@ features*, never to tests, refactoring, or keeping code easy to change
   stays easy to change — and it presupposes self-testing code).
 - No speculative configuration knobs: an option is added when a scenario in the spec needs
   both values, not "for flexibility".
+
+## Build warnings
+
+**Warnings are swept per change, not per release.** A piece of work is not done while it leaves new
+build warnings behind. Sweep them while the context that produced them is still fresh: the author
+knows in a minute what a later reader spends an hour reconstructing, and a warning left to settle
+becomes indistinguishable from the hundred already there.
+
+The build deliberately does **not** enforce this. `TreatWarningsAsErrors` is unset on purpose, so a
+warning never blocks running the code or the tests — which is exactly when you most need to run
+them. The discipline is the gate, not the compiler.
+
+Sweep both configurations and the whole tree, not just the solution: `Heddle.sln` does not contain
+the `samples/`, `benchmarks/dotnet/` or `benchmarks/third-party/` projects, so a solution
+build reports clean while they warn.
+
+A warning you are deliberately keeping is **recorded, not silenced**: a `#pragma warning disable`
+scoped to the site, or a `NoWarn` in the csproj, with the reason written beside it. "Deliberate" is
+a claim the next reader must be able to check — an obsolete API used because it is the subject of
+the test, an analyzer rule that does not fit this suite. A bare suppression with no reason is the
+same as leaving the warning.
 
 ## Sources
 

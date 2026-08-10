@@ -9,10 +9,10 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// The public local-context channel semantics (phase 3 D3/D6): last-write-wins, null values, null-key
-    /// throws, reserved-<c>heddle.</c>-prefix rejection, <see cref="BranchState"/> boxing round-trip,
-    /// frameless <c>Publish</c> throw / <c>TryRead</c> false, a publisher/consumer pair end-to-end, the
-    /// <c>Scope.Null</c> directive-body row (E14), and the compiled-parameter sandbox shape pin (N7).
+    /// The public local-context channel semantics: last-write-wins, null values, null-key throws, reserved
+    /// <c>heddle.</c>-prefix rejection, <see cref="BranchState"/> boxing round-trip, frameless <c>Publish</c>
+    /// throw / <c>TryRead</c> false, a publisher/consumer pair end-to-end, <c>Scope.Null</c> directive-body
+    /// execution, and sandbox shape constraints on compiled parameters.
     /// </summary>
     public class ScopeChannelTests
     {
@@ -26,8 +26,6 @@ namespace Heddle.Tests
             Assert.True(t.CompileResult.Success, t.CompileResult.ToString());
             return t;
         }
-
-        // --- Direct API semantics (frame constructed via the internal ctor, InternalsVisibleTo) ---
 
         private static Scope FramedScope() =>
             Scope.Null.WithLocals(new ScopeLocals());
@@ -124,8 +122,6 @@ namespace Heddle.Tests
             Assert.Null(value);
         }
 
-        // --- End-to-end publisher/consumer pair through a rendered template ---
-
         [Fact]
         public void PublisherConsumerPairEndToEnd()
         {
@@ -141,8 +137,6 @@ namespace Heddle.Tests
             Assert.Equal("NONE", t.Generate(null));
         }
 
-        // --- E14: directive bodies execute under Scope.Null and must not throw ---
-
         [Fact]
         public void DirectiveBodyExecutionUnderScopeNullDoesNotThrow()
         {
@@ -150,8 +144,6 @@ namespace Heddle.Tests
             var t = Compile("@using(){{System.Text}}ok");
             Assert.Equal("ok", t.Generate(null));
         }
-
-        // --- N7: the compiled-parameter delegate carries no Scope (sandbox shape) ---
 
         [Fact]
         public void CompiledParameterDelegateCarriesNoScope()

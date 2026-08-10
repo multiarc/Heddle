@@ -6,15 +6,15 @@ namespace Heddle.Generated
 {
     public static class Sum
     {
-        /// <summary>Typed entry point — the recommended host API (phase 7 D11).</summary>
+        /// <summary>Typed entry point — the recommended host API.</summary>
         public static string Generate(global::System.Version model, object chained = null, object callerData = null)
             => global::Heddle.Precompiled.PrecompiledRuntime.GenerateString(Root, model, chained, callerData);
 
-        /// <summary>Renders into a TextWriter with no full-output materialization (phase 8).</summary>
+        /// <summary>Renders into a TextWriter with no full-output materialization.</summary>
         public static void Generate(global::System.Version model, global::System.IO.TextWriter writer, object chained = null, object callerData = null)
             => global::Heddle.Precompiled.PrecompiledRuntime.GenerateToWriter(Root, model, chained, callerData, writer);
 
-        /// <summary>Renders UTF-8 into an IBufferWriter&lt;byte&gt; with no full-output materialization (phase 8).</summary>
+        /// <summary>Renders UTF-8 into an IBufferWriter&lt;byte&gt; with no full-output materialization.</summary>
         public static void Generate(global::System.Version model, global::System.Buffers.IBufferWriter<byte> writer, object chained = null, object callerData = null)
             => global::Heddle.Precompiled.PrecompiledRuntime.GenerateUtf8(Root, model, chained, callerData, writer);
 
@@ -34,8 +34,8 @@ namespace Heddle.Generated
                 var m = (global::System.Version)scope.ModelData;
 #line hidden
                 scope.Renderer.Render(P0);
-#line (2, 6) - (2, 21) "sum.heddle"
-                E0.RenderData(scope.Model((object)(((m == null ? default(int) : m.Major) + (m == null ? default(int) : m.Minor)))));
+#line (2, 6) - (2, 21) "views/sum.heddle"
+                E0.RenderData(scope.Model((object)(unchecked(((m?.Major ?? default(int)) + (m?.Minor ?? default(int)))))));
 #line hidden
                 scope.Renderer.Render(P1);
 #line default
@@ -44,8 +44,8 @@ namespace Heddle.Generated
             public string Execute(in global::Heddle.Data.Scope scope)
             {
                 var m = (global::System.Version)scope.ModelData;
-#line (2, 6) - (2, 21) "sum.heddle"
-                var v0 = E0.ProcessData(scope.Model((object)(((m == null ? default(int) : m.Major) + (m == null ? default(int) : m.Minor))))) as string ?? string.Empty;
+#line (2, 6) - (2, 21) "views/sum.heddle"
+                var v0 = E0.ProcessData(scope.Model((object)(unchecked(((m?.Major ?? default(int)) + (m?.Minor ?? default(int))))))) as string ?? string.Empty;
 #line hidden
                 return string.Concat(P0, v0, P1);
 #line default
@@ -60,8 +60,8 @@ namespace Heddle.Generated
 #pragma warning disable
 [assembly: global::Heddle.Precompiled.HeddleCompiledTemplates(
     manifestType:  typeof(global::Heddle.Generated.__HeddleManifest),
-    schemaVersion: 2,
-    engineVersion: "2.0.0")]
+    schemaVersion: 3,
+    engineVersion: "2.1.0")]
 
 namespace Heddle.Generated
 {
@@ -85,7 +85,9 @@ namespace Heddle.Generated
                     extensionBindings: new global::Heddle.Precompiled.PrecompiledExtensionBinding[] { new global::Heddle.Precompiled.PrecompiledExtensionBinding("html", "Heddle.Extensions.EmptyHtmlExtension, Heddle") },
                     functionBindings: global::System.Array.Empty<global::Heddle.Precompiled.PrecompiledFunctionBinding>(),
                     capabilities: global::Heddle.Precompiled.PrecompiledCapabilities.StringOutput,
-                    strategy: global::Heddle.Generated.Sum.Root)
+                    strategy: global::Heddle.Generated.Sum.Root,
+                    registeredName: null,
+                    linePathForm: global::Heddle.Precompiled.PrecompiledLinePathForm.TemplatePath)
                 ,
             };
         }
@@ -93,4 +95,4 @@ namespace Heddle.Generated
 }
 
 // ==== diagnostics ====
-(none)
+HED7018 Warning (none): Heddle template 'views/sum.heddle' is not under the template root '<unset>', so its directory is dropped and it registers under the flattened key 'sum.heddle'. Set HeddleTemplateRoot to a directory containing it, or give the item an explicit Key metadata.

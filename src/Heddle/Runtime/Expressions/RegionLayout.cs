@@ -7,7 +7,7 @@ using Heddle.Strings.Core;
 
 namespace Heddle.Runtime.Expressions
 {
-    /// <summary>One resolved named-region slot of a component (phase 7 D3), mirroring <see cref="PropSlot"/>.
+    /// <summary>One resolved named-region slot of a component, mirroring <see cref="PropSlot"/>.
     /// <see cref="Definition"/> is the region's own definition (its default body) as seen by the component
     /// instance the layout was resolved from; the compile-time fill step re-fetches the per-call-site instance
     /// from the callee's isolated body context.</summary>
@@ -17,18 +17,18 @@ namespace Heddle.Runtime.Expressions
         internal bool IsPublic;            // <:name> => true; a component's private inner <name> => false
         internal ExType ModelType;         // resolved <:name :: Type>; null when unresolvable/abstract
         internal string ModelTypeName;     // the unresolved name, for diagnostics
-        internal BlockPosition Position;   // the declaration site
+        internal BlockPosition Position;
         internal DefinitionItem Definition;
     }
 
     /// <summary>
-    /// The phase 7 D3 named-region table: a flattened, index-stable, ordinally-keyed lookup of a component's
+    /// The named-region table: a flattened, index-stable, ordinally-keyed lookup of a component's
     /// directly-declared regions, resolved once per component and cached in
     /// <c>CompileContext.ResolvedRegionLayouts</c> (the <see cref="PropLayout"/> precedent). It does NOT detect
-    /// duplicates — a duplicate <c>&lt;:name&gt;</c> is rejected at parse (HED5020) and never stored (F4a). The
+    /// duplicates — a duplicate <c>&lt;:name&gt;</c> is rejected at parse (HED5020) and never stored. The
     /// anonymous <c>@out()</c> slot is the table's implicit default entry and keeps its existing machinery: the
     /// table holds only the named regions, and a region-less definition has an empty table (no region code runs —
-    /// the D9 byte-identity anchor).
+    /// the byte-identity anchor).
     /// </summary>
     internal sealed class RegionLayout
     {
@@ -87,7 +87,7 @@ namespace Heddle.Runtime.Expressions
     }
 
     /// <summary>
-    /// The phase 7 D4 call-scoped fill scope: a small immutable <c>regionName → materialized-fill
+    /// The call-scoped fill scope: a small immutable <c>regionName → materialized-fill
     /// DefinitionItem</c> map carried on <c>CompileContext</c> and copied into every nested body-compile by the
     /// child-context copy ctor (the proven <c>ActivePropLayout</c> propagation seam), so a fill reaches a region
     /// call at any depth. Consulted by <c>HeddleCompiler.CompileItem</c> before the parse-context lookup.
@@ -103,7 +103,7 @@ namespace Heddle.Runtime.Expressions
 
         internal bool TryGet(string name, out DefinitionItem fill) => _fills.TryGetValue(name, out fill);
 
-        /// <summary>The D4 step 5 self-reference variant: while compiling region <c>name</c>'s own (fill) body,
+        /// <summary>The self-reference variant: while compiling region <c>name</c>'s own (fill) body,
         /// the name resolves to <paramref name="target"/> (its base default) so a self-call terminates; a null
         /// target removes the entry (the base chain is exhausted — resolution falls back to the parse context).</summary>
         internal RegionFillScope WithRebind(string name, DefinitionItem target)

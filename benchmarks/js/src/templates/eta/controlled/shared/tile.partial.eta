@@ -1,0 +1,1 @@
+<section class="tile"><h3><%~ it.name %></h3><p class="v"><%~ it.value %></p><span class="badge"><%~ it.badge %></span></section>

@@ -1,0 +1,16 @@
+<% /* idiomatic Eta implementation (Phase 4).
+      Patterns followed: https://eta.js.org/docs/4.x.x/syntax/cheatsheet,
+      https://eta.js.org/docs/4.x.x/syntax/layouts-and-blocks (layout, it.body),
+      https://eta.js.org/docs/4.x.x/api/overview (loadTemplate, render). */ %>
+<!DOCTYPE html>
+<html>
+<head><title>Fortunes</title></head>
+<body>
+<table>
+  <tr><th>id</th><th>message</th></tr>
+<% it.rows.forEach(r => { %>
+  <tr><td><%= r.id %></td><td><%= r.message %></td></tr>
+<% }) %>
+</table>
+</body>
+</html>

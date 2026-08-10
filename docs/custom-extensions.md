@@ -64,8 +64,14 @@ public interface IExtension : IDisposable
 > document (the `@using`/`@model`/`@profile` pattern). Such blocks automatically participate in
 > [directive‑line trimming](language-reference.md#whitespace-trimming-): when
 > `TemplateOptions.TrimDirectiveLines` is on and the block occupies its line by itself, the
-> whole line is swallowed. You get this for free — trimming keys on the removal mechanism, not
-> on a name list, so there is nothing extra to implement.
+> whole line is swallowed. Trimming keys on the removal mechanism, not on a name list, so no
+> registration or name list needs updating.
+>
+> On the **dynamic tier** that is all it takes. For the block to be removed when the template is
+> **precompiled**, declare [`[ZeroOutput]`](#precompiled-mode): a build-time generator reads symbols
+> and cannot observe that your `InitStart` returns `null`, so without the attribute the block is
+> removed dynamically and kept as output precompiled — the two tiers disagree on bytes, which is the
+> one thing pre-compilation may never do. Declare it whenever `InitStart` returns `null`.
 
 ### Helpers from the base class
 
@@ -126,7 +132,7 @@ using Heddle.Data;
 // Span write — dispatches to the sink's native span path when available, else materializes a string.
 scope.Renderer.Render(mySpan);
 
-// Value format — no intermediate string on the span/UTF-8 tiers (net6+):
+// Value format — no intermediate string on the span/UTF-8 tiers (net8+):
 //   IUtf8SpanFormattable straight to bytes on a UTF-8 sink (net8+), else ISpanFormattable into a
 //   stackalloc char span, else ToString(format, provider). Identical characters on every tier.
 scope.Renderer.Render(count, "N0", CultureInfo.InvariantCulture);   // where count : struct, ISpanFormattable
@@ -179,8 +185,10 @@ mismatch (HED5003), duplicate argument (HED5004). Named arguments on an extensio
 **no** `[Prop]` remain an error (HED5005). `[Prop]` is inherited by subclasses; a subclass may
 re‑declare an inherited parameter with an assignable (narrowing) type and a new default. Values are
 bound once at compile — an all‑constant call site shares one frozen array across renders (no
-per‑render allocation). Parameter‑declaring extensions precompile on the bodiless path exactly as
-definitions with props do; bodied calls fall back to the dynamic tier as all bodied custom calls do.
+per‑render allocation). Parameter‑declaring extensions precompile exactly as definitions with props do, on the bodiless and
+the bodied path alike: the `[Prop]` layout is frozen at build and the carrier that installs it wraps
+the extension *after* its own hook has run, which is the order the engine's compiler uses — see
+[Precompiled mode](#precompiled-mode).
 
 ---
 
@@ -312,7 +320,8 @@ There are three roles:
 **`[ScopeChannel]` goes on Continuation and Terminal, not on the Opener** (R11). Continuation and
 terminal extensions *read* the channel (`TryRead`), and locals‑frame provisioning keys off
 `[ScopeChannel]`; omit it and their read always misses at render time (the engine warns —
-**HED3005** at runtime, **HED7016** at build time — but cannot fix it for you). An opener publishes
+**HED3005** at the call on both tiers, plus **HED7016** once per drifting type at build time — but
+cannot fix it for you). An opener publishes
 *opportunistically*: it carries no `[ScopeChannel]`, so a set with no continuation/terminal sibling
 provisions no frame and the publish is a harmless no‑op — this is exactly what keeps templates that
 use no branch allocation‑identical.
@@ -432,12 +441,86 @@ Because a custom terminal's render‑time orphan message is yours to phrase, thr
 `TemplateProcessingException` when the read misses (as `@finish` does) — the engine's HED3003 covers
 only the statically visible case.
 
-**Precompilation.** Custom branch sets are fully functional on the runtime (dynamic) tier — the
-set‑*structuring* rules above apply on both tiers because classification is role‑based everywhere.
-Only the pinned branch *emission* is reserved for the engine's own built‑ins; a bodied call to a
-custom branch extension simply falls back quietly to the dynamic tier (no `HED7015` error — the
-`InitStart` override is the canonical shape here, not a mistake), and renders identically with full
-role semantics.
+**Precompilation.** Custom branch sets are fully functional on both tiers, and they **precompile**: the
+set‑*structuring* rules above apply everywhere because classification is role‑based, and your
+`InitStart` override — the canonical shape for a branch extension — runs for real inside your own
+assembly when the generated template's type initializer runs. Nothing about it has to be predicted, so
+nothing about it costs a tier.
+
+---
+
+## Building your own slot projection
+
+A definition that declares a slot parameter — `<card(out:: Photo)>` — does not pre‑render the content
+its call site passed it. The engine installs that content on the scope as an
+[`ISlotContent`](../src/Heddle/Data/ISlotContent.cs) and lets each `[SlotProjection]` extension in the
+body render it, once per projection, against a model the projection chooses. That is what lets one
+caller body be rendered per element of a loop.
+
+Everything the built‑in `@out` reads to do this is public, so a projection of your own is a normal
+extension:
+
+```csharp
+using Heddle.Attributes;
+using Heddle.Core;
+using Heddle.Data;
+using Heddle.Exceptions;
+
+[ExtensionName("project")]
+[SlotProjection]
+public class ProjectExtension : AbstractExtension
+{
+    private bool _slotMode;
+    private bool _composed;
+
+    public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType, ExType parent)
+    {
+        // The slot type of the definition body being compiled — null anywhere else.
+        var slotType = initContext.CompileScope.CompileContext.SlotParameterType;
+        if (slotType != null)
+        {
+            _slotMode = true;
+            _composed = initContext.IsChainedConsumer;
+            if (!initContext.CallCarriesValue)
+                initContext.CompileScope.CompileErrors.Add(/* your own positioned diagnostic */);
+            base.InitStart(initContext, chainedType, parent, null);
+            return typeof(string);
+        }
+
+        base.InitStart(initContext, chainedType, parent, null);
+        return chainedType;
+    }
+
+    public override void RenderData(in Scope scope)
+    {
+        if (!_slotMode) { RenderInnerResult(scope); return; }
+        var carrier = scope.SlotCarrier;
+        if (_composed || carrier == null)
+            throw new TemplateProcessingException("'@project' has no caller content to project here.");
+        carrier.RenderCallerContentInto(carrier.InvocationScope.Model(scope.ModelData));
+    }
+}
+```
+
+Three things are load‑bearing:
+
+- **Re‑model the invocation scope, don't render against it.** `InvocationScope.Model(value)` pairs the
+  value the projection was passed with the props and caller frame of the definition's *invocation
+  site*, which is what lets the caller's content see the value it was written for while its `::`‑rooted
+  and prop references still resolve where it was written.
+- **Prefer `RenderCallerContentInto`.** It writes straight into the scope's renderer;
+  `RenderCallerContent` materialises a string and is only worth it when `ProcessData` needs the content
+  as a value.
+- **Refuse composition.** `InitContext.IsChainedConsumer` is true when the call has a producer to its
+  right (`@wrap():project()`), which means the content arrived on the chained channel and there is no
+  caller content to project.
+
+`ISlotContent` and `Scope` are both confined to one render lineage — consume them in the call that
+received them and never store them.
+
+**Precompilation.** A slot projection precompiles: the generator dispatches on the declaration rather
+than on a name, constructs your extension, and runs the `InitStart` above inside your own assembly, so
+the slot state is decided by your hook rather than predicted.
 
 ---
 
@@ -482,14 +565,15 @@ namespace MyApp.Extensions
 
 Usage in a template: `@upper(Name)`.
 
-> **Precompilation note.** This example overrides `InitStart` (to type the body against the parent
-> model), which is a **runtime‑tier** shape. Because `UpperExtension` is not a `[BranchRole]` extension,
-> a *precompiled* template calling `@upper(...)` draws a build error (`HED7015`) — see
-> [Precompiled mode](#precompiled-mode). If your templates must precompile, omit the `InitStart` override
-> (accepting the default typing) or keep such templates on the dynamic tier.
+> **Precompilation note.** This example overrides `InitStart` to type the body against the parent model,
+> and a precompiled template calling `@upper(...)` **precompiles anyway**: the generated static
+> initializer constructs `UpperExtension` in your own assembly and calls this very method, handing it the
+> already‑generated body instead of letting it compile one. The typing decision below is therefore made
+> by your code, not guessed at by the build — see [Precompiled mode](#precompiled-mode).
 >
-> The example also derives from `AbstractHtmlExtension`/`[EncodeOutput]`, whose HTML encoding is **not**
-> reproduced by precompiled binding (see the warning under [Precompiled mode](#precompiled-mode)).
+> The example also derives from `AbstractHtmlExtension`/`[EncodeOutput]`; that encoding **is** reproduced
+> by precompiled binding, on the bodiless and the bodied path alike, and it is now *derived from the live
+> type* rather than written into the generated file, so it cannot drift.
 
 Compare with the real [`StringExtension`](../src/Heddle/Extensions/StringExtension.cs) and
 [`DateExtension`](../src/Heddle/Extensions/DateExtension.cs), which follow the same shape.
@@ -503,11 +587,15 @@ Declared in [src/Heddle/Attributes](../src/Heddle/Attributes):
 | Attribute | Target | Purpose |
 | --- | --- | --- |
 | `[ExtensionName("name")]` | class | The verb used in templates (`@name(...)`). Required. The empty name `""` is the unnamed `@(...)` carrier; `raw` is its always‑verbatim alias. |
-| `[DataType(typeof(T))]` | class | The model type the extension expects. Repeatable (e.g. `int` *and* `long` on `IntegerExtension`). |
+| `[DataType(typeof(T))]` | class | The model type the extension expects. Repeatable (e.g. `int` *and* `long` on `IntegerExtension`); inherited by subclasses. A call whose value has a static type assignable to none of them is refused when the template is compiled (`HED0004`, naming the value's type and every accepted one) — on both tiers, so a template that does not compile does not precompile either. Assignability is reflection's (`Type.IsAssignableFrom`) in full, with a `Nullable<T>` value unwrapped first — so it includes generic variance (`List<string>` reaches `IEnumerable<object>`) and array covariance, including the element types the CLR reduces to one — each signed/unsigned integer pair (`nint`/`nuint` included) and an enum with its underlying primitive, in either direction and through the array's own generic interfaces (`uint[]` reaches `int[]`, `DayOfWeek[]` reaches `int[]`, `int[]` reaches `IList<uint>`). It is not a conversion relation: there is **no** numeric widening, so `[DataType(typeof(int))]` refuses a `long`, and a value-type element never covaries to a reference-type one, so `int[]` does not reach `object[]`. A value with no static type (`dynamic`) is decided at render instead. |
 | `[ChainedType(typeof(T))]` | class | The expected chained‑input type. |
 | `[EncodeOutput]` | class | HTML‑encode the output (pairs with `AbstractHtmlExtension`). This encodes under **both** output profiles — it is independent of `OutputProfile`, which only governs the unnamed `@(...)` carrier. Keep `[EncodeOutput]` on value formatters that emit user text; leave it off for containers that merely forward a body (so encoding stays at the emitting leaf). |
 | `[ExtensionReplace]` | class | Marks an extension intended to replace another of the same name. |
 | `[BranchRole(BranchRole.Opener\|Continuation\|Terminal)]` | class | Declares the extension's position in a branch set (opener/continuation/terminal), giving it the same set semantics as the built‑in `@if`/`@elif`/`@else` family. Compile‑time only; inherited by subclasses. See [Building your own branch set](#building-your-own-branch-set). |
+| `[ScopeChannel]` | class | Declares that the extension publishes to or reads from the [local context channel](#the-local-context-channel). Bodies containing one are provisioned with a locals frame at compile time; without one, `Scope.Publish` throws and `Scope.TryRead` returns `false`. Compile‑time only; inherited by subclasses. |
+| `[SlotProjection]` | class | Declares that the extension is a **slot projection**: inside a definition body that declares a slot parameter (`<name(out:: Type)>`) the call carries that slot's value and renders the caller's content in its place, and outside one it splices the caller's content against the enclosing model. Both tiers dispatch the slot channel on this declaration rather than on the name the extension answers to, so a custom projection is served exactly as the built‑in `@out` is. Carrying it obliges the extension to read the enclosing definition's slot type off the compile context in its own `InitStart`, to report the slot diagnostics that reading implies, and to render through the scope's slot carrier rather than through its own body. Compile‑time only; inherited by subclasses. |
+| `[ChildTemplateHost]` | class | Declares that the extension is a **child‑template host**: its body is not content but a name, which it resolves at compile time to a second template, compiles as a child of the one being compiled, and hosts — rendering that child's output in place of its own body. Both tiers dispatch the child‑template route on this declaration rather than on the name the extension answers to, so a custom host is served exactly as the built‑in `@partial` is. Carrying it obliges the extension to evaluate its own body once at compile time to produce the name, to queue the child compile so the child's errors reach the parent's compile result, and to take delivery of the compiled child in `CompleteInit`. A call to one **precompiles in a default build**: the extension is constructed and its hook run at static init, and the child arrives through the engine's child supply — the precompiled entry when the registry holds the named template, the extension's own compile under the request's options when it does not. Compile‑time only; inherited by subclasses. |
+| `[ZeroOutput]` | class | Declares a **directive**: the extension emits nothing and its whole block is removed from the document rather than kept as rendered output. The runtime’s own protocol for this is behavioral — a directive’s `InitStart` returns `null` — and stays authoritative; this attribute is the declarative form of it, and it is what makes the **precompiled tier** classify your extension correctly (a build‑time generator can only read symbols). Declare it whenever `InitStart` returns `null`: without it, the block is removed dynamically and kept as output when precompiled. The four built‑in directives (`@model`, `@using`, `@import`, `@profile`) carry it. Inherited by subclasses. |
 | `[Prop("name", typeof(T))]` | class | Declares one typed, named input **parameter** the caller passes by name (`@grid(Photos, columns: 4)`) — the identical call shape a definition with props accepts, with the identical diagnostics. One attribute per parameter (`AllowMultiple = true`); inherited by subclasses. Optional when `Default = value` is set (or `Optional = true` for a null default); required otherwise. Read at render via `Scope.TryGetParameter`/`Scope.GetParameter`. |
 | `[NotEncode]` | model property | Reserved, currently **inert** — the attribute type ships but has no effect (its only check runs against extension classes, never properties). Do not rely on it; its per‑property meaning is revisited with typed props. |
 | `[Hidden]` | model property | Hide a model property from template resolution. |
@@ -521,7 +609,7 @@ carries `[ExtensionReplace]`; otherwise registration throws `TemplateOverrideExc
 
 ## Registering your extensions
 
-Two steps:
+Two steps to register, and a third if you pre‑compile:
 
 1. **Export** the extension(s) from the assembly with the assembly‑level attribute
    [`ExportExtensions`](../src/Heddle/Attributes/ExportExtensionsAttribute.cs):
@@ -536,54 +624,107 @@ Two steps:
    // [assembly: ExportExtensions]
    ```
 
-2. **Configure** the engine with your startup assembly so the export is discovered:
+2. **Register** each assembly that exports extensions:
 
    ```csharp
-   HeddleTemplate.Configure(typeof(Program).GetTypeInfo().Assembly);
+   HeddleTemplate.Register(typeof(Program).GetTypeInfo().Assembly);
+   HeddleTemplate.Register(typeof(SomeLibrary.WidgetExtension).GetTypeInfo().Assembly);
    ```
 
-`Configure` walks the given assembly and its references, so exporting from any referenced
-assembly is sufficient as long as that assembly is reachable from the one you pass.
+3. **If you pre‑compile**, make sure the build sees the assembly too. The build tier resolves
+   extension and model types over the **compilation's reference closure**, not over what is loaded, so
+   an extension library you already reference needs nothing — but a project that does not reference it
+   can put it in front of the compiler with the escape‑hatch item:
+
+   ```xml
+   <ItemGroup>
+     <HeddleExtensionAssembly Include="$(SomeDir)Acme.Extensions.dll" />
+   </ItemGroup>
+   ```
+
+   Model assemblies have the stronger declarative form, `[assembly: HeddleModelAssembly(typeof(T))]`,
+   which configures both tiers at once. See
+   [Assemblies the build must see](precompilation.md#assemblies-the-build-must-see). An unseen
+   extension assembly is never an error — the templates that call it simply degrade to the dynamic
+   tier, where step 2's registration still serves them.
+
+Registration is per assembly and is **not** transitive: the engine loads nothing and scans nothing on
+its own, so an extension library you merely *reference* is not discovered — register it too. This is
+deliberate. Extension names are a shared namespace, and the set of assemblies allowed to claim a name
+is the host's decision, not a consequence of which packages happened to be in the dependency graph.
+
+Registration is idempotent per assembly and repeatable, so you may register in whatever order
+establishes the precedence you want — a later `[ExtensionReplace]` extension displaces an earlier
+incumbent of the same name, and two unrelated types claiming one name throw
+`TemplateOverrideException` at the registering call rather than out of a type initializer.
+
+`HeddleTemplate.Configure(assembly)` is the same call under its older name, kept working.
+
+> **Migrating from 2.0.** 2.0 loaded the entry assembly's whole reference closure and scanned all of it,
+> so exporting from any referenced assembly was enough and `Configure` was optional. Both are gone:
+> export **and** register. A template calling an unregistered extension reports
+> `Cannot find extension <name>` (`HED0002`); a precompiled one degrades per request with an
+> `ExtensionBindingMismatch` naming it.
 
 ## Precompiled mode
 
 When you [pre‑compile templates](precompilation.md) at build time, a custom extension is
 **bound from its referenced assembly, never inlined** — a security or logic patch reaches
-precompiled templates by updating the package, no regeneration. For a template that uses your
-extension to precompile, the extension must satisfy the same contract precompiled binding
-reproduces:
+precompiled templates by updating the package, no regeneration.
+
+**Your extension precompiles.** Bodied, hook‑overriding, `[Prop]`‑declaring, `[BranchRole]`‑carrying —
+in a default build, with no property to set and no name list to be on. It needs a parameterless
+constructor. If its compile‑time behaviour genuinely cannot be reproduced from a static initializer, it
+declares `[PrecompileUnsupported]` and the calls to it fall back **one call site at a time**, never
+taking the template with them. The rest of this section is those three sentences with their reasons:
 
 - **A parameterless constructor.** The generator constructs one shared, pre‑built instance per
   call site (`new YourExtension()`); no `Activator`, no registry lookup at run time.
 - **No reliance on runtime registry mutation.** The instance is built once and never mutated
   after binding; extensions that expect to be re‑registered or reconfigured per render are not
   supported.
-- **No `InitStart`/`CompleteInit` override** *(outside the engine assembly)*. Those are
-  compile‑time hooks the build‑time backend runs the *base* behavior of; an override could run
-  arbitrary compile‑time logic the generator cannot evaluate, so a template binding such an
-  extension is a build error (`HED7015`). **Exception:** a `[BranchRole]` custom branch extension
-  is expected to override `InitStart` (its canonical parent‑model shape), so it is *not* a
-  `HED7015` error — a bodied call to it degrades quietly to the dynamic tier instead (see
-  [Building your own branch set](#building-your-own-branch-set)). Keep custom logic in `ProcessData`/`RenderData` — the
-  render‑time methods both backends share. A plain, non‑encoding extension (the common case) needs no changes.
+- **An `InitStart`/`CompleteInit` override is fine — it runs for real.** The generated static
+  initializer constructs your extension inside your own assembly and calls its actual hook, supplying
+  the already‑generated body in place of a body compile. Everything the hook decides is decided by your
+  code: the typing it hands the body, the state it caches, the diagnostics it raises. A bodied call to
+  your extension precompiles too. Where your hook chooses a model type the build could not resolve, the
+  body is emitted with **no model cast** and its member reads bind to the engine's own accessor once
+  your hook has answered — three shapes inside such a body still cost that one call site its tier (a
+  computed native expression, an embedded C# expression, and a nested call whose typing needs the same
+  answer), and the rest of the template is unaffected.
+  If your hook genuinely cannot survive this — the clear case being one that walks the enclosing
+  document through `InitContext.ParseContext.Tokens`/`SubContexts`, which a single call site cannot
+  carry — declare it and be taken at your word:
 
-**Build‑time binding covers only bodiless custom calls.** A bodiless value transform (`@ext(x)`) binds
-directly to your extension at build time; a call that carries a `{{ … }}` body falls back to the dynamic
-tier for that call site (a bodied body's model‑typing is extension‑specific, so the generator cannot bind
-it conservatively). Bodied calls therefore run identically to the dynamic path.
+  ```csharp
+  [ExtensionName("toc")]
+  [PrecompileUnsupported("reads the enclosing document's headings through InitContext.ParseContext")]
+  public sealed class TableOfContentsExtension : AbstractExtension { … }
+  ```
 
-> **Warning — precompiled binding does NOT reproduce `[EncodeOutput]` / `AbstractHtmlExtension` encoding.**
-> On the dynamic tier, an extension deriving from `AbstractHtmlExtension` and marked `[EncodeOutput]`
-> HTML‑encodes its output. Precompiled binding hard‑codes `RenderType.Raw` for every custom extension and
-> never reads `[EncodeOutput]`, so the *same* extension renders its output **unencoded** once its template
-> is precompiled — a silent loss of HTML encoding, i.e. an XSS vector for untrusted data. There is **no
-> build‑time diagnostic** for this. If you rely on `[EncodeOutput]`/`AbstractHtmlExtension` for encoding,
-> either **encode explicitly inside your `ProcessDataInternal`/`RenderDataInternal` override** (so output is
-> safe on both tiers) or **exclude such templates from precompilation**. The same gap affects the built‑in
-> `@html`. (Scope: the unsafe path is a *bodiless* call — a `{{ … }}` body falls back to the encoding
-> dynamic tier — with *no* `InitStart`/`CompleteInit` override, since an override is caught loudly as
-> `HED7015`. Built‑ins `@string`/`@money`/`@date`/`@time`/`@int` are unaffected because they override a
-> compile‑time hook and fall back to the dynamic tier.)
+  Every call to it binds dynamically and reports `HED7033` quoting your sentence verbatim; the rest of
+  the template still precompiles. The attribute is read at build time *and* off the live type at run
+  time, so adding it in a package update protects consumers who have already built.
+- **A `[Prop]` default whose type generated code can name.** Defaults are frozen into the generated
+  source as the exact boxed value the runtime would build from the attribute, so a default of an `enum`
+  type — including on an `object`‑typed prop, where the box keeps the enum, not its underlying number —
+  is written by naming that enum. A default whose type is `internal` to your assembly cannot be named
+  there, so a template calling that extension quietly runs on the dynamic tier instead. Make the enum
+  `public` if such templates must precompile.
+
+**There is no list of supported body shapes, and no name on it.** What a `{{ … }}` body is typed against
+is your `InitStart`'s decision, so the build stopped keeping an answer of its own — a bodiless value
+transform and a bodied call bind by the same route, and a body the build cannot type is written so that
+it does not need to be typed. Nothing about your extension has to be recognised for this to work.
+
+> **`[EncodeOutput]` / `AbstractHtmlExtension` encoding is reproduced on both tiers.** Precompiled binding
+> derives the render type from the extension's own `[EncodeOutput]`/`[NotEncode]` attributes — the same
+> two‑bool decision the dynamic tier evaluates over the live instance — for bodiless calls and, since the
+> body‑hosting bind stopped hard‑coding `RenderType.Raw`, for bodied ones too. This paragraph used to warn
+> that it did not, and that warning outlived the code it described; the hard‑coded value that was still
+> left had no reachable call site until an encoding extension could host a body, which is exactly what
+> made fixing it urgent rather than cosmetic. Both halves are pinned by differential tests that render the
+> same template on both tiers and compare bytes.
 
 An extension name that resolves to no `[ExtensionName]` type in any referenced assembly is a
 build error (`HED7006`) **when the call carries a `{{ … }}` body**; a bodiless unresolvable call falls back

@@ -1,6 +1,6 @@
 <Project>
 
-  <!-- Phase 7 D12/D14: compilation-wide options surfaced to the generator as build_property.* -->
+  <!-- Compilation-wide options surfaced to the generator as build_property.* -->
   <ItemGroup>
     <CompilerVisibleProperty Include="HeddleOutputProfile" />
     <CompilerVisibleProperty Include="HeddleExpressionMode" />
@@ -9,16 +9,44 @@
     <CompilerVisibleProperty Include="HeddleTemplateRoot" />
     <CompilerVisibleProperty Include="HeddleGeneratedNamespace" />
     <CompilerVisibleProperty Include="HeddleEmitUtf8Pieces" />
+    <CompilerVisibleProperty Include="HeddleNodeFallback" />
+    <CompilerVisibleProperty Include="HeddleObserveEngine" />
+    <!-- Assigned in Heddle.Generator.targets, not here: $(IntermediateOutputPath) is not yet defined this early in
+         evaluation, and the generator has no other way to learn where it may write. -->
+    <CompilerVisibleProperty Include="HeddleObserveIntermediatePath" />
+    <!-- Also assigned in Heddle.Generator.targets: @(ReferencePath) does not exist until reference resolution has
+         run. It carries the IMPLEMENTATION path of every reference the compiler is handed as a reference assembly,
+         which is what observation loads and executes. -->
+    <CompilerVisibleProperty Include="HeddleObserveImplementationPath" />
   </ItemGroup>
 
-  <!-- Per-item metadata surfaced as build_metadata.AdditionalFiles.* -->
+  <!-- Per-item metadata surfaced as build_metadata.AdditionalFiles.*.
+       `Precompile` is the per-item opt-out: the file stays in the @<< import map but emits no entry point and no
+       manifest entry.
+       `Key` replaces the path-derived registration key: it names the manifest row, the generated entry class and the
+       runtime lookup, participates in HED7002 / HED7003 / HED7004, and suppresses HED7018 (an explicit key makes a
+       flattened out-of-root key intentional).
+       `Name` is an ADDITIONAL import name, never an override. A named template keeps its key and also answers to the
+       name; importing it by key draws the HED7028 advisory. A `Name` the normaliser refuses, or one another template
+       already answers to, is HED7004 against the name only. It does not touch the key, the manifest, the entry class
+       or the #line file, and does not suppress HED7018. An earlier implementation made it a second spelling of `Key`,
+       which silently broke every @<< that named a file by its path.
+       `ModelType` types the template's model without an in-file @model directive. When both are present they must
+       name the same resolved type: a disagreement is HED7032, and an unresolvable metadata spelling reports the same
+       way an unresolvable directive spelling does.
+       A name declared here must also be mapped onto AdditionalFiles by Heddle.Generator.targets and read by the
+       generator; the props↔targets↔code set-equality gate in PipelineContractTests turns a declared-but-unwired
+       metadata name into a red test instead of dead XML. -->
   <ItemGroup>
     <CompilerVisibleItemMetadata Include="AdditionalFiles" MetadataName="Key" />
+    <CompilerVisibleItemMetadata Include="AdditionalFiles" MetadataName="ModelType" />
     <CompilerVisibleItemMetadata Include="AdditionalFiles" MetadataName="Name" />
     <CompilerVisibleItemMetadata Include="AdditionalFiles" MetadataName="Precompile" />
   </ItemGroup>
 
-  <!-- Defaults (stated explicitly; flipped together with the engine defaults in the 2.0 window). -->
+  <!-- Defaults, stated explicitly. The normative table is Heddle.Precompiled.HeddleBuildOptions;
+       HeddleTemplateRoot's default is expressible only here, so this XML is a second physical statement of the rest
+       and the props↔code↔runtime lockstep test proves the two never diverge. -->
   <PropertyGroup>
     <HeddleOutputProfile Condition="'$(HeddleOutputProfile)' == ''">Html</HeddleOutputProfile>
     <HeddleExpressionMode Condition="'$(HeddleExpressionMode)' == ''">Native</HeddleExpressionMode>
@@ -26,6 +54,8 @@
     <HeddleMaxRecursionCount Condition="'$(HeddleMaxRecursionCount)' == ''">100</HeddleMaxRecursionCount>
     <HeddleTemplateRoot Condition="'$(HeddleTemplateRoot)' == ''">$(MSBuildProjectDirectory)</HeddleTemplateRoot>
     <HeddleEmitUtf8Pieces Condition="'$(HeddleEmitUtf8Pieces)' == ''">false</HeddleEmitUtf8Pieces>
+    <HeddleNodeFallback Condition="'$(HeddleNodeFallback)' == ''">true</HeddleNodeFallback>
+    <HeddleObserveEngine Condition="'$(HeddleObserveEngine)' == ''">Auto</HeddleObserveEngine>
   </PropertyGroup>
 
 </Project>

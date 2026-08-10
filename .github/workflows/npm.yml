@@ -6,6 +6,9 @@
 #
 # Production is TAG-DRIVEN; merging to main does not publish. Fork PRs are skipped
 # (OIDC tokens aren't issued for forks).
+#
+# Building is a separate job from publishing: the build holds no publishing credentials, and
+# each publish starts from an artifact that is already known to have built cleanly.
 
 name: Heddle Ace (npm)
 
@@ -19,41 +22,85 @@ permissions:
   contents: read
 
 jobs:
-  publish:
+  # Every commit in a contributed pull request must carry its Signed-off-by before a package
+  # built from it is staged. Tag releases are not gated — see dco.yml.
+  dco:
+    if: ${{ github.event_name == 'pull_request' }}
+    uses: ./.github/workflows/dco.yml
+    permissions:
+      contents: read
+
+  build:
     # Run for tag pushes and same-repo PRs; skip (not fail) for fork PRs.
     if: ${{ startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository) }}
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write   # OIDC token for npm Trusted Publishing
     steps:
     - uses: actions/checkout@v7
     - name: Setup Node
       uses: actions/setup-node@v7
       with:
         node-version: 24
-        registry-url: https://registry.npmjs.org
-        scope: '@multiarc'
-    # Note: we deliberately do NOT upgrade npm here. The node-bundled npm ships its
-    # dependencies (including `sigstore`, used by the provenance path) intact; a global
-    # `npm install -g npm@latest` self-upgrade prunes those bundled deps and breaks
-    # provenance publishing with "Cannot find module 'sigstore'".
     - name: Build custom Ace bundle
       working-directory: src/Heddle.Language
       run: bash build_ace.sh
     - name: Stage package manifest with built bundle
       working-directory: src/Heddle.Language
       run: cp package.json ace_build/ace/build/package.json
-    - name: Stage pre-release package (PR)
-      if: ${{ github.event_name == 'pull_request' }}
-      working-directory: src/Heddle.Language/ace_build/ace/build
+    - uses: actions/upload-artifact@v7
+      with:
+        name: ace-bundle
+        path: src/Heddle.Language/ace_build/ace/build
+        if-no-files-found: error
+
+  stage-prerelease:
+    needs: [ build, dco ]
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write   # OIDC token for npm Trusted Publishing
+    steps:
+    # Note: we deliberately do NOT upgrade npm here. The node-bundled npm ships its
+    # dependencies (including `sigstore`, used by the provenance path) intact; a global
+    # `npm install -g npm@latest` self-upgrade prunes those bundled deps and breaks
+    # provenance publishing with "Cannot find module 'sigstore'".
+    - name: Setup Node
+      uses: actions/setup-node@v7
+      with:
+        node-version: 24
+        registry-url: https://registry.npmjs.org
+        scope: '@multiarc'
+    - uses: actions/download-artifact@v7
+      with:
+        name: ace-bundle
+        path: ace-bundle
+    - name: Stage pre-release package
+      working-directory: ace-bundle
       run: |
         BASE_VERSION="$(node -p "require('./package.json').version")"
         npm version --no-git-tag-version "${BASE_VERSION}-beta.${{ github.run_number }}"
         npm stage publish --tag beta
-    - name: Publish release package (tag)
-      if: ${{ startsWith(github.ref, 'refs/tags/v') }}
-      working-directory: src/Heddle.Language/ace_build/ace/build
+
+  publish-release:
+    needs: build
+    if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write   # OIDC token for npm Trusted Publishing
+    steps:
+    - name: Setup Node
+      uses: actions/setup-node@v7
+      with:
+        node-version: 24
+        registry-url: https://registry.npmjs.org
+        scope: '@multiarc'
+    - uses: actions/download-artifact@v7
+      with:
+        name: ace-bundle
+        path: ace-bundle
+    - name: Publish release package
+      working-directory: ace-bundle
       run: |
         npm version --no-git-tag-version --allow-same-version "${GITHUB_REF_NAME#v}"
         npm publish

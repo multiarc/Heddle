@@ -1,0 +1,21 @@
+@*
+    Razor parity twin -- fragment-heavy.
+
+    Per-row fragment DISPATCH plus nested per-call composition: 48 rows, a four-way boolean
+    if-chain per row (the precomputed IsTile/IsCard/IsMedia/IsStat -- guaranteed
+    common-denominator dispatch pinned for Razor) selecting which of the four
+    partial views to invoke; the card partial nests the badge and price partials against the
+    row's Promo -- the one nesting level.
+*@
+@using Heddle.Benchmarks.Dotnet.Models
+@model FragmentContent.FragmentModel
+@{ Layout = null; }
+<div class="panel">@foreach (var item in Model.Items)
+{if (item.IsTile)
+    {@await Html.PartialAsync("/Views/Shared/tile.cshtml", item)}
+    else if (item.IsCard)
+    {@await Html.PartialAsync("/Views/Shared/card.cshtml", item)}
+    else if (item.IsMedia)
+    {@await Html.PartialAsync("/Views/Shared/media-row.cshtml", item)}
+    else
+    {@await Html.PartialAsync("/Views/Shared/stat.cshtml", item)}}</div>

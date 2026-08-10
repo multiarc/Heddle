@@ -14,12 +14,12 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// B2-R10 — <see cref="TemplateOptions.Encoder"/> behavior: a custom encoder is invoked at every HTML-encode site
+    /// <see cref="TemplateOptions.Encoder"/> behavior: a custom encoder is invoked at every HTML-encode site
     /// (Html-profile bare output and <c>[EncodeOutput]</c> extensions), never at non-encode sites (<c>@raw</c>,
     /// <see cref="OutputProfile.Text"/> bare output, literal text); the <c>null</c> default is byte-identical to the
-    /// legacy <see cref="WebUtility.HtmlEncode(string)"/> path (B2-R3); the encoder flows through the span/UTF-8 sink
-    /// paths; parallel renders over one options instance are safe (B2-R7 thread-model); and <c>Encoder</c> keys the
-    /// options identity by reference (B2-R6).
+    /// legacy <see cref="WebUtility.HtmlEncode(string)"/> path; the encoder flows through the span/UTF-8 sink
+    /// paths; parallel renders over one options instance are safe; and <c>Encoder</c> keys the options identity by
+    /// reference.
     /// </summary>
     public class EncoderOptionTests
     {
@@ -70,8 +70,6 @@ namespace Heddle.Tests
             return t.Generate(model);
         }
 
-        // ---- Custom encoder invoked for encoding sites ----
-
         [Fact]
         public void MarkerEncoder_InvokedForHtmlProfileBareOutput()
         {
@@ -84,7 +82,7 @@ namespace Heddle.Tests
         public void MarkerEncoder_InvokedForEncodeOutputExtension_Html()
         {
             var m = new VModel { V = "<b>" };
-            // @html is an [EncodeOutput] extension; it encodes even under Text.
+            // @html encodes even under Text profile.
             var options = new TemplateOptions { OutputProfile = OutputProfile.Text, Encoder = new MarkerEncoder() };
             Assert.Equal("[E:lt]b[E:gt]", Render("@html(V)", m, typeof(VModel), options));
         }
@@ -100,14 +98,11 @@ namespace Heddle.Tests
         [Fact]
         public void MarkerEncoder_RoutesFormatterExtensionThroughEncoder()
         {
-            // @() of a non-string ([EncodeOutput] integer formatter) under Html routes through the encoder; a bare
-            // number carries no specials, so the marker is a no-op — proving the value reached the encoder unharmed.
+            // Integer formatter routes through encoder; bare number proves no corruption.
             var m = new NumModel { N = 42 };
             var options = new TemplateOptions { OutputProfile = OutputProfile.Html, Encoder = new MarkerEncoder() };
             Assert.Equal("42", Render("@(N)", m, typeof(NumModel), options));
         }
-
-        // ---- Custom encoder NOT invoked for non-encoding sites (B2-R8) ----
 
         [Fact]
         public void MarkerEncoder_NotInvokedForRaw()
@@ -135,13 +130,10 @@ namespace Heddle.Tests
         [Fact]
         public void MarkerEncoder_AppliesToHtmlRegionOfProfileSwitch()
         {
-            // @profile(){{html}} switches to Html mid-template; the same effective encoder applies to that region.
             var m = new VModel { V = "<b>" };
             var options = new TemplateOptions { OutputProfile = OutputProfile.Text, Encoder = new MarkerEncoder() };
             Assert.Equal("[E:lt]b[E:gt]", Render("@profile(){{html}}@(V)", m, typeof(VModel), options));
         }
-
-        // ---- HtmlEncoder.Create(UnicodeRanges.All): the modern opt-in differs from WebUtility ----
 
         [Fact]
         public void HtmlEncoderAll_DiffersFromWebUtilityOnLatin1AndApostrophe()
@@ -160,8 +152,6 @@ namespace Heddle.Tests
             Assert.NotEqual(WebUtility.HtmlEncode(m.V), actual);  // genuinely a different encoder
         }
 
-        // ---- null path: byte-identical to the legacy WebUtility baseline (B2-R3) ----
-
         [Fact]
         public void NullEncoder_IsByteIdenticalToWebUtility()
         {
@@ -172,8 +162,6 @@ namespace Heddle.Tests
         }
 
 #if NET8_0_OR_GREATER
-        // ---- span / UTF-8 sink paths carry the encoder (B2-R10) ----
-
         [Fact]
         public void Encoder_FlowsThroughTextWriterSink()
         {
@@ -202,8 +190,6 @@ namespace Heddle.Tests
         }
 #endif
 
-        // ---- concurrency: one options instance, parallel renders (B2-R7 thread model) ----
-
         [Fact]
         public void Encoder_OneOptionsInstance_ParallelRendersAreConsistent()
         {
@@ -218,8 +204,6 @@ namespace Heddle.Tests
                 Assert.Equal(expected, r);
             });
         }
-
-        // ---- options identity: Encoder participates by reference (B2-R6) ----
 
         [Fact]
         public void Encoder_ParticipatesInEqualsAndHashCodeByReference()

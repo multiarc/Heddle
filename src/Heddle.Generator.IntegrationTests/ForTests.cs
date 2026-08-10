@@ -5,12 +5,8 @@ using Xunit;
 
 namespace Heddle.Generator.IntegrationTests
 {
-    /// <summary>
-    /// Phase 7 <c>@for</c> sugar: <c>ForIndexExtension</c> bound with the loop body; each iteration re-scopes via
-    /// <c>scope.Parent(i)</c> (ModelData = the enclosing model, ChainedData = the boxed index), so <c>@out()</c>
-    /// splices the index. Counted (<c>@for(n)</c> / <c>@for(Count)</c>) and <c>range(...)</c> forms are all bound
-    /// through the same extension. Differential-gated.
-    /// </summary>
+    /// <summary>Tests the <c>@for</c> sugar across both backends: counted forms (<c>@for(n)</c>, <c>@for(Count)</c>)
+    /// and range expressions, verifying byte-identical output.</summary>
     public class ForTests
     {
         private const string CartType = "Heddle.Generator.IntegrationTests.Fixtures.Cart";
@@ -53,9 +49,8 @@ namespace Heddle.Generator.IntegrationTests
             AssertParity("views/for-range.heddle", t, typeof(Cart), model);
         }
 
-        // Phase 6 (post-2.0) WI8: the range-for differential fixture rows through both backends — iteration,
-        // the empty range, and the D4 str(range(...)) stringification (renders "range(2, 10, 2)"; verifies
-        // PrecompiledFunctions.Str over a boxed Heddle.Models.Range matches the dynamic Str byte-for-byte).
+        // Tests iteration, the empty range, and the str(range(...)) stringification to verify PrecompiledFunctions.Str
+        // matches the dynamic version byte-for-byte.
         [Fact]
         public void RangeForFixtureIsByteIdenticalAcrossBackends()
         {
@@ -69,6 +64,73 @@ namespace Heddle.Generator.IntegrationTests
             Assert.Contains("2468", precompiled);
             Assert.Contains("[2][5]", precompiled);
             Assert.Contains("range(2, 10, 2)", precompiled);
+        }
+
+        /// <summary>
+        /// <c>@for</c> declares the types it accepts — a <c>Range</c> or an <c>int</c> — exactly the way <c>@list</c>
+        /// declares <c>IEnumerable</c>, and the engine checks the call value against them before it compiles the
+        /// call. The emitter checked only <c>@list</c>'s, so a <c>@for</c> over a value of any other type
+        /// precompiled and rendered a page the engine will not compile: a chain value, which reaches the extension
+        /// as the carrier's rendered <b>text</b>, iterated nothing at all here while the parent commit iterated the
+        /// producer's number.
+        /// <para>The check is read off the <c>[DataType]</c> attribute now rather than written out for one
+        /// extension, so <c>@for</c> is covered by the same code as <c>@list</c> and any host extension declaring
+        /// one is covered without a list to keep in step.</para>
+        /// </summary>
+        [Theory]
+        [InlineData("paren-chain", "(Count)")]
+        [InlineData("function-chain", "len(Name)")]
+        [InlineData("string-member", "Name")]
+        [InlineData("decimal-member", "Price")]
+        public void AForOverAValueItDoesNotAcceptIsRefusedByBothTiers(string name, string value)
+        {
+            var key = "views/for-unaccepted-" + name + ".heddle";
+            var t = "@model(){{" + CartType + "}}@\\\n@for(" + value + "){{<@out()>}}\n";
+
+            DifferentialHarness.ExpectDegrade(DifferentialHarness.Generate(new[] { (key, t) }), key);
+
+            var dynamicTemplate = new HeddleTemplate(t,
+                new Heddle.Runtime.CompileContext(new Heddle.Data.TemplateOptions(), typeof(Cart)));
+            Assert.False(dynamicTemplate.CompileResult.Success);
+            Assert.Contains("but any of [Heddle.Models.Range, System.Int32] expected",
+                dynamicTemplate.CompileResult.ToString(), StringComparison.Ordinal);
+        }
+
+        /// <summary>The near neighbours: every value <c>@for</c> does accept still precompiles and still renders the
+        /// engine's bytes — the literal, an <c>int</c> member, a <c>Range</c> from the built-in, and an <c>int</c>
+        /// native expression.</summary>
+        [Theory]
+        [InlineData("literal", "2")]
+        [InlineData("member", "Count")]
+        [InlineData("range-call", "range(0, 2)")]
+        [InlineData("arithmetic", "Count + 1")]
+        // The two spellings that turn a refused chain into an accepted value, which is what the language
+        // reference tells a reader to write: keep the call inside a native expression, or wrap it in `range`.
+        [InlineData("call-arithmetic", "len(Name) + 0")]
+        [InlineData("range-of-call", "range(0, len(Name))")]
+        public void AForOverAnAcceptedValueStillPrecompiles(string name, string value)
+        {
+            var key = "views/for-accepted-" + name + ".heddle";
+            var t = "@model(){{" + CartType + "}}@\\\n@for(" + value + "){{<@out()>}}\n";
+
+            var (precompiled, dyn) = DifferentialHarness.Render(key, t, typeof(Cart),
+                new Cart { Count = 1, Name = "ab" });
+            Assert.Equal(dyn, precompiled);
+        }
+
+        /// <summary>A nullable <c>int</c>, which the engine unwraps before it checks the accepted types — so this is
+        /// a value <c>@for</c> takes, not one it refuses, and the emitter has to unwrap it too.</summary>
+        [Fact]
+        public void AForOverANullableIntStillPrecompiles()
+        {
+            const string key = "views/for-accepted-nullable.heddle";
+            const string t = "@model(){{Heddle.Generator.IntegrationTests.Fixtures.NullableHolder}}@\\\n" +
+                             "@for(Maybe){{<@out()>}}\n";
+
+            var (precompiled, dyn) = DifferentialHarness.Render(key, t, typeof(NullableHolder),
+                new NullableHolder { Maybe = 2 });
+            Assert.Equal(dyn, precompiled);
+            Assert.Equal("<0><1>\n", dyn);
         }
     }
 }

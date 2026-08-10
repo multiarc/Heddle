@@ -5,7 +5,7 @@ Heddle looks close enough to be misleading. The delimiters that matter most mean
 here. This page maps the habits that trip people up to their Heddle equivalents; for the full
 picture read the [Language Reference](language-reference.md).
 
-> Every Heddle snippet below is a complete template, verified to compile against **Heddle 2.0.0**
+> Every Heddle snippet below is a complete template, verified to compile against **Heddle 2.1.0**
 > under default options — **except the `@partial(){{ sidebar }}` snippet**, which additionally
 > requires a configured `RootPath`/`FileNamePostfix` and an existing `sidebar` template on disk at
 > compile time (see [that section](#include--render---vs-partial)).
@@ -32,6 +32,11 @@ This is the number-one misread. In Liquid and Jinja `{{ x }}` interpolates a val
 `{{ … }}` delimits a **subtemplate body** — the block a call or definition renders — so a bare
 `{{ Title }}` in text emits the literal braces, not the value. To output a value, use the
 `@(…)` [output block](language-reference.md#output-blocks).
+
+The compiler warns rather than letting it pass silently: a bare `{{ identifier }}` or
+`{{ dotted.path }}` in literal text raises **HED4005**, positioned at the braces and suggesting
+`@(…)`. It is a warning, not an error — the literal braces are legal output, so the template still
+compiles and renders them.
 
 ## Filters → chains, composed right-to-left
 

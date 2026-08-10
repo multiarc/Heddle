@@ -9,7 +9,7 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// D11 parameterized slots: the picker projection (caller body rendered once per option, option as model),
+    /// Parameterized slots: the picker projection (caller body rendered once per option, option as model),
     /// the slot diagnostics HED5012–HED5014/HED5018, the composition case, and the runtime guard.
     /// </summary>
     public class SlotProjectionTests
@@ -71,7 +71,7 @@ namespace Heddle.Tests
                      e.Error.Contains("inside a definition body"));
         }
 
-        [Fact] // HED5012 — legacy @out(true) (P20's runtime half)
+        [Fact] // HED5012 — legacy @out(true) form
         public void LegacyOutLiteralIsError()
         {
             var t = Compile("@% <box>{{@out(true)}} :: PropArticle %@\n@box(Article)", typeof(PropRoot));

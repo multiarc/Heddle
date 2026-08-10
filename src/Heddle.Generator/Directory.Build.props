@@ -1,0 +1,22 @@
+<Project>
+
+  <!-- A directory-level props file SHADOWS the repository root one unless it chains to it explicitly. -->
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)..'))" />
+
+  <!-- Three projects share this directory — one per Roslyn API version (see Heddle.Generator.Common.props).
+       They must not share obj/bin: NuGet writes one project.assets.json per BaseIntermediateOutputPath, so two
+       projects on the same obj\ silently overwrite each other's restore state. The packable project keeps the
+       conventional obj\/bin\ so existing tooling paths stay valid; the variants move under their own names. -->
+  <PropertyGroup Condition="'$(MSBuildProjectName)' != 'Heddle.Generator'">
+    <BaseIntermediateOutputPath>obj\$(MSBuildProjectName)\</BaseIntermediateOutputPath>
+    <BaseOutputPath>bin\$(MSBuildProjectName)\</BaseOutputPath>
+  </PropertyGroup>
+
+  <!-- The default excludes are derived from each project's OWN Base*OutputPath, so a variant project would glob
+       the generated AssemblyInfo out of its siblings' obj folders (CS0579 duplicate attributes). Excluded once
+       for all three. -->
+  <PropertyGroup>
+    <DefaultItemExcludes>$(DefaultItemExcludes);obj\**;bin\**</DefaultItemExcludes>
+  </PropertyGroup>
+
+</Project>

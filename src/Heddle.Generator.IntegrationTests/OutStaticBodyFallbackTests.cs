@@ -10,8 +10,13 @@ namespace Heddle.Generator.IntegrationTests
 {
     /// <summary>
     /// Differential coverage for a built-in <c>@out()</c> that carries its own body. The generator refuses to
-    /// precompile a bodied <c>@out</c> (<c>TemplateEmitter.BuildOutCall</c>: <c>!string.IsNullOrEmpty(ParameterTemplate)</c>
-    /// → reason "bodied @out" → <c>null</c>), so any template containing one <b>falls back to the dynamic tier</b>. This
+    /// precompile a bodied slot projection (<c>TemplateEmitter.BuildSlotProjectionCall</c>:
+    /// <c>!string.IsNullOrEmpty(ParameterTemplate)</c> → reason "bodied @out" → <c>null</c>), so any template
+    /// containing one <b>falls back to the dynamic tier</b>. Outside a slot-declaring definition the hook accepts
+    /// the body, so the arm the refusal covers is the emitter's own, and the byte it named — an emitted body being
+    /// a real strategy where the engine's compile of the same static-only text produces no processors at all — is
+    /// no longer produced anywhere else: the build emits that post-state for every other bodied call. The refusal
+    /// stands ahead of the body build, so it never reaches it. This
     /// pins that documented tier fallback (no precompiled strategy is emitted) — which is what keeps the precompiled and
     /// runtime backends in lockstep for the <c>@out</c> double-render fix (both render through the dynamic engine) — and
     /// asserts the runtime renders the corrected output: because a non-slot <c>@out</c> is a value emitter, a static-only
@@ -20,17 +25,6 @@ namespace Heddle.Generator.IntegrationTests
     /// </summary>
     public class OutStaticBodyFallbackTests
     {
-        private static bool IsPrecompiled(string manifest, string key)
-        {
-            var marker = "key: \"" + key + "\"";
-            var at = manifest?.IndexOf(marker, StringComparison.Ordinal) ?? -1;
-            if (at < 0)
-                return false; // no manifest entry -> full dynamic fallback
-            var next = manifest.IndexOf("key: \"", at + marker.Length, StringComparison.Ordinal);
-            var block = next < 0 ? manifest.Substring(at) : manifest.Substring(at, next - at);
-            return !block.Contains("strategy: null"); // strategy: null == marker (not precompiled)
-        }
-
         private static string RenderDynamic(string content, string model)
         {
             var t = new HeddleTemplate(content, new CompileContext(new TemplateOptions(), new ExType(typeof(string))));
@@ -51,11 +45,7 @@ namespace Heddle.Generator.IntegrationTests
             Assert.False(gen.Diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error),
                 "Unexpected generator error: " + string.Join("; ", gen.Diagnostics.Select(d => d.ToString())));
 
-            // Documented tier fallback: a bodied @out does not precompile — no bound strategy for it.
-            Assert.False(IsPrecompiled(gen.ManifestSource ?? string.Empty, "views/bodied-out.heddle"),
-                "Expected a dynamic-tier fallback (bodied @out), but the template precompiled.");
-
-            // The runtime backend renders the corrected output: no chained-value-plus-inert-body double-render.
+            DifferentialHarness.ExpectDegrade(gen, "views/bodied-out.heddle");
             Assert.Equal(expected, RenderDynamic(template, value));
         }
     }

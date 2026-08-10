@@ -52,8 +52,7 @@ namespace Heddle.Runtime {
     }
 
     /// <summary>
-    /// Compile Context class. Doing all work to compile extensions, saving type for each context level extension, import namespace/assembly. 
-    /// By loading assembly you can add or override existing extensions or add some extra funtionality parts to template.
+    /// By loading assemblies in this context, you can add or override extensions available during compilation.
     /// </summary>
     public class CompileContext: IDisposable {
 
@@ -66,7 +65,7 @@ namespace Heddle.Runtime {
         internal Dictionary<OutputItem, CompiledElement> CompiledItems { get; }
 
         /// <summary>
-        /// The phase 6 D2 position-indexed scope map: non-null only when
+        /// The position-indexed scope map: non-null only when
         /// <see cref="Data.TemplateOptions.ProvideLanguageFeatures"/> is true (created in the two root ctors,
         /// reference-copied through the private copy ctor so all child compiles share one). Recorded at the single
         /// body-compile funnel <c>HeddleCompiler.Compile</c>; null on production compiles (one null check per body,
@@ -75,29 +74,35 @@ namespace Heddle.Runtime {
         internal ScopeMap ScopeMap { get; }
 
         /// <summary>
-        /// The once-per-definition-per-compile prop-layout cache (D6). Shared through the private copy ctor
+        /// The once-per-definition-per-compile prop-layout cache. Shared through the private copy ctor
         /// exactly like <see cref="CompiledItems"/> — one compile, one cache. Keyed by a stable definition
         /// identity (name + declaration position) rather than the <see cref="DefinitionItem"/> instance, because
         /// context isolation copies definitions per body: two call sites of one definition therefore share the
-        /// same resolved <see cref="PropLayout"/> instance (the D6 two-site invariant).
+        /// same resolved <see cref="PropLayout"/> instance (the two-site invariant).
         /// </summary>
         internal Dictionary<string, PropLayout> ResolvedPropLayouts { get; }
 
         /// <summary>
-        /// The active prop layout while compiling a definition body (D12). <c>null</c> outside a props-declaring
+        /// The active prop layout while compiling a definition body. <c>null</c> outside a props-declaring
         /// definition body. Copied by the child-context copy ctor so nested bodies keep the layout;
         /// save/set/restore around each definition-body compile in <c>CreateExtension</c>.
         /// </summary>
         internal PropLayout ActivePropLayout { get; set; }
 
         /// <summary>
-        /// The active slot parameter type while compiling a slot-declaring definition body (D12). <c>null</c>
-        /// otherwise. Same threading rules as <see cref="ActivePropLayout"/>.
+        /// <para>The slot parameter type of the definition whose body is being compiled — the <c>T</c> of
+        /// <c>&lt;name(out:: T)&gt;</c> — and <c>null</c> anywhere else. A <c>[SlotProjection]</c> extension reads
+        /// it in its own <c>InitStart</c>: non-<c>null</c> means the call is projecting this definition's slot and
+        /// the value it was passed must satisfy <c>T</c>; <c>null</c> means there is no slot here.</para>
+        /// <para>Set by the engine around each definition-body compile and read-only from outside it — an
+        /// extension that installed its own would be telling every later call in the body that a slot it does not
+        /// have is open. Same threading rules as <see cref="ActivePropLayout"/>: compile-time state on a
+        /// single-threaded compile, copied to child contexts, never read at render.</para>
         /// </summary>
-        internal ExType SlotParameterType { get; set; }
+        public ExType SlotParameterType { get; internal set; }
 
         /// <summary>
-        /// Phase 7 D4: the call-scoped region fill scope active while compiling a definition body whose call site
+        /// The call-scoped region fill scope active while compiling a definition body whose call site
         /// matched region-fill candidates. <c>null</c> outside such a body. Copied by the child-context copy ctor
         /// (the proven <see cref="ActivePropLayout"/> propagation seam) so a fill reaches nested region calls at
         /// any depth; save/set/restore around each definition-body compile in <c>HeddleCompiler.CreateExtension</c>.
@@ -105,7 +110,7 @@ namespace Heddle.Runtime {
         internal RegionFillScope RegionFillScope { get; set; }
 
         /// <summary>
-        /// Phase 7 D3: the once-per-component-per-compile region-layout cache, mirroring
+        /// The once-per-component-per-compile region-layout cache, mirroring
         /// <see cref="ResolvedPropLayouts"/> (same stable name+position key; shared through the copy ctor).
         /// </summary>
         internal Dictionary<string, RegionLayout> ResolvedRegionLayouts { get; }
@@ -150,10 +155,7 @@ namespace Heddle.Runtime {
             _csharpContext = new CSharpContext();
         }
 
-        /// <summary>
-        /// Create new untyped (<see cref="System.Object"/>) initial level context to load and compile template from a file.
-        /// Enclosing template level = 0
-        /// </summary>
+        /// <summary>Create an untyped context (System.Object) for template compilation.</summary>
         /// <param name="options"></param>
         /// <param name="modelType"></param>
         public CompileContext(TemplateOptions options, ExType modelType = null)
@@ -170,11 +172,7 @@ namespace Heddle.Runtime {
             _csharpContext = new CSharpContext();
         }
 
-        /// <summary>
-        /// Create new untyped (<see cref="System.Object"/>) Context using old Context data with new template file name
-        /// Enclosing template level = 0
-        /// Use for templates typed explicitly in template file but not in code.
-        /// </summary>
+        /// <summary>Create a context with a new template file name.</summary>
         /// <param name="context">Old Context</param>
         /// <param name="newName">New Tempalte File Name</param>
         public CompileContext(
@@ -184,10 +182,7 @@ namespace Heddle.Runtime {
         }
 
 
-        /// <summary>
-        /// Create new typed Context using old Context data just changing Type.
-        /// Enclosing level = Old Context level + 1
-        /// </summary>
+        /// <summary>Create a context with a new model type.</summary>
         /// <param name="context">Old Context</param>
         /// <param name="newType">New Enclosing Template Data Type</param>
         public CompileContext(
@@ -196,11 +191,7 @@ namespace Heddle.Runtime {
         {
         }
 
-        /// <summary>
-        /// Create new typed Context using old Context data, changing type and template file name.
-        /// Enclosing template level = 0
-        /// Use for templates typed explicitly in code but not in template file.
-        /// </summary>
+        /// <summary>Create a context with a new model type and template file name.</summary>
         /// <param name="context">Old Context</param>
         /// <param name="newType">New Template Data Type</param>
         /// <param name="newName">New Tempalte File Name</param>

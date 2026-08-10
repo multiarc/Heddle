@@ -1,0 +1,65 @@
+// Workload 4 — mixed-page, templ controlled port: byte-parity with the shared golden
+// after normalization. The display SKU is composed IN THE TEMPLATE as the literal
+// "MX-" plus the SkuNumber substitution, and the blurb sentence lives in the template
+// around the { p.Batch } substitution (the model carries data only).
+// The pinned skeleton with newlines only between sibling
+// elements/statements (N2/N3-erased); all text-bearing elements dense; the <style> block is
+// a literal <style> element — the feasibility spike's P3 probe proved its contents render
+// byte-identical, so no @templ.Raw fallback is needed. The footer's single literal spaces
+// between expressions survive verbatim (the spike's P1 probe: whitespace collapsing maps a
+// lone space to itself).
+//
+// Doctype authoring note: templ's generator normalizes a literal <!DOCTYPE html> to
+// lowercase <!doctype html> — a NON-whitespace byte change vs the pinned skeleton — so the
+// doctype is emitted via @templ.Raw over the exact pinned literal (the engine's documented
+// raw mechanism, applied to constant template text, not data). Every other node is authored
+// natively.
+package controlled
+
+import "heddle.dev/benchmarks/go/internal/model"
+
+templ mixedPage(m model.MixedModel) {
+	@templ.Raw("<!DOCTYPE html>")
+	<html>
+		<head>
+			<meta charset="utf-8">
+			<title>{ m.PageTitle }</title>
+			<style>body{font:16px/1.5 system-ui;margin:0;color:#222}header{background:#1a2b3c;color:#fff;padding:12px 24px}nav a{color:#9cf;margin-right:12px;text-decoration:none}main{max-width:960px;margin:0 auto;padding:24px}.hero{background:#f4f6f8;padding:32px;border-radius:8px}.banner{background:#fff4d6;padding:8px 16px;border-radius:4px}.grid{display:flex;flex-wrap:wrap;gap:16px}.card{border:1px solid #ddd;border-radius:6px;padding:16px;width:280px}.card h3{margin:0 0 8px}.price{font-weight:700}.sale{color:#b00020;font-weight:700}footer{border-top:1px solid #ddd;margin-top:32px;padding:16px 24px;color:#666}</style>
+		</head>
+		<body>
+			<header>
+				<h1>{ m.StoreName }</h1>
+				<nav><a href="/">Home</a><a href="/catalog">Catalog</a><a href="/deals">Deals</a><a href="/about">About</a><a href="/support">Support</a><a href="/account">Account</a></nav>
+			</header>
+			<main>
+				if m.ShowBanner {
+					<div class="banner">{ m.BannerText }</div>
+				}
+				<section class="hero">
+					<h2>{ m.HeroHeading }</h2>
+					<p>{ m.HeroTagline }</p>
+				</section>
+				<section class="grid">
+					for _, p := range m.Products {
+						<article class="card">
+							<h3>{ p.Name }</h3>
+							<p class="sku">MX-{ p.SkuNumber }</p>
+							<p class="price">{ p.Price }</p>
+							if p.OnSale {
+								<p class="sale">On sale</p>
+							}
+							<p class="blurb">A dependable workshop staple from batch { p.Batch }, checked for daily use and backed by our lifetime guarantee.</p>
+						</article>
+					}
+				</section>
+				if m.ShowDebugPanel {
+					<pre class="debug">debug</pre>
+				}
+			</main>
+			<footer>
+				<p>{ m.FooterNote }</p>
+				<p>{ m.StoreName } { m.Year } { m.SupportEmail }</p>
+			</footer>
+		</body>
+	</html>
+}

@@ -1,0 +1,3 @@
+% for item in items:
+<tr><td>row-${item["value"]}</td><td>${item["value"]}</td></tr>\
+% endfor

@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- A model assembly the app deliberately does NOT take a compile-time ProjectReference on, so that
+       `@(HeddleModelAssembly)` in ../PrecompiledApp.csproj is the only thing that makes its types nameable.
+       Remove that item and the app stops building: `@model(){{Acme.Models.Ticket}}` resolves to no symbol and the
+       generator reports HED7007. That is the behavioural half of the targets gate. -->
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <AssemblyName>Acme.Models</AssemblyName>
+    <RootNamespace>Acme.Models</RootNamespace>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+
+</Project>

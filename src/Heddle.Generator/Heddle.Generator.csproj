@@ -1,69 +1,33 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <!-- The packable project, and the 4.1.0 (floor) variant. 4.1.0 is what src/Heddle/Heddle.csproj pins for its
+       netstandard2.0 leg, and it is the variant every net48 compiler host (VS 2022, msbuild.exe) and every
+       pre-versioning SDK loads. Source must therefore compile against the 4.1.0 API surface; anything newer is
+       #if-guarded (see Heddle.Generator.Common.props). -->
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
-    <LangVersion>latest</LangVersion>
-    <Nullable>disable</Nullable>
-    <ImplicitUsings>disable</ImplicitUsings>
+    <HeddleRoslynApiVersion>4.1.0</HeddleRoslynApiVersion>
+  </PropertyGroup>
 
-    <!-- Roslyn incremental source generator, phase 7 D12. -->
-    <IsRoslynComponent>true</IsRoslynComponent>
-    <IncludeBuildOutput>false</IncludeBuildOutput>
-    <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
-    <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+  <Import Project="Heddle.Generator.Common.props" />
 
-    <SignAssembly>true</SignAssembly>
-    <AssemblyOriginatorKeyFile>..\..\heddle.snk</AssemblyOriginatorKeyFile>
-
-    <Version>2.0.0$(VersionSuffix)</Version>
+  <PropertyGroup>
     <PackageId>Heddle.Generator</PackageId>
-    <Description>Build-time template pre-compilation for Heddle (phase 7 incremental source generator).</Description>
-
-    <!-- Analyzer projects that ProjectReference another project trigger this warning; the DLLs are packed
-         into analyzers/dotnet/cs by the targets below.
-         RS2008: this incremental source generator reports build diagnostics but is not distributed as a
-         versioned analyzer package with AnalyzerReleases.{Shipped,Unreleased}.md tracking; the HED7xxx IDs
-         are governed by the diagnostic-ID registry in docs/spec instead. -->
-    <NoWarn>$(NoWarn);RS1038;NU5128;RS2008</NoWarn>
+    <Description>Build-time template pre-compilation for Heddle (incremental source generator).</Description>
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- White-box binder unit tests (ExtensionBinder / Info are internal). Signed with the shared key. -->
-    <InternalsVisibleTo Include="Heddle.Generator.Tests, PublicKey=00240000048000009400000006020000002400005253413100040000010001008F699CB432AD3DC770F9147DE37911B49099706C36AF5F14DB7C2031DD216FFAE283B63A2591814F371929AB231C4A82BCBFAC9803C37B96AE90DC703F4159E8B6AC6E2E9F364F072D1BA2FC5B79F26ACF3BD61637D2DB47F409E2B07CF3F49E988BF2C5F6DDAE6D8F804C770601CCE3F3CEA11F7D61A3583109D9AD3244F6C6" />
+    <!-- Build-order edges only: the pack target below reaches into the variants' output paths, and without
+         these references nothing orders a `dotnet pack` of this project after their builds. -->
+    <ProjectReference Include="Heddle.Generator.Roslyn411.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="Heddle.Generator.Roslyn530.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
-  <ItemGroup>
-    <!-- The host compiler provides Microsoft.CodeAnalysis; never shipped (D12). -->
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.4.0" PrivateAssets="all" />
-    <PackageReference Include="Antlr4.Runtime.Standard" Version="4.13.1" GeneratePathProperty="true" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <!-- The ANTLR front end (generated lexer/parser). Referenced for compile; bundled into the analyzer
-         folder for pack (targets below). -->
-    <ProjectReference Include="..\Heddle.Language\Heddle.Language.csproj" />
-  </ItemGroup>
-
-  <!-- Shared front-end sources (D4 step 2): the same parse pipeline the runtime compiles, linked in so parse
-       knowledge exists exactly once. Excludes the runtime CompileContext adapter partial. -->
-  <ItemGroup>
-    <Compile Include="..\Heddle\Language\**\*.cs" Exclude="..\Heddle\Language\DocumentParser.Runtime.cs">
-      <Link>Shared\Language\%(RecursiveDir)%(Filename)%(Extension)</Link>
-    </Compile>
-    <Compile Include="..\Heddle\Strings\Core\BlockPosition.cs" Link="Shared\Strings\BlockPosition.cs" />
-    <Compile Include="..\Heddle\Data\CompileError.cs" Link="Shared\Data\CompileError.cs" />
-    <Compile Include="..\Heddle\Data\HeddleCompileError.cs" Link="Shared\Data\HeddleCompileError.cs" />
-    <Compile Include="..\Heddle\Data\HeddleCompileWarning.cs" Link="Shared\Data\HeddleCompileWarning.cs" />
-    <Compile Include="..\Heddle\Data\HeddleDiagnosticIds.cs" Link="Shared\Data\HeddleDiagnosticIds.cs" />
-    <Compile Include="..\Heddle\Data\LinePosition.cs" Link="Shared\Data\LinePosition.cs" />
-    <Compile Include="..\Heddle\Exceptions\TemplateCompileException.cs" Link="Shared\Exceptions\TemplateCompileException.cs" />
-    <Compile Include="..\Heddle\Exceptions\TemplateParseException.cs" Link="Shared\Exceptions\TemplateParseException.cs" />
-    <Compile Include="..\Heddle\Precompiled\TemplateKey.cs" Link="Shared\Precompiled\TemplateKey.cs" />
-    <Compile Include="..\Heddle\Precompiled\DefaultFunctionTable.cs" Link="Shared\Precompiled\DefaultFunctionTable.cs" />
-  </ItemGroup>
-
-  <!-- Pack layout: the generator + its generation-time dependencies inside analyzers/dotnet/cs; MSBuild
-       props/targets under buildTransitive (D12). Microsoft.CodeAnalysis* is never shipped. -->
+  <!-- Pack layout: one analyzer folder per Roslyn API version — analyzers/dotnet/roslyn{4.1,4.11,5.3}/cs — from
+       which a versioning-aware host picks the highest folder its compiler supports; hosts without
+       SupportsRoslynComponentVersioning would load ALL of them, which buildTransitive\Heddle.Generator.targets
+       trims back to the 4.1 floor. MSBuild props/targets under buildTransitive. Microsoft.CodeAnalysis* is never
+       shipped. Each folder carries its own Heddle.Language + ANTLR copies because the compiler resolves an
+       analyzer's dependencies from the analyzer's own directory. -->
   <ItemGroup>
     <None Include="build\Heddle.Generator.props" Pack="true" PackagePath="buildTransitive\Heddle.Generator.props" />
     <None Include="build\Heddle.Generator.targets" Pack="true" PackagePath="buildTransitive\Heddle.Generator.targets" />
@@ -73,11 +37,27 @@
   </ItemGroup>
 
   <Target Name="_HeddlePackAnalyzers" DependsOnTargets="ResolveReferences" BeforeTargets="_GetPackageFiles">
+    <PropertyGroup>
+      <!-- The variants' obj/bin are isolated per project name by this directory's Directory.Build.props;
+           these paths are that convention, restated for the pack. -->
+      <_HeddleRoslyn411Out>bin\Heddle.Generator.Roslyn411\$(Configuration)\netstandard2.0\</_HeddleRoslyn411Out>
+      <_HeddleRoslyn530Out>bin\Heddle.Generator.Roslyn530\$(Configuration)\netstandard2.0\</_HeddleRoslyn530Out>
+    </PropertyGroup>
     <ItemGroup>
-      <None Include="$(OutputPath)Heddle.Generator.dll" Pack="true" PackagePath="analyzers\dotnet\cs" Visible="false" />
-      <None Include="$(OutputPath)Heddle.Language.dll" Pack="true" PackagePath="analyzers\dotnet\cs" Visible="false" />
+      <None Include="$(OutputPath)Heddle.Generator.dll" Pack="true" PackagePath="analyzers\dotnet\roslyn4.1\cs" Visible="false" />
+      <None Include="$(OutputPath)Heddle.Language.dll" Pack="true" PackagePath="analyzers\dotnet\roslyn4.1\cs" Visible="false" />
       <None Include="$(PkgAntlr4_Runtime_Standard)\lib\netstandard2.0\Antlr4.Runtime.Standard.dll"
-            Pack="true" PackagePath="analyzers\dotnet\cs" Visible="false" />
+            Pack="true" PackagePath="analyzers\dotnet\roslyn4.1\cs" Visible="false" />
+
+      <None Include="$(_HeddleRoslyn411Out)Heddle.Generator.dll" Pack="true" PackagePath="analyzers\dotnet\roslyn4.11\cs" Visible="false" />
+      <None Include="$(OutputPath)Heddle.Language.dll" Pack="true" PackagePath="analyzers\dotnet\roslyn4.11\cs" Visible="false" />
+      <None Include="$(PkgAntlr4_Runtime_Standard)\lib\netstandard2.0\Antlr4.Runtime.Standard.dll"
+            Pack="true" PackagePath="analyzers\dotnet\roslyn4.11\cs" Visible="false" />
+
+      <None Include="$(_HeddleRoslyn530Out)Heddle.Generator.dll" Pack="true" PackagePath="analyzers\dotnet\roslyn5.3\cs" Visible="false" />
+      <None Include="$(OutputPath)Heddle.Language.dll" Pack="true" PackagePath="analyzers\dotnet\roslyn5.3\cs" Visible="false" />
+      <None Include="$(PkgAntlr4_Runtime_Standard)\lib\netstandard2.0\Antlr4.Runtime.Standard.dll"
+            Pack="true" PackagePath="analyzers\dotnet\roslyn5.3\cs" Visible="false" />
     </ItemGroup>
   </Target>
 

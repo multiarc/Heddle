@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
@@ -16,16 +15,14 @@ using Heddle.Native;
 using Heddle.Runtime.Parameters;
 using Heddle.Strings.Core;
 using Platform = Microsoft.CodeAnalysis.Platform;
-using Microsoft.DotNet.PlatformAbstractions;
 using Microsoft.Extensions.FileProviders;
 
 namespace Heddle.Runtime
 {
     internal static class ContextCompilation
     {
-        private static readonly ConcurrentDictionary<string, Assembly> Cache =
-            new ConcurrentDictionary<string, Assembly>();
-
+        /// <summary>Serialises expression-class compilation. It used to guard a cache as well; that cache could
+        /// never be read from — see <see cref="CompileCSharp"/>.</summary>
         private static readonly object LockObj = new object();
 
         private static readonly HeddleTemplate CodeGenerator;
@@ -97,11 +94,7 @@ namespace Heddle.Runtime
             if (context.CompileContext.Options.ExpressionMode == ExpressionMode.FullCSharp && context.CSharpContext.Methods.Count > 0 &&
                 !context.CSharpContext.Compiled)
             {
-                // Phase 9 D4 — the single Roslyn entry. When the trim-time feature switch is off, the
-                // guard below is a constant-true early return (via ILLink.Substitutions.xml), so CompileCSharp
-                // and every Microsoft.CodeAnalysis-typed member it reaches become dead code the linker removes.
-                // A misconfigured runtime host (FullCSharp + switch off) collects HED9001 rather than silently
-                // skipping the pass; the browser demo compiles Native so this never fires there.
+                // When feature switch is off, this guard is constant-true and dead code is linker-eliminated.
                 if (!HeddleFeatures.CSharpTierEnabled)
                 {
                     context.CompileContext.CompileErrors.Add(new HeddleCompileError
@@ -120,110 +113,108 @@ namespace Heddle.Runtime
             }
         }
 
+        /// <summary>
+        /// Compiles the scope's embedded C# expressions into one assembly and binds each generated method back to
+        /// its parameter.
+        /// <para>Arithmetic here is unchecked, and the class template says so in the generated source rather than
+        /// leaving it to <see cref="CSharpCompilationOptions"/>. The option settles the run-time case; it cannot
+        /// settle the constant one, which C# checks whatever the compilation is configured to do. The engine's other
+        /// expression tier builds <c>Expression.Add</c> and friends, which wrap, so the same template text has to
+        /// wrap here too — and the precompiled tier, which pastes this text into the consumer's assembly under
+        /// settings neither the engine nor the template chooses, wraps it for the same reason.</para>
+        /// </summary>
         private static void CompileCSharp(CompileScope context)
         {
+            if (!InitErrors.Success)
+                throw new TemplateCompileException("Cannot compile base C# generation templates",
+                    InitErrors.Errors);
+            var code = CodeGenerator.Generate(context.CSharpContext);
+
+            // There was a cache keyed on this source. It could not work: the source declares a class named
+            // after CSharpContext.ClassGuid, a fresh Guid per context, so the key was unique per compile and
+            // measurably never hit — eight compiles of three distinct expressions produced eight adds and no
+            // reads. All it did was retain every generated source string for the life of the process. A hit
+            // would in fact have been worse than a miss: the entry class is looked up below by *this* context's
+            // guid, which another context's assembly does not contain.
+            lock (LockObj)
             {
-                if (!InitErrors.Success)
-                    throw new TemplateCompileException("Cannot compile base C# generation templates",
-                        InitErrors.Errors);
-                var code = CodeGenerator.Generate(context.CSharpContext);
-
-                // ReSharper disable once InconsistentlySynchronizedField
-                if (Cache.TryGetValue(code, out var asm))
-                {
-                    context.CSharpContext.CompiledAssembly = asm;
-                }
-                else
-                {
-
-                    lock (LockObj)
-                    {
-                        if (Cache.TryGetValue(code, out asm))
-                        {
-                            context.CSharpContext.CompiledAssembly = asm;
-                        }
-                        else
-                        {
-                            var tree = CSharpSyntaxTree.ParseText(code);
-                            var compilation = CSharpCompilation.Create(
-                                context.CompileContext.ScopeType + "_" + context.CSharpContext.ClassGuid.ToString("N"),
-                                new[] {tree},
-                                AssemblyHelper.GetApplicationReferences(),
-                                new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
-                                    .WithSpecificDiagnosticOptions(
-                                        new Dictionary<string, ReportDiagnostic>
-                                        {
-                                            {"CS1701", ReportDiagnostic.Suppress}, // Binding redirects
-                                            {"CS1702", ReportDiagnostic.Suppress},
-                                            {"CS1705", ReportDiagnostic.Suppress}
-                                        }).WithOptimizationLevel(OptimizationLevel.Release)
-                                    .WithGeneralDiagnosticOption(ReportDiagnostic.Default)
-                                    .WithPlatform(Platform.AnyCpu));
-                            var diagnostics = compilation.GetDiagnostics();
-                            if (diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error))
+                var tree = CSharpSyntaxTree.ParseText(code);
+                var compilation = CSharpCompilation.Create(
+                    context.CompileContext.ScopeType + "_" + context.CSharpContext.ClassGuid.ToString("N"),
+                    new[] {tree},
+                    AssemblyHelper.GetApplicationReferences(),
+                    new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
+                        .WithSpecificDiagnosticOptions(
+                            new Dictionary<string, ReportDiagnostic>
                             {
-                                context.CompileContext.CompileErrors.AddRange(FormatErrors(diagnostics,
-                                    context.CSharpContext.Methods.First().Position));
-                                return;
-                            }
-
-                            using (var codeStream = new MemoryStream())
-                            {
-                                using var symbolStream = new MemoryStream();
-                                var results = compilation.Emit(codeStream, symbolStream,
-                                    options: new EmitOptions(
-                                        debugInformationFormat: DebugInformationFormat.PortablePdb));
-                                if (!results.Success)
-                                {
-                                    context.CompileContext.CompileErrors.AddRange(FormatErrors(results.Diagnostics,
-                                        context.CSharpContext.Methods.First().Position));
-                                    return;
-                                }
-
-                                context.CSharpContext.CompiledAssembly =
-                                    Assembly.Load(codeStream.ToArray(), symbolStream.ToArray());
-                            }
-
-                            Cache.TryAdd(code, context.CSharpContext.CompiledAssembly);
-                        }
-                    }
-                }
-
-                var classType =
-                    context.CSharpContext.CompiledAssembly.GetType(
-                        $"Heddle.Runtime.CSE_{context.CSharpContext.ClassGuid:N}");
-                var methodNumber = 0;
-                foreach (var expressionCompilation in context.CSharpContext.Methods)
+                                {"CS1701", ReportDiagnostic.Suppress}, // Binding redirects
+                                {"CS1702", ReportDiagnostic.Suppress},
+                                {"CS1705", ReportDiagnostic.Suppress}
+                            }).WithOptimizationLevel(OptimizationLevel.Release)
+                        .WithGeneralDiagnosticOption(ReportDiagnostic.Default)
+                        .WithPlatform(Platform.AnyCpu));
+                var diagnostics = compilation.GetDiagnostics();
+                if (diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error))
                 {
-                    if (expressionCompilation.RuntimeCallParameter is CompiledParameter compiledParameter)
-                    {
-                        var method = classType.GetMethod(
-                            $"ProcessData_{expressionCompilation.ExtensionName}{methodNumber}",
-                            BindingFlags.Public | BindingFlags.Static);
-                        if (method != null)
-                        {
-                            var modelParameter = Expression.Parameter(typeof(object));
-                            var chainedParameter = Expression.Parameter(typeof(object));
-                            var rootParameter = Expression.Parameter(typeof(object));
-                            compiledParameter.ParameterImplementation = Expression
-                                .Lambda<Func<object, object, object, object>>(Expression.Convert(Expression.Call(null,
-                                            method,
-                                            Expression.Convert(modelParameter, expressionCompilation.ModelType.Type),
-                                            Expression.Convert(chainedParameter,
-                                                expressionCompilation.ChainedType.Type),
-                                            Expression.Convert(rootParameter,
-                                                expressionCompilation.RootModelType.Type)),
-                                        typeof(object)),
-                                    modelParameter,
-                                    chainedParameter,
-                                    rootParameter).Compile();
-                            methodNumber++;
-                        }
-                    }
+                    context.CompileContext.CompileErrors.AddRange(FormatErrors(diagnostics,
+                        context.CSharpContext.Methods.First().Position));
+                    return;
                 }
 
-                context.CSharpContext.Compiled = true;
+                using (var codeStream = new MemoryStream())
+                {
+                    using var symbolStream = new MemoryStream();
+                    var results = compilation.Emit(codeStream, symbolStream,
+                        options: new EmitOptions(
+                            debugInformationFormat: DebugInformationFormat.PortablePdb));
+                    if (!results.Success)
+                    {
+                        context.CompileContext.CompileErrors.AddRange(FormatErrors(results.Diagnostics,
+                            context.CSharpContext.Methods.First().Position));
+                        return;
+                    }
+
+                    context.CSharpContext.CompiledAssembly =
+                        Assembly.Load(codeStream.ToArray(), symbolStream.ToArray());
+                    // Ours, not the host's: observation must not map its types.
+                    Native.AssemblyHelper.MarkEngineEmitted(context.CSharpContext.CompiledAssembly);
+                }
             }
+
+            var classType =
+                context.CSharpContext.CompiledAssembly.GetType(
+                    $"Heddle.Runtime.CSE_{context.CSharpContext.ClassGuid:N}");
+            var methodNumber = 0;
+            foreach (var expressionCompilation in context.CSharpContext.Methods)
+            {
+                if (expressionCompilation.RuntimeCallParameter is CompiledParameter compiledParameter)
+                {
+                    var method = classType.GetMethod(
+                        $"ProcessData_{expressionCompilation.ExtensionName}{methodNumber}",
+                        BindingFlags.Public | BindingFlags.Static);
+                    if (method != null)
+                    {
+                        var modelParameter = Expression.Parameter(typeof(object));
+                        var chainedParameter = Expression.Parameter(typeof(object));
+                        var rootParameter = Expression.Parameter(typeof(object));
+                        compiledParameter.ParameterImplementation = Expression
+                            .Lambda<Func<object, object, object, object>>(Expression.Convert(Expression.Call(null,
+                                        method,
+                                        Expression.Convert(modelParameter, expressionCompilation.ModelType.Type),
+                                        Expression.Convert(chainedParameter,
+                                            expressionCompilation.ChainedType.Type),
+                                        Expression.Convert(rootParameter,
+                                            expressionCompilation.RootModelType.Type)),
+                                    typeof(object)),
+                                modelParameter,
+                                chainedParameter,
+                                rootParameter).Compile();
+                        methodNumber++;
+                    }
+                }
+            }
+
+            context.CSharpContext.Compiled = true;
         }
 
         internal static IEnumerable<HeddleCompileError> FormatErrors(ImmutableArray<Diagnostic> diagnostics, BlockPosition position)

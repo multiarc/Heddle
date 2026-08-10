@@ -2,9 +2,7 @@ using System.Collections.Generic;
 
 namespace Heddle.Precompiled
 {
-    /// <summary>One default built-in overload as pure strings (phase 7 D21): the registered function name, the
-    /// <see cref="PrecompiledFunctions"/> shim method that binds it, and the parameter/return CLR type names. Value
-    /// data only — safe to hold in an incremental-generator pipeline model.</summary>
+    /// <summary>One default built-in overload: registered function name, shim method name, and CLR parameter/return types.</summary>
     internal readonly struct DefaultFunctionRow
     {
         public DefaultFunctionRow(string name, string shimMethodName, string[] parameterTypeNames,
@@ -25,18 +23,12 @@ namespace Heddle.Precompiled
         public string ReturnTypeName { get; }
     }
 
-    /// <summary>
-    /// The shared-sourced table of the 18 default built-in function names (35 overloads) that a fresh
-    /// <c>FunctionRegistry</c> starts with (phase 1 D12 + phase 4 D2's <c>range</c>). Compiled into <b>both</b>
-    /// <c>Heddle</c> and the <c>Heddle.Generator</c> analyzer (like <see cref="TemplateKey"/>, D1/D12): the generator
-    /// seeds its merged function table from these rows and emits <see cref="PrecompiledFunctions"/> shim calls for
-    /// default-bound names; the engine's <c>DefaultFunctionLockstepTests</c> gate this table against
-    /// <c>FunctionRegistry.Default</c> and the shim in both directions.
-    /// </summary>
+    /// <summary>The 18 default built-in function names (43 overloads) compiled into both Heddle and Heddle.Generator.
+    /// The generator seeds its merged table from these rows and emits PrecompiledFunctions shim calls; the engine
+    /// tests the table against FunctionRegistry.Default in both directions.</summary>
     internal static class DefaultFunctionTable
     {
-        /// <summary>The assembly-qualified type name (without version) the shim forwards to — the target recorded on
-        /// every shim-bound <see cref="PrecompiledFunctionBinding"/> row (D21).</summary>
+        /// <summary>Assembly-qualified type name (without version) that the shim forwards to.</summary>
         public const string ShimTargetTypeName = "Heddle.Runtime.Expressions.BuiltInFunctions, Heddle";
 
         private const string Str = "System.String";
@@ -49,7 +41,7 @@ namespace Heddle.Precompiled
         private const string ObjArr = "System.Object[]";
         private const string Range = "Heddle.Models.Range";
 
-        /// <summary>The 35 default overloads, in <c>BuiltInFunctions.CreateEntries()</c> order.</summary>
+        /// <summary>The 43 default overloads, in <c>BuiltInFunctions.CreateEntries()</c> order.</summary>
         public static readonly IReadOnlyList<DefaultFunctionRow> Rows = new[]
         {
             new DefaultFunctionRow("upper", "Upper", new[] { Str }, Str),
@@ -77,12 +69,20 @@ namespace Heddle.Precompiled
             new DefaultFunctionRow("max", "Max", new[] { Long, Long }, Long),
             new DefaultFunctionRow("max", "Max", new[] { Dbl, Dbl }, Dbl),
             new DefaultFunctionRow("max", "Max", new[] { Dec, Dec }, Dec),
+            new DefaultFunctionRow("round", "Round", new[] { Int }, Int),
+            new DefaultFunctionRow("round", "Round", new[] { Int, Int }, Int),
+            new DefaultFunctionRow("round", "Round", new[] { Long }, Long),
+            new DefaultFunctionRow("round", "Round", new[] { Long, Int }, Long),
             new DefaultFunctionRow("round", "Round", new[] { Dbl }, Dbl),
             new DefaultFunctionRow("round", "Round", new[] { Dbl, Int }, Dbl),
             new DefaultFunctionRow("round", "Round", new[] { Dec }, Dec),
             new DefaultFunctionRow("round", "Round", new[] { Dec, Int }, Dec),
+            new DefaultFunctionRow("floor", "Floor", new[] { Int }, Int),
+            new DefaultFunctionRow("floor", "Floor", new[] { Long }, Long),
             new DefaultFunctionRow("floor", "Floor", new[] { Dbl }, Dbl),
             new DefaultFunctionRow("floor", "Floor", new[] { Dec }, Dec),
+            new DefaultFunctionRow("ceil", "Ceil", new[] { Int }, Int),
+            new DefaultFunctionRow("ceil", "Ceil", new[] { Long }, Long),
             new DefaultFunctionRow("ceil", "Ceil", new[] { Dbl }, Dbl),
             new DefaultFunctionRow("ceil", "Ceil", new[] { Dec }, Dec),
             new DefaultFunctionRow("range", "Range", new[] { Int, Int }, Range),

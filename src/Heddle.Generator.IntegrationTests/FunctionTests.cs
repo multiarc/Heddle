@@ -5,10 +5,10 @@ using Xunit;
 namespace Heddle.Generator.IntegrationTests
 {
     /// <summary>
-    /// Phase 7 WI5a differential (D20, OQ1/D21): built-in function calls inside <c>@(...)</c> bind through the public
-    /// <c>PrecompiledFunctions</c> shim, and the consumer compiler resolves the overload over the same closed
-    /// candidate set as the runtime registry — rendered byte-identically to the dynamic engine, including the
-    /// never-throw/invariant-culture contract on null arguments.
+    /// Built-in function calls inside <c>@(...)</c> bind through the public <c>PrecompiledFunctions</c> shim, and
+    /// the consumer compiler resolves the overload over the same closed candidate set as the runtime registry —
+    /// rendered byte-identically to the dynamic engine, including the never-throw/invariant-culture contract on
+    /// null arguments.
     /// </summary>
     public class FunctionTests
     {

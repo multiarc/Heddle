@@ -1,2 +1,3 @@
 templates/invoice.heddle  model=Invoice  precompiled=True
 templates/receipt.heddle  model=Invoice  precompiled=True
+templates/ticket.heddle  model=Ticket  precompiled=True

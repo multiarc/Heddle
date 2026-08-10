@@ -7,14 +7,15 @@ using System.Threading;
 using Heddle.Data;
 using Heddle.Helpers;
 using Heddle.Language;
+using Heddle.Precompiled;
 using Heddle.Runtime;
 using Heddle.Strings.Core;
 
 namespace Heddle.LanguageServices
 {
     /// <summary>
-    /// Drives the engine pipeline (parse → <c>HeddleCompiler.Compile</c> → optional Roslyn) directly (D9) and
-    /// projects the side channels into an immutable <see cref="DocumentAnalysis"/> (D10). Never uses
+    /// Drives the engine pipeline (parse → <c>HeddleCompiler.Compile</c> → optional Roslyn) directly and
+    /// projects the side channels into an immutable <see cref="DocumentAnalysis"/>. Never uses
     /// <c>HeddleTemplate</c> — the facade wants tokens/errors/warnings/scope map, not the render tree.
     /// </summary>
     internal sealed class DocumentAnalyzer
@@ -88,6 +89,9 @@ namespace Heddle.LanguageServices
                 diagnostics, definitions, imports, scopes, csharpUsed);
         }
 
+        /// <summary>Projects workspace options to engine options. Every analysis-applicable option is carried; the
+        /// editor compiles under the same options as the build. <c>ProvideLanguageFeatures</c> is hardwired as
+        /// the analyzer's operating mode, not a workspace choice.</summary>
         private TemplateOptions BuildTemplateOptions(Heddle.Runtime.Expressions.FunctionRegistry functions)
         {
             return new TemplateOptions
@@ -96,30 +100,29 @@ namespace Heddle.LanguageServices
                 RootPath = string.IsNullOrEmpty(_options?.RootPath)
                     ? AppContext.BaseDirectory
                     : _options.RootPath,
-                OutputProfile = _options?.OutputProfile ?? OutputProfile.Text,
-                ExpressionMode = _options?.ExpressionMode ?? ExpressionMode.Native,
+                OutputProfile = _options?.OutputProfile ?? HeddleBuildOptions.DefaultOutputProfile,
+                ExpressionMode = _options?.ExpressionMode ?? HeddleBuildOptions.DefaultExpressionMode,
                 FileNamePostfix = _options?.FileNamePostfix ?? string.Empty,
+                TrimDirectiveLines = _options?.TrimDirectiveLines ?? HeddleBuildOptions.DefaultTrimDirectiveLines,
+                MaxRecursionCount = _options?.MaxRecursionCount ?? HeddleBuildOptions.DefaultMaxRecursionCount,
                 Functions = functions
             };
         }
 
+        /// <summary>Uses shared projection, then re-anchors import-origin entries to zero-width at the import site
+        /// with path-prefixed messages. Channel selection and deduplication follow shared rules with build tier.</summary>
         private IReadOnlyList<HeddleDiagnostic> ProjectDiagnostics(CompileContext compileContext,
             ParseContext parseContext)
         {
-            var seen = new HashSet<HeddleCompileError>();
             var result = new List<HeddleDiagnostic>();
-
-            void Add(HeddleCompileError entry)
+            foreach (var entry in HeddleDiagnosticProjection.Drain(compileContext, parseContext))
             {
-                if (entry == null || !seen.Add(entry))
-                    return;
-                var severity = entry is HeddleCompileWarning
+                var severity = entry.IsWarning
                     ? HeddleDiagnosticSeverity.Warning
                     : HeddleDiagnosticSeverity.Error;
-                var fix = (entry as HeddleCompileWarning)?.Fix;
-                int offset = entry.Position.StartIndex;
-                int length = entry.Position.Length;
-                string message = entry.Error;
+                int offset = entry.Offset;
+                int length = entry.Length;
+                string message = entry.Message;
                 string importedFrom = null;
 
                 var origin = entry.ImportOrigin;
@@ -128,21 +131,12 @@ namespace Heddle.LanguageServices
                     importedFrom = RenderPath(origin.Path);
                     offset = origin.Site.StartIndex;
                     length = 0;
-                    message = $"imported '{importedFrom}': {entry.Error}";
+                    message = $"imported '{importedFrom}': {entry.Message}";
                 }
 
-                result.Add(new HeddleDiagnostic(entry.DiagnosticId, message, fix, severity, offset, length,
+                result.Add(new HeddleDiagnostic(entry.Id, message, entry.Fix, severity, offset, length,
                     importedFrom));
             }
-
-            foreach (var error in compileContext.CompileErrors)
-                Add(error);
-            foreach (var warning in compileContext.CompileWarnings)
-                Add(warning);
-            foreach (var error in parseContext.Errors)
-                Add(error);
-            foreach (var warning in parseContext.Warnings)
-                Add(warning);
 
             return result;
         }
@@ -172,7 +166,7 @@ namespace Heddle.LanguageServices
 
         private IReadOnlyList<PropInfo> FlattenProps(DefinitionItem definition, ICollection<string> namespaces)
         {
-            // Inheritance flattening (phase 5 D6): the most-derived declaration of each prop name wins.
+            // Inheritance flattening: the most-derived declaration of each prop name wins.
             var byName = new Dictionary<string, PropInfo>(StringComparer.Ordinal);
             for (var d = definition; d != null; d = d.BaseDefinition)
             {
@@ -190,7 +184,7 @@ namespace Heddle.LanguageServices
             return byName.Values.ToList();
         }
 
-        /// <summary>Phase 7 (WI5): projects the parse-model region declarations — the LSP reads the parse model,
+        /// <summary>Projects the parse-model region declarations — the LSP reads the parse model,
         /// it does not reimplement the region table.</summary>
         private IReadOnlyList<RegionInfo> ProjectRegions(DefinitionItem definition, ICollection<string> namespaces)
         {
@@ -266,26 +260,29 @@ namespace Heddle.LanguageServices
             return new ImportLink(kind, match.Index, match.Length, raw, resolved);
         }
 
-        private string RenderPath(string path)
+        private string RenderPath(string path) => RenderPath(path, _options?.RootPath);
+
+        /// <summary>
+        /// The display spelling of an import/partial origin: the template key it would have under
+        /// <paramref name="root"/>, or the absolute path in <c>/</c> form when it has none. Uses
+        /// <see cref="TemplateKey.TryMakeRelative"/> to avoid a prefix-strip bug where <c>StartsWith</c> matched
+        /// sibling directories (<c>/root</c> vs <c>/rootx/a</c>). Paths outside root show absolute with backslashes
+        /// normalized to forward slashes.
+        /// </summary>
+        internal static string RenderPath(string path, string root)
         {
             if (string.IsNullOrEmpty(path))
                 return path;
-            var root = _options?.RootPath;
             if (!string.IsNullOrEmpty(root))
             {
                 try
                 {
-                    var full = Path.GetFullPath(path);
-                    var rootFull = Path.GetFullPath(root);
-                    if (full.StartsWith(rootFull, StringComparison.OrdinalIgnoreCase))
-                    {
-                        var rel = full.Substring(rootFull.Length).TrimStart('/', '\\');
-                        return rel.Replace('\\', '/');
-                    }
+                    if (TemplateKey.TryMakeRelative(Path.GetFullPath(path), Path.GetFullPath(root), out var key))
+                        return key;
                 }
                 catch
                 {
-                    // fall through to absolute
+                    // malformed path or root — fall through to absolute
                 }
             }
 

@@ -11,11 +11,8 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// The phase 6 D1 binary-compatibility gate: a sorted, normalized reflection dump of the public surface of
-    /// <c>Heddle</c> and <c>Heddle.Language</c>, pinned as golden files. The zero-breaking-change proof for the
-    /// <c>Heddle.LanguageServices</c> extraction — any public removal or signature change fails this test. The
-    /// <c>Heddle</c> golden includes phase 6 D24's two additive members (<c>ExportFunctionsAttribute</c>,
-    /// <c>FunctionRegistry.RegisterFrom</c>); <c>Heddle.Language</c> gains nothing.
+    /// A binary-compatibility gate: reflects the public API surface and pins it against golden files.
+    /// Detects any public removals or signature changes.
     /// </summary>
     public class PublicApiSurfaceTests
     {
@@ -37,9 +34,7 @@ namespace Heddle.Tests
             var actualPath = Path.Combine("TestTemplate", goldenName + ".actual");
             File.WriteAllText(actualPath, actual);
 #if NET8_0_OR_GREATER
-            // The golden is captured on net8.0+ (the facade's own TFMs). ScopeRenderer carries a TFM-conditional
-            // member (TotalLength on net8+, TotalCount on net6/netstandard), a pre-existing per-TFM surface
-            // difference — so the byte-exact snapshot is pinned on net8.0+ and older TFMs get the lighter check.
+            // ScopeRenderer has TFM-conditional members, so golden is pinned to net8.0+ with lighter check on older TFMs.
             var goldenPath = Path.Combine("TestTemplate", goldenName);
             Assert.True(File.Exists(goldenPath),
                 $"Public-surface golden '{goldenName}' is missing; the current surface was written to '{actualPath}'.");
@@ -60,9 +55,7 @@ namespace Heddle.Tests
                 header.Append("TYPE ").Append(Friendly(type));
                 if (type.BaseType != null && type.BaseType != typeof(object))
                     header.Append(" : ").Append(Friendly(type.BaseType));
-                // Only Heddle's own interfaces are part of the surface under test; BCL interface implementations
-                // (e.g. enums gaining System.ISpanFormattable across runtimes) are runtime contracts that vary by
-                // TFM and would make the snapshot non-deterministic.
+                // Exclude BCL interfaces; they vary by TFM and break determinism.
                 var interfaces = type.GetInterfaces()
                     .Where(i => (i.IsPublic || i.IsNestedPublic) && (i.FullName?.StartsWith("Heddle") ?? false))
                     .Select(Friendly).OrderBy(s => s, StringComparer.Ordinal).ToList();

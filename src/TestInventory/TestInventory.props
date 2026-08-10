@@ -1,0 +1,32 @@
+<!--
+  The test-class inventory: the SHARING MECHANISM for the gate that replaced the CI test-count floors.
+
+  Every test project imports this line and gets two things: the shared assertion helper, and its own
+  `test-classes.txt` copied into its own output directory. The inventory itself stays in the suite it
+  describes — `src/<Suite>/test-classes.txt` — because the list of a suite's classes belongs next to
+  those classes, and a reviewer reading a suite's diff sees the inventory change in the same diff.
+
+  This directory deliberately belongs to no project, on the same terms as `src/TestCorpus/`: no csproj's
+  default glob reaches it, so all five consuming suites import it identically.
+
+  The build copy is named `<AssemblyName>.test-classes.txt`, not `test-classes.txt`. One suite copies
+  another's build output into its own directory (Heddle.Generator.IntegrationTests takes Heddle.Tests's),
+  and two files with one name in one directory is a race, not a gate.
+-->
+<Project>
+
+  <ItemGroup>
+    <!-- The assertion, compiled into every consumer rather than repeated per suite — the same shape the
+         shared corpus accessor and the shared test vectors already use. -->
+    <Compile Include="$(MSBuildThisFileDirectory)TestClassInventory.cs" Link="TestInventory\TestClassInventory.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="test-classes.txt" />
+    <Content Include="$(MSBuildProjectDirectory)\test-classes.txt"
+             Link="TestInventory\$(AssemblyName).test-classes.txt"
+             CopyToOutputDirectory="PreserveNewest"
+             Visible="true" />
+  </ItemGroup>
+
+</Project>

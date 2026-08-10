@@ -4,6 +4,7 @@ using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using Heddle.Data;
+using Heddle.Language.Members;
 
 namespace Heddle.Runtime.Parameters
 {
@@ -25,35 +26,49 @@ namespace Heddle.Runtime.Parameters
         }
 
         /// <summary>
-        /// Builds the null-safe property-hop chain over <paramref name="objectInput"/> (an object-typed
-        /// expression). A hop off a null reference yields <c>default(T)</c> of the hop's property type.
-        /// Shared by the member tier and the native-expression tier so both hop identically.
+        /// Builds the null-safe property-hop chain over <paramref name="objectInput"/>.
+        /// Shared by the member tier and the native-expression tier so both hop identically using <see cref="MemberHopRule.Form"/>.
+        /// <para>A null-safe hop names its receiver twice — once to test it, once to read through it — so each
+        /// receiver is bound to a local first. Inlining it instead would place a second copy of everything below the
+        /// hop into the tree, doubling both its size and the number of getter calls at every segment.</para>
         /// </summary>
         internal static Expression BuildNullSafePropertyChain(Expression objectInput,
             IEnumerable<(Type type, PropertyInfo property)> getModelParameter)
         {
+            var receivers = new List<ParameterExpression>();
+            var bindings = new List<Expression>();
             Expression result = null;
             foreach (var parameter in getModelParameter)
             {
                 var input = result ?? Expression.Convert(objectInput, parameter.type);
-                if (parameter.type.IsValueType)
+                var propertyType = parameter.property.PropertyType;
+                var form = MemberHopRule.Form(parameter.type.IsValueType,
+                    propertyType.IsValueType && Nullable.GetUnderlyingType(propertyType) == null);
+                if (form == HopForm.Direct)
                 {
                     result = Expression.MakeMemberAccess(input, parameter.property);
                 }
                 else
                 {
+                    var receiver = Expression.Variable(input.Type);
+                    receivers.Add(receiver);
+                    bindings.Add(Expression.Assign(receiver, input));
                     result = Expression.Condition(
-                        Expression.Equal(input,
+                        Expression.Equal(receiver,
                             Expression.Constant(null, parameter.type)
-                        ), Expression.Default(parameter.property.PropertyType),
-                        Expression.MakeMemberAccess(input, parameter.property));
+                        ), Expression.Default(propertyType),
+                        Expression.MakeMemberAccess(receiver, parameter.property));
                 }
             }
 
             if (result == null)
                 throw new ArgumentException();
 
-            return result;
+            if (receivers.Count == 0)
+                return result;
+
+            bindings.Add(result);
+            return Expression.Block(receivers, bindings);
         }
 
         public void Dispose()

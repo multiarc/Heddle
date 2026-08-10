@@ -6,7 +6,7 @@ using Heddle.Data;
 namespace Heddle.Extensions
 {
     /// <summary>
-    /// <para>URL-component context encoder (C2-R4). <c>@url(value)</c> percent-encodes its value with
+    /// <para>URL-component context encoder. <c>@url(value)</c> percent-encodes its value with
     /// <see cref="Uri.EscapeDataString(string)"/> semantics (RFC 3986). It encodes a single <i>component</i> — a query
     /// value or path segment — not a whole URL.</para>
     /// <para>Value-call semantics mirror <c>@string</c>: the parameter is the value; a <c>null</c> value renders the
