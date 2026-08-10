@@ -55,6 +55,7 @@ Heddle.Generator.IntegrationTests.ImportOnlyFragmentStandalonePassTests
 Heddle.Generator.IntegrationTests.ImportSpellingTests
 Heddle.Generator.IntegrationTests.InaccessibleModelSymbolTests
 Heddle.Generator.IntegrationTests.IndexerDifferentialTests
+Heddle.Generator.IntegrationTests.InertBodyPostStateTests
 Heddle.Generator.IntegrationTests.LateBoundAllocationTests
 Heddle.Generator.IntegrationTests.LateBoundFunctionTests
 Heddle.Generator.IntegrationTests.ListElementBodyTypingTests

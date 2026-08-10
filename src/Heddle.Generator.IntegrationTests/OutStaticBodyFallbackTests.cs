@@ -12,10 +12,11 @@ namespace Heddle.Generator.IntegrationTests
     /// Differential coverage for a built-in <c>@out()</c> that carries its own body. The generator refuses to
     /// precompile a bodied slot projection (<c>TemplateEmitter.BuildSlotProjectionCall</c>:
     /// <c>!string.IsNullOrEmpty(ParameterTemplate)</c> → reason "bodied @out" → <c>null</c>), so any template
-    /// containing one <b>falls back to the dynamic tier</b>. It is the one refusal of that arm the hook cannot
-    /// take over: outside a slot-declaring definition the hook accepts the body, and the emitted body is a real
-    /// strategy where the engine's compile of the same static-only text produces no processors at all — the
-    /// expectations below are exactly that difference. This
+    /// containing one <b>falls back to the dynamic tier</b>. Outside a slot-declaring definition the hook accepts
+    /// the body, so the arm the refusal covers is the emitter's own, and the byte it named — an emitted body being
+    /// a real strategy where the engine's compile of the same static-only text produces no processors at all — is
+    /// no longer produced anywhere else: the build emits that post-state for every other bodied call. The refusal
+    /// stands ahead of the body build, so it never reaches it. This
     /// pins that documented tier fallback (no precompiled strategy is emitted) — which is what keeps the precompiled and
     /// runtime backends in lockstep for the <c>@out</c> double-render fix (both render through the dynamic engine) — and
     /// asserts the runtime renders the corrected output: because a non-slot <c>@out</c> is a value emitter, a static-only

@@ -30,7 +30,12 @@ namespace Heddle.Generator.Emit
         /// failure by handing the template to the tier whose diagnostic is the contract.</summary>
         EngineParity,
 
-        /// <summary>A chained call, bodied carrier or chain item the emitter cannot flatten.</summary>
+        /// <summary>A chained call or chain item the emitter cannot flatten. No longer the bodied unnamed
+        /// carrier: <c>@( … ){{ … }}</c> was refused for one rendered byte — a body of static text alone compiles
+        /// to no processors, so the engine's carrier finds no inner document and renders its model — and the build
+        /// emits that post-state now instead of predicting past it, so the carrier takes the ordinary bound-call
+        /// route. What is left is an item of a chain the emitter could not build and a chain-item name it cannot
+        /// bind, plus two floors the grammar does not reach.</summary>
         ChainCarrier,
 
         /// <summary>Definition override/layering. Reached by nothing today: the emitter refused every
@@ -89,7 +94,15 @@ namespace Heddle.Generator.Emit
         /// carrier's own protocol stringifies in place.</summary>
         RefLikeSink,
 
-        /// <summary>An <c>@out</c>/slot shape the emitter cannot carry.</summary>
+        /// <summary>An <c>@out</c>/slot shape the emitter cannot carry: a slot definition whose declared slot type
+        /// the shared base-chain walk cannot name, and a <b>bodied</b> projection.
+        /// <para>The bodied projection is no longer the byte it was kept for. It named one: a body of static text
+        /// alone compiles to no processors, so the engine's projection emits the chained value and nothing else
+        /// while the build gave every body a real strategy — and the build emits that post-state now. What the
+        /// refusal costs and what retiring it would cost are both measured, and retiring it is a role-dispatch
+        /// decision rather than a byte: with the body emitted, <c>BuildSlotProjectionCall</c> is a passthrough and
+        /// the declared projection role changes nothing the build tier does, which is a claim
+        /// <c>ExtensionRoleDispatchTests</c> currently pins through this member.</para></summary>
         SlotChannel,
 
         /// <summary>A type generated code cannot spell — inaccessible, error-obsolete, unresolvable, or with no
