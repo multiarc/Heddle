@@ -10,8 +10,8 @@
     "demo:smoke": "playwright test demo-smoke"
   },
   "devDependencies": {
-    "@playwright/test": "^1.61.1",
-    "mermaid": "^11.4.1",
+    "@playwright/test": "^1.62.1",
+    "mermaid": "^11.16.1",
     "vitepress": "^1.6.3",
     "vitepress-plugin-mermaid": "^2.0.17"
   }
