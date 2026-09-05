@@ -18,6 +18,12 @@ Specs are contributor material, **not published** to the docs site
 | [review-protocol.md](common/review-protocol.md) | The mandatory reviewer protocol: exhaustive catalogue over first-found; inventories, class expansion, coverage ledger; findings land as tests. |
 | [findings-register.md](common/findings-register.md) | Recurring mistake classes, code that looks wrong but is correct, open items, and the unverified platform surface. Code and tests never cite it. |
 
+## Initiatives
+
+| Initiative | Status | Entry document | Supplementary documents | Most consequential decisions |
+| --- | --- | --- | --- | --- |
+| Precompilation v2 — a serialized compiled form, not a second compiler (the v3 breaking window) | Specified — ready for implementation | [precompilation-v2/README.md](precompilation-v2/README.md) | [artifact-contract.md](precompilation-v2/artifact-contract.md), [phase-1-compiled-form.md](precompilation-v2/phase-1-compiled-form.md), [phase-2-build-integration.md](precompilation-v2/phase-2-build-integration.md), [phase-3-generated-sites.md](precompilation-v2/phase-3-generated-sites.md), [phase-4-removal-and-release-tail.md](precompilation-v2/phase-4-removal-and-release-tail.md) | The engine compiles at build in the out-of-process `heddle compile` host and serializes its post-compile graph into one embedded artifact (`Heddle.CompiledForm`, schema 4) that the loader re-materializes into the engine's own objects; `Heddle.Build` replaces `Heddle.Generator`; bodiless calls the build cannot bind are late-bound data; generated code is limited to member accessors, native expressions and embedded C# by site id with a strict no-load-time-compilation mode; v3 rejects 2.x manifests and removes every `Heddle.dll` member that existed only for generated 2.x code. |
+
 Both completed initiatives — the cross-stack benchmark program and the generator ↔ engine
 code-sharing program — are collapsed into
 [cross-cutting-decisions.md](common/cross-cutting-decisions.md)'s program records; the
