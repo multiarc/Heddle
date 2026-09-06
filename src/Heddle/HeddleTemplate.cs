@@ -385,7 +385,20 @@ namespace Heddle
                 // Capture RootScopeType PRE-compile; a root @model directive flips it during compilation.
                 if (context.Options.EnableFileChangeCheck)
                     _watchModelType = context.RootScopeType;
-                CompileResult = Compile(new CompileScope(context), document);
+                // While materializing, this file fallback is unaffiliated with the artifact: the child
+                // was compiled from disk at build too, so it compiles live here — under a bypass frame,
+                // so its positions can never collide with the outer document's recorded keys.
+                if (cursor != null)
+                    cursor.EnterUnaffiliated();
+                try
+                {
+                    CompileResult = Compile(new CompileScope(context), document);
+                }
+                finally
+                {
+                    if (cursor != null)
+                        cursor.ExitBody();
+                }
                 if (context.Options.EnableFileChangeCheck)
                 {
                     // Watch filter must use the exact name the reader reads (RootPath / (TemplateName + FileNamePostfix)).
@@ -462,7 +475,7 @@ namespace Heddle
                 try
                 {
                     RuntimeDocument rtdoc = HeddleCompiler.Compile(optimizedDocument, compileScope,
-                        parseContext, null);
+                        parseContext, null, document);
                     bool stored = false;   // true once published to fields; finally must not dispose
                     try
                     {

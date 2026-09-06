@@ -630,6 +630,7 @@ namespace Heddle.Precompiled.CompiledForm
                 {
                     Require(document != null, "A document is null.");
                     WriteString(document.ShapedText);
+                    WriteString(document.RawText);
                     WriteBool(document.NeedsLocals);
                     WriteParseFacts(document.ParseFacts, artifact);
                     Require(document.Elements != null, "A document element list is null.");
@@ -648,7 +649,23 @@ namespace Heddle.Precompiled.CompiledForm
                             WriteString(element.StaticPiece);
                         }
                     }
+                    Require(document.RemovedItems != null, "A document removed-item list is null.");
+                    WriteCount(document.RemovedItems.Count);
+                    foreach (var removed in document.RemovedItems)
+                        WriteRemovedItem(removed, artifact);
                 }
+            }
+
+            /// <summary>Minimal removed-item encoding: the serve key and the body only. The full
+            /// <see cref="WriteItem"/> shape would demand extension and parameter table rows the
+            /// loader never reads for an item outside the elements.</summary>
+            private void WriteRemovedItem(CompiledItem item, CompiledArtifact artifact)
+            {
+                Require(item != null, "A removed item is null.");
+                WritePosition(item.Position);
+                WriteOptString(item.ParameterTemplate);
+                WriteOptBody(item.Body, artifact);
+                WriteAltBodies(item.AltBodies, artifact);
             }
 
             private void WriteParseFacts(CompiledParseFacts facts, CompiledArtifact artifact)
@@ -684,9 +701,26 @@ namespace Heddle.Precompiled.CompiledForm
                 WriteOptString(item.ParameterTemplate);
                 WriteParameter(item.Parameter, artifact);
                 WriteOptBody(item.Body, artifact);
+                WriteAltBodies(item.AltBodies, artifact);
                 WriteBool(item.Props != null);
                 if (item.Props != null)
                     WriteProps(item.Props, artifact);
+            }
+
+            private void WriteAltBodies(IList<CompiledAltBody> alts, CompiledArtifact artifact)
+            {
+                if (alts == null)
+                {
+                    WriteCount(0);
+                    return;
+                }
+                WriteCount(alts.Count);
+                foreach (var alt in alts)
+                {
+                    Require(alt != null, "An alternate body is null.");
+                    WriteOptString(alt.Template);
+                    WriteOptBody(alt.Body, artifact);
+                }
             }
 
             private void WriteParameter(CompiledParameter parameter, CompiledArtifact artifact)

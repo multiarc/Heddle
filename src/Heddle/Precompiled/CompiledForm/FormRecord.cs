@@ -137,13 +137,14 @@ namespace Heddle.Precompiled.CompiledForm
 
     internal sealed class FormBody
     {
-        internal FormBody(string rawText, string shapedText, ExType dataType, ExType chainedType, int documentRef)
+        internal FormBody(string rawText, string shapedText, ExType dataType, ExType chainedType,
+            RuntimeDocument document)
         {
             RawText = rawText;
             ShapedText = shapedText;
             DataType = dataType;
             ChainedType = chainedType;
-            DocumentRef = documentRef;
+            Document = document;
         }
 
         internal string RawText { get; }
@@ -154,7 +155,13 @@ namespace Heddle.Precompiled.CompiledForm
 
         internal ExType ChainedType { get; }
 
-        internal int DocumentRef { get; }
+        /// <summary>The compiled body document: the index resolves at conversion time, when every
+        /// document (including delayed completions) has registered. Null for empty bodies.</summary>
+        internal RuntimeDocument Document { get; }
+
+        /// <summary>The record depth at which the body was requested: the document ending at that
+        /// depth owns the request, so orphan claiming stays frame-accurate.</summary>
+        internal int Depth = -1;
     }
 
     internal sealed class FormDynSlot
@@ -222,7 +229,13 @@ namespace Heddle.Precompiled.CompiledForm
 
         internal FormParam Payload;
 
-        internal FormBody Body;
+        /// <summary>Bodies requested for this item, keyed by requested template: one for an ordinary
+        /// hook, two for a definition call (caller content under the call's template, default body
+        /// under the definition's).</summary>
+        internal Dictionary<string, FormBody> Bodies = new Dictionary<string, FormBody>();
+
+        /// <summary>Set when the owning document claimed this item as a removed-element orphan.</summary>
+        internal bool OrphanClaimed;
 
         internal FormProps Props;
 
@@ -260,16 +273,25 @@ namespace Heddle.Precompiled.CompiledForm
 
     internal sealed class FormDocument
     {
-        internal FormDocument(string shapedText, FormParseFacts facts, List<FormElement> elements)
+        internal FormDocument(string rawText, string shapedText, FormParseFacts facts,
+            List<FormElement> elements)
         {
+            RawText = rawText;
             ShapedText = shapedText;
             Facts = facts;
             Elements = elements;
         }
 
+        internal string RawText { get; }
+
         internal string ShapedText { get; }
 
         internal bool NeedsLocals;
+
+        /// <summary>Items the build compiled (and recorded bodies for) whose elements it then removed
+        /// (zero-output hooks): absent from <see cref="Elements"/> but carried so the loader serves
+        /// their bodies and runs the text path verbatim.</summary>
+        internal List<FormItem> RemovedForms;
 
         internal FormParseFacts Facts { get; }
 
@@ -782,21 +804,63 @@ namespace Heddle.Precompiled.CompiledForm
             _depth--;
         }
 
-        internal FormDocument BeginDocument(ParseContext parseContext, string shapedText,
+        internal FormDocument BeginDocument(ParseContext parseContext, string rawText, string shapedText,
             List<DocumentElement> elements)
         {
             var definitions = new List<string>(parseContext.DefinitionsBlock.Definitions.Keys);
             var facts = new FormParseFacts(parseContext.Offset, parseContext.InDefintionContext, definitions);
             var recorded = new List<FormElement>(elements.Count);
+            var emitted = new HashSet<FormItem>();
             foreach (var element in elements)
             {
                 var items = new List<TemplateItem>(element.CallChain.Count);
                 for (int i = 0; i < element.CallChain.Count; i++)
                     items.Add(element.CallChain.ItemsToExecute[i]);
                 recorded.Add(new FormElement(element.Position, items));
+                foreach (var templateItem in items)
+                {
+                    FormItem form;
+                    if (_byTemplate.TryGetValue(templateItem, out form) && form != null)
+                        emitted.Add(form);
+                }
             }
 
-            return new FormDocument(shapedText, facts, recorded);
+            var document = new FormDocument(rawText, shapedText, facts, recorded);
+            // Claim this depth's bodied items the build removed from the elements: their bodies were
+            // requested (and served) during this document's compile, so the loader must serve them too.
+            // Nested documents claimed their own depths at their own BeginDocument; stragglers whose
+            // document never ended stay unclaimed, and the loader faults them rather than serving a
+            // body into the wrong frame.
+            var orphans = new List<FormItem>();
+            foreach (var form in _items.Values)
+            {
+                if (form == null || form.Bodies.Count == 0 || form.OrphanClaimed ||
+                    emitted.Contains(form) || !HasBodyAtDepth(form, _depth))
+                    continue;
+                form.OrphanClaimed = true;
+                orphans.Add(form);
+            }
+            orphans.Sort((a, b) =>
+            {
+                int c = a.Position.StartIndex.CompareTo(b.Position.StartIndex);
+                if (c != 0)
+                    return c;
+                c = a.Position.Length.CompareTo(b.Position.Length);
+                if (c != 0)
+                    return c;
+                return string.Compare(a.ParameterTemplate, b.ParameterTemplate, StringComparison.Ordinal);
+            });
+            if (orphans.Count != 0)
+                document.RemovedForms = orphans;
+            return document;
+        }
+
+        private static bool HasBodyAtDepth(FormItem form, int depth)
+        {
+            foreach (var body in form.Bodies.Values)
+                if (body != null && body.Depth == depth)
+                    return true;
+            return false;
         }
 
         internal int EndDocument(FormDocument document, RuntimeDocument runtime)
@@ -813,12 +877,15 @@ namespace Heddle.Precompiled.CompiledForm
 
         private void ResolveRefusals(FormDocument document)
         {
-            string shaped = document.ShapedText ?? string.Empty;
+            // Slice the raw text: item positions are raw coordinates, and the loader re-parses the
+            // raw text, so the slice is both correctly located and itself parseable (shaped text has
+            // collapsed escapes and removed definitions).
+            string raw = document.RawText ?? string.Empty;
             foreach (var refusal in _refusals)
             {
                 if (refusal.SourceText != null || refusal.Depth != _depth)
                     continue;
-                refusal.SourceText = SliceRefusal(shaped, refusal);
+                refusal.SourceText = SliceRefusal(raw, refusal);
             }
         }
 
@@ -840,13 +907,19 @@ namespace Heddle.Precompiled.CompiledForm
                     bool covers = !string.IsNullOrEmpty(body) ? slice.Contains(body) :
                         slice.Contains(name);
                     if (covers)
-                        return slice;
+                        // Item spans exclude the call's leading '@', so the slice alone never
+                        // parses back to the call — restore it (a span that already includes it
+                        // keeps its own).
+                        return slice.StartsWith("@", StringComparison.Ordinal) ? slice : "@" + slice;
                     // Item spans cover the call (name plus data); a bodied item's body abuts after
                     // the span, so the slice alone never contains it. Rebuild the full call-site
                     // source from the sliced call plus the recorded body — without the data part the
                     // fragment would not even parse (a bare `@list{{...}}` names no data).
                     if (!string.IsNullOrEmpty(body) && slice.Contains(name))
-                        return "@" + slice + "{{" + body + "}}";
+                    {
+                        string head = slice.StartsWith("@", StringComparison.Ordinal) ? slice : "@" + slice;
+                        return head + "{{" + body + "}}";
+                    }
                 }
             }
 
@@ -865,18 +938,22 @@ namespace Heddle.Precompiled.CompiledForm
         {
             var facts = new FormParseFacts(parseContext.Offset, parseContext.InDefintionContext,
                 new List<string>(parseContext.DefinitionsBlock.Definitions.Keys));
-            var document = new FormDocument(string.Empty, facts, new List<FormElement>());
+            var document = new FormDocument(string.Empty, string.Empty, facts, new List<FormElement>());
             _documents.Add(document);
             return _documents.Count - 1;
         }
 
         internal void RecordBody(OutputItem item, string rawText, string shapedText, ExType dataType,
-            ExType chainedType, int documentRef)
+            ExType chainedType, RuntimeDocument document)
         {
             FormItem form;
             if (!_items.TryGetValue(item, out form))
                 return;
-            form.Body = new FormBody(rawText, shapedText, dataType, chainedType, documentRef);
+            form.Bodies[rawText ?? string.Empty] = new FormBody(rawText, shapedText, dataType,
+                chainedType, document)
+            {
+                Depth = _depth
+            };
         }
 
         internal void RecordDefinition(DefinitionItem definition, Type acceptType)
@@ -1375,6 +1452,7 @@ namespace Heddle.Precompiled.CompiledForm
             {
                 var converted = new CompiledDocument
                 {
+                    RawText = document.RawText ?? string.Empty,
                     ShapedText = document.ShapedText,
                     NeedsLocals = document.NeedsLocals,
                     ParseFacts = ConvertParseFacts(document.Facts, document)
@@ -1414,6 +1492,10 @@ namespace Heddle.Precompiled.CompiledForm
                         StaticPiece = document.ShapedText.Substring(cursor)
                     });
                 }
+
+                if (document.RemovedForms != null)
+                    foreach (var removed in document.RemovedForms)
+                        converted.RemovedItems.Add(ConvertRemovedItem(removed));
 
                 artifact.Documents.Add(converted);
             }
@@ -1500,6 +1582,72 @@ namespace Heddle.Precompiled.CompiledForm
             return ConvertFormItem(form);
         }
 
+        /// <summary>Converts a removed-element orphan minimally: the loader serves bodies by
+        /// position and template, so only the key and the bodies cross. Extension, payload and props
+        /// stay behind — nothing reads them for an item outside the elements.</summary>
+        private CompiledItem ConvertRemovedItem(FormItem form)
+        {
+            if (form == null || form.Bodies.Count == 0)
+                throw Refuse("a removed item carries no recorded body");
+            var converted = new CompiledItem
+            {
+                ExtensionRef = -1,
+                Position = ToPosition(form.Position),
+                ParameterTemplate = form.ParameterTemplate
+            };
+            ConvertBodies(form, converted);
+            return converted;
+        }
+
+        /// <summary>Splits an item's requested bodies into the primary (the one matching the item's
+        /// own template, else the first recorded) and the alternates served under their own
+        /// templates. Deterministic: dictionary insertion order is the record order.</summary>
+        private void ConvertBodies(FormItem form, CompiledItem converted)
+        {
+            FormBody primary = null;
+            foreach (var pair in form.Bodies)
+            {
+                if (pair.Value == null)
+                    continue;
+                if (primary == null)
+                    primary = pair.Value;
+                if (string.Equals(pair.Key, form.ParameterTemplate ?? string.Empty,
+                    StringComparison.Ordinal))
+                {
+                    primary = pair.Value;
+                    break;
+                }
+            }
+            if (primary == null)
+                return;
+            converted.Body = ConvertBody(primary);
+            foreach (var pair in form.Bodies)
+            {
+                if (pair.Value == null || ReferenceEquals(pair.Value, primary))
+                    continue;
+                converted.AltBodies.Add(new CompiledAltBody
+                {
+                    Template = pair.Key,
+                    Body = ConvertBody(pair.Value)
+                });
+            }
+        }
+
+        private CompiledBody ConvertBody(FormBody body)
+        {
+            var converted = new CompiledBody
+            {
+                RawText = body.RawText,
+                ShapedText = body.ShapedText,
+                DataType = ToTypeRef(body.DataType),
+                ChainedType = ToTypeRef(body.ChainedType)
+            };
+            int documentRef = body.Document != null ? GetDocIndex(body.Document) : -1;
+            if (documentRef >= 0)
+                converted.CompiledDocumentRef = documentRef;
+            return converted;
+        }
+
         private CompiledItem ConvertFormItem(FormItem form)
         {
             if (form.ExtensionRef < 0)
@@ -1514,18 +1662,7 @@ namespace Heddle.Precompiled.CompiledForm
                 ParameterTemplate = form.ParameterTemplate,
                 Parameter = ConvertParam(form)
             };
-            if (form.Body != null)
-            {
-                converted.Body = new CompiledBody
-                {
-                    RawText = form.Body.RawText,
-                    ShapedText = form.Body.ShapedText,
-                    DataType = ToTypeRef(form.Body.DataType),
-                    ChainedType = ToTypeRef(form.Body.ChainedType)
-                };
-                if (form.Body.DocumentRef >= 0)
-                    converted.Body.CompiledDocumentRef = form.Body.DocumentRef;
-            }
+            ConvertBodies(form, converted);
 
             if (form.Props != null)
                 converted.Props = ConvertProps(form.Props);

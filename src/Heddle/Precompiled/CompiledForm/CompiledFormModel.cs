@@ -390,6 +390,11 @@ namespace Heddle.Precompiled.CompiledForm
     /// the parameter, and the optional body, caller content and props.</summary>
     public sealed class CompiledItem
     {
+        public CompiledItem()
+        {
+            AltBodies = new List<CompiledAltBody>();
+        }
+
         /// <summary>Index into the artifact's extensions.</summary>
         public int ExtensionRef { get; set; }
 
@@ -403,7 +408,20 @@ namespace Heddle.Precompiled.CompiledForm
 
         public CompiledBody Body { get; set; }
 
+        /// <summary>Further bodies requested under the same position but a different template: a
+        /// definition call records both its caller content (under the call's template) and its
+        /// default body (under the definition's template). Served under their own templates.</summary>
+        public IList<CompiledAltBody> AltBodies { get; set; }
+
         public CompiledProps Props { get; set; }
+    }
+
+    /// <summary>One alternate requested template and the body compiled for it.</summary>
+    public sealed class CompiledAltBody
+    {
+        public string Template { get; set; } = string.Empty;
+
+        public CompiledBody Body { get; set; }
     }
 
     /// <summary>One chain: the ordered items the compiler visited.</summary>
@@ -434,15 +452,28 @@ namespace Heddle.Precompiled.CompiledForm
         public CompiledDocument()
         {
             Elements = new List<CompiledElement>();
+            RemovedItems = new List<CompiledItem>();
         }
 
         public string ShapedText { get; set; } = string.Empty;
+
+        /// <summary>The document's pre-shaping source: the exact text the build parsed. The loader
+        /// re-parses this (never <see cref="ShapedText"/>): shaping is not reparseable — it collapses
+        /// <c>@@</c> escapes, removes definitions and trims lines — while the raw text parses back to
+        /// the same items at the same positions the build recorded. Empty for synthesized fragment
+        /// documents, which the loader never parses.</summary>
+        public string RawText { get; set; } = string.Empty;
 
         public bool NeedsLocals { get; set; }
 
         public CompiledParseFacts ParseFacts { get; set; }
 
         public IList<CompiledElement> Elements { get; set; }
+
+        /// <summary>Items the build compiled whose elements it then removed (zero-output hooks), in
+        /// position order. Carried minimally — position, template and body only — so the loader serves
+        /// their bodies and runs the text path verbatim; nothing else reads them.</summary>
+        public IList<CompiledItem> RemovedItems { get; set; }
     }
 
     /// <summary>One prop declaration of a definition: the name, the slot index and type, and the

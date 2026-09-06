@@ -13,7 +13,7 @@ namespace Heddle.Runtime
     /// <see cref="PrecompiledMismatchException"/> carrying
     /// <see cref="PrecompiledFallbackReason.ExtensionInitTypingMismatch"/>, which the per-item compile catch
     /// turns into a compile error and phase 1's binding gate later classifies.
-    /// <para>Correlation is by document and item position: the loader parses the recorded shaped text, so a
+    /// <para>Correlation is by document and item position: the loader parses the recorded raw text, so a
     /// served body re-parses to the positions the build recorded. Nested bodies stack by the served body's
     /// <c>CompiledDocumentRef</c>; a <c>null</c> ref (or <c>-1</c>) is a leaf and pushes an empty map.</para>
     /// <para>The cursor rides on <see cref="CompileScope.FormCursor"/> for bodies; materialization also arms
@@ -108,38 +108,24 @@ namespace Heddle.Runtime
                 var map = new Dictionary<BodyKey, ServedBody>();
                 var refusals = new Dictionary<BodyKey, string>();
                 var document = artifact.Documents[d];
-                if (document != null && document.Elements != null)
+                if (document != null)
                 {
-                    foreach (var element in document.Elements)
+                    if (document.Elements != null)
                     {
-                        if (element == null || !element.IsChain || element.Chain == null ||
-                            element.Chain.Items == null)
-                            continue;
-                        foreach (var item in element.Chain.Items)
+                        foreach (var element in document.Elements)
                         {
-                            if (item == null || item.Position == null)
+                            if (element == null || !element.IsChain || element.Chain == null ||
+                                element.Chain.Items == null)
                                 continue;
-                            var key = new BodyKey(item.Position.Start, item.Position.Length,
-                                item.ParameterTemplate ?? string.Empty);
-                            if (item.Body != null && !map.ContainsKey(key))
-                            {
-                                map.Add(key, new ServedBody
-                                {
-                                    RawText = item.Body.RawText ?? string.Empty,
-                                    DataType = item.Body.DataType,
-                                    ChainedType = item.Body.ChainedType,
-                                    DocumentRef = item.Body.CompiledDocumentRef ?? -1
-                                });
-                            }
-
-                            if (item.Parameter != null &&
-                                item.Parameter.Kind == CompiledParameterKind.RefusalSite &&
-                                item.Parameter.Refusal != null &&
-                                item.Parameter.Refusal.SourceText != null &&
-                                !refusals.ContainsKey(key))
-                                refusals.Add(key, item.Parameter.Refusal.SourceText);
+                            foreach (var item in element.Chain.Items)
+                                AddItem(item, map, refusals);
                         }
                     }
+                    // Removed-element orphans: items the build compiled but cut from the elements.
+                    // Their bodies were requested all the same, so they serve exactly like kept ones.
+                    if (document.RemovedItems != null)
+                        foreach (var removed in document.RemovedItems)
+                            AddItem(removed, map, refusals);
                 }
 
                 cursor._documents.Add(map);
@@ -158,6 +144,60 @@ namespace Heddle.Runtime
             }
 
             return cursor;
+        }
+
+        /// <summary>Adds one recorded item's bodies (and refusals) to a document map. The primary body
+        /// serves under the item's template; each alternate body serves under its own requested template
+        /// (a definition's default body compiles under the definition's template, its caller content
+        /// under the call's). Every body is also reachable under its own raw text. First writer wins on
+        /// collision, as before.</summary>
+        private static void AddItem(CompiledItem item, Dictionary<BodyKey, ServedBody> map,
+            Dictionary<BodyKey, string> refusals)
+        {
+            if (item == null || item.Position == null)
+                return;
+            var key = new BodyKey(item.Position.Start, item.Position.Length,
+                item.ParameterTemplate ?? string.Empty);
+            if (item.Body != null)
+                Serve(map, item.Position, item.ParameterTemplate, item.Body);
+            if (item.AltBodies != null)
+                foreach (var alt in item.AltBodies)
+                    if (alt != null && alt.Body != null)
+                        Serve(map, item.Position, alt.Template, alt.Body);
+
+            if (item.Parameter != null &&
+                item.Parameter.Kind == CompiledParameterKind.RefusalSite &&
+                item.Parameter.Refusal != null &&
+                item.Parameter.Refusal.SourceText != null &&
+                !refusals.ContainsKey(key))
+                refusals.Add(key, item.Parameter.Refusal.SourceText);
+        }
+
+        private static void Serve(Dictionary<BodyKey, ServedBody> map, CompiledPosition position,
+            string template, CompiledBody body)
+        {
+            var served = new ServedBody
+            {
+                RawText = body.RawText ?? string.Empty,
+                DataType = body.DataType,
+                ChainedType = body.ChainedType,
+                DocumentRef = body.CompiledDocumentRef ?? -1
+            };
+            var key = new BodyKey(position.Start, position.Length, template ?? string.Empty);
+            if (!map.ContainsKey(key))
+                map.Add(key, served);
+            var alias = new BodyKey(position.Start, position.Length, served.RawText);
+            if (!alias.Equals(key) && !map.ContainsKey(alias))
+                map.Add(alias, served);
+        }
+
+        /// <summary>Opens an unaffiliated file fallback: a child the artifact does not carry, compiled
+        /// live from disk exactly as the build compiled it. Bodies serve live and refusals never match,
+        /// so the outer document's recorded keys cannot collide with the file's positions. Balanced by
+        /// <see cref="ExitBody"/>.</summary>
+        internal void EnterUnaffiliated()
+        {
+            _open.Push(new Frame { DocumentRef = -1, Bypass = true });
         }
 
         /// <summary>Opens the root document. The loader calls this once before compiling the root text.</summary>
@@ -211,7 +251,7 @@ namespace Heddle.Runtime
                     "': the artifact carries no recorded body for the item at " +
                     position.StartIndex + ":" + position.Length + " ('" + parameterTemplate +
                     "'); the artifact does not cover this template.");
-            CheckConsumedTypes(served, dataType, chainedType);
+            CheckConsumedTypes(position, served, dataType, chainedType);
             Push(served.DocumentRef);
             rawText = served.RawText;
             return true;
@@ -250,7 +290,7 @@ namespace Heddle.Runtime
         }
 
         /// <summary>Opens the frame a refusal-fragment compile runs under. The frame always bypasses
-        /// body serving (the fragment owns its recompile); the return is the shaped-text offset the
+        /// body serving (the fragment owns its recompile); the return is the source-text offset the
         /// fragment maps to, or -1 when <paramref name="sourceText"/> is not a true slice. A rebuilt
         /// source restores the call's leading <c>@</c> (item spans exclude it), so the item's own start
         /// is tried second after the <c>@</c> position. Balanced by <see cref="ExitBody"/>.</summary>
@@ -261,7 +301,7 @@ namespace Heddle.Runtime
             int offset = -1;
             if (!frame.Bypass && frame.DocumentRef >= 0 && frame.DocumentRef < _shaped.Count &&
                 _shaped[frame.DocumentRef] != null && sourceText != null)
-                offset = TrueSliceOffset(_shaped[frame.DocumentRef].ShapedText,
+                offset = TrueSliceOffset(SourceText(_shaped[frame.DocumentRef]),
                     itemPosition.StartIndex, sourceText);
             _open.Push(new Frame
             {
@@ -310,18 +350,30 @@ namespace Heddle.Runtime
                 _shaped[documentRef] == null)
                 return false;
             Push(documentRef);
-            shapedText = _shaped[documentRef].ShapedText ?? string.Empty;
+            shapedText = SourceText(_shaped[documentRef]);
             return true;
         }
 
-        private void CheckConsumedTypes(ServedBody served, ExType dataType, ExType chainedType)
+        /// <summary>The text the loader parses for a recorded document: the pre-shaping source when
+        /// the build recorded one, else the shaped text (synthesized fragment documents, which the
+        /// loader never parses, and artifacts predating raw recording).</summary>
+        internal static string SourceText(CompiledDocument document)
+        {
+            if (document == null)
+                return string.Empty;
+            return !string.IsNullOrEmpty(document.RawText) ? document.RawText :
+                document.ShapedText ?? string.Empty;
+        }
+
+        private void CheckConsumedTypes(BlockPosition position, ServedBody served, ExType dataType,
+            ExType chainedType)
         {
             string dataDetail = MismatchDetail("data", served.DataType, dataType);
             if (dataDetail != null)
-                throw Fault(dataDetail);
+                throw Fault(position, dataDetail);
             string chainedDetail = MismatchDetail("chained", served.ChainedType, chainedType);
             if (chainedDetail != null)
-                throw Fault(chainedDetail);
+                throw Fault(position, chainedDetail);
         }
 
         private static string MismatchDetail(string side, CompiledTypeRef recorded, ExType live)
@@ -336,10 +388,11 @@ namespace Heddle.Runtime
                 ") differs from the recorded consumed type (" + recordedNominal + ")";
         }
 
-        private PrecompiledMismatchException Fault(string detail) =>
+        private PrecompiledMismatchException Fault(BlockPosition position, string detail) =>
             new PrecompiledMismatchException(_templateKey,
                 PrecompiledFallbackReason.ExtensionInitTypingMismatch,
-                "a body compiled against " + detail);
+                "a body at " + position.StartIndex + ":" + position.Length +
+                " compiled against " + detail);
 
         /// <summary>Arms the thread ambient for the duration of a materialization. Nested arms stack by
         /// previous value; the caller disposes to restore.</summary>

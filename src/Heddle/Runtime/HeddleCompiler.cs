@@ -28,6 +28,17 @@ namespace Heddle.Runtime
         public static RuntimeDocument Compile(string document, CompileScope compileScope, ParseContext parseContext,
             ExType chainedType)
         {
+            return Compile(document, compileScope, parseContext, chainedType, null);
+        }
+
+        /// <summary>Overload carrying the pre-parse source for the form record: <paramref name="document"/>
+        /// is the parser's clean text (whitespace-normalized), while <paramref name="rawText"/> is the exact
+        /// text the build parsed. The loader re-parses the raw text, so items re-parse to the recorded
+        /// positions only when the record carries the true source. Null falls back to
+        /// <paramref name="document"/> (nested bodies, fragments and children already pass raw text).</summary>
+        internal static RuntimeDocument Compile(string document, CompileScope compileScope,
+            ParseContext parseContext, ExType chainedType, string rawText)
+        {
             if (compileScope == null)
                 throw new ArgumentNullException(nameof(compileScope));
 
@@ -44,7 +55,7 @@ namespace Heddle.Runtime
             int importWarningMark = importOrigin != null ? compileScope.CompileWarnings.Count : 0;
             try
             {
-                return CompileBody(document, compileScope, parseContext, chainedType);
+                return CompileBody(document, compileScope, parseContext, chainedType, rawText);
             }
             finally
             {
@@ -72,15 +83,15 @@ namespace Heddle.Runtime
         }
 
         private static RuntimeDocument CompileBody(string document, CompileScope compileScope,
-            ParseContext parseContext, ExType chainedType)
+            ParseContext parseContext, ExType chainedType, string rawText)
         {
             var bodyRecord = compileScope.CompileContext.FormRecord;
             if (bodyRecord == null)
-                return CompileBodyInner(document, compileScope, parseContext, chainedType);
+                return CompileBodyInner(document, compileScope, parseContext, chainedType, rawText);
             bodyRecord.EnterBody();
             try
             {
-                return CompileBodyInner(document, compileScope, parseContext, chainedType);
+                return CompileBodyInner(document, compileScope, parseContext, chainedType, rawText);
             }
             finally
             {
@@ -89,7 +100,7 @@ namespace Heddle.Runtime
         }
 
         private static RuntimeDocument CompileBodyInner(string document, CompileScope compileScope,
-            ParseContext parseContext, ExType chainedType)
+            ParseContext parseContext, ExType chainedType, string rawText)
         {
             string workingDocument = document;
             bool trimDirectiveLines = compileScope.Options.TrimDirectiveLines;
@@ -179,7 +190,8 @@ namespace Heddle.Runtime
             var record = compileScope.CompileContext.FormRecord;
             FormDocument formDocument = null;
             if (record != null)
-                formDocument = record.BeginDocument(parseContext, workingDocument, documentElements);
+                formDocument = record.BeginDocument(parseContext, rawText ?? document, workingDocument,
+                    documentElements);
             var runtime = new RuntimeDocument(workingDocument, documentElements.ToArray(), compileScope);
             if (record != null)
                 record.EndDocument(formDocument, runtime);

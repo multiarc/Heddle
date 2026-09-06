@@ -242,25 +242,67 @@ namespace Heddle.Precompiled
             {
                 if (!_isLoaderRow)
                     return _strategy;
-                lock (_materializeLock)
-                {
-                    if (!_materialized)
-                    {
-                        try
-                        {
-                            _materializedStrategy = MaterializeNow();
-                        }
-                        catch (MaterializationFaultException e)
-                        {
-                            _materializationReason = e.Reason;
-                            _materializationDetail = e.Detail;
-                            _materializedStrategy = null;
-                        }
-                        _materialized = true;
-                    }
+                return GetStrategy(null);
+            }
+        }
 
-                    return _materializedStrategy;
+        /// <summary>Materializes under one request's options and memoizes per request shape
+        /// (P1-R11): a late-bound expression compiles against the materializing request's function
+        /// registry, file-backed partials and composition imports resolve under its paths, and
+        /// definition recursion reads its limit. A null request materializes under defaults — the
+        /// <see cref="Strategy"/> path. Unbound names fail the compile (the gauntlet reports them as
+        /// <c>UnsupportedFunction</c> first); deferral never re-arms at load, so a missing name cannot
+        /// silently become an empty render. Thread-safe; faults memoize like strategies.</summary>
+        internal IProcessStrategy GetStrategy(TemplateOptions request)
+        {
+            if (!_isLoaderRow)
+                return _strategy;
+            var shape = RequestShape.For(request);
+            lock (_materializeLock)
+            {
+                IProcessStrategy strategy;
+                if (_requestStrategies.TryGetValue(shape, out strategy))
+                    return strategy;
+                MaterializationFaultException fault = null;
+                try
+                {
+                    strategy = MaterializeNow(request);
                 }
+                catch (MaterializationFaultException e)
+                {
+                    fault = e;
+                    strategy = null;
+                }
+                _requestStrategies.Add(shape, strategy);
+                if (fault != null)
+                    _requestFaults.Add(shape, fault);
+                if (shape.IsDefault)
+                {
+                    _materialized = true;
+                    _materializationReason = fault != null ? (PrecompiledFallbackReason?)fault.Reason : null;
+                    _materializationDetail = fault != null ? fault.Detail : null;
+                }
+                return strategy;
+            }
+        }
+
+        /// <summary>The memoized materialization fault for one request shape, or null when that shape
+        /// was never materialized or passed. Reading this never materializes.</summary>
+        internal bool TryGetRequestFault(TemplateOptions request,
+            out PrecompiledFallbackReason reason, out string detail)
+        {
+            reason = default(PrecompiledFallbackReason);
+            detail = null;
+            if (!_isLoaderRow)
+                return false;
+            lock (_materializeLock)
+            {
+                MaterializationFaultException fault;
+                if (!_requestFaults.TryGetValue(RequestShape.For(request), out fault) || fault == null)
+                    return false;
+                reason = fault.Reason;
+                detail = fault.Detail;
+                return true;
             }
         }
 
@@ -318,9 +360,12 @@ namespace Heddle.Precompiled
 
         private readonly object _materializeLock = new object();
         private bool _materialized;
-        private IProcessStrategy _materializedStrategy;
         private PrecompiledFallbackReason? _materializationReason;
         private string _materializationDetail;
+        private readonly Dictionary<RequestShape, IProcessStrategy> _requestStrategies =
+            new Dictionary<RequestShape, IProcessStrategy>();
+        private readonly Dictionary<RequestShape, MaterializationFaultException> _requestFaults =
+            new Dictionary<RequestShape, MaterializationFaultException>();
 
         private sealed class MaterializationFaultException : Exception
         {
@@ -339,10 +384,79 @@ namespace Heddle.Precompiled
         private static MaterializationFaultException Fault(PrecompiledFallbackReason reason, string detail) =>
             new MaterializationFaultException(reason, detail);
 
-        /// <summary>Runs the P1-W3 materialization entry over the kept bytes. Called once under
-        /// <see cref="_materializeLock"/>; every failure mode becomes a
+        /// <summary>The compile-varying slice of a request's options: the function registry by
+        /// reference identity (P1-R11: one re-compile per registry instance), the file settings file
+        /// IO resolves under, the recursion limit hooks read, and the parse-shaping flags. Output
+        /// profile, expression mode and directive trimming ride the row fingerprint instead — the
+        /// gauntlet enforces their equality before any strategy is read.</summary>
+        private sealed class RequestShape : IEquatable<RequestShape>
+        {
+            internal static RequestShape For(TemplateOptions request)
+            {
+                if (request == null)
+                    return new RequestShape { IsNull = true };
+                return new RequestShape
+                {
+                    Functions = request.Functions,
+                    RootPath = request.RootPath,
+                    FileNamePostfix = request.FileNamePostfix,
+                    MaxRecursionCount = request.MaxRecursionCount,
+                    EnableFileChangeCheck = request.EnableFileChangeCheck,
+                    ProvideLanguageFeatures = request.ProvideLanguageFeatures
+                };
+            }
+
+            /// <summary>True for the null request only: an options instance carrying defaults is its
+            /// own shape, since its fields (a non-zero default recursion limit, for one) compile
+            /// differently from a null request's blank slate.</summary>
+            internal bool IsDefault => IsNull;
+
+            private bool IsNull;
+            private object Functions;
+            private string RootPath;
+            private string FileNamePostfix;
+            private int MaxRecursionCount;
+            private bool EnableFileChangeCheck;
+            private bool ProvideLanguageFeatures;
+
+            public bool Equals(RequestShape other)
+            {
+                if (ReferenceEquals(other, null))
+                    return false;
+                if (ReferenceEquals(this, other))
+                    return true;
+                if (IsNull || other.IsNull)
+                    return IsNull && other.IsNull;
+                return ReferenceEquals(Functions, other.Functions) &&
+                    string.Equals(RootPath, other.RootPath, StringComparison.Ordinal) &&
+                    string.Equals(FileNamePostfix, other.FileNamePostfix, StringComparison.Ordinal) &&
+                    MaxRecursionCount == other.MaxRecursionCount &&
+                    EnableFileChangeCheck == other.EnableFileChangeCheck &&
+                    ProvideLanguageFeatures == other.ProvideLanguageFeatures;
+            }
+
+            public override bool Equals(object obj) => Equals(obj as RequestShape);
+
+            public override int GetHashCode()
+            {
+                if (IsNull)
+                    return 0;
+                int hash = MaxRecursionCount;
+                hash = (hash * 397) ^ (Functions != null ?
+                    System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(Functions) : 0);
+                hash = (hash * 397) ^ (RootPath != null ? StringComparer.Ordinal.GetHashCode(RootPath) : 0);
+                hash = (hash * 397) ^ (FileNamePostfix != null ?
+                    StringComparer.Ordinal.GetHashCode(FileNamePostfix) : 0);
+                hash = (hash * 397) ^ (EnableFileChangeCheck ? 1 : 0);
+                hash = (hash * 397) ^ (ProvideLanguageFeatures ? 1 : 0);
+                return hash;
+            }
+        }
+
+        /// <summary>Runs the P1-W3 materialization entry over the kept bytes. Called once per request
+        /// shape under <see cref="_materializeLock"/>; every failure mode becomes a
         /// <see cref="MaterializationFaultException"/> in gauntlet taxonomy, never a raw exception.</summary>
-        private IProcessStrategy MaterializeNow()
+        private IProcessStrategy MaterializeNow(TemplateOptions request)
         {
             CompiledArtifact artifact;
             try
@@ -372,12 +486,30 @@ namespace Heddle.Precompiled
             options.OutputProfile = fingerprint.Profile;
             options.ExpressionMode = fingerprint.ExpressionMode;
             options.TrimDirectiveLines = fingerprint.TrimDirectiveLines;
+            if (request != null)
+            {
+                // Request-scoped compile inputs: the registry late-bound sites bind against, the
+                // paths file-backed partials and composition imports read from, the recursion limit
+                // definition hooks enforce, and the parse-shaping flags. Profile, mode and trimming
+                // stay on the row fingerprint above — the gauntlet gates those before this runs.
+                options.Functions = request.Functions;
+                options.RootPath = request.RootPath;
+                options.FileNamePostfix = request.FileNamePostfix;
+                options.MaxRecursionCount = request.MaxRecursionCount;
+                options.EnableFileChangeCheck = request.EnableFileChangeCheck;
+                options.ProvideLanguageFeatures = request.ProvideLanguageFeatures;
+            }
 
             RuntimeDocument document;
             CompileScope scope;
             try
             {
-                var context = new CompileContext(options, ModelType ?? typeof(object));
+                // A null ModelType past the unresolved check above is a dynamic row (null ref or
+                // DynamicTypeRef): the build typed member reads dynamically, so the load context must
+                // too — typeof(object) would statically reject the same reads (HED0001) and trip the
+                // consumed-type check against the recorded dynamic typings.
+                ExType modelEx = ModelType == null ? ExType.Dynamic : new ExType(ModelType);
+                var context = new CompileContext(options, modelEx);
                 scope = new CompileScope(context);
                 document = HeddleCompiler.Materialize(artifact, row, scope);
             }
@@ -396,7 +528,13 @@ namespace Heddle.Precompiled
             if (document == null || document.Strategy == null)
                 throw Fault(PrecompiledFallbackReason.ExtensionInitCompileError,
                     "Template '" + Key + "' materialized to no strategy.");
-            return document.Strategy;
+            // The dynamic tier provisions the root locals frame in HeddleTemplate.Render; the
+            // precompiled sinks provision none (the frame rides the strategy). A needs-locals root
+            // (any [ScopeChannel] participant: branches, slots) must therefore self-wrap, or its
+            // opener's published state is invisible to its terminal at render.
+            return document.NeedsLocals
+                ? PrecompiledRuntime.WithLocalsFrame(document.Strategy)
+                : document.Strategy;
         }
 
         private static MaterializationFaultException ClassifyCompileErrors(string key,

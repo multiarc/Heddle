@@ -290,8 +290,9 @@ namespace Heddle.Runtime {
             // Carry the request's output encoder and render budget onto the precompiled-adapter render (the
             // adapter has no CompileContext to read options from at render time), and the entry's own model type,
             // which is what the adapter gates the model value on — the dynamic tier reads that from ScopeType.
-            result = new HeddleTemplate(entry.Strategy, options.Encoder, options.RenderBudget, options,
-                entry.ModelType);
+            // The strategy materializes under the request's options (its registry, paths and limits).
+            result = new HeddleTemplate(entry.GetStrategy(options), options.Encoder, options.RenderBudget,
+                options, entry.ModelType);
             return true;
         }
 

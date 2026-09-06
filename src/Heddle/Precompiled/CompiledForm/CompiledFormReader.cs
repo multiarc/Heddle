@@ -598,6 +598,7 @@ namespace Heddle.Precompiled.CompiledForm
                     var document = new CompiledDocument
                     {
                         ShapedText = ReadStringValue(),
+                        RawText = ReadStringValue(),
                         NeedsLocals = ReadBool(),
                         ParseFacts = ReadParseFacts()
                     };
@@ -611,6 +612,9 @@ namespace Heddle.Precompiled.CompiledForm
                             element.StaticPiece = ReadStringValue();
                         document.Elements.Add(element);
                     }
+                    int removed = ReadCount();
+                    for (int r = 0; r < removed; r++)
+                        document.RemovedItems.Add(ReadRemovedItem());
                     artifact.Documents.Add(document);
                 }
                 ExpectEnd();
@@ -645,20 +649,51 @@ namespace Heddle.Precompiled.CompiledForm
                     ParameterTemplate = ReadOptStringValue()
                 };
                 item.Parameter = ReadParameter(artifact);
-                if (ReadBool())
-                {
-                    item.Body = new CompiledBody
-                    {
-                        RawText = ReadStringValue(),
-                        ShapedText = ReadStringValue(),
-                        DataType = ReadTypeRefValue(),
-                        ChainedType = ReadTypeRefValue()
-                    };
-                    if (ReadBool())
-                        item.Body.CompiledDocumentRef = ReadSized();
-                }
+                item.Body = ReadOptBody();
+                ReadAltBodiesInto(item);
                 if (ReadBool())
                     item.Props = ReadProps();
+                return item;
+            }
+
+            private void ReadAltBodiesInto(CompiledItem item)
+            {
+                int count = ReadCount();
+                for (int i = 0; i < count; i++)
+                    item.AltBodies.Add(new CompiledAltBody
+                    {
+                        Template = ReadOptStringValue(),
+                        Body = ReadOptBody()
+                    });
+            }
+
+            /// <summary>Mirror of the writer's body encoding, shared by chain items and removed items.</summary>
+            private CompiledBody ReadOptBody()
+            {
+                if (!ReadBool())
+                    return null;
+                var body = new CompiledBody
+                {
+                    RawText = ReadStringValue(),
+                    ShapedText = ReadStringValue(),
+                    DataType = ReadTypeRefValue(),
+                    ChainedType = ReadTypeRefValue()
+                };
+                if (ReadBool())
+                    body.CompiledDocumentRef = ReadSized();
+                return body;
+            }
+
+            /// <summary>Mirror of the writer's minimal removed-item encoding.</summary>
+            private CompiledItem ReadRemovedItem()
+            {
+                var item = new CompiledItem
+                {
+                    Position = ReadPosition(),
+                    ParameterTemplate = ReadOptStringValue(),
+                    Body = ReadOptBody()
+                };
+                ReadAltBodiesInto(item);
                 return item;
             }
 
@@ -918,6 +953,16 @@ namespace Heddle.Precompiled.CompiledForm
                     foreach (var element in document.Elements)
                         if (element.IsChain)
                             ValidateChain(element.Chain, artifact);
+                    if (document.RemovedItems != null)
+                        foreach (var removed in document.RemovedItems)
+                            if (removed != null)
+                            {
+                                ValidateBodyRef(removed.Body, artifact);
+                                if (removed.AltBodies != null)
+                                    foreach (var alt in removed.AltBodies)
+                                        if (alt != null)
+                                            ValidateBodyRef(alt.Body, artifact);
+                            }
                 }
                 foreach (var definition in artifact.Definitions)
                     foreach (var fill in definition.Fills)
@@ -955,12 +1000,21 @@ namespace Heddle.Precompiled.CompiledForm
                 {
                     CheckRef(item.ExtensionRef, artifact.Extensions.Count, "extension");
                     ValidateParameter(item.Parameter, artifact);
-                    if (item.Body != null && item.Body.CompiledDocumentRef.HasValue)
-                        CheckRef(item.Body.CompiledDocumentRef.Value, artifact.Documents.Count, "document");
+                    ValidateBodyRef(item.Body, artifact);
+                    if (item.AltBodies != null)
+                        foreach (var alt in item.AltBodies)
+                            if (alt != null)
+                                ValidateBodyRef(alt.Body, artifact);
                     if (item.Parameter != null && item.Parameter.Kind == CompiledParameterKind.Chain &&
                         item.Parameter.NestedChain != null)
                         ValidateChain(item.Parameter.NestedChain, artifact);
                 }
+            }
+
+            private void ValidateBodyRef(CompiledBody body, CompiledArtifact artifact)
+            {
+                if (body != null && body.CompiledDocumentRef.HasValue)
+                    CheckRef(body.CompiledDocumentRef.Value, artifact.Documents.Count, "document");
             }
 
             private void ValidateParameter(CompiledParameter parameter, CompiledArtifact artifact)

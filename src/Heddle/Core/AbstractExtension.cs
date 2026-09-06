@@ -86,14 +86,18 @@ namespace Heddle.Core
 
         private static ExType InitSubTemplate(ref string parameterTemplate, ExType dataType, ExType chainedType,
             CompileScope compileScope,
-            ParseContext parseContext, OutputItem sourceItem, out RuntimeDocument result)
+            ParseContext parseContext, OutputItem sourceItem, out RuntimeDocument result,
+            out RuntimeDocument compiledDocument)
         {
             if (compileScope == null)
                 throw new ArgumentNullException(nameof(compileScope));
 
             RuntimeDocument subTemplate;
             if (string.IsNullOrEmpty(parameterTemplate))
+            {
                 subTemplate = null;
+                compiledDocument = null;
+            }
             else
             {
                 var newContext = new CompileScope(new CompileContext(compileScope.CompileContext, dataType), compileScope.CSharpContext);
@@ -125,6 +129,9 @@ namespace Heddle.Core
                 parameterTemplate = subTemplate.Document;
             }
 
+            // The record needs the real document even when the render path treats an empty body as
+            // absent: removed-element orphans live in that document's map, and only its frame selects it.
+            compiledDocument = subTemplate;
             if (subTemplate == null || subTemplate.Empty)
             {
                 result = null;
@@ -155,12 +162,16 @@ namespace Heddle.Core
 
             var rawTemplate = initContext.ParameterTemplate;
             var type = InitSubTemplate(ref initContext.ParameterTemplate, dataType, chainedType, initContext.CompileScope,
-                initContext.ParseContext, initContext.SourceItem, out var subTemplate);
+                initContext.ParseContext, initContext.SourceItem, out var subTemplate,
+                out var compiledDocument);
             var record = initContext.CompileScope?.CompileContext.FormRecord;
             if (record != null && initContext.SourceItem != null && !string.IsNullOrEmpty(rawTemplate))
             {
+                // The body document (not the possibly-nulled render handle): the record keeps the
+                // instance and resolves the index at conversion time, when every document has
+                // registered.
                 record.RecordBody(initContext.SourceItem, rawTemplate, initContext.ParameterTemplate,
-                    dataType, chainedType, record.GetDocIndex(subTemplate));
+                    dataType, chainedType, compiledDocument);
             }
 
             if (subTemplate == null)

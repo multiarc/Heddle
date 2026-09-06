@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Text;
 using Heddle.Data;
 using Heddle.Helpers;
@@ -113,8 +115,17 @@ namespace Heddle.Precompiled
         private static PrecompiledFallbackEvent? CheckExtensions(PrecompiledTemplateInfo entry,
             Func<PrecompiledExtensionBinding, Type, bool> bindingResolver)
         {
+            string definitionCarrier = null;
             foreach (var binding in entry.ExtensionBindings)
             {
+                // A definition call (in-document or composition-imported) records the definition
+                // carrier, not a registry extension: it binds against the template's own declarations,
+                // which ship inside the artifact and resolve from text at load. The extension registry
+                // can neither provide nor contradict it, so there is nothing to compare.
+                if (definitionCarrier == null)
+                    definitionCarrier = AqnSansVersion(typeof(Heddle.Core.DefinitionBaseExtension));
+                if (string.Equals(binding.ExtensionTypeName, definitionCarrier, StringComparison.Ordinal))
+                    continue;
                 if (!TemplateFactory.TryGetExtensionType(binding.Name, out var liveType))
                     return Fail(entry.Key, PrecompiledFallbackReason.ExtensionBindingMismatch,
                         $"Extension '{binding.Name}': manifest={binding.ExtensionTypeName} live=<unresolved>");
@@ -228,7 +239,7 @@ namespace Heddle.Precompiled
                     if (h >= hopCount)
                         break;
                     var detail = CompareHop(hops[h], path, segments[h],
-                        properties[h].Item1, properties[h].Item2.GetPropertyExType());
+                        properties[h].Item1, properties[h].Item2);
                     if (detail != null)
                         return Fail(key, PrecompiledFallbackReason.MemberBindingMismatch, detail);
                 }
@@ -255,7 +266,7 @@ namespace Heddle.Precompiled
                 if (h >= hopCount)
                     break;
                 var detail = CompareHop(hops[h], path, segments[h],
-                    properties[h].Item1, properties[h].Item2.GetPropertyExType());
+                    properties[h].Item1, properties[h].Item2);
                 if (detail != null)
                     return Fail(key, PrecompiledFallbackReason.MemberBindingMismatch, detail);
             }
@@ -265,10 +276,14 @@ namespace Heddle.Precompiled
 
         /// <summary>Compares one recorded hop against the live walk's answer for the same segment: the recorded
         /// name must be the walked segment, the recorded declaring type must match the receiver in type-ref form,
-        /// and the recorded member type must match the member's type in type-ref form. Returns the pinned detail
-        /// on a difference, null when the hop binds. A null side carries no recorded identity and passes.</summary>
+        /// and the recorded member type must match the member's erased type in type-ref form. Returns the pinned
+        /// detail on a difference, null when the hop binds. A null side carries no recorded identity and passes.
+        /// Dynamic-ness rides the member's <c>DynamicAttribute</c>, which the build erases when it records the
+        /// member type: a recorded concrete type matches a live member whose erased <c>PropertyType</c> is the
+        /// same (the loader compiles against the live member, attribute and all), and a recorded dynamic matches
+        /// a live member carrying the attribute.</summary>
         private static string CompareHop(CompiledMemberHop hop, string path,
-            string segment, Type liveDeclaring, ExType liveMember)
+            string segment, Type liveDeclaring, PropertyInfo liveProperty)
         {
             if (hop == null)
                 return null;
@@ -281,21 +296,19 @@ namespace Heddle.Precompiled
             if (hop.MemberType != null)
             {
                 var recordedDynamic = hop.MemberType is DynamicTypeRef;
-                bool liveDynamic = liveMember != null && liveMember.IsDynamic;
+                Type liveErase = liveProperty != null ? liveProperty.PropertyType : null;
+                bool liveDynamic = liveProperty != null &&
+                    liveProperty.GetCustomAttribute<DynamicAttribute>() != null;
                 if (recordedDynamic)
                 {
                     if (!liveDynamic)
                         return "Member '" + path + "': manifest=<dynamic>" +
-                            " live=" + (liveMember != null ? AqnSansVersion(liveMember.Type) : AqnFormatter.Unknown);
+                            " live=" + (liveErase != null ? AqnSansVersion(liveErase) : AqnFormatter.Unknown);
                 }
-                else if (liveDynamic)
-                {
-                    return "Member '" + path + "': manifest=" + hop.MemberType.Nominal() + " live=<dynamic>";
-                }
-                else if (!TypeRefMatches(hop.MemberType, liveMember != null ? liveMember.Type : null))
+                else if (!TypeRefMatches(hop.MemberType, liveErase))
                 {
                     return "Member '" + path + "': manifest=" + hop.MemberType.Nominal() +
-                        " live=" + (liveMember != null ? AqnSansVersion(liveMember.Type) : AqnFormatter.Unknown);
+                        " live=" + (liveErase != null ? AqnSansVersion(liveErase) : AqnFormatter.Unknown);
                 }
             }
 

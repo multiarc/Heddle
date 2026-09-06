@@ -23,6 +23,13 @@ Heddle.Tests.CSharpTierMetadataTests
 Heddle.Tests.CSharpTypeNamesTests
 Heddle.Tests.CallTargetRulesTests
 Heddle.Tests.ChainedDefinitionTests
+Heddle.Tests.CompiledFormAllocationTests
+Heddle.Tests.CompiledFormBindingTests
+Heddle.Tests.CompiledFormDeferredBindingTests
+Heddle.Tests.CompiledFormLinkedSourceTests
+Heddle.Tests.CompiledFormMarkerTests
+Heddle.Tests.CompiledFormParityTests
+Heddle.Tests.CompiledFormRoundTripTests
 Heddle.Tests.ComposeImportNestingTests
 Heddle.Tests.ContextEncodersTests
 Heddle.Tests.ContextEncodingExtensionTests

@@ -39,8 +39,11 @@ namespace Heddle.Runtime
             {
                 try
                 {
-                    string shaped = artifact.Documents[row.RootDocumentRef].ShapedText ?? string.Empty;
-                    var parseContext = DocumentParser.Parse(shaped, scope.CompileContext,
+                    // The raw text: the exact text the build parsed, so the re-parse reproduces
+                    // the build's items at the recorded positions. Shaped text is not reparseable
+                    // (collapsed @@ escapes, removed definitions, trimmed lines).
+                    string raw = FormCursor.SourceText(artifact.Documents[row.RootDocumentRef]);
+                    var parseContext = DocumentParser.Parse(raw, scope.CompileContext,
                         out var optimizedDocument);
                     var document = HeddleCompiler.Compile(optimizedDocument, scope, parseContext, null);
                     scope.Compile();
