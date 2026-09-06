@@ -11,45 +11,40 @@ using Heddle.Runtime;
 namespace Heddle.Benchmarks.Dotnet.Engines
 {
     /// <summary>
-    /// Heddle's BUILD-TIME compiled backend: the same three sinks reached through a tree the
-    /// source generator emitted at compile time rather than one the runtime built from the template
-    /// text. Three of the six render techniques.
+    /// Heddle's BUILD-TIME compiled backend: the same three sinks reached through a precompiled
+    /// entry rather than one the runtime built from the template text. Three of the six render
+    /// techniques.
     ///
-    /// <para><b>Coverage is discovered, never assumed.</b> The generator "simply leaves
-    /// un-precompiled" any template its emitter does not yet cover — no source, no manifest entry,
-    /// no diagnostic — and the engine then serves that key from the dynamic path. That is correct
-    /// behaviour for an application and a trap for a benchmark: rendering through the fallback and
-    /// labelling the number "precompiled" would report the runtime backend under the wrong name,
-    /// which is the same class of defect as timing a rope you never flatten. So this module asks the
-    /// manifest which keys are actually precompiled and registers cells for those only.</para>
+    /// <para><b>Coverage is discovered, never assumed.</b> A workload without a registered entry
+    /// is served from the dynamic path — correct behaviour for an application and a trap for a
+    /// benchmark: rendering through the fallback and labelling the number "precompiled" would
+    /// report the runtime backend under the wrong name, which is the same class of defect as
+    /// timing a rope you never flatten. So this module asks the registry which keys actually
+    /// have entries and registers cells for those only.</para>
     ///
-    /// <para><b>All eight workloads are covered</b>, through TWO manifests: the six raw workloads
-    /// from this assembly (compiled under the Text profile), and the two ENCODED workloads from
-    /// the Html-profile satellite <c>precompiled-html/</c> — HeddleOutputProfile is
-    /// compilation-wide, so the profile split is an assembly split. The two historical
-    /// composed-page refusals are gone (no embedded C#; the layout-as-definition shape
-    /// splices the body through the documented <c>@out()</c> slot), and the encoded pair's last
-    /// refusal — <c>@attr</c>'s compile-time hook — fell when the emitter pinned the bodiless
-    /// step-back encoders.</para>
+    /// <para><b>No precompiled tier since phase 1 (P1-W8):</b> the build-time generator is out of
+    /// the build, so this assembly carries no entries and every workload reports uncovered until
+    /// phase 2 restores the tier. The discovery mechanism is unchanged — one assembly, keyed on
+    /// row presence — so the tier comes back by registering entries, not by rewriting this
+    /// module.</para>
     /// </summary>
     public static class Precompiled
     {
         private static readonly UTF8Encoding Utf8NoBom = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
         private static Dictionary<string, PrecompiledTemplateInfo> _entries;
 
-        /// <summary>Template key for a workload, matching the generator's filename-derived keys —
-        /// every entry template is named for its workload, composed-page included.</summary>
+        /// <summary>Template key for a workload — every entry template is named for its
+        /// workload, composed-page included.</summary>
         private static string KeyFor(string workload)
             => workload + ".heddle";
 
-        /// <summary>The precompiled entries the two benchmark assemblies carry, keyed by template key.
-        /// The keys are disjoint by construction: the harness glob excludes the two encoded templates
-        /// and the satellite includes exactly those two.</summary>
+        /// <summary>The precompiled entries this ONE assembly carries, keyed by template key.
+        /// Empty since P1-W8 removed the build-time tier; the Covered/Uncovered split below
+        /// states that gap instead of hiding it.</summary>
         public static IReadOnlyDictionary<string, PrecompiledTemplateInfo> Entries()
         {
             if (_entries != null) return _entries;
             PrecompiledTemplates.Register(typeof(Precompiled).Assembly);
-            PrecompiledTemplates.Register(typeof(PrecompiledHtml.PrecompiledHtmlAssembly).Assembly);
             _entries = PrecompiledTemplates.Entries.ToDictionary(e => e.Key, StringComparer.Ordinal);
             return _entries;
         }
@@ -74,9 +69,8 @@ namespace Heddle.Benchmarks.Dotnet.Engines
         // overloads are `internal` (reachable only from Heddle's friend assemblies), and this
         // harness deliberately is not one -- a benchmark that needs private access to the thing it
         // benchmarks is measuring something no user can reach. The public overloads are correct
-        // here anyway: the generated tree was emitted under the compilation-wide
-        // HeddleOutputProfile/HeddleExpressionMode, and the manifest records that fingerprint, so
-        // the options are already baked into what is being rendered.
+        // here anyway: entries are emitted under fixed options, and the registry records that
+        // fingerprint, so the options are already baked into what is being rendered.
 
         /// <summary>Renders through one sink and returns the output as a string, for gating.</summary>
         public static string Render(string track, string workload, HeddleEngine.Sink sink)

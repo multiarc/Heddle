@@ -107,10 +107,9 @@ namespace Heddle.Benchmarks.Dotnet
                 }
             }
 
-            // Precompiled coverage, stated rather than assumed. The generator silently leaves
-            // templates its emitter does not cover un-precompiled, and the engine then serves them
-            // from the dynamic path -- so a harness that assumed coverage would report the runtime
-            // backend under the precompiled name.
+            // Precompiled coverage, stated rather than assumed. A workload without a
+            // registered entry renders from the dynamic path -- so a harness that assumed
+            // coverage would report the runtime backend under the precompiled name.
             var covered = Engines.Precompiled.CoveredWorkloads().ToList();
             var uncovered = Engines.Precompiled.UncoveredWorkloads().ToList();
             Console.WriteLine($"\nPRECOMPILED-COVERAGE: {covered.Count}/{covered.Count + uncovered.Count} workloads " +
@@ -199,7 +198,7 @@ namespace Heddle.Benchmarks.Dotnet
             {
                 Console.Error.WriteLine(
                     $"[FAIL] {workload}: no precompiled entry — this workload renders through the dynamic path. " +
-                    "Build with `-v n` and read the HED7031 warnings for the emitter's own reason.");
+                    "No build-time tier exists since phase 1 (P1-W8); phase 2 restores it.");
                 failures++;
             }
 

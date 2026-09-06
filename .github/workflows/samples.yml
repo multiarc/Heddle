@@ -32,8 +32,6 @@ jobs:
           - html-safe-output
           - custom-extensions
           - component-props-slots
-          - codegen-t4-successor
-          - precompiled-app
           - streaming-ssr
     runs-on: ubuntu-latest
     steps:

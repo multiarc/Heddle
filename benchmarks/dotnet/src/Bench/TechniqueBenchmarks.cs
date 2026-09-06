@@ -83,13 +83,11 @@ namespace Heddle.Benchmarks.Dotnet.Bench
     /// <summary>
     /// The same three sinks reached through the build-time compiled backend.
     ///
-    /// <para><b>Coverage is discovered from the manifest, never assumed</b>, which is why this is a
-    /// separate suite rather than three more methods on the runtime one. The generator leaves a
-    /// template its emitter does not cover un-precompiled and the engine then serves that key from
-    /// the dynamic path — so a suite that assumed coverage would time the runtime backend under the
-    /// precompiled name. The parameter set below is the covered set, and it is visibly shorter than
-    /// the runtime suite's. That gap is the disclosure; see
-    /// <c>Engines/PrecompiledBackend.cs</c> for what each uncovered workload is refused for.</para>
+    /// <para><b>Coverage is discovered from the registry, never assumed</b>, which is why this is a
+    /// separate suite rather than three more methods on the runtime one. A workload without a
+    /// registered entry renders from the dynamic path — so a suite that assumed coverage would
+    /// time the runtime backend under the precompiled name. The parameter set below is the
+    /// covered set; see <c>Engines/PrecompiledBackend.cs</c> for the current tier status.</para>
     /// </summary>
     [MemoryDiagnoser]
     public class TechniquePrecompiledBenchmarks
