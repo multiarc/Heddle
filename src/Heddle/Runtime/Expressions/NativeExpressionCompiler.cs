@@ -8,6 +8,8 @@ using Heddle.Data;
 using Heddle.Language;
 using Heddle.Language.Expressions;
 using Heddle.Runtime.Parameters;
+using Heddle.Runtime;
+using FormRecord = Heddle.Precompiled.CompiledForm.FormRecord;
 using Heddle.Strings.Core;
 
 namespace Heddle.Runtime.Expressions
@@ -39,7 +41,9 @@ namespace Heddle.Runtime.Expressions
 
         private readonly CompileScope _compileScope;
         private readonly ParseContext _parseContext;
+        private readonly ExpressionOptions _options;
         private readonly FunctionRegistry _registry;
+        private CallNode _deferredCall;
         private readonly ParameterExpression _model = Expression.Parameter(typeof(object), "model");
         private readonly ParameterExpression _chained = Expression.Parameter(typeof(object), "chained");
         private readonly ParameterExpression _root = Expression.Parameter(typeof(object), "root");
@@ -48,27 +52,43 @@ namespace Heddle.Runtime.Expressions
         private bool _foldable = true;
         private bool _usesProps;
 
-        private NativeExpressionCompiler(CompileScope compileScope, ParseContext parseContext)
+        private NativeExpressionCompiler(CompileScope compileScope, ParseContext parseContext,
+            ExpressionOptions options)
         {
             _compileScope = compileScope;
             _parseContext = parseContext;
+            _options = options;
             _registry = compileScope.Options.Functions ?? FunctionRegistry.Default;
             _registry.Freeze();
         }
 
         internal static IRuntimeParameter Compile(ExprNode expression, CompileScope compileScope,
-            ParseContext parseContext, out ExType resultType)
+            ParseContext parseContext, out ExType resultType, ExType chainedType = null)
         {
+            var record = compileScope.CompileContext.FormRecord;
             // 'this' as a whole expression is the model passthrough — compiles to the existing EmptyParameter so
             // it works on dynamic scopes too, exactly like the empty member path.
             if (expression is ThisNode)
             {
                 resultType = compileScope.ScopeType;
-                return new EmptyParameter();
+                var passthrough = new EmptyParameter();
+                if (record != null)
+                    record.RecordNoneParameter(passthrough);
+                return passthrough;
             }
 
-            var compiler = new NativeExpressionCompiler(compileScope, parseContext);
+            var options = new ExpressionOptions
+            {
+                RootModelType = compileScope.RootScopeType,
+                ModelType = compileScope.ScopeType,
+                ChainedType = chainedType,
+                Namespaces = compileScope.Namespaces,
+                DeferUnboundFunctions = compileScope.CompileContext.DeferUnboundFunctions
+            };
+            var compiler = new NativeExpressionCompiler(compileScope, parseContext, options);
             var body = compiler.Visit(expression);
+            if (compiler._deferredCall != null && !compiler._failed)
+                return Defer(compiler, record, expression, compileScope, chainedType, out resultType);
             if (compiler._failed || body == null)
             {
                 resultType = typeof(object);
@@ -83,7 +103,10 @@ namespace Heddle.Runtime.Expressions
                 try
                 {
                     var value = Expression.Lambda<Func<object>>(boxed).Compile()();
-                    return new ConstantParameter(value);
+                    var constant = new ConstantParameter(value);
+                    if (record != null)
+                        record.RecordConstantParameter(constant, value);
+                    return constant;
                 }
                 catch (Exception)
                 {
@@ -97,16 +120,55 @@ namespace Heddle.Runtime.Expressions
                 // only when the tree contains a prop root; prop-free expressions keep today's 3-arg shape.
                 var propsLambda = Expression.Lambda<Func<object, object, object, object[], object>>(
                     boxed, compiler._model, compiler._chained, compiler._root, compiler._props);
-                return new PropsCompiledParameter { ParameterImplementation = propsLambda.Compile() };
+                var propsParameter = new PropsCompiledParameter
+                    { ParameterImplementation = propsLambda.Compile() };
+                if (record != null)
+                    record.RecordExpressionParameter(propsParameter, expression, compileScope.ScopeType,
+                        chainedType, compileScope.RootScopeType, true);
+                return propsParameter;
             }
 
             var lambda = Expression.Lambda<Func<object, object, object, object>>(
                 boxed, compiler._model, compiler._chained, compiler._root);
-            return new CompiledParameter { ParameterImplementation = lambda.Compile() };
+            var compiled = new CompiledParameter { ParameterImplementation = lambda.Compile() };
+            if (record != null)
+                record.RecordExpressionParameter(compiled, expression, compileScope.ScopeType, chainedType,
+                    compileScope.RootScopeType, false);
+            return compiled;
+        }
+
+        /// <summary>The deferred site's stand-in: visiting stops at the unbound call, so the tree
+        /// under construction never runs. The build tier never renders a deferred document — the form is
+        /// the product — so the placeholder only has to be non-null and well-typed.</summary>
+        private static readonly Expression DeferredPlaceholder =
+            Expression.Constant(null, typeof(object));
+
+        /// <summary>Completes a deferred expression compile: records the whole syntax tree and its scope
+        /// types as a late-bound site with one function row for the unbound name (target absent), and
+        /// returns the placeholder with the deferred result type.</summary>
+        private static IRuntimeParameter Defer(NativeExpressionCompiler compiler, FormRecord record,
+            ExprNode expression, CompileScope compileScope, ExType chainedType, out ExType resultType)
+        {
+            resultType = DeferredResult.Deferred;
+            var placeholder = new CompiledParameter
+            {
+                ParameterImplementation = (_, __, ___) => null
+            };
+            if (record != null)
+            {
+                record.RecordDeferredExpression(placeholder, expression, compileScope.ScopeType,
+                    chainedType, compileScope.RootScopeType);
+                record.RecordFunctionChoice(compiler._deferredCall, null, 0);
+                record.AttachFunctionRow(compiler._deferredCall);
+            }
+
+            return placeholder;
         }
 
         private Expression Visit(ExprNode node)
         {
+            if (_deferredCall != null)
+                return DeferredPlaceholder;
             switch (node)
             {
                 case LiteralNode literal:
@@ -334,6 +396,17 @@ namespace Heddle.Runtime.Expressions
                 if (TemplateFactory.Exists(call.Name) || _parseContext.DefenitionExists(call.Name))
                     return Fail(call.Position, HeddleDiagnosticIds.ExtensionCalledAsFunction,
                         FunctionCallMessages.ExtensionCalledAsFunction(call.Name));
+                if (_options != null && _options.DeferUnboundFunctions)
+                {
+                    _deferredCall = _deferredCall ?? call;
+                    if (_failed)
+                        return null;
+                    var formRecord = _compileScope.CompileContext.FormRecord;
+                    if (formRecord != null)
+                        formRecord.NoteDeferredCall(call);
+                    return DeferredPlaceholder;
+                }
+
                 return Fail(call.Position, HeddleDiagnosticIds.UnknownFunction,
                     FunctionCallMessages.UnknownFunction(call.Name));
             }
@@ -376,6 +449,15 @@ namespace Heddle.Runtime.Expressions
             {
                 return Fail(call.Arguments[2].Position, HeddleDiagnosticIds.RangeStepNotPositive,
                     string.Format(CultureInfo.InvariantCulture, BuiltInFunctions.RangeStepMessageFormat, step));
+            }
+
+            var record = _compileScope.CompileContext.FormRecord;
+            if (record != null)
+            {
+                var targetType = chosen.Method != null
+                    ? chosen.Method.DeclaringType
+                    : chosen.Target?.GetType();
+                record.RecordFunctionChoice(call, targetType, overloads.Count);
             }
 
             var finalArgs = BuildCallArguments(chosen, argExprs, expanded);
@@ -1124,6 +1206,8 @@ namespace Heddle.Runtime.Expressions
 
         private Expression Fail(BlockPosition position, string diagnosticId, string message)
         {
+            if (_deferredCall != null)
+                return null;
             _failed = true;
             _compileScope.CompileErrors.Add(message.ToError(position, diagnosticId));
             return null;

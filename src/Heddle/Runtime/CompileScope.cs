@@ -35,6 +35,11 @@ namespace Heddle.Runtime
         public CompileContext CompileContext { get; }
         public CSharpContext CSharpContext { get; }
 
+        /// <summary>The form cursor serving recorded bodies while materializing a compiled form. Null on
+        /// every ordinary compile; when armed, <c>AbstractExtension.InitSubTemplate</c> compiles the recorded
+        /// body instead of re-reading source. Carried by reference into nested body scopes.</summary>
+        internal FormCursor FormCursor { get; set; }
+
         public void Dispose()
         {
             CompileContext?.Dispose();

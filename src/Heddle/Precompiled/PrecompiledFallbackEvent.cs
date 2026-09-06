@@ -104,6 +104,7 @@ namespace Heddle.Precompiled
                 case PrecompiledFallbackReason.ModelTypeMismatch:
                 case PrecompiledFallbackReason.ExtensionInitCompileError:
                 case PrecompiledFallbackReason.ExtensionInitTypingMismatch:
+                case PrecompiledFallbackReason.MemberBindingMismatch:
                     return false;
 
                 default:

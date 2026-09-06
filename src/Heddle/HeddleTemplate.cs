@@ -358,6 +358,25 @@ namespace Heddle
                 return CompileResult;
             }
 
+            // The form-cursor seam: while materializing, a named child the hook requests is served from
+            // the same artifact (pushed as its document) instead of being read off disk. Unarmed for a
+            // name the artifact does not carry, so the dynamic tier still reads the file. Nothing here
+            // changes the supply above: a registry-bound child keeps binding the precompiled way.
+            var cursor = FormCursor.Current;
+            if (cursor != null && context != null && context.Options != null &&
+                cursor.TryEnterNamedChild(context.Options.TemplateName, out var childText))
+            {
+                try
+                {
+                    CompileResult = Compile(new CompileScope(context), childText);
+                    return CompileResult;
+                }
+                finally
+                {
+                    cursor.ExitBody();
+                }
+            }
+
             string document = null;
             try
             {

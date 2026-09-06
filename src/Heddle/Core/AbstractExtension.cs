@@ -1,6 +1,7 @@
 ﻿using System;
 using Heddle.Data;
 using Heddle.Language;
+using Heddle.Precompiled.CompiledForm;
 using Heddle.Runtime;
 using Heddle.Strings.Core;
 
@@ -85,7 +86,7 @@ namespace Heddle.Core
 
         private static ExType InitSubTemplate(ref string parameterTemplate, ExType dataType, ExType chainedType,
             CompileScope compileScope,
-            ParseContext parseContext, out RuntimeDocument result)
+            ParseContext parseContext, OutputItem sourceItem, out RuntimeDocument result)
         {
             if (compileScope == null)
                 throw new ArgumentNullException(nameof(compileScope));
@@ -96,8 +97,27 @@ namespace Heddle.Core
             else
             {
                 var newContext = new CompileScope(new CompileContext(compileScope.CompileContext, dataType), compileScope.CSharpContext);
-                subTemplate = HeddleCompiler.Compile(parameterTemplate, newContext, parseContext, chainedType);
-                newContext.CompileContext.Compile();
+                // The form-cursor seam: while materializing, the body a hook requests is served from the
+                // recorded form (with its consumed types checked) instead of the hook's text. Hooks run
+                // unchanged over the supplied body; the cursor is carried into the nested scope so deeper
+                // bodies resolve against the served document. Nothing is armed on the dynamic tier, where
+                // the slot and the ambient are both null.
+                var cursor = compileScope.FormCursor ?? FormCursor.Current;
+                newContext.FormCursor = cursor;
+                string bodyText = parameterTemplate;
+                bool served = cursor != null && sourceItem != null &&
+                    cursor.TryServeBody(sourceItem.Position, parameterTemplate, dataType, chainedType,
+                        out bodyText);
+                try
+                {
+                    subTemplate = HeddleCompiler.Compile(bodyText, newContext, parseContext, chainedType);
+                    newContext.CompileContext.Compile();
+                }
+                finally
+                {
+                    if (served)
+                        cursor.ExitBody();
+                }
             }
 
             if (subTemplate != null)
@@ -133,8 +153,16 @@ namespace Heddle.Core
                 return typeof(string);
             }
 
+            var rawTemplate = initContext.ParameterTemplate;
             var type = InitSubTemplate(ref initContext.ParameterTemplate, dataType, chainedType, initContext.CompileScope,
-                initContext.ParseContext, out var subTemplate);
+                initContext.ParseContext, initContext.SourceItem, out var subTemplate);
+            var record = initContext.CompileScope?.CompileContext.FormRecord;
+            if (record != null && initContext.SourceItem != null && !string.IsNullOrEmpty(rawTemplate))
+            {
+                record.RecordBody(initContext.SourceItem, rawTemplate, initContext.ParameterTemplate,
+                    dataType, chainedType, record.GetDocIndex(subTemplate));
+            }
+
             if (subTemplate == null)
                 _innerResult = initContext.ParameterTemplate;
             _subTemplate = subTemplate;

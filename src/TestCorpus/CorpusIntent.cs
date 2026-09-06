@@ -1,62 +1,66 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Heddle.Data;
 
 namespace Heddle.TestCorpus
 {
-    /// <summary>How the <b>build tier</b> must classify a corpus entry. These are exactly the buckets
-    /// <c>CorpusDifferentialTests</c> already computed, promoted from prose comments plus a <c>HashSet</c> to a
-    /// declared field so that the classification has an owner and a written reason.</summary>
+    /// <summary>How the <b>build tier</b> (the compiled-form record path) must classify a corpus entry.
+    /// The engine's verdict under the row's mode is the whole law: a template the engine compiles is in
+    /// the artifact, and a template the engine refuses is a build error — nothing else refuses.</summary>
     internal enum CorpusTier
     {
-        /// <summary>A manifest entry with a bound (non-null) strategy and a generated entry class.</summary>
-        Precompiles,
+        /// <summary>The engine compiles the row under its mode, and the record carries no refusal sites.</summary>
+        Compiles,
 
-        /// <summary>Everything <see cref="Precompiles"/> is — a bound strategy and a generated entry class —
-        /// <b>and</b> at least one recorded per-call-site fallback: a <c>PrecompiledRuntime.SiteFallback</c> field in
-        /// the generated source, which is the build saying "this one call renders by compiling its own text at first
-        /// render, and the rest of the template is emitted". Its populations are an extension declaring
-        /// <c>[PrecompileUnsupported]</c> (<c>HED7033</c>) and a body the build had to emit type-agnostically that
-        /// then reached one of the three shapes no type-agnostic emission reproduces.
-        /// <para>Its own tier rather than a flavour of <see cref="Precompiles"/> because the difference is the
-        /// headline capability of the binding seam: a template that gives up one call site and a template that gives
-        /// up nothing classify identically in the manifest, so without this member the corpus would report the two as
-        /// the same fact. Both tiers carry a bound entry class, so both are swept, rendered and byte-compared —
-        /// <see cref="CorpusIntentRow.Bound"/> is what those gates read.</para></summary>
-        PrecompilesWithSiteFallback,
+        /// <summary>The engine compiles the row, and the record carries at least one refusal site whose
+        /// classes equal the row's <see cref="CorpusIntentRow.Refusals"/>: the site alone falls back, the
+        /// rest of the template stays precompiled.</summary>
+        CompilesWithRefusal,
 
-        /// <summary>A HED7014 fallback-marker entry: present in the manifest with <c>strategy: null</c>, which is
-        /// a different degrade from <see cref="FallsBackSafely"/> — the entry exists and routes to the dynamic
-        /// path, rather than not existing at all.</summary>
-        DegradesToMarker,
+        /// <summary>The engine refuses the row under its mode, so the build fails it too. No artifact,
+        /// no refusal sites — a refusal site is a per-site degrade inside a compiled template, not a
+        /// whole-template verdict.</summary>
+        EngineError,
+    }
 
-        /// <summary>No manifest entry at all — the whole template degraded to the dynamic tier, output-safely.</summary>
-        FallsBackSafely,
+    /// <summary>The three refusal classes (P1-R8). Mirrors <c>Heddle.Precompiled.PrecompiledRefusalClass</c>
+    /// member for member; the gate compares the two by name, so a rename on either side fails loudly
+    /// instead of drifting silently.</summary>
+    internal enum RefusalClass
+    {
+        /// <summary>The bound extension type declares <c>[PrecompileUnsupported]</c> (read off the live
+        /// type at build).</summary>
+        UnsupportedExtension,
 
-        /// <summary>A deliberate front-end error the shared parser reports and the generator forwards as a build
-        /// error, exactly as the dynamic backend would reject it.</summary>
-        FrontEndError,
+        /// <summary>A value the engine types by reflection enumeration order.</summary>
+        ReflectionOrderValue,
+
+        /// <summary>A bodied or chained consumer over an unbindable call.</summary>
+        UnbindableCallTyping,
     }
 
     /// <summary>How the sweep may exercise an entry. Orthogonal to <see cref="CorpusTier"/> on purpose
-    /// (prevents signal loss). For non-precompiling entries, forward-looking: what would happen if it precompiled.</summary>
+    /// (prevents signal loss). Unchanged by the compiled-form rewrite: what renders a row is still a
+    /// property of the row, not of the tier.</summary>
     internal enum CorpusRender
     {
         /// <summary>Model-less and byte-compared against the dynamic reference inside the sweep. Verified: the entry
         /// renders on BOTH backends and the bytes agree.</summary>
         Standalone,
 
-        /// <summary>The entry declares a model, so the path that matters is byte-pinned by the named family
-        /// differential suite — a standalone render cannot type it. Its model-less path is still rendered and
-        /// byte-compared alongside <see cref="Standalone"/>, because it is free coverage and because a row that
-        /// stops rendering at all has changed into something this column no longer describes.</summary>
+        /// <summary>The entry needs its <c>CorpusModels</c> model to compile, so the path that matters is the
+        /// typed one. Its model-less path is still rendered and byte-compared alongside
+        /// <see cref="Standalone"/>, because it is free coverage and because a row that stops rendering at
+        /// all has changed into something this column no longer describes.</summary>
         WithModel,
 
         /// <summary>Not standalone-renderable at all — a fragment that is only meaningful when imported (a bare
-        /// <c>@else</c> continuation), an entry whose own text is a deliberate parse error, or one that names a
-        /// function only a host registration supplies. Resolved, never rendered by a shared harness.
+        /// <c>@else</c> continuation), an entry whose own text is a deliberate engine error, one that names a
+        /// function only a host registration supplies, or one the engine refuses under the row's mode.
+        /// Resolved, never rendered by a shared harness.
         /// <para>This is the value that takes an entry out of byte-parity coverage, so it is the one that has to be
-        /// earned: a precompiling entry declaring it is rendered anyway, and must genuinely fail to render.</para></summary>
+        /// earned: a compiling entry declaring it is rendered anyway, and must genuinely fail to render.</para></summary>
         ResolveOnly,
     }
 
@@ -64,13 +68,16 @@ namespace Heddle.TestCorpus
     /// completeness gates assert both directions.</summary>
     internal sealed class CorpusIntentRow
     {
-        public CorpusIntentRow(string name, CorpusTier tier, CorpusRender render, string why, bool bom = false)
+        public CorpusIntentRow(string name, CorpusTier tier, CorpusRender render, string why, bool bom = false,
+            ExpressionMode mode = ExpressionMode.Native, params RefusalClass[] refusals)
         {
             Name = name;
             Tier = tier;
             Render = render;
             Why = why;
             Bom = bom;
+            Mode = mode;
+            Refusals = refusals ?? new RefusalClass[0];
         }
 
         /// <summary>The corpus file name (no directory).</summary>
@@ -78,11 +85,11 @@ namespace Heddle.TestCorpus
 
         public CorpusTier Tier { get; }
 
-        /// <summary>True for the two tiers that produce a bound entry class. Every gate that asks "does this
-        /// template precompile" reads this rather than comparing against one member, so splitting the precompiling
-        /// population by call-site fallback did not quietly narrow the render, sweep and observation gates to the
-        /// rows that happen to give up nothing.</summary>
-        public bool Bound => Tier == CorpusTier.Precompiles || Tier == CorpusTier.PrecompilesWithSiteFallback;
+        /// <summary>True for the two tiers that produce an artifact. Every gate that asks "does this
+        /// template precompile" reads this rather than comparing against one member, so splitting the
+        /// compiling population by refusal site did not quietly narrow the sweep gates to the rows that
+        /// happen to give up nothing.</summary>
+        public bool Bound => Tier == CorpusTier.Compiles || Tier == CorpusTier.CompilesWithRefusal;
 
         public CorpusRender Render { get; }
 
@@ -97,6 +104,15 @@ namespace Heddle.TestCorpus
         /// <c>.gitattributes</c>' <c>eol=lf</c> governs newlines and says nothing whatsoever about byte-order
         /// marks.</summary>
         public bool Bom { get; }
+
+        /// <summary>The expression mode the row is classified under. Native unless the engine needs FullCSharp
+        /// to compile the row at all (embedded C#): such rows carry the mode that saves them, and rows whose
+        /// C# no mode saves are <see cref="CorpusTier.EngineError"/> under Native instead.</summary>
+        public ExpressionMode Mode { get; }
+
+        /// <summary>The refusal classes the row's record must carry, as a set. Empty for every row that
+        /// compiles clean; the gate asserts set equality against the record's <c>RefusalSites</c>.</summary>
+        public IReadOnlyList<RefusalClass> Refusals { get; }
     }
 
     /// <summary>
@@ -106,9 +122,7 @@ namespace Heddle.TestCorpus
     /// rename, cannot carry a reason), rather than an in-template header comment (it would change the bytes of the
     /// artifact whose whole value is byte fidelity), and rather than a TSV/JSON sidecar (needs a parser and a schema,
     /// loses compile-time checking). The repo's established pattern for shared test data is exactly this shape —
-    /// <c>DiagnosticCorpusVectors</c>, <c>LineIndexVectors</c>, <c>PropDefaultConversionVectors</c> — and the
-    /// classification being promoted was ALREADY a C# <c>HashSet</c> in <c>CorpusDifferentialTests</c>. This is a
-    /// promotion of an existing artifact, not a new concept.</para>
+    /// <c>DiagnosticCorpusVectors</c>, <c>LineIndexVectors</c>, <c>PropDefaultConversionVectors</c>.</para>
     /// </summary>
     internal static class CorpusIntent
     {
@@ -118,181 +132,192 @@ namespace Heddle.TestCorpus
         /// block).</summary>
         public static readonly IReadOnlyList<CorpusIntentRow> Rows = new[]
         {
-            // Pure text plus @@ escapes collapses to raw, and pure static text precompiles.
-            new CorpusIntentRow("at-escape.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
-                "Pure text plus @@ escapes collapses to a raw write, so the emitter binds it with no model."),
-            new CorpusIntentRow("brace-misread.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
-                "Pure static text: the HED4005 brace-misread fixture's subject is a parse-time warning, not a construct the emitter must refuse."),
-            new CorpusIntentRow("at-escape-comment-adjacent.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
-                "Model-less @@ escapes around @badge() calls under @if(true). It used to fall back because the emitter refused every native expression on the untyped tier before looking at it; the literal condition needs no model, so it now precompiles. Still pinned by its runtime golden (AtEscapeTests)."),
+            // Pure text plus @@ escapes collapses to raw: no call sites, nothing to refuse, dynamic root.
+            new CorpusIntentRow("at-escape.heddle", CorpusTier.Compiles, CorpusRender.Standalone,
+                "Pure text plus @@ escapes collapses to a raw write, so the record carries no call sites at all."),
+            new CorpusIntentRow("brace-misread.heddle", CorpusTier.Compiles, CorpusRender.Standalone,
+                "Pure static text: the HED4005 brace-misread fixture's subject is a parse-time warning, not a construct the record must refuse."),
+            new CorpusIntentRow("at-escape-comment-adjacent.heddle", CorpusTier.Compiles, CorpusRender.Standalone,
+                "Model-less @@ escapes around @badge() calls under @if(true); the literal condition needs no model, so the record is clean. Still pinned by its runtime golden (AtEscapeTests)."),
 
-            // Definition libraries and import shells: they precompile like any plain definition library, and they
+            // Definition libraries and import shells: they compile like any plain definition library, and they
             // render standalone to the empty string on both tiers (verified, not assumed) because their whole body
             // is definitions that only produce output at an import site.
-            new CorpusIntentRow("layout.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
-                "A plain definition library; precompiles like the other libraries and renders empty on both tiers."),
-            new CorpusIntentRow("ergo-import-empty.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
-                "Import fixture whose own output is empty on both tiers; carries no construct the emitter refuses."),
-            new CorpusIntentRow("ergo-import-library.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
-                "The import library half of the composition pair; model-less, byte-pinned by CorpusRenderParityTests."),
-            new CorpusIntentRow("ergo-import-composition.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
-                "Composes the import library; model-less byte parity is pinned by CorpusRenderParityTests."),
-            new CorpusIntentRow("import-origin-badmember-lib.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
-                "The library half of the import-origin family: it is well-formed, so it precompiles even though the pages importing it are FrontEndError fixtures."),
-            new CorpusIntentRow("regr-import-shell.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
-                "Hidden-token offset regression: the import library paired with regr-def-inner-comment; no definition layering, so it precompiles."),
-            new CorpusIntentRow("regr-compose-shim.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
-                "Compose-nesting regression shim: as its own top-level document its @<< composes at offset 0, so it precompiles."),
+            new CorpusIntentRow("layout.heddle", CorpusTier.Compiles, CorpusRender.Standalone,
+                "A plain definition library; compiles like the other libraries and renders empty on both tiers."),
+            new CorpusIntentRow("ergo-import-empty.heddle", CorpusTier.Compiles, CorpusRender.Standalone,
+                "Import fixture whose own output is empty on both tiers; carries no construct the record refuses."),
+            new CorpusIntentRow("ergo-import-library.heddle", CorpusTier.Compiles, CorpusRender.Standalone,
+                "The import library half of the composition pair; model-less."),
+            new CorpusIntentRow("ergo-import-composition.heddle", CorpusTier.Compiles, CorpusRender.Standalone,
+                "Composes the import library; imports resolve from the corpus directory on both tiers."),
+            new CorpusIntentRow("import-origin-badmember-lib.heddle", CorpusTier.Compiles, CorpusRender.Standalone,
+                "The library half of the import-origin family: it is well-formed, so it compiles even though the pages importing it are EngineError fixtures."),
+            new CorpusIntentRow("regr-import-shell.heddle", CorpusTier.Compiles, CorpusRender.Standalone,
+                "Hidden-token offset regression: the import library paired with regr-def-inner-comment; no definition layering, so it compiles."),
+            new CorpusIntentRow("regr-compose-shim.heddle", CorpusTier.Compiles, CorpusRender.Standalone,
+                "Compose-nesting regression shim: as its own top-level document its @<< composes at offset 0, so it compiles."),
 
-            new CorpusIntentRow("branch-import-def.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
+            new CorpusIntentRow("branch-import-def.heddle", CorpusTier.Compiles, CorpusRender.Standalone,
                 "Branch definition library: supported constructs only; renders empty standalone on both tiers."),
-            new CorpusIntentRow("branch-import-else.heddle", CorpusTier.FallsBackSafely, CorpusRender.ResolveOnly,
-                "A bare @else continuation fragment: it is only meaningful when imported into an opener's scope, and rendering it standalone throws 'branch terminal with no matching opener'. The build tier now reads that refusal from the shared branch scan and declines the body rather than precompiling past it, so the entry is a marker instead of a strategy."),
-            new CorpusIntentRow("branching-flagship.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
-                "Flagship branch protocol shape; model-less and byte-identical across tiers."),
-            new CorpusIntentRow("branching-interleaved.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
-                "Interleaved branch arms; model-less and byte-identical across tiers."),
-            new CorpusIntentRow("branching-list-alternating.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
+            new CorpusIntentRow("branch-import-else.heddle", CorpusTier.EngineError, CorpusRender.ResolveOnly,
+                "A bare @else continuation fragment: it is only meaningful when imported into an opener's scope, and compiling it standalone throws HED3003 on both tiers. The build fails rather than emitting past it, so the entry resolves but never renders."),
+            new CorpusIntentRow("branching-flagship.heddle", CorpusTier.Compiles, CorpusRender.Standalone,
+                "Flagship branch protocol shape; its reads late-bind under a dynamic root, so it compiles model-less and byte-identical across tiers."),
+            new CorpusIntentRow("branching-interleaved.heddle", CorpusTier.Compiles, CorpusRender.Standalone,
+                "Interleaved branch arms; model-less and byte-identical across tiers under a dynamic root."),
+            new CorpusIntentRow("branching-list-alternating.heddle", CorpusTier.Compiles, CorpusRender.Standalone,
                 "Alternating list branch; renders empty with no model on both tiers."),
-            new CorpusIntentRow("branching-nested.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
-                "Nested branch scopes; model-less and byte-identical across tiers."),
-            new CorpusIntentRow("branching-partial-child.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
+            new CorpusIntentRow("branching-nested.heddle", CorpusTier.Compiles, CorpusRender.Standalone,
+                "Nested branch scopes; model-less and byte-identical across tiers under a dynamic root."),
+            new CorpusIntentRow("branching-partial-child.heddle", CorpusTier.Compiles, CorpusRender.Standalone,
                 "The child half of the branch/partial pair; supported constructs only."),
-            new CorpusIntentRow("branching-partial-parent.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
-                "The parent half of the branch/partial pair; byte parity also pinned by CorpusRenderParityTests."),
+            new CorpusIntentRow("branching-partial-parent.heddle", CorpusTier.Compiles, CorpusRender.Standalone,
+                "The parent half of the branch/partial pair; a @partial call site of the static child."),
 
-            new CorpusIntentRow("ergo-double-render.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
-                "Double-render warning fixture (W08); the warning is parse-time, the shape itself precompiles and is byte-pinned by CorpusRenderParityTests."),
-            new CorpusIntentRow("ergo-for.heddle", CorpusTier.Precompiles, CorpusRender.WithModel,
-                "Declares ':: ErgoForData', a Heddle.Tests model type, so a standalone dynamic render cannot resolve it; byte parity belongs to the for-family suite."),
-            new CorpusIntentRow("ergo-trim-preamble.heddle", CorpusTier.Precompiles, CorpusRender.WithModel,
-                "Declares ':: TestDataStructure'; the trim-directive goldens in Heddle.Tests own its bytes."),
+            new CorpusIntentRow("ergo-double-render.heddle", CorpusTier.Compiles, CorpusRender.Standalone,
+                "Double-render warning fixture (W08); the warning is parse-time, the shape itself compiles."),
+            new CorpusIntentRow("ergo-for.heddle", CorpusTier.Compiles, CorpusRender.WithModel,
+                "Declares @model(){{ErgoForData}}, and the @for sugar reads type against it; byte parity belongs to the for-family suite."),
+            new CorpusIntentRow("ergo-trim-preamble.heddle", CorpusTier.Compiles, CorpusRender.WithModel,
+                "Declares @model(){{TestDataStructure}}; the trim-directive goldens in Heddle.Tests own its bytes."),
 
-            new CorpusIntentRow("profile-directive.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
-                "@profile() directive flip; model-less and byte-pinned by CorpusRenderParityTests."),
-            new CorpusIntentRow("profile-flagship.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
-                "Flagship profile-flip shape; model-less and byte-pinned by CorpusRenderParityTests."),
-            new CorpusIntentRow("profile-partial-child.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
+            new CorpusIntentRow("profile-directive.heddle", CorpusTier.Compiles, CorpusRender.Standalone,
+                "@profile() directive flip; model-less, its reads late-bind under a dynamic root."),
+            new CorpusIntentRow("profile-flagship.heddle", CorpusTier.Compiles, CorpusRender.Standalone,
+                "Flagship profile-flip shape; model-less and byte-identical across tiers under a dynamic root."),
+            new CorpusIntentRow("profile-partial-child.heddle", CorpusTier.Compiles, CorpusRender.Standalone,
                 "The child half of the profile/partial pair; supported constructs only."),
-            new CorpusIntentRow("profile-partial-parent.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
-                "The parent half of the profile/partial pair; byte parity also pinned by CorpusRenderParityTests."),
-            new CorpusIntentRow("profile-resolver-default.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
+            new CorpusIntentRow("profile-partial-parent.heddle", CorpusTier.Compiles, CorpusRender.Standalone,
+                "The parent half of the profile/partial pair; model-less under a dynamic root."),
+            new CorpusIntentRow("profile-resolver-default.heddle", CorpusTier.Compiles, CorpusRender.Standalone,
                 "Resolver-default profile fixture; renders empty with no model on both tiers."),
 
-            // Props / slot family. props-abstract-panel types dynamic; the other four write a bare short model name.
-            new CorpusIntentRow("props-abstract-panel.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
+            // Props / slot family. props-abstract-panel types dynamic; the rest read a typed root: bare short
+            // model names (:: PropArticle and friends) resolve through the global name index, while the
+            // call-site root reads (Article, Site, Menu) type against PropRoot.
+            new CorpusIntentRow("props-abstract-panel.heddle", CorpusTier.Compiles, CorpusRender.Standalone,
                 "Abstract props panel with no declared model type, so it renders standalone on both tiers."),
-            new CorpusIntentRow("props-defaults.heddle", CorpusTier.Precompiles, CorpusRender.WithModel,
-                "Joined the precompiled set once the build tier stopped resolving model names by its own rule. Writes a bare ':: PropArticle', which a model-less standalone render cannot bind; the props differential suite owns its bytes."),
-            new CorpusIntentRow("props-inherit.heddle", CorpusTier.Precompiles, CorpusRender.WithModel,
-                "Props-defaults: a bare ':: PropArticle' short name the runtime binds through its global name index."),
-            new CorpusIntentRow("slot-compose.heddle", CorpusTier.Precompiles, CorpusRender.WithModel,
-                "Props-defaults: bare ':: PropArticle'; the slot/default-output suite owns its bytes."),
-            new CorpusIntentRow("slot-picker.heddle", CorpusTier.Precompiles, CorpusRender.WithModel,
+            new CorpusIntentRow("props-defaults.heddle", CorpusTier.Compiles, CorpusRender.WithModel,
+                "Writes a bare ':: PropArticle', which a model-less compile cannot root; the props differential suite owns its bytes."),
+            new CorpusIntentRow("props-inherit.heddle", CorpusTier.Compiles, CorpusRender.WithModel,
+                "Bare ':: PropArticle' short name the runtime binds through its global name index; the root reads need PropRoot."),
+            new CorpusIntentRow("slot-compose.heddle", CorpusTier.Compiles, CorpusRender.WithModel,
+                "Bare ':: PropArticle'; the slot/default-output suite owns its bytes."),
+            new CorpusIntentRow("slot-picker.heddle", CorpusTier.Compiles, CorpusRender.WithModel,
                 "Bare ':: PropMenuOption'/':: PropMenu' short names; the slot suite owns its bytes."),
 
-            new CorpusIntentRow("range-for.heddle", CorpusTier.Precompiles, CorpusRender.WithModel,
-                "Range-for fixture: native-tier constructs only so it precompiles, but ':: ErgoForData' means byte parity is ForTests.RangeForFixture's."),
+            new CorpusIntentRow("range-for.heddle", CorpusTier.Compiles, CorpusRender.WithModel,
+                "Range-for fixture declaring @model(){{ErgoForData}}; byte parity is ForTests.RangeForFixture's."),
 
-            new CorpusIntentRow("regr-def-inner-comment.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
-                "Hidden-token offset regression: a single-file definition with an inner-comment body; the enclosing-block trim fix lives in both backends, and the bytes are pinned by CorpusRenderParityTests."),
-            new CorpusIntentRow("shaper-clamp-imported.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
+            new CorpusIntentRow("regr-def-inner-comment.heddle", CorpusTier.Compiles, CorpusRender.Standalone,
+                "Hidden-token offset regression: a single-file definition with an inner-comment body; the enclosing-block trim fix lives in both backends."),
+            new CorpusIntentRow("shaper-clamp-imported.heddle", CorpusTier.Compiles, CorpusRender.Standalone,
                 "The library half of the clamp-drift pair; a zero-output directive, so it renders empty on both tiers."),
-            new CorpusIntentRow("shaper-clamp-overshoot.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
-                "Clamp drift: an indented last-line @<< whose re-based chain overshoots the widened-away import line. Precompiles only since the clamp fix; before it the emitter threw and silently degraded."),
-            new CorpusIntentRow("optimized-document.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
-                "The optimized-document flagship; model-less, byte-pinned by CorpusRenderParityTests, and BOM-bearing.",
+            new CorpusIntentRow("shaper-clamp-overshoot.heddle", CorpusTier.Compiles, CorpusRender.Standalone,
+                "Clamp drift: an indented last-line @<< whose re-based chain overshoots the widened-away import line; ordinary emission."),
+            new CorpusIntentRow("optimized-document.heddle", CorpusTier.Compiles, CorpusRender.Standalone,
+                "The optimized-document flagship; model-less and BOM-bearing.",
                 bom: true),
 
-            new CorpusIntentRow("streaming-large.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
-                "Streaming fixture: pure static text, so it precompiles on the dynamic tier and renders identically."),
-            new CorpusIntentRow("streaming-unicode.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
-                "Streaming fixture: static plus dynamic @(Name)/@(City) against a dynamic model, so it precompiles and renders identically."),
+            new CorpusIntentRow("streaming-large.heddle", CorpusTier.Compiles, CorpusRender.Standalone,
+                "Streaming fixture: pure static text, so it compiles and renders identically."),
+            new CorpusIntentRow("streaming-unicode.heddle", CorpusTier.Compiles, CorpusRender.Standalone,
+                "Streaming fixture: static plus dynamic @(Name)/@(City), which late-bind under a dynamic root, so it compiles and renders identically."),
 
-            new CorpusIntentRow("trycompile-parity-child.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
+            new CorpusIntentRow("trycompile-parity-child.heddle", CorpusTier.Compiles, CorpusRender.Standalone,
                 "The static child of the TryCompile-parity pair; supported constructs only."),
-            new CorpusIntentRow("trycompile-parity-parent.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
+            new CorpusIntentRow("trycompile-parity-parent.heddle", CorpusTier.Compiles, CorpusRender.Standalone,
                 "A parent with a @partial call site of the static child; supported constructs only."),
-            new CorpusIntentRow("trycompile-parity-typed.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
-                "A typed @(Name) document against a dynamic model; renders empty standalone on both tiers."),
+            new CorpusIntentRow("trycompile-parity-typed.heddle", CorpusTier.Compiles, CorpusRender.Standalone,
+                "A typed @(Name) document; renders empty standalone on both tiers under a dynamic root."),
 
-            new CorpusIntentRow("branching-out-projection.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
-                "An @out projection inside a branch. It refused because its definition declares no model type and the emitter typed that body 'object', where the engine types it by the value each call site passes; typed the engine's way the body's branches and projection are all ordinary emissions."),
-            new CorpusIntentRow("context-lint-corpus.heddle", CorpusTier.FallsBackSafely, CorpusRender.WithModel,
-                "The HTML-context lint corpus: its subject is parse-time HED4xxx classification, and it needs the lint suite's host setup to render."),
-            new CorpusIntentRow("ctx-encoding.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
-                "Context-encoding golden fixture: every call is a BODILESS step-back encoder (@url/@attr/@js), which the emitter now binds from pinned knowledge — the hook re-types only a default body these calls do not have. ContextEncodingFallbackTests proves tier parity; the bodied form still falls back."),
-            new CorpusIntentRow("ctx-encoding-bodied.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
-                "The bodied twin of ctx-encoding, flipped. A step-back encoder's hook re-types its default body against the CALLER's scope and does nothing else — one hook body shared verbatim by nine built-ins — and that role is now a row of the shared table, rather than a four-name list the emitter carried privately and had five names missing from. The body is emitted in the enclosing model's context, exactly as an @if body is."),
-            new CorpusIntentRow("ext-bodied-custom.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
-                "A bodied call to a REFERENCED third-party extension whose InitStart has the step-back shape — the case the whole binding seam exists for, and the one the build could not serve at all. It is no longer a question the build answers: the extension's own InitStart runs inside the consumer's assembly at static-init, the body is emitted with no model cast, and the hook chooses that body's typing. Nothing opts in, no name is listed, and the HED7015 warning it used to carry is simply not true of this build any more."),
-            new CorpusIntentRow("ext-bodied-unemittable.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
-                "The boundary beside it, moved by the same change: a bodied call to a referenced extension whose hook types the body by the call VALUE. That was a role the emitter had no emission for, and a role is no longer what decides — the body carries no model cast to be wrong, so there is nothing left for the build to be unable to emit. Its bytes are pinned against the dynamic tier by the sweep like every other row here."),
-            new CorpusIntentRow("inert-body.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
-                "The three ways a call body compiles to no processors — static text alone, a directive alone, and an empty body — beside the two forms that must stay distinguished from them: a bodiless call, and a body holding a real call. The engine builds that body's document, finds no processor in it and discards it, so the carrier renders its model and not the body text; the build emitted a real strategy for every one of these and rendered the body instead. <b> is the same shape on the unnamed carrier, which the emitter refused outright for this byte alone. Model-less, so the sweep byte-compares both tiers every run and the file is its own discriminator: on the old build <a> and <b> read 'mid'."),
-            new CorpusIntentRow("ext-site-fallback.heddle", CorpusTier.PrecompilesWithSiteFallback,
+            new CorpusIntentRow("branching-out-projection.heddle", CorpusTier.Compiles, CorpusRender.Standalone,
+                "An @out projection inside a branch over a @model(){{dynamic}} root: the body's branches and projection are all ordinary emissions."),
+            new CorpusIntentRow("context-lint-corpus.heddle", CorpusTier.Compiles, CorpusRender.WithModel,
+                "The HTML-context lint corpus: its @(X)/FullUrl/Id/Count/Label reads type against HtmlContextLintTests.LintModel, the same model the lint goldens render with."),
+            new CorpusIntentRow("ctx-encoding.heddle", CorpusTier.Compiles, CorpusRender.Standalone,
+                "Context-encoding golden fixture: every call is a BODILESS step-back encoder (@url/@attr/@js), which the record binds from pinned knowledge — the hook re-types only a default body these calls do not have."),
+            new CorpusIntentRow("ctx-encoding-bodied.heddle", CorpusTier.Compiles, CorpusRender.Standalone,
+                "The bodied twin of ctx-encoding. A step-back encoder's hook re-types its default body against the CALLER's scope and does nothing else, and the body is recorded in the enclosing dynamic context, exactly as an @if body is."),
+            new CorpusIntentRow("ext-bodied-custom.heddle", CorpusTier.Compiles, CorpusRender.Standalone,
+                "A bodied call to a REFERENCED third-party extension whose InitStart has the step-back shape — the case the whole binding seam exists for. The extension's own InitStart runs inside the consumer's assembly at static-init, the body carries no model cast, the hook chooses that body's typing, and the record carries no refusal."),
+            new CorpusIntentRow("ext-bodied-unemittable.heddle", CorpusTier.Compiles, CorpusRender.Standalone,
+                "The boundary beside it: a bodied call to a referenced extension whose hook types the body by the call VALUE. The body carries no model cast to be wrong, so there is nothing left the record cannot carry — no refusal, bytes pinned against the dynamic tier by the sweep like every other row here."),
+            new CorpusIntentRow("inert-body.heddle", CorpusTier.Compiles, CorpusRender.Standalone,
+                "The three ways a call body compiles to no processors — static text alone, a directive alone, and an empty body — beside the two forms that must stay distinguished from them: a bodiless call, a body holding a real call, and the unnamed carrier. The carrier renders its model and not the body text on both tiers."),
+            new CorpusIntentRow("ext-site-fallback.heddle", CorpusTier.CompilesWithRefusal,
                 CorpusRender.Standalone,
-                "The corpus's member of the per-call-site fallback tier, and the only row that makes that tier a gate rather than a declaration. @scanner declares [PrecompileUnsupported] because its InitStart walks the enclosing document through InitContext.ParseContext, which no call site can carry — so the build writes a PrecompiledRuntime.SiteFallback for that one call, reports HED7033 quoting the extension author's own sentence, and emits the rest of the document as an ordinary precompiled entry class. Model-less and standalone, so the sweep byte-compares both tiers every run: what the substitute renders by compiling its own text is what the dynamic tier renders."),
-            new CorpusIntentRow("dynamic-recursion.heddle", CorpusTier.FallsBackSafely, CorpusRender.WithModel,
-                "Its embedded C# now compiles as fragments — under a FullCSharp build the whole document precompiles byte-identically (EmbeddedCSharpFragmentTests) — but this sweep builds with the default Native mode, where 'embedded C# outside FullCSharp mode' degrades it, exactly as the engine refuses the same template without FullCSharp options.",
+                "The corpus's one per-site refusal. @scanner declares [PrecompileUnsupported] because its InitStart walks the enclosing document through InitContext.ParseContext, which no call site can carry — so the record carries one UnsupportedExtension site quoting the author's sentence, and the rest of the document stays precompiled. Model-less and standalone, so the sweep byte-compares both tiers every run.",
+                refusals: RefusalClass.UnsupportedExtension),
+            new CorpusIntentRow("dynamic-recursion.heddle", CorpusTier.Compiles, CorpusRender.WithModel,
+                "Embedded-C# recursion flagship with a dynamic root: the engine refuses its C# under Native (positions 139, 781), and compiles it under FullCSharp — EmbeddedCSharpFragmentTests pins the byte-identical precompile, which is why this row carries the mode.",
+                bom: true, mode: ExpressionMode.FullCSharp),
+            new CorpusIntentRow("empty-override.heddle", CorpusTier.Compiles, CorpusRender.Standalone,
+                "Definition override layering over a @model(){{dynamic}} root: an override arrives materialized from the ParseContext the parser already built, and emits as an ordinary definition call. Renders model-less on both tiers and is still pinned by HeddleTemplateTests.",
                 bom: true),
-            new CorpusIntentRow("empty-override.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
-                "Definition override layering, which the emitter no longer refuses. It never resolved layers itself: it asks the same ParseContext the engine asks, and the parser has already put the layer each call site sees in it, so an override arrives materialized and emits as an ordinary definition call. Renders model-less on both tiers and is still pinned by HeddleTemplateTests.",
+            new CorpusIntentRow("def-layering.heddle", CorpusTier.Compiles, CorpusRender.Standalone,
+                "The layering shapes in one model-less document: a full override calling the layer below it, props declared on two layers, a three-deep chain where each layer reaches only the one under it, an override declared inside another definition's body, and caller content spliced separately at each layer."),
+            new CorpusIntentRow("expr-flagship.heddle", CorpusTier.Compiles, CorpusRender.WithModel,
+                "Native-expression flagship: HED1004 requires a typed model, so it cannot compile model-less; NativeExpressionGoldenTests.FlagshipModel supplies Price, Quantity, Name, IsFeatured, Total, Amount, Count and A, and NativeExpressionGoldenTests owns its bytes."),
+            new CorpusIntentRow("expr-functions.heddle", CorpusTier.Compiles, CorpusRender.WithModel,
+                "Native-expression function fixture: typed-model-only (HED1004); NativeExpressionGoldenTests.FunctionsModel supplies Name, Padded, Negative, A, B and Ratio."),
+            new CorpusIntentRow("partial.heddle", CorpusTier.Compiles, CorpusRender.Standalone,
+                "An HTML row fragment whose one hard call is @money(Cost){{@(Locale)}} — a bodied step-back encoder of the ctx-encoding-bodied family — over a dynamic root, so it is an ordinary emission. Model-less, hence its own discriminator on both tiers.",
                 bom: true),
-            new CorpusIntentRow("def-layering.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
-                "The layering shapes in one model-less document: a full override calling the layer below it, props declared on two layers, a three-deep chain where each layer reaches only the one under it, an override declared inside another definition's body, and caller content spliced separately at each layer. Model-less and standalone so the sweep byte-compares it on both tiers every run — the shapes that were refused wholesale until the emitter stopped believing it resolved definitions flatly."),
-            new CorpusIntentRow("expr-flagship.heddle", CorpusTier.FallsBackSafely, CorpusRender.WithModel,
-                "Native-expression flagship: HED1004 requires a typed model, so it cannot render model-less; NativeExpressionGoldenTests owns its bytes."),
-            new CorpusIntentRow("expr-functions.heddle", CorpusTier.FallsBackSafely, CorpusRender.WithModel,
-                "Native-expression function fixture: typed-model-only (HED1004), same owner as expr-flagship."),
-            new CorpusIntentRow("partial.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
-                "An HTML row fragment, named for what it is rather than for the @partial extension its Why used to blame. Its one blocker was @money(Cost){{@(Locale)}} — a bodied step-back encoder, the same refusal ctx-encoding-bodied pins — and @money was not even in the private four-name list that would have let its bodiless form bind. Both facts fell out together when the roles became an observation.",
+            new CorpusIntentRow("props-card.heddle", CorpusTier.Compiles, CorpusRender.WithModel,
+                "Props card fixture: its native-expression reads (HED1004) need the typed root PropRoot supplies; PropsGoldenTests owns its bytes."),
+            new CorpusIntentRow("raw.heddle", CorpusTier.EngineError, CorpusRender.ResolveOnly,
+                "@raw over a host-provided value with embedded C# the engine refuses under Native (position 27); the build fails the same way, so the entry resolves but never renders.",
                 bom: true),
-            new CorpusIntentRow("props-card.heddle", CorpusTier.FallsBackSafely, CorpusRender.WithModel,
-                "Props card fixture whose model member the emitter cannot type; PropsGoldenTests owns its bytes."),
-            new CorpusIntentRow("raw.heddle", CorpusTier.FallsBackSafely, CorpusRender.WithModel,
-                "@raw over a host-provided value; needs the raw suite's host setup, and the emitter refuses the construct.",
+            new CorpusIntentRow("recursion.heddle", CorpusTier.Compiles, CorpusRender.WithModel,
+                "Embedded-C# recursion flagship with a dynamic root: the engine refuses its C# under Native (positions 139, 774), and compiles it under FullCSharp — EmbeddedCSharpFragmentTests pins the byte-identical precompile, which is why this row carries the mode.",
+                bom: true, mode: ExpressionMode.FullCSharp),
+            new CorpusIntentRow("regr-import-multiline-override.heddle", CorpusTier.Compiles, CorpusRender.Standalone,
+                "The cross-file override page of the hidden-token regression. Layering an IMPORTED definition is layering like any other — the import is expanded into this document before the parse that builds the layers — so it compiles with the rest of them; MultilineOverrideOffsetRegressionTests still pins the runtime bytes."),
+            new CorpusIntentRow("template.heddle", CorpusTier.EngineError, CorpusRender.ResolveOnly,
+                "The original flagship document: its embedded C# is refused under Native (six sites from position 491), and no FullCSharp precompile of its escape-bearing @using body is pinned anywhere, so the row's mode stays Native and the build fails. HeddleTemplateTests owns its bytes.",
                 bom: true),
-            new CorpusIntentRow("recursion.heddle", CorpusTier.FallsBackSafely, CorpusRender.WithModel,
-                "Its embedded C# now compiles as fragments — under a FullCSharp build the whole document precompiles byte-identically (EmbeddedCSharpFragmentTests) — but this sweep builds with the default Native mode, where 'embedded C# outside FullCSharp mode' degrades it, exactly as the engine refuses the same template without FullCSharp options.",
-                bom: true),
-            new CorpusIntentRow("regr-import-multiline-override.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
-                "The cross-file override page of the hidden-token regression. Layering an IMPORTED definition is layering like any other — the import is expanded into this document before the parse that builds the layers — so it moved with the rest of them; MultilineOverrideOffsetRegressionTests still pins the runtime bytes."),
-            new CorpusIntentRow("template.heddle", CorpusTier.FallsBackSafely, CorpusRender.WithModel,
-                "The original flagship document. Under this sweep's default Native build the mode gate degrades its embedded C#; under FullCSharp the blocker is its escape-bearing @using body ('Heddle@{.}@Tests.Data'), which the engine renders to a namespace and the emitter still reads raw. HeddleTemplateTests owns its bytes.",
-                bom: true),
-            new CorpusIntentRow("tuple_array.heddle", CorpusTier.FallsBackSafely, CorpusRender.WithModel,
-                "Its first refusal is the bodied unnamed carrier (@(...){{...}}), reached before any of its tuple C# is even asked about; HeddleTemplateTests owns its bytes."),
-            new CorpusIntentRow("vc-test.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
-                "The double-render (W08) subject document. Five of its widgets are full overrides, which was its only blocker; with layering emitted it precompiles, and it renders model-less on both tiers."),
-            new CorpusIntentRow("wierd-whitespace.heddle", CorpusTier.FallsBackSafely, CorpusRender.WithModel,
-                "Whitespace-torture document whose first refusal used to be the bodied unnamed carrier (@(  ){{...}}), reached before anything else in it. That refusal named one rendered byte and the build emits the byte now, so what refuses the file is the fault underneath: its @root.… reads are embedded C#, which the engine itself will not compile outside FullCSharp — the dynamic tier reports two HED errors for this document under the sweep's own options. The degrade reproduces a refusal rather than losing a capability. HeddleTemplateTests owns its bytes.",
+            new CorpusIntentRow("tuple_array.heddle", CorpusTier.EngineError, CorpusRender.ResolveOnly,
+                "The tuple document: the bodied unnamed carrier emits, but the tuple C# is refused under Native (positions 81, 205), so the build fails. HeddleTemplateTests owns its bytes."),
+            new CorpusIntentRow("vc-test.heddle", CorpusTier.Compiles, CorpusRender.Standalone,
+                "The double-render (W08) subject document: five of its widgets are full overrides, which emit as ordinary definition calls, and it renders model-less on both tiers."),
+            new CorpusIntentRow("wierd-whitespace.heddle", CorpusTier.EngineError, CorpusRender.ResolveOnly,
+                "Whitespace-torture document whose @root reads are embedded C#, which the engine itself will not compile outside FullCSharp — the dynamic tier reports two refusals for this document (positions 655, 1051) under the row's own options, and the build fails the same way. HeddleTemplateTests owns its bytes.",
                 bom: true),
 
-            new CorpusIntentRow("fn-late-bound.heddle", CorpusTier.Precompiles, CorpusRender.ResolveOnly,
-                "Was the corpus's marker entry until late binding arrived: it calls a function resolvable from neither the default table nor any referenced export, which is now emitted as a PrecompiledFunctionSite resolved once at first render through the engine's own ranker instead of costing the file its tier. Renders only against a host that registers the delegate — with none registered BOTH tiers refuse the same way, which is what earns its ResolveOnly row and is asserted rather than assumed; LateBoundFunctionTests owns its bytes and its ranking."),
-            new CorpusIntentRow("fn-unresolvable-marker.heddle", CorpusTier.DegradesToMarker, CorpusRender.ResolveOnly,
-                "The marker entry, kept deliberately so the tier still has a member after late binding took the previous one. Its outer call's ARGUMENT is an expression over a second un-bindable name, whose return type is exactly what no build-time answer exists for — so the argument has no static type to rank the outer call against, and inventing one is the one thing a late-bound site must not do (it would pick an overload the engine never picks). Still the only construct yielding a manifest row with a null strategy instead of no row at all; UnresolvableFunctionTests owns its classification and its diagnostic."),
+            // Late-bound function fixtures: every one of these names a function no registry binds, which is now
+            // emitted as a late-bound value site (resolved once at first render through the engine's own ranker)
+            // instead of costing the file its tier. With none registered BOTH tiers refuse the same way at render,
+            // which is what earns the ResolveOnly rows and is asserted rather than assumed.
+            new CorpusIntentRow("fn-late-bound.heddle", CorpusTier.Compiles, CorpusRender.ResolveOnly,
+                "Calls a function resolvable from neither the default table nor any referenced export; LateBoundFunctionTests owns its bytes and its ranking."),
+            new CorpusIntentRow("fn-standalone-late-bound.heddle", CorpusTier.Compiles, CorpusRender.ResolveOnly,
+                "A standalone late-bound call: deferral needs no consumer to hang off, and the record carries no refusal."),
+            new CorpusIntentRow("fn-typed-consumer-late-bound.heddle", CorpusTier.Compiles, CorpusRender.ResolveOnly,
+                "A late-bound call under a typed consumer: the site still defers through the engine's ranker instead of refusing."),
+            new CorpusIntentRow("fn-unresolvable-marker.heddle", CorpusTier.Compiles, CorpusRender.ResolveOnly,
+                "Was the corpus's marker entry until late binding arrived. Its outer call's ARGUMENT is an expression over a second unbindable name — but an argument is neither a bodied nor a chained consumer, so no class-(c) refusal fires and the site late-binds like any other value site. UnresolvableFunctionTests owns its classification and its diagnostic."),
 
             // These entries assert the diagnostic's IDENTITY, not offsets into a hand-counted string, which is why
             // they are corpus entries at all; position probes stay inline in their own tests.
 
-            new CorpusIntentRow("ergo-import-broken.heddle", CorpusTier.FrontEndError, CorpusRender.ResolveOnly,
-                "Imports a target that does not resolve; the front end errors and the generator forwards it."),
-            new CorpusIntentRow("import-origin-a.heddle", CorpusTier.FrontEndError, CorpusRender.ResolveOnly,
-                "Import-origin attribution fixture: the error must be attributed to this file, not to the library."),
-            new CorpusIntentRow("import-origin-b.heddle", CorpusTier.FrontEndError, CorpusRender.ResolveOnly,
-                "Import-origin attribution fixture, second hop of the chain."),
-            new CorpusIntentRow("import-origin-broken.heddle", CorpusTier.FrontEndError, CorpusRender.ResolveOnly,
-                "Import-origin attribution fixture: the deliberately broken origin."),
-            new CorpusIntentRow("import-origin-c.heddle", CorpusTier.FrontEndError, CorpusRender.ResolveOnly,
-                "Import-origin attribution fixture, third hop of the chain."),
+            new CorpusIntentRow("ergo-import-broken.heddle", CorpusTier.EngineError, CorpusRender.ResolveOnly,
+                "Imports a target that does not resolve; the front end errors (HED0003) and the build fails it the same way."),
+            new CorpusIntentRow("import-origin-a.heddle", CorpusTier.EngineError, CorpusRender.ResolveOnly,
+                "Import-origin attribution fixture: the error must be attributed to this file, not to the library — and the build failing it is that attribution."),
+            new CorpusIntentRow("import-origin-b.heddle", CorpusTier.EngineError, CorpusRender.ResolveOnly,
+                "Import-origin attribution fixture, second hop of the chain; a front-end error on both tiers."),
+            new CorpusIntentRow("import-origin-broken.heddle", CorpusTier.EngineError, CorpusRender.ResolveOnly,
+                "Import-origin attribution fixture: the deliberately broken origin; a front-end error on both tiers."),
+            new CorpusIntentRow("import-origin-c.heddle", CorpusTier.EngineError, CorpusRender.ResolveOnly,
+                "Import-origin attribution fixture, third hop of the chain; a front-end error on both tiers."),
 
             // Chains. The corpus carried none at all while the build refused them, so these are the shared home
             // for the shape rather than an adaptation of one.
-            new CorpusIntentRow("chain-output.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
+            new CorpusIntentRow("chain-output.heddle", CorpusTier.Compiles, CorpusRender.Standalone,
                 "Multi-item output chains — two definitions around a definition producer, and a definition around a registered function — model-less, so both tiers render them and the bytes are compared."),
-            new CorpusIntentRow("chain-parameter.heddle", CorpusTier.Precompiles, CorpusRender.Standalone,
+            new CorpusIntentRow("chain-parameter.heddle", CorpusTier.Compiles, CorpusRender.Standalone,
                 "Multi-item chains in call-parameter position (@a(b():c())), the grammar's third call alternative; model-less and byte-compared like its output-position sibling."),
         };
 
@@ -341,8 +366,8 @@ namespace Heddle.TestCorpus
         public static IReadOnlyList<string> NamesWithTier(CorpusTier tier) =>
             Rows.Where(r => r.Tier == tier).Select(r => r.Name).OrderBy(n => n, StringComparer.Ordinal).ToList();
 
-        /// <summary>Every declared file name that produces a bound entry class, in either precompiling tier,
-        /// ordinal-sorted. The right-hand side of the gates that ask about the manifest alone, which cannot see
+        /// <summary>Every declared file name that produces an artifact, in either compiling tier,
+        /// ordinal-sorted. The right-hand side of the gates that ask about the build alone, which cannot see
         /// which of the two a row is.</summary>
         public static IReadOnlyList<string> BoundNames() =>
             Rows.Where(r => r.Bound).Select(r => r.Name).OrderBy(n => n, StringComparer.Ordinal).ToList();

@@ -4,6 +4,8 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using Heddle.Data;
+using Heddle.Helpers;
+using Heddle.Precompiled.CompiledForm;
 using Heddle.Runtime;
 using Heddle.Runtime.Expressions;
 
@@ -13,7 +15,7 @@ namespace Heddle.Precompiled
     /// resolved <see cref="PrecompiledTemplateInfo"/> and the request's effective <see cref="TemplateOptions"/>,
     /// returning the first failure as a <see cref="PrecompiledFallbackEvent"/> (with the pinned detail string) or
     /// <c>null</c> when every check passes. Pure apart from the optional staleness step's file reads.
-    /// <para>Ordered: marker → options → model type → extensions → functions → staleness.</para></summary>
+    /// <para>Ordered: marker → options → model type → extensions → bindings → functions → staleness.</para></summary>
     internal static class PrecompiledGauntlet
     {
         internal const string Hed7101 = Data.HeddleDiagnosticIds.PrecompiledGauntletFallback;
@@ -43,6 +45,10 @@ namespace Heddle.Precompiled
             var extensionFailure = CheckExtensions(entry, bindingResolver);
             if (extensionFailure != null)
                 return extensionFailure;
+
+            var bindingsFailure = CheckMemberBindings(entry);
+            if (bindingsFailure != null)
+                return bindingsFailure;
 
             var initFailure = CheckInitSites(entry);
             if (initFailure != null)
@@ -139,6 +145,283 @@ namespace Heddle.Precompiled
         {
             return liveType != null &&
                    string.Equals(binding.ExtensionTypeName, AqnSansVersion(liveType), StringComparison.Ordinal);
+        }
+
+        /// <summary>The bindings step: the row's root model type was resolved by name at registration, and every
+        /// recorded member row is walked from its own resolved start type through the live member graph, each hop
+        /// compared by identity. Resolve-versus-compare order (AC-4): the root and start types resolve by name and
+        /// may fail with a <c>Type</c> detail; everything reached through the member graph is compared and never
+        /// resolved, so the verdict does not depend on which assemblies have loaded beyond the roots'. A hop the
+        /// engine classifies dynamic carries no recorded identity and binds through the dynamic parameter.
+        /// Entries with no recorded member rows (hand-written manifests) pass vacuously.</summary>
+        private static PrecompiledFallbackEvent? CheckMemberBindings(PrecompiledTemplateInfo entry)
+        {
+            if (entry.ModelTypeUnresolved)
+            {
+                var modelRef = entry.ModelTypeRef;
+                var nominal = modelRef != null ? modelRef.Nominal() : AqnFormatter.Unknown;
+                var assembly = modelRef != null
+                    ? PrecompiledTemplateInfo.AssemblyOf(modelRef)
+                    : AqnFormatter.Unknown;
+                return Fail(entry.Key, PrecompiledFallbackReason.MemberBindingMismatch,
+                    "Type '" + nominal + "': manifest=" + assembly + " live=<unresolved>");
+            }
+
+            var rows = entry.MemberRows;
+            if (rows == null)
+                return null;
+            for (int i = 0; i < rows.Count; i++)
+            {
+                var failure = CheckMemberRow(entry.Key, rows[i]);
+                if (failure != null)
+                    return failure;
+            }
+
+            return null;
+        }
+
+        private static PrecompiledFallbackEvent? CheckMemberRow(string key, CompiledMemberRow row)
+        {
+            if (row == null || row.Segments == null || row.Segments.Count == 0)
+                return null;
+
+            if (row.StartType == null)
+                return null;
+
+            ExType start;
+            if (row.StartType is DynamicTypeRef)
+            {
+                start = ExType.Dynamic;
+            }
+            else
+            {
+                var resolved = PrecompiledTemplateInfo.FindLoadedType(row.StartType);
+                if (resolved == null)
+                    return Fail(key, PrecompiledFallbackReason.MemberBindingMismatch,
+                        "Type '" + row.StartType.Nominal() + "': manifest=" +
+                        PrecompiledTemplateInfo.AssemblyOf(row.StartType) + " live=<unresolved>");
+                start = new ExType(resolved);
+            }
+
+            var segments = new string[row.Segments.Count];
+            for (int i = 0; i < segments.Length; i++)
+                segments[i] = row.Segments[i] ?? string.Empty;
+            var path = row.StartType.Nominal() + "." + string.Join(".", segments);
+
+            var resolution = MemberPathResolver.TryResolve(start, segments);
+            if (resolution == null || resolution.Kind == MemberPathResolutionKind.Failed)
+            {
+                var index = resolution != null ? resolution.Index : 0;
+                return Fail(key, PrecompiledFallbackReason.MemberBindingMismatch,
+                    "Member '" + path + "': manifest=" + RecordedMemberNominal(row, index) +
+                    " live=<unresolved>");
+            }
+
+            var hops = row.Hops;
+            int hopCount = hops != null ? hops.Count : 0;
+            var properties = resolution.Properties;
+            if (resolution.Kind == MemberPathResolutionKind.DynamicHop)
+            {
+                int prefix = properties != null ? properties.Count : 0;
+                for (int h = 0; h < prefix; h++)
+                {
+                    if (h >= hopCount)
+                        break;
+                    var detail = CompareHop(hops[h], path, segments[h],
+                        properties[h].Item1, properties[h].Item2.GetPropertyExType());
+                    if (detail != null)
+                        return Fail(key, PrecompiledFallbackReason.MemberBindingMismatch, detail);
+                }
+
+                for (int h = prefix; h < hopCount; h++)
+                {
+                    if (HasRecordedIdentity(hops[h]))
+                        return Fail(key, PrecompiledFallbackReason.MemberBindingMismatch,
+                            "Member '" + path + "': manifest=" + RecordedMemberNominal(row, h) +
+                            " live=<dynamic>");
+                }
+
+                return null;
+            }
+
+            if (properties == null || properties.Count != segments.Length)
+                return Fail(key, PrecompiledFallbackReason.MemberBindingMismatch,
+                    "Member '" + path + "': manifest=" +
+                    RecordedMemberNominal(row, properties != null ? properties.Count : 0) +
+                    " live=<unresolved>");
+
+            for (int h = 0; h < segments.Length; h++)
+            {
+                if (h >= hopCount)
+                    break;
+                var detail = CompareHop(hops[h], path, segments[h],
+                    properties[h].Item1, properties[h].Item2.GetPropertyExType());
+                if (detail != null)
+                    return Fail(key, PrecompiledFallbackReason.MemberBindingMismatch, detail);
+            }
+
+            return null;
+        }
+
+        /// <summary>Compares one recorded hop against the live walk's answer for the same segment: the recorded
+        /// name must be the walked segment, the recorded declaring type must match the receiver in type-ref form,
+        /// and the recorded member type must match the member's type in type-ref form. Returns the pinned detail
+        /// on a difference, null when the hop binds. A null side carries no recorded identity and passes.</summary>
+        private static string CompareHop(CompiledMemberHop hop, string path,
+            string segment, Type liveDeclaring, ExType liveMember)
+        {
+            if (hop == null)
+                return null;
+            if (hop.MemberName != null && !string.Equals(hop.MemberName, segment, StringComparison.Ordinal))
+                return "Member '" + path + "': manifest=" + NominalOrUnknown(hop.MemberType) +
+                    " live=<unresolved>";
+            if (hop.DeclaringType != null && !TypeRefMatches(hop.DeclaringType, liveDeclaring))
+                return "Member '" + path + "': manifest=" + hop.DeclaringType.Nominal() +
+                    " live=" + AqnSansVersion(liveDeclaring);
+            if (hop.MemberType != null)
+            {
+                var recordedDynamic = hop.MemberType is DynamicTypeRef;
+                bool liveDynamic = liveMember != null && liveMember.IsDynamic;
+                if (recordedDynamic)
+                {
+                    if (!liveDynamic)
+                        return "Member '" + path + "': manifest=<dynamic>" +
+                            " live=" + (liveMember != null ? AqnSansVersion(liveMember.Type) : AqnFormatter.Unknown);
+                }
+                else if (liveDynamic)
+                {
+                    return "Member '" + path + "': manifest=" + hop.MemberType.Nominal() + " live=<dynamic>";
+                }
+                else if (!TypeRefMatches(hop.MemberType, liveMember != null ? liveMember.Type : null))
+                {
+                    return "Member '" + path + "': manifest=" + hop.MemberType.Nominal() +
+                        " live=" + (liveMember != null ? AqnSansVersion(liveMember.Type) : AqnFormatter.Unknown);
+                }
+            }
+
+            return null;
+        }
+
+        private static bool HasRecordedIdentity(CompiledMemberHop hop) =>
+            hop != null && (hop.DeclaringType != null || hop.MemberType != null);
+
+        private static string RecordedMemberNominal(CompiledMemberRow row, int index)
+        {
+            if (row.Hops != null && index >= 0 && index < row.Hops.Count)
+            {
+                var hop = row.Hops[index];
+                if (hop != null && hop.MemberType != null)
+                    return hop.MemberType.Nominal();
+            }
+
+            return row.StartType != null ? row.StartType.Nominal() : AqnFormatter.Unknown;
+        }
+
+        private static string NominalOrUnknown(CompiledTypeRef typeRef) =>
+            typeRef != null ? typeRef.Nominal() : AqnFormatter.Unknown;
+
+        /// <summary>Structural type-ref comparison (AC-4): a named ref by full name and, for a non-framework
+        /// assembly, the assembly simple name; a constructed generic by its definition and every argument
+        /// recursively (<c>Nullable&lt;T&gt;</c> is the constructed generic it is); an array by element and rank.
+        /// Never resolves by name and loads nothing.</summary>
+        private static bool TypeRefMatches(CompiledTypeRef recorded, Type live)
+        {
+            if (recorded == null || live == null)
+                return recorded == null && live == null;
+            if (recorded is DynamicTypeRef)
+                return false;
+
+            var named = recorded as NamedTypeRef;
+            if (named != null)
+                return NamedMatches(named, live);
+
+            var generic = recorded as GenericTypeRef;
+            if (generic != null)
+            {
+                if (!live.IsGenericType)
+                    return false;
+                Type definition;
+                try
+                {
+                    definition = live.GetGenericTypeDefinition();
+                }
+                catch (Exception)
+                {
+                    return false;
+                }
+
+                if (!NamedMatches(generic.Definition, definition))
+                    return false;
+                Type[] arguments;
+                try
+                {
+                    arguments = live.GetGenericArguments();
+                }
+                catch (Exception)
+                {
+                    return false;
+                }
+
+                if (arguments.Length != generic.Arguments.Count)
+                    return false;
+                for (int i = 0; i < arguments.Length; i++)
+                    if (!TypeRefMatches(generic.Arguments[i], arguments[i]))
+                        return false;
+                return true;
+            }
+
+            var array = recorded as ArrayTypeRef;
+            if (array != null)
+            {
+                if (!live.IsArray)
+                    return false;
+                int rank;
+                Type element;
+                try
+                {
+                    rank = live.GetArrayRank();
+                    element = live.GetElementType();
+                }
+                catch (Exception)
+                {
+                    return false;
+                }
+
+                return rank == array.Rank && TypeRefMatches(array.Element, element);
+            }
+
+            return false;
+        }
+
+        private static bool NamedMatches(NamedTypeRef recorded, Type live)
+        {
+            if (recorded == null || live == null)
+                return false;
+            string liveFullName;
+            try
+            {
+                liveFullName = live.FullName;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+
+            if (!string.Equals(recorded.FullName, liveFullName, StringComparison.Ordinal))
+                return false;
+            if (recorded.IsFramework)
+                return true;
+            string liveAssembly;
+            try
+            {
+                liveAssembly = live.Assembly.GetName().Name;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+
+            return string.Equals(recorded.AssemblySimpleName, liveAssembly, StringComparison.Ordinal);
         }
 
         private static PrecompiledFallbackEvent? CheckFunctions(PrecompiledTemplateInfo entry, TemplateOptions options)

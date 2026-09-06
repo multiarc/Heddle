@@ -14,19 +14,23 @@ namespace Heddle.Precompiled
     /// </summary>
     public static class PrecompiledSchema
     {
+        /// <summary>The first schema of the compiled form — the embedded artifact the build host writes and the
+        /// runtime loader reads. A marker below it is a 2.x manifest and is refused by registration.</summary>
+        public const int CompiledFormSchemaVersion = 4;
+
         /// <summary>Oldest manifest schema this engine accepts. Raised from 1 to 3 in version 2.1 (a declared
         /// binary break): schemas 1–2 reference a <see cref="PrecompiledExtensionBinding"/> constructor no longer in
-        /// metadata, so accepting them causes startup faults instead of graceful fallback.</summary>
-        public const int MinSupportedSchemaVersion = 3;
+        /// metadata, so accepting them causes startup faults instead of graceful fallback. Raised to 4 with the
+        /// compiled form: only artifact-backed markers register.</summary>
+        public const int MinSupportedSchemaVersion = 4;
 
         /// <summary>Newest manifest schema this engine accepts. Equal to
-        /// <see cref="MinSupportedSchemaVersion"/>: schema 3 is the only shape this engine can both read and have
-        /// been emitted by a generator it ships with, because every schema below it is a released shape whose IL is
-        /// unrunnable and no schema above it exists.</summary>
-        public const int MaxSupportedSchemaVersion = 3;
+        /// <see cref="MinSupportedSchemaVersion"/>: schema 4 is the only shape this engine reads, because every
+        /// schema below it is a released shape whose IL is unrunnable and no schema above it exists.</summary>
+        public const int MaxSupportedSchemaVersion = 4;
 
         /// <summary>The schema the generator emits. Kept inside the supported window by an invariant test.</summary>
-        public const int CurrentSchemaVersion = 3;
+        public const int CurrentSchemaVersion = 4;
 
         /// <summary>
         /// The schema at which generated dynamic member hops route through

@@ -13,6 +13,8 @@ using Heddle.Extensions;
 using Heddle.Helpers;
 using Heddle.Language;
 using Heddle.Language.Expressions;
+using Heddle.Precompiled;
+using Heddle.Precompiled.CompiledForm;
 using Heddle.Runtime.Expressions;
 using Heddle.Runtime.Parameters;
 using Heddle.Strings;
@@ -21,7 +23,7 @@ using Binder = Microsoft.CSharp.RuntimeBinder.Binder;
 
 namespace Heddle.Runtime
 {
-    internal class HeddleCompiler
+    internal partial class HeddleCompiler
     {
         public static RuntimeDocument Compile(string document, CompileScope compileScope, ParseContext parseContext,
             ExType chainedType)
@@ -70,6 +72,23 @@ namespace Heddle.Runtime
         }
 
         private static RuntimeDocument CompileBody(string document, CompileScope compileScope,
+            ParseContext parseContext, ExType chainedType)
+        {
+            var bodyRecord = compileScope.CompileContext.FormRecord;
+            if (bodyRecord == null)
+                return CompileBodyInner(document, compileScope, parseContext, chainedType);
+            bodyRecord.EnterBody();
+            try
+            {
+                return CompileBodyInner(document, compileScope, parseContext, chainedType);
+            }
+            finally
+            {
+                bodyRecord.ExitBody();
+            }
+        }
+
+        private static RuntimeDocument CompileBodyInner(string document, CompileScope compileScope,
             ParseContext parseContext, ExType chainedType)
         {
             string workingDocument = document;
@@ -157,7 +176,14 @@ namespace Heddle.Runtime
                 }
             }
 
-            return new RuntimeDocument(workingDocument, documentElements.ToArray(), compileScope);
+            var record = compileScope.CompileContext.FormRecord;
+            FormDocument formDocument = null;
+            if (record != null)
+                formDocument = record.BeginDocument(parseContext, workingDocument, documentElements);
+            var runtime = new RuntimeDocument(workingDocument, documentElements.ToArray(), compileScope);
+            if (record != null)
+                record.EndDocument(formDocument, runtime);
+            return runtime;
         }
 
         /// <summary>
@@ -259,6 +285,30 @@ namespace Heddle.Runtime
         (OutputItem extensionItem, CompileScope compileScope, ParseContext parseContext,
             ref ExType returnTypeChainedPrevious, bool chainParameter = false)
         {
+            var record = compileScope.CompileContext.FormRecord;
+            if (record == null)
+                return CompileItemInner(extensionItem, compileScope, parseContext,
+                    ref returnTypeChainedPrevious, chainParameter);
+            record.BeginItem(extensionItem, extensionItem.Context ?? parseContext);
+            record.PushItem(extensionItem);
+            try
+            {
+                var compiled = CompileItemInner(extensionItem, compileScope, parseContext,
+                    ref returnTypeChainedPrevious, chainParameter);
+                if (compiled != null)
+                    record.EndItem(extensionItem, compiled);
+                return compiled;
+            }
+            finally
+            {
+                record.PopItem();
+            }
+        }
+
+        private static TemplateItem CompileItemInner
+        (OutputItem extensionItem, CompileScope compileScope, ParseContext parseContext,
+            ref ExType returnTypeChainedPrevious, bool chainParameter = false)
+        {
             if (compileScope.CompileContext.CompiledItems.TryGetValue(extensionItem, out var result))
             {
                 returnTypeChainedPrevious = result.ReturnTypeChainedPrevious;
@@ -268,6 +318,28 @@ namespace Heddle.Runtime
             result = new CompiledElement
                 {CompiledItem = new TemplateItem(), ReturnTypeChainedPrevious = returnTypeChainedPrevious};
             compileScope.CompileContext.CompiledItems.Add(extensionItem, result);
+
+            // Precompiled refusal: the build refused this item and recorded its source. Serve the
+            // fragment instead of resolving the hook's missing name — the name is still unbound here,
+            // so the definition/extension/function arms below would fault it again. Nothing is armed
+            // on the dynamic tier, where the slot and the ambient are both null.
+            var refusalCursor = compileScope.FormCursor ?? FormCursor.Current;
+            string refusalText;
+            if (refusalCursor != null && refusalCursor.TryGetRefusal(extensionItem.Position,
+                extensionItem.ParameterTemplate, out refusalText) && refusalText != null)
+            {
+                var fragment = CompileRefusalFragment(extensionItem, compileScope, refusalCursor,
+                    refusalText);
+                if (fragment == null)
+                    return null;
+                // The loader does not statically type refusal output (the recorded nominal would
+                // need a load to resolve): like any deferred site it stays dynamically typed, which
+                // also keeps the element. The marker's own ReturnType stays null (unknown).
+                result.CompiledItem = fragment;
+                result.ReturnTypeChainedPrevious = DeferredResult.Deferred;
+                returnTypeChainedPrevious = DeferredResult.Deferred;
+                return fragment;
+            }
 
             ExType inputModelType = null;
             ExType dataType;
@@ -337,7 +409,8 @@ namespace Heddle.Runtime
                         CompileWarningFactory.FunctionShadowedByExtension(extensionItem.ExtensionName,
                             extensionItem.Position));
                 }
-                else if (!nameIsExtension && nameInRegistry)
+                else if (!nameIsExtension && (nameInRegistry ||
+                    compileScope.CompileContext.DeferUnboundFunctions))
                 {
                     if (!functionCompatibleShape)
                     {
@@ -353,10 +426,21 @@ namespace Heddle.Runtime
                     var callNode = new CallNode(extensionItem.ExtensionName, functionArguments,
                         extensionItem.Position);
                     var functionParameter = NativeExpressionCompiler.Compile(callNode, compileScope,
-                        extensionItem.Context ?? parseContext, out dataType);
+                        extensionItem.Context ?? parseContext, out dataType, returnTypeChainedPrevious);
                     if (functionParameter == null)
                         return null;
                     result.CompiledItem.Parameter = functionParameter;
+                    var record = compileScope.CompileContext.FormRecord;
+                    if (record != null)
+                    {
+                        record.AttachParam(extensionItem, functionParameter);
+                        record.AttachFunctionRow(callNode);
+                    }
+
+                    // No extension exists yet on the function path (the carrier is created
+                    // below); the tail call checks the carrier once created.
+                    MaybeAttachRefusal(extensionItem, compileScope, dataType, null, result);
+
                     var carrierItem = new OutputItem(string.Empty, extensionItem.Position,
                         extensionItem.ParameterTemplate)
                     {
@@ -364,7 +448,17 @@ namespace Heddle.Runtime
                     };
                     extension = CreateExtension(carrierItem, compileScope,
                         extensionItem.Context ?? parseContext, ref result.ReturnTypeChainedPrevious, null,
-                        dataType, null, chainParameter);
+                        dataType, null, chainParameter, out var carrierName);
+                    // A bound function forwards its return value through the carrier, whose
+                    // body-derived type says nothing about it: report the bound return type (the
+                    // deferred case above does the same with the deferred marker).
+                    if (DeferredResult.IsDeferred(dataType))
+                        result.ReturnTypeChainedPrevious = DeferredResult.Deferred;
+                    else
+                        result.ReturnTypeChainedPrevious = dataType;
+                    if (record != null && extension != null)
+                        record.SetItemExtension(extensionItem, record.GetOrAddExtension(carrierName,
+                            UnwrapExtension(extension), PropLayout.Fingerprint(UnwrapExtension(extension))));
                     returnTypeChainedPrevious = result.ReturnTypeChainedPrevious;
                     result.CompiledItem.ReturnType = result.ReturnTypeChainedPrevious;
                     result.CompiledItem.Extension = extension;
@@ -399,6 +493,9 @@ namespace Heddle.Runtime
                     }
 
                     result.CompiledItem.Parameter = new EmptyParameter();
+                    var emptyRecord = compileScope.CompileContext.FormRecord;
+                    if (emptyRecord != null)
+                        emptyRecord.SetItemPayload(extensionItem, FormNone.Instance);
                 }
             }
             else if (!string.IsNullOrEmpty(extensionItem.CallParameter.CSharpExpression))
@@ -417,13 +514,19 @@ namespace Heddle.Runtime
                     ChainedType = chainedType,
                     Expression = extensionItem.CallParameter.CSharpExpression,
                     ExtensionName = extensionItem.ExtensionName,
-                    Position = extensionItem.Position
+                    Position = extensionItem.Position,
+                    DeferUnboundFunctions = compileScope.CompileContext.DeferUnboundFunctions
                 };
                 OptionalValue<object> constantResult =
                     compileScope.CSharpContext.ParseAndGetResultType(compileScope.CompileContext, expressionOptions,
                         out dataType);
                 extension = CreateExtension(extensionItem, compileScope, extensionItem.Context ?? parseContext,
-                    ref result.ReturnTypeChainedPrevious, null, dataType, definitionItem, chainParameter);
+                    ref result.ReturnTypeChainedPrevious, null, dataType, definitionItem, chainParameter,
+                    out var csharpName);
+                var csharpRecord = compileScope.CompileContext.FormRecord;
+                if (csharpRecord != null && extension != null)
+                    csharpRecord.SetItemExtension(extensionItem, csharpRecord.GetOrAddExtension(csharpName,
+                        UnwrapExtension(extension), PropLayout.Fingerprint(UnwrapExtension(extension))));
 
                 returnTypeChainedPrevious = result.ReturnTypeChainedPrevious;
                 result.CompiledItem.ReturnType = result.ReturnTypeChainedPrevious;
@@ -433,10 +536,21 @@ namespace Heddle.Runtime
                     result.CompiledItem.Parameter =
                         compileScope.CSharpContext.PushCompileExpression(expressionOptions,
                             compileScope.CompileContext);
+                    if (csharpRecord != null)
+                    {
+                        csharpRecord.SetItemPayload(extensionItem, new FormCSharpUse(csharpRecord.AppendCSharp(
+                            extensionItem.CallParameter.CSharpExpression,
+                            new List<string>(compileScope.CSharpContext.Namespaces),
+                            compileScope.ScopeType, chainedType, compileScope.RootScopeType,
+                            extensionItem.Position)));
+                    }
+
                     return result.CompiledItem;
                 }
 
                 result.CompiledItem.Parameter = new ConstantParameter(constantResult.Value);
+                if (csharpRecord != null)
+                    csharpRecord.SetItemPayload(extensionItem, new FormConst(constantResult.Value));
                 return result.CompiledItem;
             }
             else if (extensionItem.CallParameter.NativeExpression != null)
@@ -450,10 +564,13 @@ namespace Heddle.Runtime
                 }
 
                 var nativeParameter = NativeExpressionCompiler.Compile(extensionItem.CallParameter.NativeExpression,
-                    compileScope, extensionItem.Context ?? parseContext, out dataType);
+                    compileScope, extensionItem.Context ?? parseContext, out dataType, returnTypeChainedPrevious);
                 if (nativeParameter == null)
                     return null;
                 result.CompiledItem.Parameter = nativeParameter;
+                var nativeRecord = compileScope.CompileContext.FormRecord;
+                if (nativeRecord != null)
+                    nativeRecord.AttachParam(extensionItem, nativeParameter);
             }
             else
             {
@@ -461,15 +578,137 @@ namespace Heddle.Runtime
                     parseContext, returnTypeChainedPrevious);
                 dataType = callParameter.RenderType;
                 result.CompiledItem.Parameter = new ChainedParameter(callParameter);
+                var chainRecord = compileScope.CompileContext.FormRecord;
+                if (chainRecord != null)
+                    chainRecord.SetItemPayload(extensionItem, chainRecord.BuildChain(callParameter));
                 WarnOnRedundantEncoding(extensionItem, callParameter, compileScope);
             }
 
             extension = CreateExtension(extensionItem, compileScope, extensionItem.Context ?? parseContext,
-                ref result.ReturnTypeChainedPrevious, inputModelType, dataType, definitionItem, chainParameter);
+                ref result.ReturnTypeChainedPrevious, inputModelType, dataType, definitionItem, chainParameter,
+                out var tailName);
+            if (DeferredResult.IsDeferred(dataType))
+                result.ReturnTypeChainedPrevious = DeferredResult.Deferred;
+            if (extension != null)
+                MaybeAttachRefusal(extensionItem, compileScope, dataType, extension, result);
+            var tailRecord = compileScope.CompileContext.FormRecord;
+            if (tailRecord != null && extension != null)
+                tailRecord.SetItemExtension(extensionItem, tailRecord.GetOrAddExtension(tailName,
+                    UnwrapExtension(extension), PropLayout.Fingerprint(UnwrapExtension(extension))));
             returnTypeChainedPrevious = result.ReturnTypeChainedPrevious;
             result.CompiledItem.ReturnType = result.ReturnTypeChainedPrevious;
             result.CompiledItem.Extension = extension;
             return result.CompiledItem;
+        }
+
+        /// <summary>Compiles a recorded refusal source as an independent unit and wraps it in the
+        /// marker extension. The fragment owns its recompile: the scope shares the materialization's
+        /// options, output profile and C# context (same language, same usings) but owns fresh error,
+        /// scope and item caches, and bodies compile from live text under a bypassing cursor frame —
+        /// the recorded bodies carry the build's typings (possibly deferred), which a bound recompile
+        /// must not inherit. Faults are re-anchored to outer coordinates — shifted home for a true
+        /// slice, pointed at the refused call site for a synthesized source — and routed to the outer
+        /// errors; a faulted fragment drops the item exactly like any hook failure. The cursor frame
+        /// is always exited.</summary>
+        private static TemplateItem CompileRefusalFragment(OutputItem extensionItem, CompileScope compileScope,
+            FormCursor cursor, string sourceText)
+        {
+            var baseContext = compileScope.CompileContext;
+            var fragmentContext = new CompileContext(baseContext.Options, compileScope.ScopeType);
+            fragmentContext.OutputProfile = baseContext.OutputProfile;
+            var fragmentScope = new CompileScope(fragmentContext, compileScope.CSharpContext);
+            fragmentScope.FormCursor = cursor;
+            int sliceOffset = cursor.EnterRefusalFragment(extensionItem.Position,
+                extensionItem.ParameterTemplate, sourceText);
+            bool translated = sliceOffset >= 0;
+            try
+            {
+                var fragmentParse = DocumentParser.Parse(sourceText, fragmentContext,
+                    out var fragmentClean);
+                var fragment = Compile(fragmentClean, fragmentScope, fragmentParse, null);
+                fragmentScope.Compile();
+                if (fragmentScope.CompileErrors.Count != 0)
+                {
+                    foreach (var error in fragmentScope.CompileErrors)
+                    {
+                        if (translated)
+                            error.Position = new BlockPosition(
+                                sliceOffset + error.Position.StartIndex, error.Position.Length);
+                        else
+                            error.Position = extensionItem.Position;
+                        error.LinePosition = null;
+                        compileScope.CompileErrors.Add(error);
+                    }
+
+                    return null;
+                }
+
+                if (fragment == null)
+                    return null;
+                return new TemplateItem
+                {
+                    Extension = new RefusalFragmentExtension(fragment, extensionItem.Position),
+                    Parameter = new Runtime.Parameters.CompiledParameter
+                        {ParameterImplementation = (model, chained, root) => model},
+                    Position = extensionItem.Position
+                };
+            }
+            finally
+            {
+                cursor.ExitBody();
+            }
+        }
+
+        /// <summary>Refusal rules evaluated after the hook ran: <b>(a)</b> the bound extension type
+        /// declares <c>[PrecompileUnsupported]</c> — any use refuses with the author's reason; <b>(c)</b> a
+        /// bodied or chained consumer whose data parameter carries a deferred (unbindable) call, because its
+        /// hook typed from the call's unknown result. Either swaps the payload for the refusal marker (the
+        /// refusal fragment owns the recompile at load); bodiless, unchained consumers keep the deferred
+        /// site instead. Class (b) arrives pre-noted by the hook that detected the order dependence.</summary>
+        private static void MaybeAttachRefusal(OutputItem extensionItem, CompileScope compileScope,
+            ExType dataType, IExtension extension, CompiledElement result)
+        {
+            var record = compileScope.CompileContext.FormRecord;
+            if (record == null)
+                return;
+            int? index = null;
+            if (extension != null)
+            {
+                // UnwrapExtension already returns the type; a further GetType() would query
+                // RuntimeType itself and never see the hook's declaration.
+                var liveType = UnwrapExtension(extension);
+                var optOut = liveType == null ? null : (PrecompileUnsupportedAttribute)
+                    Attribute.GetCustomAttribute(liveType, typeof(PrecompileUnsupportedAttribute), true);
+                if (optOut != null)
+                    index = record.NoteRefusal(extensionItem, PrecompiledRefusalClass.UnsupportedExtension,
+                        string.IsNullOrEmpty(optOut.Reason) ? liveType.Name : optOut.Reason,
+                        compileScope.ScopeType, compileScope.ScopeType, compileScope.RootScopeType,
+                        new List<string>(compileScope.Namespaces));
+            }
+
+            if (index == null && DeferredResult.IsDeferred(dataType) &&
+                (!string.IsNullOrEmpty(extensionItem.ParameterTemplate) || extensionItem.IsChainedConsumer))
+            {
+                var names = record.TakeDeferredNames(extensionItem);
+                index = record.NoteRefusal(extensionItem, PrecompiledRefusalClass.UnbindableCallTyping,
+                    names.Count != 0 ? names[0] : extensionItem.ExtensionName,
+                    compileScope.ScopeType, compileScope.ScopeType, compileScope.RootScopeType,
+                    new List<string>(compileScope.Namespaces));
+            }
+
+            if (index == null)
+                index = record.FindRefusal(extensionItem);
+            if (index != null && index.Value >= 0)
+                record.SetItemPayload(extensionItem, new FormRefusal(index.Value));
+        }
+
+        private static List<(Type Declaring, string Name, Type Member)> HopTriples(
+            List<(Type Type, PropertyInfo Property)> properties)
+        {
+            var triples = new List<(Type Declaring, string Name, Type Member)>(properties.Count);
+            foreach (var hop in properties)
+                triples.Add((hop.Type, hop.Property.Name, hop.Property.PropertyType));
+            return triples;
         }
 
         private static ExType CompileModelAccessor(OutputItem extensionItem, CompileScope compileContext,
@@ -479,12 +718,13 @@ namespace Heddle.Runtime
             var scopeType = extensionItem.CallParameter.RootReference
                 ? compileContext.CompileContext.RootScopeType
                 : compileContext.CompileContext.ScopeType;
+            var record = compileContext.CompileContext.FormRecord;
 
             // Body prop read wins over model on first segment; resolves before dynamic check to keep props statically typed.
             if (!extensionItem.CallParameter.RootReference)
             {
                 var propParameter = TryCompilePropRead(extensionItem.CallParameter.ModelParameter, scopeType,
-                    compileContext, extensionItem.Position, out var propType);
+                    compileContext, extensionItem.Position, out var propType, extensionItem);
                 if (propParameter != null)
                 {
                     result.CompiledItem.Parameter = propParameter;
@@ -505,6 +745,15 @@ namespace Heddle.Runtime
                     result.CompiledItem.Parameter = new DynamicParameter(extensionItem.CallParameter.ModelParameter);
                 }
 
+                if (record != null)
+                {
+                    record.SetItemPayload(extensionItem, new FormDynamicRef(record.RecordDynamicMember(
+                        scopeType, extensionItem.CallParameter.ModelParameter,
+                        extensionItem.CallParameter.RootReference,
+                        new List<(Type Declaring, string Name, Type Member)>()),
+                        extensionItem.CallParameter.ModelParameter));
+                }
+
                 return ExType.Dynamic;
             }
 
@@ -519,6 +768,7 @@ namespace Heddle.Runtime
 
             if (resolution.Kind == MemberPathResolutionKind.DynamicHop)
             {
+                var prefix = HopTriples(resolution.Properties);
                 if (extensionItem.CallParameter.RootReference)
                 {
                     result.CompiledItem.Parameter = new DynamicParameter(modelParameters.Skip(resolution.Index),
@@ -528,6 +778,13 @@ namespace Heddle.Runtime
                 {
                     result.CompiledItem.Parameter = new DynamicParameter(modelParameters.Skip(resolution.Index),
                         new ModelParameter(resolution.Properties));
+                }
+
+                if (record != null)
+                {
+                    record.SetItemPayload(extensionItem, new FormDynamicRef(record.RecordDynamicMember(
+                        scopeType, modelParameters, extensionItem.CallParameter.RootReference, prefix),
+                        modelParameters));
                 }
 
                 return ExType.Dynamic;
@@ -543,6 +800,13 @@ namespace Heddle.Runtime
                 result.CompiledItem.Parameter = new ModelParameter(resolution.Properties);
             }
 
+            if (record != null)
+            {
+                record.SetItemPayload(extensionItem, new FormMemberRef(record.GetOrAddMember(scopeType,
+                    modelParameters, extensionItem.CallParameter.RootReference,
+                    HopTriples(resolution.Properties))));
+            }
+
             return inputType;
         }
 
@@ -550,7 +814,7 @@ namespace Heddle.Runtime
         /// Returns <see cref="PropsSlotParameter"/> if first segment is a prop; <c>null</c> to fall through to model resolution.
         /// </summary>
         private static IRuntimeParameter TryCompilePropRead(string[] segments, ExType scopeType,
-            CompileScope compileScope, BlockPosition position, out ExType resultType)
+            CompileScope compileScope, BlockPosition position, out ExType resultType, OutputItem extensionItem)
         {
             resultType = null;
             var layout = compileScope.CompileContext.ActivePropLayout;
@@ -560,10 +824,14 @@ namespace Heddle.Runtime
                 return null;
 
             PropLayout.WarnIfShadowsMember(compileScope, scopeType, slot.Name, position);
+            var record = compileScope.CompileContext.FormRecord;
 
             if (segments.Length == 1)
             {
                 resultType = slot.Type;
+                if (record != null)
+                    record.SetItemPayload(extensionItem, new FormPropsSlot(slot.Index,
+                        new List<(Type Declaring, string Name, Type Member)>(), new string[0], false));
                 return new PropsSlotParameter(slot.Index);
             }
 
@@ -574,6 +842,9 @@ namespace Heddle.Runtime
                 compileScope.CompileErrors.Add(
                     resolution.FailureMessage.ToError(position, HeddleDiagnosticIds.PropertyNotFound));
                 resultType = slot.Type;
+                if (record != null)
+                    record.SetItemPayload(extensionItem, new FormPropsSlot(slot.Index,
+                        new List<(Type Declaring, string Name, Type Member)>(), new string[0], false));
                 return new PropsSlotParameter(slot.Index);
             }
 
@@ -583,11 +854,17 @@ namespace Heddle.Runtime
                 Func<object, object> prefix = resolution.Properties.Count == 0
                     ? null
                     : ModelParameter.GetPropertyChainAccessor(resolution.Properties).Compile();
+                if (record != null)
+                    record.SetItemPayload(extensionItem, new FormPropsSlot(slot.Index,
+                        new List<(Type Declaring, string Name, Type Member)>(), new string[0], false));
                 return new PropsSlotParameter(slot.Index, prefix);
             }
 
             resultType = resolution.ResultType;
             var hops = ModelParameter.GetPropertyChainAccessor(resolution.Properties).Compile();
+            if (record != null)
+                record.SetItemPayload(extensionItem, new FormPropsSlot(slot.Index,
+                    HopTriples(resolution.Properties), rest, false));
             return new PropsSlotParameter(slot.Index, hops);
         }
 
@@ -653,16 +930,25 @@ namespace Heddle.Runtime
             return OutputProfileRules.CarrierRegistryName(kind);
         }
 
+        private static Type UnwrapExtension(IExtension extension) =>
+            (extension as ExtensionParameterCarrier)?.Inner.GetType() ?? extension.GetType();
+
         private static IExtension CreateExtension(OutputItem extensionItem, CompileScope compileScope,
             ParseContext parseContext,
             ref ExType returnTypeChainedPrevious, ExType inputModelType, ExType dataType,
-            DefinitionItem definition, bool chainParameter = false)
+            DefinitionItem definition, bool chainParameter, out string resolvedName)
         {
             IExtension extension;
+            resolvedName = null;
+            var record = compileScope.CompileContext.FormRecord;
+            var incomingChained = returnTypeChainedPrevious;
             if (definition != null)
             {
                 var def = CompileFromDefenition(definition, compileScope, out var acceptType);
                 extension = def;
+                resolvedName = definition.Name;
+                if (record != null)
+                    record.RecordDefinition(definition, acceptType);
                 if (inputModelType != null)
                 {
                     dataType = inputModelType;
@@ -678,6 +964,15 @@ namespace Heddle.Runtime
                 var layout = ResolveLayoutCached(definition, compileScope);
                 var slotType = ResolveSlotType(definition, compileScope);
                 def.SlotMode = slotType != null;
+                if (record != null)
+                {
+                    record.AttachLayout(definition, layout, slotType);
+                    var regionLayout = ResolveRegionLayoutCached(definition, compileScope);
+                    var regionNames = new List<string>(regionLayout.Slots.Count);
+                    foreach (var regionSlot in regionLayout.Slots)
+                        regionNames.Add(regionSlot.Name);
+                    record.AttachRegions(definition, regionNames);
+                }
 
                 if (extensionItem.CallParameter.PropArguments != null && layout.Count == 0)
                 {
@@ -689,7 +984,7 @@ namespace Heddle.Runtime
                 else if (layout.Count > 0)
                 {
                     def.PropsBinder = BindProps(layout, $"definition '{definition.Name}'", extensionItem,
-                        compileScope, parseContext);
+                        compileScope, parseContext, incomingChained);
                 }
 
                 // Region bodies inherit ambient fill scope; non-regions build call-scoped scope from matched candidates.
@@ -712,8 +1007,17 @@ namespace Heddle.Runtime
 
                 // Caller content compiles with slot type (if slot mode) or dataType; enclosing layout stays active.
                 var callerModelType = slotType ?? dataType;
+                int callerMark = record != null ? record.DocCount : 0;
                 returnTypeChainedPrevious = InitializeTemplate(extension, extensionItem.ParameterTemplate,
                     callerModelType, returnTypeChainedPrevious, compileScope, parseContext, extensionItem);
+                if (record != null)
+                {
+                    int callerDocument = record.DocCount > callerMark
+                        ? record.DocCount - 1
+                        : record.AppendSynthesizedDocument(extensionItem.Context ?? parseContext);
+                    record.SetDefLink(extensionItem, FormRecord.DefinitionKey(definition), callerDocument,
+                        def.SlotMode);
+                }
 
                 // Definition body compiles under own layout/slot (save/restore); regions inherit enclosing component's layout.
                 var savedLayout = compileContext.ActivePropLayout;
@@ -740,6 +1044,7 @@ namespace Heddle.Runtime
                     compileScope.CompileContext);
                 if (extension == null)
                     return null;
+                resolvedName = carrierName;
                 Type templateType = extension.GetType();
 
                 var chainedTypeAttributes = templateType.GetAttributes<ChainedTypeAttribute>(true);
@@ -771,7 +1076,8 @@ namespace Heddle.Runtime
                         extensionItem.Position);
                     if (extLayout.Count > 0)
                     {
-                        var binder = BindProps(extLayout, ownerDisplay, extensionItem, compileScope, parseContext);
+                        var binder = BindProps(extLayout, ownerDisplay, extensionItem, compileScope, parseContext,
+                            incomingChained);
                         var names = new string[extLayout.Count];
                         foreach (var slot in extLayout.Slots)
                             names[slot.Index] = slot.Name;
@@ -936,7 +1242,7 @@ namespace Heddle.Runtime
         /// Binds named arguments: builds frozen prototype and dynamic slot plan, emitting HED5001/5003/5004 per argument and HED5002 for unbound required slots.
         /// </summary>
         private static PropsBinder BindProps(PropLayout layout, string ownerDisplay, OutputItem extensionItem,
-            CompileScope compileScope, ParseContext parseContext)
+            CompileScope compileScope, ParseContext parseContext, ExType chainedType)
         {
             var prototype = new object[layout.Count];
             var bound = new bool[layout.Count];
@@ -946,7 +1252,9 @@ namespace Heddle.Runtime
                     prototype[slot.Index] = slot.DefaultBoxed;
             }
 
+            var record = compileScope.CompileContext.FormRecord;
             var plan = new List<PropsBinder.DynamicSlot>();
+            List<FormDynSlot> formSlots = null;
             var args = extensionItem.CallParameter.PropArguments;
             if (args != null)
             {
@@ -970,7 +1278,8 @@ namespace Heddle.Runtime
                         continue;
                     }
 
-                    var param = NativeExpressionCompiler.Compile(arg.Value, compileScope, parseContext, out var argType);
+                    var param = NativeExpressionCompiler.Compile(arg.Value, compileScope, parseContext, out var argType,
+                        chainedType);
                     if (param == null)
                     {
                         // Error already recorded; mark bound to prevent spurious HED5002.
@@ -1010,6 +1319,12 @@ namespace Heddle.Runtime
                     {
                         plan.Add(new PropsBinder.DynamicSlot(slot.Index, param,
                             BuildNumericConvert(argType.Type, slot.Type.Type)));
+                        if (record != null)
+                        {
+                            if (formSlots == null)
+                                formSlots = new List<FormDynSlot>();
+                            formSlots.Add(new FormDynSlot(slot.Index, param, slot.Type));
+                        }
                     }
 
                     bound[slot.Index] = true;
@@ -1026,7 +1341,14 @@ namespace Heddle.Runtime
                 }
             }
 
-            return new PropsBinder(prototype, plan.ToArray());
+            var binder = new PropsBinder(prototype, plan.ToArray());
+            if (record != null)
+            {
+                record.RecordProps(extensionItem, (object[])prototype.Clone(),
+                    formSlots ?? new List<FormDynSlot>());
+            }
+
+            return binder;
         }
 
         private static string PropTypeMismatchMessage(string ownerDisplay, PropSlot slot, ExType argType)
@@ -1122,11 +1444,15 @@ namespace Heddle.Runtime
             params ExType[] dataTypes)
         {
             returnType ??= typeof(object);
+            if (DeferredResult.IsDeferred(returnType))
+                return;
             if (!returnType.IsDynamic)
                 returnType = returnType.Type.UnwrapNullable();
             if (dataTypes.Any() && dataTypes.All(dataType =>
             {
                 dataType ??= typeof(object);
+                if (DeferredResult.IsDeferred(dataType))
+                    return false;
                 if (dataType.IsDynamic || returnType.IsDynamic)
                     return false;
                 return !dataType.Type.IsType(returnType.Type);

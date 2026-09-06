@@ -1,6 +1,7 @@
 using System;
 using System.Globalization;
 using Heddle.Data;
+using Heddle.Runtime;
 
 namespace Heddle.Runtime.Expressions
 {
@@ -13,6 +14,8 @@ namespace Heddle.Runtime.Expressions
         {
             if (source == null || target == null || source.IsDynamic || target.IsDynamic)
                 return false;
+            if (DeferredResult.IsDeferred(source) || DeferredResult.IsDeferred(target))
+                return true;
             return CanConvertTypes(source.Type, target.Type, allowBoxToObject);
         }
 

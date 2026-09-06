@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
 using Heddle.Data;
+using Heddle.Precompiled.CompiledForm;
 
 namespace Heddle.Precompiled
 {
@@ -85,6 +87,11 @@ namespace Heddle.Precompiled
 
             var assemblyName = assembly.GetName().Name ?? assembly.FullName ?? "<unknown assembly>";
 
+            // The v3 cutover: a marker below the compiled-form schema is a 2.x manifest. It is refused
+            // before ManifestType is touched — no member of this engine can read, adapt or bridge one.
+            if (attribute.SchemaVersion < PrecompiledSchema.CompiledFormSchemaVersion)
+                throw new PrecompiledRegistrationException(assemblyName, attribute.SchemaVersion);
+
             if (!PrecompiledSchema.IsSupported(attribute.SchemaVersion))
             {
                 RaiseFallback(PrecompiledFallbackEvent.ForAssembly(assemblyName,
@@ -110,8 +117,18 @@ namespace Heddle.Precompiled
                 if (current.Assemblies.Contains(assemblyName))
                     return; // idempotent per assembly
 
-                var manifest = (IHeddleTemplateManifest)Activator.CreateInstance(attribute.ManifestType);
-                var templates = manifest.GetTemplates() ?? Array.Empty<PrecompiledTemplateInfo>();
+                // A supported schema opens the artifact when the marker names one; otherwise the marker
+                // names a hand-written manifest, instantiated exactly as before.
+                IReadOnlyList<PrecompiledTemplateInfo> templates;
+                var manifestType = attribute.ManifestType;
+                if (manifestType != null && typeof(IHeddleCompiledArtifact).IsAssignableFrom(manifestType))
+                    templates = LoadCompiledRows(assembly, manifestType);
+                else
+                {
+                    var manifest =
+                        (IHeddleTemplateManifest)Activator.CreateInstance(attribute.ManifestType);
+                    templates = manifest.GetTemplates() ?? Array.Empty<PrecompiledTemplateInfo>();
+                }
 
                 var byKey = new Dictionary<string, PrecompiledTemplateInfo>(current.ByKey, StringComparer.Ordinal);
                 var keyOwner = new Dictionary<string, string>(current.KeyOwner, StringComparer.Ordinal);
@@ -208,6 +225,37 @@ namespace Heddle.Precompiled
                 foreach (var evt in lostNames)
                     RaiseFallback(evt);
             }
+        }
+
+        /// <summary>Opens the artifact a supported marker names, decodes its sections into one
+        /// loader-constructed <see cref="PrecompiledTemplateInfo"/> per template row, and keeps the artifact
+        /// bytes on each row for materialization. Rows carry no strategy yet: <see cref="Entries"/> reports
+        /// them before any render, and <see cref="PrecompiledTemplateInfo.Strategy"/> materializes on first
+        /// read. A structurally defective image reports as <see cref="InvalidDataException"/> here; mapping
+        /// it to a registry fault lands with the round-trip tests.</summary>
+        private static IReadOnlyList<PrecompiledTemplateInfo> LoadCompiledRows(Assembly assembly,
+            Type artifactType)
+        {
+            var artifactInstance = (IHeddleCompiledArtifact)Activator.CreateInstance(artifactType);
+            byte[] image;
+            using (var stream = artifactInstance.OpenArtifact())
+            {
+                if (stream == null)
+                    throw new InvalidOperationException(
+                        "IHeddleCompiledArtifact.OpenArtifact() returned null; each call must return a new " +
+                        "readable stream positioned at the start.");
+                using (var buffer = new MemoryStream())
+                {
+                    stream.CopyTo(buffer);
+                    image = buffer.ToArray();
+                }
+            }
+
+            var decoded = CompiledFormReader.Read(image);
+            var rows = new List<PrecompiledTemplateInfo>(decoded.Templates.Count);
+            for (int i = 0; i < decoded.Templates.Count; i++)
+                rows.Add(new PrecompiledTemplateInfo(assembly, image, decoded, i));
+            return rows;
         }
 
         /// <summary>

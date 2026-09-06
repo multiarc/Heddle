@@ -15,6 +15,15 @@ namespace Heddle.Precompiled
             NewAssemblyName = newAssemblyName;
         }
 
+        /// <summary>A marker below <see cref="PrecompiledSchema.CompiledFormSchemaVersion"/> was registered.
+        /// Key and ExistingAssemblyName are null; NewAssemblyName is the rejected assembly.</summary>
+        public PrecompiledRegistrationException(string assemblyName, int schemaVersion)
+            : base(BuildMessage(assemblyName, schemaVersion))
+        {
+            NewAssemblyName = assemblyName;
+            SchemaVersion = schemaVersion;
+        }
+
         /// <summary>The colliding, normalized key.</summary>
         public string Key { get; }
 
@@ -24,6 +33,9 @@ namespace Heddle.Precompiled
         /// <summary>The assembly whose registration was rejected.</summary>
         public string NewAssemblyName { get; }
 
+        /// <summary>The rejected marker's schema; 0 for the duplicate-key constructor.</summary>
+        public int SchemaVersion { get; }
+
         private static string BuildMessage(string key, string existingAssemblyName, string newAssemblyName)
         {
             return
@@ -32,6 +44,13 @@ namespace Heddle.Precompiled
                 "an explicit replacement marker (a future `Replace` flag on the manifest entry, mirroring " +
                 "`[ExtensionReplace]`) is not yet available. Rename one template, give it an explicit `Key` " +
                 "metadata, or exclude it from pre-compilation with `<HeddleTemplate Remove=\"…\" />`.";
+        }
+
+        private static string BuildMessage(string assemblyName, int schemaVersion)
+        {
+            return
+                $"Assembly '{assemblyName}' carries a Heddle 2.x precompiled manifest (schema {schemaVersion}); " +
+                "this engine reads compiled-form artifacts only. Rebuild the assembly with the Heddle.Build package.";
         }
     }
 }

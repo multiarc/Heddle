@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using Heddle.Data;
 using Heddle.Language;
+using Heddle.Precompiled.CompiledForm;
 using Heddle.Runtime.Expressions;
 
 namespace Heddle.Runtime {
@@ -120,11 +121,41 @@ namespace Heddle.Runtime {
         internal List<DelayedTemplate> DelayedTemplates { get; } = new List<DelayedTemplate>();
         private ExType _scopeType;
         private readonly CSharpContext _csharpContext;
+        private bool _recordForm;
+
+        /// <summary>
+        /// Whether unbound function names defer instead of failing. Off on every ordinary compile; the
+        /// build tier arms it together with <see cref="RecordForm"/>. Propagates into child contexts so
+        /// nested body compiles of one build defer alike.
+        /// </summary>
+        internal bool DeferUnboundFunctions { get; set; }
+
+        /// <summary>
+        /// Whether this compile records the compiled form. Off on every ordinary compile; enabling
+        /// allocates one record shared across the compile's child contexts.
+        /// </summary>
+        internal bool RecordForm
+        {
+            get { return _recordForm; }
+            set
+            {
+                _recordForm = value;
+                if (value && FormRecord == null)
+                    FormRecord = new FormRecord();
+            }
+        }
+
+        /// <summary>The form record, or null when <see cref="RecordForm"/> is off. Shared by reference
+        /// through the child-context copy constructor so nested body compiles record into one form.</summary>
+        internal FormRecord FormRecord { get; private set; }
 
         private CompileContext(CompileContext context, string fileName = null, ExType modelType = null)
         {
             if (context == null)
                 throw new ArgumentNullException(nameof(context));
+            _recordForm = context._recordForm;
+            FormRecord = context.FormRecord;
+            DeferUnboundFunctions = context.DeferUnboundFunctions;
             RootScopeType = context.RootScopeType;
             CompiledItems = context.CompiledItems;
             ResolvedPropLayouts = context.ResolvedPropLayouts;

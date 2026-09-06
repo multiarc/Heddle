@@ -1,10 +1,14 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
 using Heddle.Attributes;
 using Heddle.Core;
 using Heddle.Data;
 using Heddle.Helpers;
+using Heddle.Precompiled;
+using Heddle.Precompiled.CompiledForm;
 using Heddle.Strings;
 
 namespace Heddle.Extensions
@@ -22,6 +26,9 @@ namespace Heddle.Extensions
         {
             if (dataType == null)
                 throw new ArgumentNullException(nameof(dataType));
+            string ambiguity;
+            if (HasAmbiguousElementType(dataType.Type, out ambiguity))
+                NoteOrderRefusal(initContext, ambiguity);
             if (dataType.IsDynamic)
             {
                 return base.InitStart(initContext, dataType, new ExType(typeof(int)), null);
@@ -115,6 +122,38 @@ namespace Heddle.Extensions
             {
                 return (value as ICollection<T>)?.Count;
             }
+        }
+
+        /// <summary>Detects the reflection-order hazard: the element type the engine would pick is the
+        /// first of several <c>IEnumerable&lt;T&gt;</c> implementations in reflection enumeration order,
+        /// so no static answer exists. The build records a class-(b) refusal instead of blessing one.</summary>
+        private static bool HasAmbiguousElementType(Type type, out string detail)
+        {
+            detail = null;
+            if (type == null)
+                return false;
+            var candidates = type.GetTypeInfo().ImplementedInterfaces
+                .Where(i => i.GetTypeInfo().IsGenericType &&
+                    i.GetGenericTypeDefinition() == typeof(IEnumerable<>))
+                .Select(i => i.GenericTypeArguments[0])
+                .Distinct()
+                .ToList();
+            if (candidates.Count < 2)
+                return false;
+            detail = "element type chosen among " +
+                string.Join(", ", candidates.Select(t => t.FullName));
+            return true;
+        }
+
+        private static void NoteOrderRefusal(InitContext initContext, string detail)
+        {
+            var scope = initContext.CompileScope;
+            var record = scope?.CompileContext.FormRecord;
+            if (record == null || initContext.SourceItem == null)
+                return;
+            record.NoteRefusal(initContext.SourceItem, PrecompiledRefusalClass.ReflectionOrderValue,
+                detail, scope.ScopeType, scope.ScopeType, scope.RootScopeType,
+                new List<string>(scope.Namespaces));
         }
     }
 }

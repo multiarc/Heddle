@@ -112,13 +112,13 @@ namespace Heddle.TestCorpus
 
         /// <summary>The corpus as the differential harness consumes it: <c>(key, content)</c> tuples.
         /// <paramref name="includeFrontEndErrorFixtures"/> is the one filter every caller needed — the
-        /// <c>Tier = FrontEndError</c> entries carry deliberate parse errors, so a run that wants the rest of the
+        /// <c>Tier = EngineError</c> entries carry deliberate engine errors, so a run that wants the rest of the
         /// corpus to generate cleanly drops them (imports still resolve from what remains).</summary>
         public static List<(string key, string content)> Load(bool includeFrontEndErrorFixtures = true)
         {
             IEnumerable<CorpusFile> q = Templates;
             if (!includeFrontEndErrorFixtures)
-                q = q.Where(t => CorpusIntent.For(t.Name).Tier != CorpusTier.FrontEndError);
+                q = q.Where(t => CorpusIntent.For(t.Name).Tier != CorpusTier.EngineError);
             return q.Select(t => (t.Key, t.Content)).ToList();
         }
 
