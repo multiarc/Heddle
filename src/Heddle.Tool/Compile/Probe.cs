@@ -25,6 +25,9 @@ namespace Heddle.Tool.Compile
             var seenUnresolved = new HashSet<string>(System.StringComparer.Ordinal);
             foreach (var template in templates)
             {
+                // Import-only rows serve the import map but declare no entry point.
+                if (template.Item.IsImportOnly)
+                    continue;
                 string spelling = !string.IsNullOrEmpty(template.Item.ModelType)
                     ? template.Item.ModelType
                     : ScanModelDirective(template.Text);

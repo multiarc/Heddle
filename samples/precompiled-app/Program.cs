@@ -37,9 +37,17 @@ namespace Heddle.Samples.Precompiled
     /// </summary>
     internal static class ExternalModelAssembly
     {
+        // Guarded by existence: the build host loads this assembly into its own process to read the
+        // model types, where the deployed copy is absent. Skipping there is correct — the load only
+        // matters at runtime, where the None copy guarantees the file. An unguarded LoadFrom would
+        // fail the assembly's module initializer inside the host and fault every expression compile.
         [ModuleInitializer]
-        internal static void Load() =>
-            Assembly.LoadFrom(System.IO.Path.Combine(AppContext.BaseDirectory, "Acme.Models.dll"));
+        internal static void Load()
+        {
+            var deployed = System.IO.Path.Combine(AppContext.BaseDirectory, "Acme.Models.dll");
+            if (System.IO.File.Exists(deployed))
+                Assembly.LoadFrom(deployed);
+        }
     }
 
     internal static class Program
@@ -49,6 +57,12 @@ namespace Heddle.Samples.Precompiled
             CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
             PrecompiledTemplates.Register(typeof(Program).Assembly);
             HeddleTemplate.Configure(typeof(Program).Assembly);
+
+            var report = PrecompiledTemplates.ValidateAll(new TemplateOptions());
+            if (report.Failures.Count != 0)
+                throw new InvalidOperationException(
+                    "Precompiled validation failed: " + report.Failures[0].Reason + ": " +
+                    report.Failures[0].Detail + ".");
 
             var model = new Invoice { Number = 1042, Customer = "Ada Lovelace", Amount = 129.50m };
 

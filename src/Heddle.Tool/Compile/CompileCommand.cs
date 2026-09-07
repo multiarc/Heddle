@@ -19,6 +19,7 @@ namespace Heddle.Tool.Compile
         internal string Text;
         internal string ContentHash;
         internal string Key;
+        internal string RegisteredName;
     }
 
     /// <summary>The <c>heddle compile</c> host: compiles every template through the real engine with
@@ -105,56 +106,28 @@ namespace Heddle.Tool.Compile
             var templates = new List<TemplateInput>();
             foreach (var item in request.Templates)
             {
-                string full = Stamp.Resolve(request, item.Path);
-                string text;
-                try
-                {
-                    text = File.ReadAllText(full);
-                }
-                catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
-                {
-                    diagnostics.Error(request.Project, HeddleDiagnosticIds.BuildUnreadableFile,
-                        Format(HeddleDiagnosticIds.BuildUnreadableFile, full, ex.Message));
+                var input = ReadInput(request, item.Path, diagnostics);
+                if (input == null)
                     return 1;
-                }
-
-                templates.Add(new TemplateInput
-                {
-                    Item = item,
-                    FullPath = full,
-                    Text = text,
-                    ContentHash = Heddle.Precompiled.ContentHash.HashText(text)
-                });
+                input.Item = item;
+                templates.Add(input);
             }
 
-            bool importsOk = true;
             foreach (var import in request.ImportOnly)
             {
-                string full = Stamp.Resolve(request, import.Path);
-                try
+                var item = new TemplateItem
                 {
-                    File.ReadAllText(full);
-                }
-                catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
-                {
-                    diagnostics.Error(request.Project, HeddleDiagnosticIds.BuildUnreadableFile,
-                        Format(HeddleDiagnosticIds.BuildUnreadableFile, full, ex.Message));
+                    Path = import.Path,
+                    Key = import.Key,
+                    Name = import.Name,
+                    IsImportOnly = true
+                };
+                var input = ReadInput(request, import.Path, diagnostics);
+                if (input == null)
                     return 1;
-                }
-
-                if (!string.IsNullOrEmpty(import.Name) &&
-                    !TemplateKey.TryNormalize(import.Name, out _))
-                {
-                    diagnostics.Error(request.Project, HeddleDiagnosticIds.BuildInvalidKeyMetadata,
-                        Format(HeddleDiagnosticIds.BuildInvalidKeyMetadata, full,
-                            "Name=\"" + import.Name + "\" is not a usable import name — " +
-                            KeyShapeRule));
-                    importsOk = false;
-                }
+                input.Item = item;
+                templates.Add(input);
             }
-
-            if (!importsOk)
-                return 1;
 
             if (!DeriveKeys(request, templates, diagnostics))
                 return 1;
@@ -165,11 +138,16 @@ namespace Heddle.Tool.Compile
             {
                 var stubs = new List<SourceEmitter.StubTemplate>();
                 foreach (var template in templates)
+                {
+                    if (template.Item.IsImportOnly)
+                        continue;
                     stubs.Add(new SourceEmitter.StubTemplate
                     {
                         Sanitized = SanitizeName.ForKey(template.Key),
                         ModelTypeName = StubModelName(template)
                     });
+                }
+
                 SourceEmitter.WriteStubs(request.StubsOnly, generatedNamespace, stubs);
                 return 0;
             }
@@ -288,6 +266,30 @@ namespace Heddle.Tool.Compile
 
         private const string KeyShapeRule =
             "keys must be non-empty relative paths without '.' or '..' segments";
+
+        private static TemplateInput ReadInput(CompileRequest request, string path,
+            DiagnosticWriter diagnostics)
+        {
+            string full = Stamp.Resolve(request, path);
+            string text;
+            try
+            {
+                text = File.ReadAllText(full);
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+            {
+                diagnostics.Error(request.Project, HeddleDiagnosticIds.BuildUnreadableFile,
+                    Format(HeddleDiagnosticIds.BuildUnreadableFile, full, ex.Message));
+                return null;
+            }
+
+            return new TemplateInput
+            {
+                FullPath = full,
+                Text = text,
+                ContentHash = Heddle.Precompiled.ContentHash.HashText(text)
+            };
+        }
 
         private static int Usage(TextWriter stderr, string message)
         {
@@ -414,15 +416,17 @@ namespace Heddle.Tool.Compile
                 }
 
                 aliasOwners[name] = template.FullPath;
+                template.RegisteredName = name;
             }
 
             if (!ok)
                 return false;
 
             // Pass 3: sanitized entry-class names (HED7010; HeddleArtifact is reserved).
+            // Import-only rows emit no wrapper, so they take no sanitized name.
             foreach (var template in templates)
             {
-                if (template.Key == null)
+                if (template.Key == null || template.Item.IsImportOnly)
                     continue;
                 string sanitized = SanitizeName.ForKey(template.Key);
                 sanitizedOwners.TryGetValue(sanitized, out string owner);
@@ -443,6 +447,83 @@ namespace Heddle.Tool.Compile
             return ok;
         }
 
+        /// <summary>The invocation's import map: every template key and validated registered
+        /// name to its text. Mirrors the loader's artifact-row map (see ImportMap there); kept here
+        /// because the host cannot see the engine's internals and the contract is twenty lines.</summary>
+        private static Dictionary<string, string> ImportContents(CompileRequest request,
+            List<TemplateInput> templates)
+        {
+            var contents = new Dictionary<string, string>(StringComparer.Ordinal);
+            foreach (var template in templates)
+            {
+                if (template.Key == null)
+                    continue;
+                if (!contents.ContainsKey(template.Key))
+                    contents.Add(template.Key, template.Text);
+                // A template answering to a registered name serves under it too, exactly as the
+                // loader serves the row's registered name from the artifact.
+                if (!string.IsNullOrEmpty(template.Item.Name) &&
+                    TemplateKey.TryNormalize(template.Item.Name, out string alias) &&
+                    !contents.ContainsKey(alias))
+                    contents.Add(alias, template.Text);
+            }
+
+            foreach (var import in request.ImportOnly)
+            {
+                if (string.IsNullOrEmpty(import.Name) ||
+                    !TemplateKey.TryNormalize(import.Name, out string name))
+                    continue;
+                if (contents.ContainsKey(name))
+                    continue;
+                try
+                {
+                    contents.Add(name, File.ReadAllText(Stamp.Resolve(request, import.Path)));
+                }
+                catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+                {
+                    // Unreadable import-only files already failed the run at intake.
+                }
+            }
+
+            return contents;
+        }
+
+        private static Func<string, string> ImportReaderFor(CompileRequest request,
+            List<TemplateInput> templates)
+        {
+            var contents = ImportContents(request, templates);
+            return spelling =>
+            {
+                // Spellings normalize before the map lookup (Banner meets Banner.heddle); the
+                // disk fallback reads the raw spelling. Mirrors the engine's ImportMap.
+                if (spelling != null && TemplateKey.TryNormalize(spelling, out string key) &&
+                    contents.TryGetValue(key, out string content))
+                    return content;
+                using (var file = File.OpenText(Path.Combine(request.Root ?? string.Empty, spelling)))
+                    return file.ReadToEnd();
+            };
+        }
+
+        private static Func<string, string> ImportIdentifierFor(CompileRequest request,
+            List<TemplateInput> templates)
+        {
+            var contents = ImportContents(request, templates);
+            return spelling =>
+            {
+                if (spelling != null && TemplateKey.TryNormalize(spelling, out string key) &&
+                    contents.ContainsKey(key))
+                    return "import:" + key;
+                try
+                {
+                    return Path.GetFullPath(Path.Combine(request.Root ?? string.Empty, spelling));
+                }
+                catch (Exception)
+                {
+                    return spelling;
+                }
+            };
+        }
+
         private static string StubModelName(TemplateInput template)
         {
             if (!string.IsNullOrEmpty(template.Item.ModelType))
@@ -458,12 +539,14 @@ namespace Heddle.Tool.Compile
             var outcome = new CompileOutcome();
             var parts = new List<CompiledArtifact>();
             bool failed = false;
+            var imports = new ImportPair(ImportReaderFor(request, templates),
+                ImportIdentifierFor(request, templates));
             foreach (var template in templates)
             {
                 if (template.Key == null)
                     continue;
-                var single = CompileOne(request, template, images, options, diagnostics, engineVersion,
-                    outcome);
+                var single = CompileOne(request, template, imports, images, options, diagnostics,
+                    engineVersion, outcome);
                 if (single == null)
                     failed = true;
                 else
@@ -479,9 +562,22 @@ namespace Heddle.Tool.Compile
             return outcome;
         }
 
+        private sealed class ImportPair
+        {
+            internal ImportPair(Func<string, string> reader, Func<string, string> identifier)
+            {
+                Reader = reader;
+                Identifier = identifier;
+            }
+
+            internal Func<string, string> Reader { get; }
+
+            internal Func<string, string> Identifier { get; }
+        }
+
         private static CompiledArtifact CompileOne(CompileRequest request, TemplateInput template,
-            ImageLoadContext images, ResolvedOptions options, DiagnosticWriter diagnostics,
-            string engineVersion, CompileOutcome outcome)
+            ImportPair imports, ImageLoadContext images, ResolvedOptions options,
+            DiagnosticWriter diagnostics, string engineVersion, CompileOutcome outcome)
         {
             OutputProfile profile = options.OutputProfile;
             if (!string.IsNullOrEmpty(template.Item.OutputProfile))
@@ -528,6 +624,11 @@ namespace Heddle.Tool.Compile
             var context = new CompileContext(templateOptions, modelEx);
             context.DeferUnboundFunctions = true;
             context.RecordForm = true;
+            // Composition imports resolve against the invocation's items first: every key and
+            // validated registered name serves its text, anything else reads off disk. The same
+            // contract the loader honors from the artifact rows, so build and load expand alike.
+            context.ImportReader = imports.Reader;
+            context.ImportIdentifier = imports.Identifier;
             HeddleTemplate compiled;
             try
             {
@@ -596,7 +697,8 @@ namespace Heddle.Tool.Compile
             try
             {
                 single = context.FormRecord.ToArtifact(engineVersion, options.BuildVersion, template.Key,
-                    template.ContentHash, null, options.GeneratedNamespace + "." + sanitized, modelEx,
+                    template.ContentHash, template.RegisteredName,
+                    options.GeneratedNamespace + "." + sanitized, modelEx,
                     false, false, profile.ToString(), options.ExpressionMode.ToString(),
                     options.TrimDirectiveLines);
             }
@@ -609,14 +711,16 @@ namespace Heddle.Tool.Compile
             }
 
             ReportNotPrecompiled(request, template, single, diagnostics);
-            outcome.Emitted.Add(new SourceEmitter.EmittedTemplate
-            {
-                Key = template.Key,
-                Sanitized = sanitized,
-                ModelTypeName = modelType == null
-                    ? "object"
-                    : "global::" + modelType.FullName.Replace('+', '.')
-            });
+            // Import-only rows load and serve but emit no entry-point wrapper.
+            if (!template.Item.IsImportOnly)
+                outcome.Emitted.Add(new SourceEmitter.EmittedTemplate
+                {
+                    Key = template.Key,
+                    Sanitized = sanitized,
+                    ModelTypeName = modelType == null
+                        ? "object"
+                        : "global::" + modelType.FullName.Replace('+', '.')
+                });
             return single;
         }
 

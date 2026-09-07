@@ -1,5 +1,7 @@
 using System;
 using System.IO;
+using System.Reflection;
+using System.Reflection.Emit;
 using Heddle.Precompiled.CompiledForm;
 using Heddle.Tool;
 using Heddle.Tool.Compile;
@@ -240,6 +242,64 @@ namespace Heddle.Tool.Tests
         }
 
         [Fact]
+        public void NamedImportOnlyItemCompilesAndRendersFromHostBytes()
+        {
+            // The import-only file is literally named Banner, so the dynamic reference resolves
+            // the same spelling off disk that the host serves from its item map.
+            File.WriteAllText(Path.Combine(_dir, "Banner"), "@%<n_badge>{{NICK}}%@");
+            string main = WriteTemplate("main.heddle", "BEFORE\n@<<{{Banner}}\nAFTER\n@n_badge()\n");
+            string rsp = WriteRsp("--project", Project(), "--root", _dir,
+                "--output-profile", "Text",
+                "--template", main + "||||",
+                "--import-only", Path.Combine(_dir, "Banner") + "||Banner",
+                "--artifact-out", Out("form.bin"), "--source-out", Out("gen.g.cs"),
+                "--stamp", Out("stamp.txt"));
+            var result = Run("compile", "@" + rsp);
+            Assert.Equal(0, result.Exit);
+            byte[] image = File.ReadAllBytes(Out("form.bin"));
+            var artifact = CompiledFormReader.Read(image);
+            // The import-only file loads as a row (answering to Banner) but emits no wrapper.
+            Assert.Equal(2, artifact.Templates.Count);
+            Assert.Equal("main.heddle", artifact.Templates[0].Key);
+            Assert.Equal("Banner.heddle", artifact.Templates[1].Key);
+            string source = File.ReadAllText(Out("gen.g.cs"));
+            Assert.Contains("public static class Main", source);
+            Assert.DoesNotContain("Banner", source);
+
+            var assembly = RegisterHostImage(image);
+            var saved = Heddle.Precompiled.PrecompiledTemplates.DefaultOptions;
+            Heddle.Precompiled.PrecompiledTemplates.DefaultOptions =
+                new Heddle.Data.TemplateOptions("host")
+                {
+                    RootPath = _dir,
+                    OutputProfile = Heddle.Data.OutputProfile.Text,
+                    EnableFileChangeCheck = false,
+                    ExpressionMode = Heddle.Data.ExpressionMode.Native
+                };
+            try
+            {
+                var bound = Heddle.Precompiled.PrecompiledTemplates.BindTyped(assembly,
+                    "main.heddle", typeof(object));
+                var options = new Heddle.Data.TemplateOptions("main")
+                {
+                    RootPath = _dir,
+                    OutputProfile = Heddle.Data.OutputProfile.Text,
+                    EnableFileChangeCheck = false,
+                    ExpressionMode = Heddle.Data.ExpressionMode.Native
+                };
+                string expected = new Heddle.HeddleTemplate(File.ReadAllText(main),
+                    new Heddle.Runtime.CompileContext(options, Heddle.Data.ExType.Dynamic))
+                    .Generate(null);
+                Assert.Equal(expected, bound.Generate(null));
+                Assert.Equal("BEFORE\nAFTER\nNICK\n", expected);
+            }
+            finally
+            {
+                Heddle.Precompiled.PrecompiledTemplates.DefaultOptions = saved;
+            }
+        }
+
+        [Fact]
         public void SanitizeNameFollowsTheBuildRule()
         {
             Assert.Equal("Views_Home_Index", SanitizeName.ForKey("views/home/index.heddle"));
@@ -264,6 +324,31 @@ namespace Heddle.Tool.Tests
             string path = Path.Combine(_dir, Guid.NewGuid().ToString("N") + ".rsp");
             File.WriteAllLines(path, lines);
             return path;
+        }
+
+        public sealed class HostMarker : Heddle.Precompiled.IHeddleCompiledArtifact
+        {
+            internal static byte[] Image;
+
+            public Stream OpenArtifact() => new MemoryStream(Image, writable: false);
+        }
+
+        private static Assembly RegisterHostImage(byte[] image)
+        {
+            HostMarker.Image = image;
+            var name = new AssemblyName("HeddleHostAsm_" + Guid.NewGuid().ToString("N"));
+            var assembly = AssemblyBuilder.DefineDynamicAssembly(name, AssemblyBuilderAccess.Run);
+            var version = typeof(Heddle.HeddleTemplate).Assembly.GetName().Version;
+            var ctor = typeof(Heddle.Precompiled.HeddleCompiledTemplatesAttribute).GetConstructor(
+                new[] { typeof(Type), typeof(int), typeof(string) });
+            assembly.SetCustomAttribute(new CustomAttributeBuilder(ctor, new object[]
+            {
+                typeof(HostMarker),
+                Heddle.Precompiled.PrecompiledSchema.CompiledFormSchemaVersion,
+                Heddle.Precompiled.PrecompiledSchema.FormatEngineVersion(version)
+            }));
+            Heddle.Precompiled.PrecompiledTemplates.Register(assembly);
+            return assembly;
         }
 
         private sealed class RunResult

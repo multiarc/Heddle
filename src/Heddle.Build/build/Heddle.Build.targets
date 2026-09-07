@@ -29,23 +29,36 @@
     </ItemGroup>
   </Target>
 
-  <PropertyGroup>
-    <_HeddleDir>$(IntermediateOutputPath)heddle/</_HeddleDir>
-    <_HeddleArtifactPath>$(_HeddleDir)Heddle.CompiledForm.bin</_HeddleArtifactPath>
-    <_HeddleSourcePath>$(_HeddleDir)Heddle.CompiledForm.g.cs</_HeddleSourcePath>
-    <_HeddleStampPath>$(_HeddleDir)stamp.txt</_HeddleStampPath>
-    <_HeddleProbePath>$(_HeddleDir)probe.json</_HeddleProbePath>
-    <_HeddleStubsPath>$(_HeddleDir)stubs/Heddle.Generated.Stubs.g.cs</_HeddleStubsPath>
-    <_HeddleResponsePath>$(_HeddleDir)compile.rsp</_HeddleResponsePath>
-  </PropertyGroup>
+  <!-- Lazy: IntermediateOutputPath gains its configuration value after imports evaluate, so
+       paths computed at import time freeze empty. Every heddle target depends on this first. -->
+  <Target Name="_HeddlePaths">
+    <PropertyGroup>
+      <_HeddleDir>$(IntermediateOutputPath)heddle/</_HeddleDir>
+      <_HeddleArtifactPath>$(_HeddleDir)Heddle.CompiledForm.bin</_HeddleArtifactPath>
+      <_HeddleSourcePath>$(_HeddleDir)Heddle.CompiledForm.g.cs</_HeddleSourcePath>
+      <_HeddleStampPath>$(_HeddleDir)stamp.txt</_HeddleStampPath>
+      <_HeddleProbePath>$(_HeddleDir)probe.json</_HeddleProbePath>
+      <_HeddleStubsPath>$(_HeddleDir)stubs/Heddle.Generated.Stubs.g.cs</_HeddleStubsPath>
+      <_HeddleResponsePath>$(_HeddleDir)compile.rsp</_HeddleResponsePath>
+    </PropertyGroup>
+  </Target>
 
   <!-- The implementation set the host binds over: project references' real outputs (not the
        reference assemblies CoreCompile sees), packages' runtime images, declared assemblies, and
        the intermediate model assembly when the probe earned one. Independent of
        CopyLocalLockFileAssemblies. -->
+  <!-- After ResolveAssemblyReferences only: ResolvePackageAssets completes before it, so both
+       item sets are populated; hooking ResolvePackageAssets as well fires the target during restore
+       and again before ResolveAssemblyReferences has produced ReferencePath. -->
   <Target Name="_HeddleCollectImages"
-          AfterTargets="ResolveAssemblyReferences;ResolvePackageAssets"
+          AfterTargets="ResolveAssemblyReferences"
           BeforeTargets="CoreCompile">
+    <ItemGroup>
+      <_HeddleImplementationImage Include="@(ReferencePath)" Condition="'%(ReferencePath.ReferenceSourceTarget)' == 'ProjectReference'" />
+      <_HeddleImplementationImage Include="@(RuntimeCopyLocalItems)" Condition="'%(RuntimeCopyLocalItems.Extension)' == '.dll'" />
+      <_HeddleImplementationImage Include="@(HeddleModelAssembly)" />
+      <_HeddleImplementationImage Include="@(HeddleExtensionAssembly)" />
+    </ItemGroup>
     <RemoveDuplicates Inputs="@(_HeddleImplementationImage)">
       <Output TaskParameter="Filtered" ItemName="_HeddleImplementationImageDeduped" />
     </RemoveDuplicates>
@@ -69,7 +82,7 @@
   <Target Name="_HeddleProbe"
           AfterTargets="BeforeCompile"
           BeforeTargets="_HeddleIntermediateCompile;_HeddleCompile"
-          DependsOnTargets="_HeddleCollectImages;_HeddleEngineReference"
+          DependsOnTargets="_HeddlePaths;_HeddleCollectImages;_HeddleEngineReference"
           Condition="'$(DesignTimeBuild)' != 'true' and '$(BuildingProject)' == 'true' and '@(HeddleTemplate)' != ''">
     <HeddleCompile
         Templates="@(HeddleTemplate)"
@@ -99,7 +112,7 @@
   <Target Name="_HeddleIntermediateCompile"
           AfterTargets="BeforeCompile"
           BeforeTargets="_HeddleCompile"
-          DependsOnTargets="_HeddleProbe"
+          DependsOnTargets="_HeddlePaths;_HeddleProbe"
           Condition="'$(DesignTimeBuild)' != 'true' and '$(BuildingProject)' == 'true' and '$(_HeddleUnresolvedCount)' != '' and '$(_HeddleUnresolvedCount)' != '0' and '@(Compile)' != ''">
     <HeddleCompile
         Templates="@(HeddleTemplate)"
@@ -120,9 +133,10 @@
     </HeddleCompile>
     <ItemGroup>
       <_HeddleIntermediateModel Include="$(_HeddleDir)models/$(_HeddleDigest)/$(AssemblyName).dll" />
-      <_HeddleModelSources Include="@(Compile->'%(FullPath)')" Exclude="$(_HeddleSourcePath);$(_HeddleStubsPath)" />
+      <_HeddleModelSources Include="@(Compile->'%(FullPath)')" Exclude="$(_HeddleSourcePath);$(_HeddleStubsPath);$([System.IO.Path]::GetFullPath('$(IntermediateOutputPath)'))**;$([System.IO.Path]::GetFullPath('$(OutputPath)'))**" />
       <_HeddleModelSources Include="$(_HeddleStubsPath)" />
     </ItemGroup>
+    <MakeDir Directories="$(_HeddleDir)models/$(_HeddleDigest)" />
     <Csc Sources="@(_HeddleModelSources)"
          References="@(ReferencePathWithRefAssemblies)"
          Analyzers="@(Analyzer)"
@@ -139,6 +153,7 @@
   <!-- Design-time builds get compiling stubs and nothing else: no engine compile, image load,
        artifact, source or stamp — so a following real build finds _HeddleCompile out of date. -->
   <Target Name="_HeddleDesignTimeStubs"
+          DependsOnTargets="_HeddlePaths"
           BeforeTargets="CoreCompile"
           Condition="('$(DesignTimeBuild)' == 'true' or '$(BuildingProject)' != 'true') and '@(HeddleTemplate)' != ''">
     <HeddleCompile
@@ -158,14 +173,31 @@
     </ItemGroup>
   </Target>
 
+  <!-- The resource item must join before AssignTargetPaths (the first PrepareResourceNames step):
+       BeforeTargets hooks run after the hooked target's own dependencies, so hooking PrepareResourceNames
+       lands after SplitResourcesByCulture and the item misses its Type metadata. The file
+       itself is written later by _HeddleCompile, before CoreCompile reads it; on skipped (up-to-date)
+       builds the previous file is still there. Same guard as the compile, so design-time builds that
+       only get stubs never reference the artifact. -->
+  <Target Name="_HeddleResourceNames"
+          BeforeTargets="AssignTargetPaths"
+          DependsOnTargets="_HeddlePaths"
+          Condition="'$(DesignTimeBuild)' != 'true' and '@(HeddleTemplate)' != ''">
+    <ItemGroup>
+      <EmbeddedResource Include="$(_HeddleArtifactPath)">
+        <LogicalName>Heddle.CompiledForm</LogicalName>
+      </EmbeddedResource>
+    </ItemGroup>
+  </Target>
+
   <!-- The compile: MSBuild-level incrementality on inputs, stamp-level inside the host. Outputs join
-       FileWrites; the artifact joins EmbeddedResource under the logical name the loader opens and the
-       source joins Compile before CoreCompile. The stubs pass writes none of these three outputs. -->
+       FileWrites; the source joins Compile before CoreCompile (live at the Csc task, unlike resources).
+       The stubs pass writes none of these outputs. -->
   <Target Name="_HeddleCompile"
           Inputs="@(HeddleTemplate);@(_HeddleImplementationImage);$(MSBuildAllProjects)"
           Outputs="$(_HeddleArtifactPath);$(_HeddleSourcePath);$(_HeddleStampPath)"
           BeforeTargets="CoreCompile"
-          DependsOnTargets="_HeddleCollectImages;_HeddleEngineReference;_HeddleProbe;_HeddleIntermediateCompile"
+          DependsOnTargets="_HeddlePaths;_HeddleCollectImages;_HeddleEngineReference;_HeddleProbe;_HeddleIntermediateCompile"
           Condition="'$(DesignTimeBuild)' != 'true' and '@(HeddleTemplate)' != ''">
     <ItemGroup>
       <_HeddleCompileItem Include="@(HeddleTemplate)" Condition="'%(HeddleTemplate.Precompile)' != 'false'" />
@@ -191,9 +223,6 @@
         StampPath="$(_HeddleStampPath)" />
     <ItemGroup>
       <FileWrites Include="$(_HeddleArtifactPath);$(_HeddleSourcePath);$(_HeddleStampPath)" />
-      <EmbeddedResource Include="$(_HeddleArtifactPath)">
-        <LogicalName>Heddle.CompiledForm</LogicalName>
-      </EmbeddedResource>
       <Compile Include="$(_HeddleSourcePath)" />
     </ItemGroup>
   </Target>

@@ -510,6 +510,12 @@ namespace Heddle.Precompiled
                 // consumed-type check against the recorded dynamic typings.
                 ExType modelEx = ModelType == null ? ExType.Dynamic : new ExType(ModelType);
                 var context = new CompileContext(options, modelEx);
+                // The load re-parse expands composition imports from the same spellings the build
+                // saw: every row's key and registered name serves its recorded root text, anything
+                // else reads off disk. A named import the artifact does not carry stays a file read.
+                var importContents = ArtifactImportContents(artifact);
+                context.ImportReader = ImportMap.ReaderFor(importContents, options.RootPath);
+                context.ImportIdentifier = ImportMap.IdentifierFor(importContents, options.RootPath);
                 scope = new CompileScope(context);
                 document = HeddleCompiler.Materialize(artifact, row, scope);
             }
@@ -525,6 +531,30 @@ namespace Heddle.Precompiled
 
             if (scope.CompileErrors.Count != 0)
                 throw ClassifyCompileErrors(Key, scope.CompileErrors);
+
+            IReadOnlyDictionary<string, string> ArtifactImportContents(CompiledArtifact image)
+            {
+                var contents = new Dictionary<string, string>(StringComparer.Ordinal);
+                if (image.Templates == null || image.Documents == null)
+                    return contents;
+                foreach (var template in image.Templates)
+                {
+                    if (template == null || template.RootDocumentRef < 0 ||
+                        template.RootDocumentRef >= image.Documents.Count)
+                        continue;
+                    var document = image.Documents[template.RootDocumentRef];
+                    string text = document?.RawText;
+                    if (string.IsNullOrEmpty(text))
+                        continue;
+                    if (!string.IsNullOrEmpty(template.Key) && !contents.ContainsKey(template.Key))
+                        contents.Add(template.Key, text);
+                    if (!string.IsNullOrEmpty(template.RegisteredName) &&
+                        !contents.ContainsKey(template.RegisteredName))
+                        contents.Add(template.RegisteredName, text);
+                }
+
+                return contents;
+            }
             if (document == null || document.Strategy == null)
                 throw Fault(PrecompiledFallbackReason.ExtensionInitCompileError,
                     "Template '" + Key + "' materialized to no strategy.");

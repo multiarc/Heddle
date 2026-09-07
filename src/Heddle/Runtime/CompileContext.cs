@@ -131,6 +131,20 @@ namespace Heddle.Runtime {
         internal bool DeferUnboundFunctions { get; set; }
 
         /// <summary>
+        /// The <c>@&lt;&lt;</c> import reader over an in-memory spelling map, or null for the file
+        /// ladder. The build host maps every item's key and registered name; the loader maps every
+        /// artifact row's. Propagates into child contexts so nested body compiles resolve alike.
+        /// </summary>
+        internal Func<string, string> ImportReader { get; set; }
+
+        /// <summary>
+        /// The import cycle identity for <see cref="ImportReader"/>, from the same resolution: a
+        /// spelling the map answers to identifies as its canonical entry, anything else as its file
+        /// path. Null follows the reader (file ladder both ways).
+        /// </summary>
+        internal Func<string, string> ImportIdentifier { get; set; }
+
+        /// <summary>
         /// Whether this compile records the compiled form. Off on every ordinary compile; enabling
         /// allocates one record shared across the compile's child contexts.
         /// </summary>
@@ -156,6 +170,8 @@ namespace Heddle.Runtime {
             _recordForm = context._recordForm;
             FormRecord = context.FormRecord;
             DeferUnboundFunctions = context.DeferUnboundFunctions;
+            ImportReader = context.ImportReader;
+            ImportIdentifier = context.ImportIdentifier;
             RootScopeType = context.RootScopeType;
             CompiledItems = context.CompiledItems;
             ResolvedPropLayouts = context.ResolvedPropLayouts;

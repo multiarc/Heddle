@@ -6,7 +6,8 @@ using System.Text;
 namespace Heddle.Tool.Compile
 {
     /// <summary>One <c>--template</c> item: the file plus the <c>path|key|name|modelType|outputProfile</c>
-    /// fields (empty fields allowed; an empty key means path-derived).</summary>
+    /// fields (empty fields allowed; an empty key means path-derived). Import-only items use the
+    /// same shape with an empty model type and output profile.</summary>
     internal sealed class TemplateItem
     {
         internal string Path;
@@ -14,6 +15,7 @@ namespace Heddle.Tool.Compile
         internal string Name;
         internal string ModelType;
         internal string OutputProfile;
+        internal bool IsImportOnly;
     }
 
     /// <summary>One <c>--import-only</c> item: the file plus the <c>path|key|name</c> fields.</summary>

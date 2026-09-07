@@ -131,14 +131,15 @@ namespace Heddle.Build.Tasks
                     root = Path.GetDirectoryName(Path.GetFullPath(ProjectPath));
 
                 // One argument per line, verbatim: the host reads the file, never a command line.
+                // Empty optionals are omitted, never written as blank lines (the host rejects those).
                 var args = new List<string>();
                 Add(args, "--project", ProjectPath ?? string.Empty);
                 Add(args, "--root", root ?? string.Empty);
-                Add(args, "--output-profile", OutputProfile ?? string.Empty);
-                Add(args, "--expression-mode", ExpressionMode ?? string.Empty);
-                Add(args, "--trim-directive-lines", TrimDirectiveLines ?? string.Empty);
-                Add(args, "--max-recursion-count", MaxRecursionCount ?? string.Empty);
-                Add(args, "--generated-namespace", GeneratedNamespace ?? string.Empty);
+                AddIfPresent(args, "--output-profile", OutputProfile);
+                AddIfPresent(args, "--expression-mode", ExpressionMode);
+                AddIfPresent(args, "--trim-directive-lines", TrimDirectiveLines);
+                AddIfPresent(args, "--max-recursion-count", MaxRecursionCount);
+                AddIfPresent(args, "--generated-namespace", GeneratedNamespace);
                 Add(args, "--build-version", version);
                 if (Templates != null)
                     foreach (var template in Templates)
@@ -193,6 +194,14 @@ namespace Heddle.Build.Tasks
         {
             args.Add(flag);
             args.Add(value ?? string.Empty);
+        }
+
+        private static void AddIfPresent(List<string> args, string flag, string value)
+        {
+            if (string.IsNullOrEmpty(value))
+                return;
+            args.Add(flag);
+            args.Add(value);
         }
 
         private static string ItemLine(ITaskItem item, bool withProfile)

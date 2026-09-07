@@ -1,73 +1,58 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- Generator props (defaults + CompilerVisible properties/metadata). Imported explicitly because we
-       reference the generator by project, not by NuGet package. -->
-  <Import Project="..\..\src\Heddle.Generator\build\Heddle.Generator.props" />
-
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
     <LangVersion>latest</LangVersion>
     <Nullable>disable</Nullable>
-    <ImplicitUsings>disable</ImplicitUsings>
-    <IsPackable>false</IsPackable>
-    <RootNamespace>Heddle.Samples.Precompiled</RootNamespace>
-    <!-- Emit generated sources so they can be captured as a golden. -->
-    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
-    <CompilerGeneratedFilesOutputPath>generated</CompilerGeneratedFilesOutputPath>
+    <SignAssembly>true</SignAssembly>
+    <AssemblyOriginatorKeyFile>..\..\heddle.snk</AssemblyOriginatorKeyFile>
     <EnableDefaultHeddleTemplates>false</EnableDefaultHeddleTemplates>
-    <!-- The three templates below are named explicitly rather than globbed; all three precompile, which
-         golden/discovery.txt pins. -->
   </PropertyGroup>
 
-  <ItemGroup>
-    <!-- The generator re-emits these each build; excluding the folder keeps them from being compiled twice. -->
-    <Compile Remove="generated\**\*.cs" />
-    <!-- external-models is its own project, reached only through @(HeddleModelAssembly); compiling its sources here
-         too would put Acme.Models.Ticket in the app AND in the reference, which is HED7023 by construction. -->
-    <Compile Remove="external-models\**\*.cs" />
-    <Compile Include="..\tools\SampleCapture.cs" Link="SampleCapture.cs" />
-    <ProjectReference Include="..\..\src\Heddle\Heddle.csproj" />
-    <!-- Build the generator (so its output DLLs exist) but do NOT add its own assembly as a runtime reference. -->
-    <ProjectReference Include="..\..\src\Heddle.Generator\Heddle.Generator.csproj"
-                      ReferenceOutputAssembly="false" />
-    <!-- A ProjectReference package NuGet normally bundles the generator + its generation-time deps into
-         analyzers/dotnet/cs; via ProjectReference we add them as analyzers by hand so the generator can parse. -->
-    <!-- GeneratePathProperty gives $(PkgAntlr4_Runtime_Standard) for the analyzer include below; Antlr is also a
-         normal (transitive) runtime dependency of the engine, used by the dynamic-twin compile. -->
-    <PackageReference Include="Antlr4.Runtime.Standard" Version="4.13.1" GeneratePathProperty="true" />
-  </ItemGroup>
+  <!-- Build-time precompilation through Heddle.Build: the templates compile out of process and the
+       assembly embeds the artifact plus the generated entry points (Heddle.Generated.*). -->
+  <Import Project="..\..\src\Heddle.Build\build\Heddle.Build.props" />
+  <Import Project="..\..\src\Heddle.Build\build\Heddle.Build.targets" />
 
   <ItemGroup>
-    <Analyzer Include="..\..\src\Heddle.Generator\bin\$(Configuration)\netstandard2.0\Heddle.Generator.dll" />
-    <Analyzer Include="..\..\src\Heddle.Generator\bin\$(Configuration)\netstandard2.0\Heddle.Language.dll" />
-    <Analyzer Include="$(PkgAntlr4_Runtime_Standard)\lib\netstandard2.0\Antlr4.Runtime.Standard.dll" />
+    <ProjectReference Include="..\..\src\Heddle\Heddle.csproj" />
+    <ProjectReference Include="..\..\src\Heddle.Build\Heddle.Build.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\..\src\Heddle.Tool\Heddle.Tool.csproj" ReferenceOutputAssembly="false" />
+    <!-- Acme.Models is built before this project so its assembly feeds the implementation set. -->
+    <ProjectReference Include="external-models\ExternalModels.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
+
+  <!-- Rooted: a relative path here would resolve against the imported targets file. -->
+  <PropertyGroup>
+    <HeddleBuildTasksPath>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)/../../src/Heddle.Build/bin/$(Configuration)/netstandard2.0/Heddle.Build.Tasks.dll'))</HeddleBuildTasksPath>
+    <HeddleToolPath>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)/../../src/Heddle.Tool/bin/$(Configuration)/net10.0/Heddle.Tool.dll'))</HeddleToolPath>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <AcmeModelsAssembly>$(MSBuildProjectDirectory)\external-models\bin\$(Configuration)\netstandard2.0\Acme.Models.dll</AcmeModelsAssembly>
+  </PropertyGroup>
 
   <ItemGroup>
     <HeddleTemplate Include="templates\invoice.heddle" />
     <HeddleTemplate Include="templates\receipt.heddle" />
     <HeddleTemplate Include="templates\ticket.heddle" />
-  </ItemGroup>
 
-  <!-- The escape-hatch item, exercised from a real project file. `ReferenceOutputAssembly="false"` means the
-       ProjectReference sequences the build and contributes NO compile reference, so `@(HeddleModelAssembly)` is the
-       only thing that puts Acme.Models in front of the compiler. It reaches @(ReferencePath), which is what both the
-       generator (through the compilation's reference closure) and Program.cs (which names Acme.Models.Ticket) see.
-       Delete the item and this sample fails to build with HED7007. -->
-  <PropertyGroup>
-    <_AcmeModelsAssembly>$(MSBuildThisFileDirectory)external-models\bin\$(Configuration)\netstandard2.0\Acme.Models.dll</_AcmeModelsAssembly>
-  </PropertyGroup>
+    <!-- The external-models assembly feeds both the compiler (model types) and the runtime
+         (ModuleInitializer loads the copy). -->
+    <None Include="$(AcmeModelsAssembly)" CopyToOutputDirectory="PreserveNewest" Visible="false">
+      <Link>Acme.Models.dll</Link>
+    </None>
+    <HeddleModelAssembly Include="$(AcmeModelsAssembly)" Visible="false" />
+  </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="external-models\ExternalModels.csproj" ReferenceOutputAssembly="false" />
-    <HeddleModelAssembly Include="$(_AcmeModelsAssembly)" />
-    <!-- Not a compile reference, so nothing copies it: the app still has to carry it at run time. -->
-    <None Include="$(_AcmeModelsAssembly)" Link="Acme.Models.dll" CopyToOutputDirectory="PreserveNewest"
-          Visible="false" />
+    <!-- external-models is its own project, reached through @(HeddleModelAssembly) and the in-source
+         assembly attribute; compiling its sources here too would put Acme.Models.Ticket in the app
+         AND in the reference (CS0436, and HED7023 by construction). -->
+    <Compile Remove="external-models\**\*.cs" />
+    <Compile Include="..\tools\SampleCapture.cs" Link="SampleCapture.cs" />
+    <ProjectCapability Include="SupportsSystemTextJson" />
   </ItemGroup>
-
-  <!-- Generator targets (maps HeddleTemplate items to AdditionalFiles). Imported last. -->
-  <Import Project="..\..\src\Heddle.Generator\build\Heddle.Generator.targets" />
 
 </Project>

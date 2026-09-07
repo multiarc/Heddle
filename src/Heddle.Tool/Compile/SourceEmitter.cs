@@ -38,7 +38,7 @@ namespace Heddle.Tool.Compile
             sb.Append("            if (stream == null)\n");
             sb.Append("                throw new InvalidOperationException(\"Embedded resource \" +\n");
             sb.Append("                    \"'Heddle.CompiledForm' is missing from '\" +\n");
-            sb.Append("                    \"typeof(HeddleArtifact).Assembly.FullName + \"'.\");\n");
+            sb.Append("                    typeof(HeddleArtifact).Assembly.FullName + \"'.\");\n");
             sb.Append("            return stream;\n");
             sb.Append("        }\n");
             sb.Append("    }\n");
@@ -98,7 +98,9 @@ namespace Heddle.Tool.Compile
         }
 
         /// <summary>The design-time stubs: every wrapper declared with bodies that throw, so the
-        /// intermediate compile type-checks references without running the engine.</summary>
+        /// intermediate compile type-checks references without running the engine. The model
+        /// parameter is <c>object</c>: same-project models are unresolvable until the intermediate
+        /// assembly exists, and a stub that named them would not compile.</summary>
         internal static void WriteStubs(string sourceOut, string generatedNamespace,
             IReadOnlyList<StubTemplate> templates)
         {
@@ -113,20 +115,20 @@ namespace Heddle.Tool.Compile
             {
                 sb.Append("    public static class ").Append(template.Sanitized).Append('\n');
                 sb.Append("    {\n");
-                sb.Append("        public static string Generate(").Append(template.ModelTypeName)
-                    .Append(" model, object chained = null, object callerData = null)\n");
+                sb.Append("        public static string Generate(")
+                    .Append("object model, object chained = null, object callerData = null)\n");
                 sb.Append("        {\n");
                 sb.Append("            throw new InvalidOperationException(\"Precompiled stub.\");\n");
                 sb.Append("        }\n");
                 sb.Append('\n');
-                sb.Append("        public static void Generate(").Append(template.ModelTypeName)
-                    .Append(" model, TextWriter writer, object chained = null, object callerData = null)\n");
+                sb.Append("        public static void Generate(")
+                    .Append("object model, TextWriter writer, object chained = null, object callerData = null)\n");
                 sb.Append("        {\n");
                 sb.Append("            throw new InvalidOperationException(\"Precompiled stub.\");\n");
                 sb.Append("        }\n");
                 sb.Append('\n');
-                sb.Append("        public static void Generate(").Append(template.ModelTypeName)
-                    .Append(" model, System.Buffers.IBufferWriter<byte> writer, ")
+                sb.Append("        public static void Generate(")
+                    .Append("object model, System.Buffers.IBufferWriter<byte> writer, ")
                     .Append("object chained = null, object callerData = null)\n");
                 sb.Append("        {\n");
                 sb.Append("            throw new InvalidOperationException(\"Precompiled stub.\");\n");

@@ -13,20 +13,22 @@ namespace Heddle.Language
         {
             if (compileContext == null)
                 throw new System.ArgumentNullException(nameof(compileContext));
-            var settings = SettingsFrom(compileContext.Options);
+            var settings = SettingsFrom(compileContext);
             var context = new ParseContext(provideLanguageFeatures: settings.ProvideLanguageFeatures);
             cleanDocument = Parse(document, context, settings);
             CopyErrorsTo(context, compileContext, errorFrom: 0);
             return context;
         }
 
-        private static ParserSettings SettingsFrom(TemplateOptions options)
+        private static ParserSettings SettingsFrom(CompileContext compileContext)
         {
+            var options = compileContext.Options;
             return new ParserSettings
             {
                 RootPath = options.RootPath,
                 ProvideLanguageFeatures = options.ProvideLanguageFeatures,
-                ImportReader = null
+                ImportReader = compileContext.ImportReader,
+                ImportIdentifier = compileContext.ImportIdentifier
             };
         }
 

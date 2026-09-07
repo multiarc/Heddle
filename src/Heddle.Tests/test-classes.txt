@@ -29,6 +29,7 @@ Heddle.Tests.CompiledFormBindingTests
 Heddle.Tests.CompiledFormDeferredBindingTests
 Heddle.Tests.CompiledFormLinkedSourceTests
 Heddle.Tests.CompiledFormMarkerTests
+Heddle.Tests.CompiledFormNamedImportTests
 Heddle.Tests.CompiledFormParityTests
 Heddle.Tests.CompiledFormRoundTripTests
 Heddle.Tests.ComposeImportNestingTests
