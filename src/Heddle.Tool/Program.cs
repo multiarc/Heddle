@@ -22,6 +22,9 @@ namespace Heddle.Tool
                 return args != null && args.Length != 0 && IsHelp(args[0]) ? 0 : 1;
             }
 
+            if (string.Equals(args[0], "compile", StringComparison.Ordinal))
+                return RunCompile(args, stdout, stderr);
+
             if (!string.Equals(args[0], "render", StringComparison.Ordinal))
             {
                 stderr.WriteLine("Unknown command '" + args[0] + "'.");
@@ -89,6 +92,31 @@ namespace Heddle.Tool
             }
         }
 
+        private static int RunCompile(string[] args, TextWriter stdout, TextWriter stderr)
+        {
+            Compile.CompileRequest request;
+            try
+            {
+                request = Compile.ResponseFile.Parse(args);
+            }
+            catch (Compile.ResponseFileException ex)
+            {
+                stderr.WriteLine("heddle: " + ex.Message);
+                return 2;
+            }
+
+            try
+            {
+                return Compile.CompileCommand.Run(request, stdout, stderr);
+            }
+            catch (Exception ex)
+            {
+                // A host fault before any template compiled carries nothing template-specific.
+                stderr.WriteLine("heddle: " + ex.Message);
+                return 3;
+            }
+        }
+
         private static string Next(string[] args, ref int i)
         {
             if (i + 1 >= args.Length)
@@ -102,7 +130,8 @@ namespace Heddle.Tool
         private const string Usage =
             "heddle — render a Heddle template against a JSON model (T4-successor codegen).\n\n" +
             "Usage:\n" +
-            "  heddle render <template> [--model-json <file>] [--out <file>] [--root <dir>]\n\n" +
+            "  heddle render <template> [--model-json <file>] [--out <file>] [--root <dir>]\n" +
+            "  heddle compile @<response-file>\n\n" +
             "Options:\n" +
             "  --model-json <file>  JSON file whose object is the template model (objects -> members,\n" +
             "                       arrays -> @list/@for, scalars -> primitives). Omit for a model-less template.\n" +
