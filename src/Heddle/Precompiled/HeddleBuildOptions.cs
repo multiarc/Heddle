@@ -17,6 +17,9 @@ namespace Heddle.Precompiled
         public const string MaxRecursionCountProperty = "HeddleMaxRecursionCount";
         public const string TemplateRootProperty = "HeddleTemplateRoot";
         public const string GeneratedNamespaceProperty = "HeddleGeneratedNamespace";
+
+        /// <summary>The per-item metadatum overriding HeddleOutputProfile for one HeddleTemplate item.</summary>
+        public const string OutputProfileMetadata = "OutputProfile";
         public const string EmitUtf8PiecesProperty = "HeddleEmitUtf8Pieces";
         public const string NodeFallbackProperty = "HeddleNodeFallback";
         public const string ObserveEngineProperty = "HeddleObserveEngine";

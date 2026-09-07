@@ -117,6 +117,7 @@ Heddle.Tests.PrecompiledMismatchPolicyTests
 Heddle.Tests.PrecompiledModelGateTests
 Heddle.Tests.PrecompiledRegistryTests
 Heddle.Tests.PrecompiledRuntimeTests
+Heddle.Tests.PrecompiledTypedEntryTests
 Heddle.Tests.PrecompiledValidationPassTests
 Heddle.Tests.PreparseCacheGenerationTests
 Heddle.Tests.PreparseDiagnosticReplayTests

@@ -70,6 +70,67 @@ namespace Heddle.Precompiled
             return null;
         }
 
+        /// <summary>The typed-entry gauntlet: every <see cref="Validate"/> step, but the options
+        /// step compares only <c>ExpressionMode</c> and <c>TrimDirectiveLines</c> — a typed entry
+        /// renders its item's baked <c>OutputProfile</c> whatever the process default says.</summary>
+        internal static PrecompiledFallbackEvent? ValidateTyped(PrecompiledTemplateInfo entry,
+            TemplateOptions options,
+            Func<PrecompiledExtensionBinding, Type, bool> bindingResolver, Type modelType)
+        {
+            if (!entry.IsPrecompiled)
+            {
+                var name = entry.FunctionBindings.FirstOrDefault(r => r.TargetTypeName == null).Name ?? "?";
+                return Fail(entry.Key, PrecompiledFallbackReason.UnsupportedFunction,
+                    $"Function '{name}': not precompiled (no default or exported binding; build warning HED7014)");
+            }
+
+            var optionsFailure = CheckTypedOptions(entry, options);
+            if (optionsFailure != null)
+                return optionsFailure;
+
+            var modelFailure = CheckModelType(entry, modelType);
+            if (modelFailure != null)
+                return modelFailure;
+
+            var extensionFailure = CheckExtensions(entry, bindingResolver);
+            if (extensionFailure != null)
+                return extensionFailure;
+
+            var bindingsFailure = CheckMemberBindings(entry);
+            if (bindingsFailure != null)
+                return bindingsFailure;
+
+            var initFailure = CheckInitSites(entry);
+            if (initFailure != null)
+                return initFailure;
+
+            var functionFailure = CheckFunctions(entry, options);
+            if (functionFailure != null)
+                return functionFailure;
+
+            if (options.EnableFileChangeCheck)
+            {
+                var staleFailure = CheckStaleness(entry, options);
+                if (staleFailure != null)
+                    return staleFailure;
+            }
+
+            return null;
+        }
+
+        private static PrecompiledFallbackEvent? CheckTypedOptions(PrecompiledTemplateInfo entry,
+            TemplateOptions options)
+        {
+            var fp = entry.OptionsFingerprint;
+            if (fp.ExpressionMode != options.ExpressionMode)
+                return Fail(entry.Key, PrecompiledFallbackReason.OptionsMismatch,
+                    $"ExpressionMode: manifest={fp.ExpressionMode} request={options.ExpressionMode}");
+            if (fp.TrimDirectiveLines != options.TrimDirectiveLines)
+                return Fail(entry.Key, PrecompiledFallbackReason.OptionsMismatch,
+                    $"TrimDirectiveLines: manifest={Lower(fp.TrimDirectiveLines)} request={Lower(options.TrimDirectiveLines)}");
+            return null;
+        }
+
         private static PrecompiledFallbackEvent? CheckOptions(PrecompiledTemplateInfo entry, TemplateOptions options)
         {
             var fp = entry.OptionsFingerprint;

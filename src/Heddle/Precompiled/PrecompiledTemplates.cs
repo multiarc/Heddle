@@ -69,6 +69,59 @@ namespace Heddle.Precompiled
         /// <summary>Integration-supplied binding matcher; null = AQN-sans-version default.</summary>
         public static Func<PrecompiledExtensionBinding, Type, bool> BindingResolver { get; set; }
 
+        private static volatile TemplateOptions _defaultOptions;
+
+        /// <summary>The process-wide options typed entry points render under and validate against; null means
+        /// engine defaults. Assign before the first typed call — the same instance a host passes to ValidateAll.
+        /// A typed entry renders its item's baked OutputProfile whatever this instance says.</summary>
+        public static TemplateOptions DefaultOptions
+        {
+            get => _defaultOptions;
+            set => _defaultOptions = value;
+        }
+
+        /// <summary>Binds a typed entry: registers the assembly, resolves the key, runs the gauntlet (model-type step
+        /// against modelType; options step on ExpressionMode and TrimDirectiveLines only) under DefaultOptions,
+        /// materializes, and returns a precompiled-adapter template rendering the item's baked profile.
+        /// Throws PrecompiledMismatchException on a gauntlet failure and InvalidOperationException when the
+        /// assembly's artifact has no such key. Thread-safe.</summary>
+        public static HeddleTemplate BindTyped(Assembly assembly, string key, Type modelType)
+        {
+            if (assembly == null)
+                throw new ArgumentNullException(nameof(assembly));
+            if (key == null)
+                throw new ArgumentNullException(nameof(key));
+            var effectiveModel = modelType ?? typeof(object);
+            var defaults = DefaultOptions ?? new TemplateOptions();
+            lock (RegistrationLock)
+            {
+                Register(assembly);
+                if (!TryGet(key, out var entry) || entry == null)
+                    throw new InvalidOperationException("Assembly '" + assembly.FullName +
+                        "' contains no precompiled template with key '" + key + "'.");
+                var failure = PrecompiledGauntlet.ValidateTyped(entry, defaults, BindingResolver,
+                    effectiveModel);
+                if (failure != null)
+                    throw new PrecompiledMismatchException(entry.Key, failure.Value.Reason,
+                        failure.Value.Detail);
+                // Materialize under the baked profile: the strategy renders the item's own bytes,
+                // so each profile memoizes its own materialization off the same entry.
+                var effective = new TemplateOptions(defaults);
+                effective.OutputProfile = entry.OptionsFingerprint.Profile;
+                var strategy = entry.GetStrategy(effective);
+                if (strategy == null)
+                {
+                    if (entry.TryGetRequestFault(effective, out var reason, out var detail))
+                        throw new PrecompiledMismatchException(entry.Key, reason, detail);
+                    throw new InvalidOperationException("Template '" + entry.Key +
+                        "' failed to materialize without a recorded fault.");
+                }
+
+                return new HeddleTemplate(strategy, defaults.Encoder, defaults.RenderBudget, effective,
+                    entry.ModelType);
+            }
+        }
+
         /// <summary>All registered entries (including fallback-marker entries). Snapshot; safe to enumerate.</summary>
         public static IReadOnlyCollection<PrecompiledTemplateInfo> Entries =>
             Volatile.Read(ref _snapshot).ByKey.Values.ToArray();
@@ -318,11 +371,10 @@ namespace Heddle.Precompiled
         /// <see cref="Validate"/> runs over <b>every</b> registered entry and returns all failures together, before
         /// any render. Call it once the host has finished configuring — assemblies registered, extensions bound,
         /// functions registered — and log or fail the startup on the report.</para>
-        /// <para>It exists because the recommended host API never reaches the gate. A typed entry point
-        /// (<c>Templates_X.Generate(model)</c>) goes straight to <c>PrecompiledRuntime.GenerateString</c>: no
-        /// lookup, no gauntlet, and — this being the point — <b>no fallback either</b>, so an extension- or
-        /// function-binding mismatch on that path is not a silent degrade but a render against a stale binding. The
-        /// gauntlet is reached only through <see cref="TryResolve"/>, i.e. only by dynamic call sites.</para>
+        /// <para>It exists because a host that renders only through typed entry points never reaches the
+        /// per-request gate: <see cref="BindTyped"/> runs the gauntlet once at bind time and throws rather
+        /// than degrading, so a startup report is how a host learns an entry it has not bound yet would fail.
+        /// The gauntlet is otherwise reached through <see cref="TryResolve"/>, i.e. by dynamic call sites.</para>
         /// <para><b>It changes nothing per request.</b> The gauntlet still runs exactly where it ran before; this
         /// is an additional check the host asks for, not a moved one. It is a report and not a gate: it never
         /// raises <see cref="OnFallback"/> (nothing degraded — no render happened) and it does not throw under
