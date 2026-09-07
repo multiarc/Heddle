@@ -81,13 +81,15 @@ namespace Heddle.Benchmarks.Dotnet.Bench
     }
 
     /// <summary>
-    /// The same three sinks reached through the build-time compiled backend.
+    /// The same three sinks reached through the build-time compiled backend: the compiled-form
+    /// tier <c>Heddle.Build</c> embeds in this assembly, rendered through the public typed route
+    /// (<c>BindTyped</c> once per workload, then <c>HeddleTemplate.Generate</c>).
     ///
     /// <para><b>Coverage is discovered from the registry, never assumed</b>, which is why this is a
     /// separate suite rather than three more methods on the runtime one. A workload without a
     /// registered entry renders from the dynamic path — so a suite that assumed coverage would
     /// time the runtime backend under the precompiled name. The parameter set below is the
-    /// covered set; see <c>Engines/PrecompiledBackend.cs</c> for the current tier status.</para>
+    /// covered set; see <c>Engines/PrecompiledBackend.cs</c>.</para>
     /// </summary>
     [MemoryDiagnoser]
     public class TechniquePrecompiledBenchmarks

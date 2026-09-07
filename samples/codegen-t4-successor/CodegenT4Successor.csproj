@@ -1,7 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <Import Project="..\..\src\Heddle.Generator\build\Heddle.Generator.props" />
-
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
@@ -10,36 +8,34 @@
     <ImplicitUsings>disable</ImplicitUsings>
     <IsPackable>false</IsPackable>
     <RootNamespace>Heddle.Samples.Codegen</RootNamespace>
-    <!-- Emit generated sources for inspection; the disk copy is excluded from the compile below so it is not
-         double-compiled. Capture reads it and writes a .txt golden (never a .cs, which would be re-globbed). -->
-    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
-    <CompilerGeneratedFilesOutputPath>generated</CompilerGeneratedFilesOutputPath>
     <EnableDefaultHeddleTemplates>false</EnableDefaultHeddleTemplates>
-    <!-- The emitted generated/*.g.cs would otherwise be re-globbed as source (duplicate definitions). Take full
-         control of the compile set instead: only our own sources, never the inspection copy of generated code. -->
+    <!-- Take full control of the compile set: only our own sources. -->
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <!-- A code generator emits raw source, not HTML: pin the Text profile and keep directive lines. The 2.0
-         engine/generator defaults are Html + directive-line trimming, which would encode the generated code
+         engine defaults are Html + directive-line trimming, which would encode the generated code
          and drop whitespace-only lines — wrong for code generation. -->
     <HeddleOutputProfile>Text</HeddleOutputProfile>
     <HeddleTrimDirectiveLines>false</HeddleTrimDirectiveLines>
   </PropertyGroup>
 
+  <!-- Build-time precompilation through Heddle.Build: the templates compile out of process and the
+       assembly embeds the artifact plus the generated entry points (Heddle.Generated.*). -->
+  <Import Project="..\..\src\Heddle.Build\build\Heddle.Build.props" />
+  <Import Project="..\..\src\Heddle.Build\build\Heddle.Build.targets" />
+
   <ItemGroup>
     <Compile Include="Program.cs" />
     <Compile Include="..\tools\SampleCapture.cs" Link="SampleCapture.cs" />
     <ProjectReference Include="..\..\src\Heddle\Heddle.csproj" />
-    <ProjectReference Include="..\..\src\Heddle.Generator\Heddle.Generator.csproj" ReferenceOutputAssembly="false" />
-    <PackageReference Include="Antlr4.Runtime.Standard" Version="4.13.1" GeneratePathProperty="true" />
+    <ProjectReference Include="..\..\src\Heddle.Build\Heddle.Build.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\..\src\Heddle.Tool\Heddle.Tool.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
-  <ItemGroup>
-    <!-- Reference the build-time code generator + its generation-time deps as analyzers (the NuGet package
-         normally bundles these into analyzers/dotnet/cs; a ProjectReference wires them by hand). -->
-    <Analyzer Include="..\..\src\Heddle.Generator\bin\$(Configuration)\netstandard2.0\Heddle.Generator.dll" />
-    <Analyzer Include="..\..\src\Heddle.Generator\bin\$(Configuration)\netstandard2.0\Heddle.Language.dll" />
-    <Analyzer Include="$(PkgAntlr4_Runtime_Standard)\lib\netstandard2.0\Antlr4.Runtime.Standard.dll" />
-  </ItemGroup>
+  <!-- Rooted: a relative path here would resolve against the imported targets file. -->
+  <PropertyGroup>
+    <HeddleBuildTasksPath>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)/../../src/Heddle.Build/bin/$(Configuration)/netstandard2.0/Heddle.Build.Tasks.dll'))</HeddleBuildTasksPath>
+    <HeddleToolPath>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)/../../src/Heddle.Tool/bin/$(Configuration)/net10.0/Heddle.Tool.dll'))</HeddleToolPath>
+  </PropertyGroup>
 
   <ItemGroup>
     <!-- The ModelType item metadatum types the template from the project file: report.heddle carries no @model
@@ -53,7 +49,5 @@
          import stops resolving and the build fails with HED7011 instead of degrading quietly. -->
     <HeddleTemplate Include="templates\_banner.heddle" Name="Banner" Precompile="false" />
   </ItemGroup>
-
-  <Import Project="..\..\src\Heddle.Generator\build\Heddle.Generator.targets" />
 
 </Project>

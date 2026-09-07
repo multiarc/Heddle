@@ -14,6 +14,8 @@ namespace Heddle.Benchmarks.Dotnet
     ///
     ///   gate              every registered cell: byte gate (controlled), verifier (idiomatic),
     ///                     security floor (encoded), materialisation check. Exit 1 on any failure.
+    ///   gate-precompiled  strict precompiled gate: 8/8 controlled workloads on three sinks, each
+    ///                     byte-identical to its runtime counterpart. Exit 1 on any failure.
     ///   verify-corpus     re-prove corpus freshness and recalibrate the verifier.
     ///   export-corpus     regenerate the corpus from the Heddle oracles.
     ///   selftest          harness self-checks, including the six-technique differential.
@@ -198,7 +200,7 @@ namespace Heddle.Benchmarks.Dotnet
             {
                 Console.Error.WriteLine(
                     $"[FAIL] {workload}: no precompiled entry — this workload renders through the dynamic path. " +
-                    "No build-time tier exists since phase 1 (P1-W8); phase 2 restores it.");
+                    "The Heddle.Build tier should have compiled every controlled-track entry template.");
                 failures++;
             }
 
@@ -213,6 +215,7 @@ namespace Heddle.Benchmarks.Dotnet
             var w = code == 0 ? Console.Out : Console.Error;
             w.WriteLine("usage: dotnet run -c Release -- <verb> [args]");
             w.WriteLine("  gate                 every registered cell; nothing may be timed behind a red gate");
+            w.WriteLine("  gate-precompiled     strict precompiled gate: 8/8 workloads on three sinks, byte parity");
             w.WriteLine("  selftest             the gate's own checks, incl. the six-technique differential");
             w.WriteLine("  verify-corpus        corpus freshness + verifier calibration");
             w.WriteLine("  export-corpus [--allow-dirty]   regenerate the corpus from the Heddle oracles");

@@ -403,6 +403,16 @@ namespace Heddle.Data
                 "hook can supply are emitted type-agnostically; the template still precompiles and renders " +
                 "identical output. Set <HeddleObserveEngine>Strict</HeddleObserveEngine> to make this an error, or " +
                 "Off to stop trying.");
+            Add(HeddleDiagnosticIds.BuildEngineVersionMismatch, "Heddle.Build engine differs from referenced Heddle",
+                error,
+                "Heddle.Build {0} compiles with Heddle {1} but the project references Heddle {2}; reference the " +
+                "same version of both packages.");
+            Add(HeddleDiagnosticIds.BuildImplementationImageNotLoaded, "Implementation assembly could not be loaded",
+                error,
+                "Implementation assembly '{0}' could not be loaded: {1}. Templates naming its types cannot be " +
+                "compiled; fix the reference or exclude the templates with Precompile=\"false\".");
+            Add(HeddleDiagnosticIds.BuildRetiredPropertySet, "Retired MSBuild property is set", warning,
+                "The MSBuild property '{0}' is retired and ignored; delete it from the project.");
             Add(HeddleDiagnosticIds.BuildEmitterFault, "Heddle template emitter fault", error,
                 "The Heddle template emitter failed on '{0}': {1}: {2}. This is a generator defect rather than a " +
                 "template error — please report it; setting Precompile=\"false\" on the item unblocks the build " +

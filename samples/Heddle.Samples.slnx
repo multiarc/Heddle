@@ -30,7 +30,8 @@
   <Folder Name="/streaming-ssr/">
     <Project Path="streaming-ssr/StreamingSsr.csproj" />
   </Folder>
-  <Project Path="../src/Heddle.Generator/Heddle.Generator.csproj" />
+  <Project Path="../src/Heddle.Build/Heddle.Build.csproj" />
+  <Project Path="../src/Heddle.Tool/Heddle.Tool.csproj" />
   <Project Path="../src/Heddle.Language/Heddle.Language.csproj" />
   <Project Path="../src/Heddle/Heddle.csproj" />
 </Solution>

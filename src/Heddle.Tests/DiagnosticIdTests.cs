@@ -84,6 +84,12 @@ namespace Heddle.Tests
                 // HED7034: the build could not observe a real engine compile -- a note under Auto and an error
                 // under Strict, never a statement about a template.
                 "HED7034",
+                // HED7035: the Heddle.Build package's engine differs from the referenced Heddle package.
+                "HED7035",
+                // HED7036: an implementation image the build must bind over could not be loaded.
+                "HED7036",
+                // HED7037: a retired MSBuild property is set; it is ignored (warned in phase 4).
+                "HED7037",
                 "HED7101", "HED7102", "HED7103",
                 // HED7104: registered name also answered by another template; runtime id due to cross-assembly collision.
                 "HED7104"

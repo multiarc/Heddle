@@ -4,6 +4,8 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using Heddle.Data;
+using Heddle.Precompiled;
 
 namespace Heddle.Samples.Codegen
 {
@@ -24,6 +26,10 @@ namespace Heddle.Samples.Codegen
             CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
 
             var model = new BuildInfo { Project = "Heddle", Version = "2.0.0", Commit = "deadbeef" };
+
+            // The build pins Text + untrimmed directive lines for code generation; the typed entry
+            // validates ExpressionMode and TrimDirectiveLines against these process-wide defaults.
+            PrecompiledTemplates.DefaultOptions = new TemplateOptions { TrimDirectiveLines = false };
 
             // The generated typed entry point — no runtime parse or compile of the template.
             var rendered = global::Heddle.Generated.Templates_Report.Generate(model);

@@ -4,9 +4,11 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using Heddle;
 using Heddle.Benchmarks.Dotnet.Gate;
+using Heddle.Benchmarks.Dotnet.Models;
+using Heddle.Data;
 using Heddle.Precompiled;
-using Heddle.Runtime;
 
 namespace Heddle.Benchmarks.Dotnet.Engines
 {
@@ -22,25 +24,44 @@ namespace Heddle.Benchmarks.Dotnet.Engines
     /// timing a rope you never flatten. So this module asks the registry which keys actually
     /// have entries and registers cells for those only.</para>
     ///
-    /// <para><b>No precompiled tier since phase 1 (P1-W8):</b> the build-time generator is out of
-    /// the build, so this assembly carries no entries and every workload reports uncovered until
-    /// phase 2 restores the tier. The discovery mechanism is unchanged — one assembly, keyed on
-    /// row presence — so the tier comes back by registering entries, not by rewriting this
-    /// module.</para>
+    /// <para><b>Phase 2 tier:</b> the controlled-track entry templates precompile through
+    /// <c>Heddle.Build</c> (see the project file) into this assembly's artifact. Rendering goes
+    /// through the PUBLIC typed route — <see cref="PrecompiledTemplates.DefaultOptions"/> set to
+    /// the cell's options, <see cref="PrecompiledTemplates.BindTyped"/> once per workload, then
+    /// <see cref="HeddleTemplate.Generate"/> on the three sinks — the same objects a generated
+    /// wrapper uses. This harness deliberately is not one of the engine's friend assemblies: a
+    /// benchmark that needs private access to the thing it benchmarks is measuring something no
+    /// user can reach.</para>
     /// </summary>
     public static class Precompiled
     {
         private static readonly UTF8Encoding Utf8NoBom = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
         private static Dictionary<string, PrecompiledTemplateInfo> _entries;
+        private static readonly Dictionary<string, HeddleTemplate> _bound =
+            new Dictionary<string, HeddleTemplate>(StringComparer.Ordinal);
 
         /// <summary>Template key for a workload — every entry template is named for its
-        /// workload, composed-page included.</summary>
+        /// workload, composed-page included. The project file pins these bare-name keys through
+        /// the <c>Key</c> item metadata, so they match the generator-era keys.</summary>
         private static string KeyFor(string workload)
             => workload + ".heddle";
 
-        /// <summary>The precompiled entries this ONE assembly carries, keyed by template key.
-        /// Empty since P1-W8 removed the build-time tier; the Covered/Uncovered split below
-        /// states that gap instead of hiding it.</summary>
+        /// <summary>Per-workload compile settings: output profile, expression tier, model type.
+        /// Mirrors the runtime backend's table (HeddleEngine.Specs) so both backends compile and
+        /// validate under the same options.</summary>
+        private static readonly (string Workload, OutputProfile Profile, ExpressionMode Mode, Type ModelType)[] Specs =
+        {
+            ("composed-page", OutputProfile.Text, ExpressionMode.Native, typeof(ComposedModel)),
+            ("trivial-substitution", OutputProfile.Text, ExpressionMode.Native, typeof(SubstitutionContent.SubstitutionModel)),
+            ("large-loop", OutputProfile.Text, ExpressionMode.Native, typeof(LoopContent.LoopModel)),
+            ("mixed-page", OutputProfile.Text, ExpressionMode.Native, typeof(MixedContent.MixedModel)),
+            ("conditional-heavy", OutputProfile.Text, ExpressionMode.Native, typeof(ConditionalContent.ConditionalModel)),
+            ("fragment-heavy", OutputProfile.Text, ExpressionMode.Native, typeof(FragmentContent.FragmentModel)),
+            ("fortunes-encoded", OutputProfile.Html, ExpressionMode.Native, typeof(FortunesContent.FortuneModel)),
+            ("encoded-loop", OutputProfile.Html, ExpressionMode.Native, typeof(EncodedLoopContent.EncodedLoopModel)),
+        };
+
+        /// <summary>The precompiled entries this ONE assembly carries, keyed by template key.</summary>
         public static IReadOnlyDictionary<string, PrecompiledTemplateInfo> Entries()
         {
             if (_entries != null) return _entries;
@@ -57,42 +78,48 @@ namespace Heddle.Benchmarks.Dotnet.Engines
         public static IEnumerable<string> UncoveredWorkloads()
             => Corpus.GoldenCorpus.Workloads.Select(w => w.Id).Where(w => !Entries().ContainsKey(KeyFor(w)));
 
-        private static IProcessStrategy Root(string workload)
+        /// <summary>The bound typed entry for one workload, bound once. Sets
+        /// <see cref="PrecompiledTemplates.DefaultOptions"/> to the cell's options before binding,
+        /// exactly as a generated wrapper's host does.</summary>
+        private static HeddleTemplate Bound(string workload)
         {
-            if (!Entries().TryGetValue(KeyFor(workload), out var entry))
+            if (_bound.TryGetValue(workload, out var cached)) return cached;
+            var spec = Array.Find(Specs, s => s.Workload == workload);
+            if (spec.Workload == null) throw new ArgumentException($"unknown workload '{workload}'", nameof(workload));
+            if (!Entries().ContainsKey(KeyFor(workload)))
                 throw new InvalidOperationException(
                     $"no precompiled entry for '{workload}' — this cell should not have been registered.");
-            return entry.Strategy;
+            PrecompiledTemplates.DefaultOptions = new TemplateOptions("benchmarks-controlled")
+            {
+                OutputProfile = spec.Profile,
+                ExpressionMode = spec.Mode,
+            };
+            var bound = PrecompiledTemplates.BindTyped(typeof(Precompiled).Assembly, KeyFor(workload), spec.ModelType);
+            _bound[workload] = bound;
+            return bound;
         }
-
-        // No TemplateOptions are threaded through. The options-carrying PrecompiledRuntime
-        // overloads are `internal` (reachable only from Heddle's friend assemblies), and this
-        // harness deliberately is not one -- a benchmark that needs private access to the thing it
-        // benchmarks is measuring something no user can reach. The public overloads are correct
-        // here anyway: entries are emitted under fixed options, and the registry records that
-        // fingerprint, so the options are already baked into what is being rendered.
 
         /// <summary>Renders through one sink and returns the output as a string, for gating.</summary>
         public static string Render(string track, string workload, HeddleEngine.Sink sink)
         {
-            var root = Root(workload);
+            var bound = Bound(workload);
             var model = HeddleEngine.ModelFor(workload);
             switch (sink)
             {
                 case HeddleEngine.Sink.String:
-                    return PrecompiledRuntime.GenerateString(root, model, null, null);
+                    return bound.Generate(model);
 
                 case HeddleEngine.Sink.TextWriter:
                 {
                     var writer = new Materialisation.ChecksumTextWriter();
-                    PrecompiledRuntime.GenerateToWriter(root, model, null, null, writer);
-                    return PrecompiledRuntime.GenerateString(root, model, null, null);
+                    bound.Generate(model, writer);
+                    return bound.Generate(model);
                 }
 
                 case HeddleEngine.Sink.Utf8:
                 {
                     var buffer = new Materialisation.ChecksumBufferWriter();
-                    PrecompiledRuntime.GenerateUtf8(root, model, null, null, buffer);
+                    bound.Generate(model, buffer);
                     return Utf8NoBom.GetString(buffer.WrittenSpan);
                 }
 
@@ -106,15 +133,15 @@ namespace Heddle.Benchmarks.Dotnet.Engines
         /// caller's. No <c>track</c> parameter: this backend is controlled-track only, and accepting
         /// one it then ignored invited idiomatic-track rows that were silently controlled numbers.</summary>
         public static void RenderToBuffer(string workload, IBufferWriter<byte> buffer, object model)
-            => PrecompiledRuntime.GenerateUtf8(Root(workload), model, null, null, buffer);
+            => Bound(workload).Generate(model, buffer);
 
         /// <inheritdoc cref="RenderToBuffer"/>
         public static void RenderToWriter(string workload, TextWriter writer, object model)
-            => PrecompiledRuntime.GenerateToWriter(Root(workload), model, null, null, writer);
+            => Bound(workload).Generate(model, writer);
 
         /// <inheritdoc cref="RenderToBuffer"/>
         public static string RenderToString(string workload, object model)
-            => PrecompiledRuntime.GenerateString(Root(workload), model, null, null);
+            => Bound(workload).Generate(model);
 
         /// <summary>
         /// Gate cells for the covered workloads, controlled track only. Never in the cross-stack

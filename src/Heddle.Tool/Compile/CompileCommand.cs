@@ -85,7 +85,7 @@ namespace Heddle.Tool.Compile
                 {
                     // The engine reference is unreadable: the version lock cannot be checked, and the
                     // artifact must not be stamped with an unverified engine.
-                    diagnostics.Error(request.Project, "HED7035",
+                    diagnostics.Error(request.Project, HeddleDiagnosticIds.BuildEngineVersionMismatch,
                         "Heddle.Build " + buildVersion + " compiles with Heddle " +
                         FormatVersion(hostEngine) + " but the engine reference '" +
                         request.EngineReference + "' could not be read: " + ex.Message + ".");
@@ -94,7 +94,7 @@ namespace Heddle.Tool.Compile
 
                 if (referenced != hostEngine)
                 {
-                    diagnostics.Error(request.Project, "HED7035",
+                    diagnostics.Error(request.Project, HeddleDiagnosticIds.BuildEngineVersionMismatch,
                         "Heddle.Build " + buildVersion + " compiles with Heddle " +
                         FormatVersion(hostEngine) + " but the project references Heddle " +
                         FormatVersion(referenced) +
@@ -163,7 +163,7 @@ namespace Heddle.Tool.Compile
                     }
                     catch (ImageLoadException ex)
                     {
-                        diagnostics.Error(request.Project, "HED7036",
+                        diagnostics.Error(request.Project, HeddleDiagnosticIds.BuildImplementationImageNotLoaded,
                             "Implementation assembly '" + reference +
                             "' could not be loaded: " + ex.Message +
                             ". Templates naming its types cannot be compiled; fix the reference or " +
@@ -197,7 +197,7 @@ namespace Heddle.Tool.Compile
                 }
                 catch (Exception ex) when (ex is IOException || ex is BadImageFormatException)
                 {
-                    diagnostics.Error(request.Project, "HED7036",
+                    diagnostics.Error(request.Project, HeddleDiagnosticIds.BuildImplementationImageNotLoaded,
                         "Implementation assemblies could not be registered as model assemblies: " +
                         ex.Message + ".");
                     return 1;

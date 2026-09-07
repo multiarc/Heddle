@@ -7,10 +7,10 @@ Normative sources (read before non-trivial work): [docs/spec/README.md](docs/spe
 ## Commands
 
 - Build: `dotnet build -c Release` (whole solution, all TFMs)
-- Test: `dotnet test --project src/Heddle.Tests/Heddle.Tests.csproj` (xUnit v3 on MTP: the directory form is rejected; filters are MTP syntax after `--`; all TFMs, zero failures, suites run serially). Three suites carry tests — `Heddle.Tests`, `Heddle.LanguageServices.Tests`, `Heddle.Tool.Tests` (the generator suites left the build in phase 1, P1-W8) — and each gates its own membership from `src/<Suite>/test-classes.txt`; the gate runs all three.
+- Test: `dotnet test --project src/Heddle.Tests/Heddle.Tests.csproj` (xUnit v3 on MTP: the directory form is rejected; filters are MTP syntax after `--`; all TFMs, zero failures, suites run serially). Four suites carry tests — `Heddle.Tests`, `Heddle.LanguageServices.Tests`, `Heddle.Tool.Tests`, `Heddle.Build.Tests` (the generator suites left the build in phase 1, P1-W8) — and each gates its own membership from `src/<Suite>/test-classes.txt`; the gate runs all four.
 - Benchmarks: BenchmarkDotNet in `benchmarks/dotnet` (not in the solution; gate first: `dotnet run -c Release --project benchmarks/dotnet -- gate`); cross-stack harness contract in `benchmarks/docs/`
 - Docs site: `cd docs && npm run docs:build`
-- Merge gate (one combined run): build → all three test suites → no diff in `src/Heddle.Language/generated/` → benchmarks if a hot path was touched → docs build if docs changed
+- Merge gate (one combined run): build → all four test suites → no diff in `src/Heddle.Language/generated/` → benchmarks if a hot path was touched → docs build if docs changed
 - Grammar: edit `.g4` → `src/Heddle.Language/generate_cs.cmd` (ANTLR 4.13.1) → commit both. Never hand-edit `src/Heddle.Language/generated/`.
 
 ## Hard rules

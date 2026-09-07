@@ -24,6 +24,7 @@ src/Heddle.Tests/TestOutput/**                    text eol=lf
 src/Heddle.Tests/Streaming/**                     text eol=lf
 src/Heddle.Generator.Tests/Snapshots/**           text eol=lf
 src/Heddle.Generator.IntegrationTests/Fixtures/** text eol=lf
+src/Heddle.Build.Tests/Fixtures/**             text eol=lf
 src/Heddle.LanguageServices.Tests/Corpus/**       text eol=lf
 src/Heddle.Demo.Wasm/contract-fixtures/**         text eol=lf
 

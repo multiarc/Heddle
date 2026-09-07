@@ -334,6 +334,21 @@ namespace Heddle.Data
         /// machine that could observe.</summary>
         public const string BuildEngineNotObserved = "HED7034";
 
+        /// <summary>The <c>Heddle.Build</c> package's engine version differs from the <c>Heddle</c> package
+        /// the project references; the artifact is stamped with the engine that compiled it, so the two
+        /// must be equal.</summary>
+        public const string BuildEngineVersionMismatch = "HED7035";
+
+        /// <summary>An implementation assembly the build must bind over — a project reference's output, a
+        /// package's runtime image, a declared <c>HeddleModelAssembly</c>/<c>HeddleExtensionAssembly</c> item —
+        /// could not be loaded; names the path and the loader's message.</summary>
+        public const string BuildImplementationImageNotLoaded = "HED7036";
+
+        /// <summary>A retired MSBuild property (<c>HeddleObserveEngine</c>, <c>HeddleNodeFallback</c>,
+        /// <c>HeddleEmitUtf8Pieces</c>) is set; it is ignored. Warned in phase 4; the observe-path
+        /// properties retire silently.</summary>
+        public const string BuildRetiredPropertySet = "HED7037";
+
         /// <summary>A precompiled entry failed the run-time gauntlet, so the render degrades to the dynamic
         /// tier (carried on <c>PrecompiledFallbackEvent.DiagnosticId</c>).</summary>
         public const string PrecompiledGauntletFallback = "HED7101";

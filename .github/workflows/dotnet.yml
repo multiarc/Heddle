@@ -54,6 +54,8 @@ jobs:
       run: .github/scripts/dotnet-test-guarded.sh src/Heddle.LanguageServices.Tests/Heddle.LanguageServices.Tests.csproj -c Debug --no-restore
     - name: Test tool suite (Debug)
       run: .github/scripts/dotnet-test-guarded.sh src/Heddle.Tool.Tests/Heddle.Tool.Tests.csproj -c Debug --no-restore
+    - name: Test build suite (Debug)
+      run: .github/scripts/dotnet-test-guarded.sh src/Heddle.Build.Tests/Heddle.Build.Tests.csproj -c Debug --no-restore
 
   # Every commit in a contributed pull request must carry its Signed-off-by before anything
   # built from it is published. Releases from main are not gated — they are the maintainer's

@@ -33,6 +33,8 @@ jobs:
           - custom-extensions
           - component-props-slots
           - streaming-ssr
+          - precompiled-app
+          - codegen-t4-successor
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v7
