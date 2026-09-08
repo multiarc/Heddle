@@ -6,8 +6,8 @@ namespace Heddle.Precompiled
     /// <summary>
     /// The <b>reflection</b> adapter of <see cref="AqnFormatter"/> — the run-tier half of the manifest
     /// identity contract. Decomposes a <see cref="Type"/> into the namespace / nesting-chain / assembly-simple-name
-    /// triple the shared formatter joins; the Roslyn adapter in <c>Heddle.Generator</c> does the same over
-    /// <c>INamedTypeSymbol</c>, so the two spellings can no longer drift.
+    /// triple the shared formatter joins; the build host resolves the same identity over the assemblies it
+    /// binds, so the two spellings can no longer drift.
     /// </summary>
     internal static class ReflectionTypeIdentity
     {

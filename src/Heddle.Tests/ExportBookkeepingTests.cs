@@ -12,8 +12,8 @@ namespace Heddle.Tests
     /// of the runtime's <c>AddOrReplace</c> merge semantics — the rule that decides how many manifest rows a function
     /// name gets and what each row's overload count is — and the gauntlet compares those counts <em>exactly</em>, in
     /// both directions. An untested rule in that position is critical.
-    /// <para>Lives in <c>Heddle.Tests</c> deliberately: the file compiles into the <c>Heddle</c> assembly, so a
-    /// mutation of it reddens a <b>runtime</b> leg rather than only the generator's.</para>
+    /// <para>Lives in <c>Heddle.Tests</c> deliberately: the file compiles into the <c>Heddle</c> assembly, so this
+    /// is the suite that reddens on a mutation.</para>
     /// </summary>
     public class ExportBookkeepingTests
     {

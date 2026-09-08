@@ -1,7 +1,7 @@
 using System;
 using System.Dynamic;
 using System.Threading.Tasks;
-using Heddle.Precompiled;
+using Heddle.Runtime.Parameters;
 using Microsoft.CSharp.RuntimeBinder;
 using Xunit;
 
@@ -17,34 +17,36 @@ namespace Heddle.Tests
     }
 
     /// <summary>
-    /// <see cref="PrecompiledRuntime.DynamicMember"/> is the sole implementation to prevent drift between engine
-    /// and generated code; they previously inlined <c>(dynamic)</c> casts that bind in the consumer's assembly
-    /// context and see internal members the engine's dynamic tier (binding in <c>Heddle</c>'s context) cannot.
-    /// These tests pin the once-chosen behavior.
+    /// The dynamic hop chain, through <see cref="DynamicParameter.GetDynamicPropertyChainAccessor"/> — the
+    /// binder-context fact survives the 2.x removal: the binder is created for <c>Heddle</c>'s context, so a
+    /// consumer-assembly member the engine's dynamic tier cannot see stays unreadable here too. These tests
+    /// pin the once-chosen behavior.
     /// </summary>
     public class DynamicMemberTests
     {
+        private static object Read(object model, params string[] names) =>
+            DynamicParameter.GetDynamicPropertyChainAccessor(names).Compile()(model);
+
         [Fact]
         public void NullReceiverPropagatesNull()
         {
-            Assert.Null(PrecompiledRuntime.DynamicMember(null, "Name"));
+            Assert.Null(Read(null, "Name"));
         }
 
         [Fact]
         public void ReadsAPublicMember()
         {
-            Assert.Equal("x", PrecompiledRuntime.DynamicMember(new DynamicHopModel { Name = "x" }, "Name"));
+            Assert.Equal("x", Read(new DynamicHopModel { Name = "x" }, "Name"));
         }
 
         [Fact]
         public void ChainsHopByHop_WithNullPropagationAtEveryStep()
         {
             var model = new DynamicHopModel { Next = new DynamicHopModel { Name = "deep" } };
-            var hop = PrecompiledRuntime.DynamicMember(PrecompiledRuntime.DynamicMember(model, "Next"), "Name");
-            Assert.Equal("deep", hop);
+            Assert.Equal("deep", Read(model, "Next", "Name"));
 
             var missing = new DynamicHopModel();
-            Assert.Null(PrecompiledRuntime.DynamicMember(PrecompiledRuntime.DynamicMember(missing, "Next"), "Name"));
+            Assert.Null(Read(missing, "Next", "Name"));
         }
 
         [Fact]
@@ -52,36 +54,38 @@ namespace Heddle.Tests
         {
             dynamic bag = new ExpandoObject();
             bag.Title = "t";
-            Assert.Equal("t", PrecompiledRuntime.DynamicMember(bag, "Title"));
+            Assert.Equal("t", Read(bag, "Title"));
         }
 
         [Fact]
         public void BindsInHeddlesContext_SoAForeignInternalMemberStaysInvisible()
         {
-            // The engine's behavior is normative and the generator reproduces it. Note the deliberate asymmetry
+            // The engine's behavior is normative and the chain reproduces it. Note the deliberate asymmetry
             // this preserves — the *typed* member tier accepts an internal getter regardless of assembly;
             // harmonizing the two is a breaking-window candidate, not a drift fix.
             Assert.Throws<RuntimeBinderException>(
-                () => PrecompiledRuntime.DynamicMember(new DynamicHopModel { Secret = "s" }, "Secret"));
+                () => Read(new DynamicHopModel { Secret = "s" }, "Secret"));
         }
 
         [Fact]
         public void UnknownMemberThrowsTheBindersOwnError()
         {
-            Assert.Throws<RuntimeBinderException>(() => PrecompiledRuntime.DynamicMember(new DynamicHopModel(), "Nope"));
+            Assert.Throws<RuntimeBinderException>(() => Read(new DynamicHopModel(), "Nope"));
         }
 
         [Fact]
         public void CallSiteCacheIsThreadSafe()
         {
             var model = new DynamicHopModel { Name = "n" };
-            Parallel.For(0, 512, _ => Assert.Equal("n", PrecompiledRuntime.DynamicMember(model, "Name")));
+            var accessor = DynamicParameter.GetDynamicPropertyChainAccessor(new[] { "Name" }).Compile();
+            Parallel.For(0, 512, _ => Assert.Equal("n", accessor(model)));
         }
 
         [Fact]
-        public void NullNameIsAProgrammingError()
+        public void EmptyHopChainIsAProgrammingError()
         {
-            Assert.Throws<ArgumentNullException>(() => PrecompiledRuntime.DynamicMember(new DynamicHopModel(), null));
+            Assert.Throws<ArgumentException>(() =>
+                DynamicParameter.GetDynamicPropertyChainAccessor(Array.Empty<string>()));
         }
     }
 }

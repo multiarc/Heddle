@@ -23,19 +23,18 @@ namespace Heddle.Language.Binding
     }
 
     /// <summary>
-    /// The shared assignability conformance corpus. One data source, two drivers — a reflection-side
-    /// test in <c>Heddle.Tests</c> and a symbol-side test in <c>Heddle.Generator.Tests</c> — in the
-    /// <c>DefaultFunctionLockstepTests</c> mould.
-    /// <para>The relation itself cannot be shared (it <em>is</em> the type graph); what this corpus pins is that
-    /// the Roslyn adapter's corrections land it on the <b>CLR's</b> answer, including the two nullable rows where
-    /// Roslyn's conversion classification and the CLR disagree in opposite directions, and the variance /
-    /// <c>ValueTuple</c> rows the research named as the anticipated-but-untested third disagreement class.</para>
+    /// The shared assignability conformance corpus. One data source; the reflection-side driver in
+    /// <c>Heddle.Tests</c> is the surviving consumer (the symbol-side driver went with the deleted 2.x
+    /// generator suite).
+    /// <para>The relation itself cannot be shared (it <em>is</em> the type graph); what this corpus pins is the
+    /// <b>CLR's</b> answer, including the two nullable rows where Roslyn's conversion classification and the CLR
+    /// disagree in opposite directions, and the variance / <c>ValueTuple</c> rows the research named as the
+    /// anticipated-but-untested third disagreement class.</para>
     /// <para><b>Expected values were generated from live reflection</b> (2026-07-26,
-    /// <c>target.IsAssignableFrom(source)</c> over .NET 10) and committed — the corpus asserts "the Roslyn adapter
-    /// equals the CLR", never "equals what the author believed". The reflection-side driver re-derives them from
-    /// the live relation on every run, so a wrong committed value is a red build on both sides.</para>
-    /// <para>Spellings are both legal C# (for the symbol driver's <c>typeof</c> probe) and resolvable by
-    /// <c>ReflectionHelper.ResolveType</c> (for the reflection driver).</para>
+    /// <c>target.IsAssignableFrom(source)</c> over .NET 10) and committed — the corpus asserts "the committed
+    /// values equal the CLR", never "equal what the author believed". The reflection-side driver re-derives them from
+    /// the live relation on every run, so a wrong committed value is a red build.</para>
+    /// <para>Spellings are resolvable by <c>ReflectionHelper.ResolveType</c>.</para>
     /// </summary>
     internal static class AssignabilityCorpus
     {

@@ -8,8 +8,8 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Reflection-side driver of <see cref="PropLayoutCore"/>, paired with a generator-side twin to assert
-    /// identical slot order and fault sequences across the two implementations.
+    /// Reflection-side driver of <see cref="PropLayoutCore"/>, pinning slot order and fault sequences.
+    /// (The generator-side twin assertion went with the deleted 2.x generator suite.)
     /// </summary>
     public class PropLayoutCoreReflectionTests
     {

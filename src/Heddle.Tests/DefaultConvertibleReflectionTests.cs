@@ -5,10 +5,9 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// The reflection side of the prop-default conversion lockstep. Same rows as
-    /// <c>Heddle.Generator.Tests.DefaultConvertibleLockstepTests</c>, from the linked
-    /// <see cref="PropDefaultConversionVectors"/>: the runtime is normative, the emitter's symbol-side table must
-    /// answer identically, and the vectors are what make "identically" checkable rather than asserted by eye.
+    /// The reflection side of the prop-default conversion lockstep. Same rows the deleted 2.x generator
+    /// suite asserted, from the linked <see cref="PropDefaultConversionVectors"/>: the runtime is normative,
+    /// and the vectors are what make that checkable rather than asserted by eye.
     /// </summary>
     public class DefaultConvertibleReflectionTests
     {

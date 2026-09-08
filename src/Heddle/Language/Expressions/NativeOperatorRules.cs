@@ -3,22 +3,22 @@ namespace Heddle.Language.Expressions
     /// <summary>What the shared operator table says about one operator applied to one pair of operand kinds.</summary>
     internal enum OperatorVerdict
     {
-        /// <summary>Verbatim C# emission is provably byte-equivalent to the runtime result — the generator may
+        /// <summary>Verbatim C# emission is provably byte-equivalent to the runtime result — the build printer may
         /// emit.</summary>
         Supported,
 
         /// <summary>Legal in the native tier, but its semantics are runtime-owned (one of the documented deviations,
-        /// or an operand whose facts the table cannot decide). The generator degrades; the dynamic tier evaluates it
+        /// or an operand whose facts the table cannot decide). Printing is refused; the dynamic tier evaluates it
         /// with the runtime's own compiler.</summary>
         RequiresRuntimeSemantics,
 
-        /// <summary>The native tier rejects it with a positioned error. The generator degrades, and the dynamic tier
+        /// <summary>The native tier rejects it with a positioned error. The build refuses to print it, and the dynamic tier
         /// raises that same error — so the two tiers reach the same verdict rather than opposite ones.</summary>
         NotDefined
     }
 
     /// <summary>
-    /// Decision table for native-tier operator semantics. Ensures generator and runtime reach the same verdict
+    /// Decision table for native-tier operator semantics. Ensures the printed tier and runtime reach the same verdict
     /// where exact, or both degrade where not. Exact for Numeric, Bool, String, Enum, NullLiteral; inexact for
     /// Reference, Other, Unknown (runtime-owned).
     /// </summary>
@@ -102,7 +102,7 @@ namespace Heddle.Language.Expressions
                 switch (witness)
                 {
                     case OperatorWitness.Bound:
-                        return OperatorVerdict.Supported;   // via the RuntimeOperators adapter
+                        return OperatorVerdict.Supported;
                     case OperatorWitness.Absent:
                         return OperatorVerdict.NotDefined;
                     default:
@@ -159,7 +159,7 @@ namespace Heddle.Language.Expressions
                 switch (witness)
                 {
                     case OperatorWitness.Bound:
-                        return OperatorVerdict.Supported;   // via the RuntimeOperators adapter; bool-returning
+                        return OperatorVerdict.Supported;
                     case OperatorWitness.Absent:
                         return OperatorVerdict.NotDefined;
                     default:
@@ -222,10 +222,10 @@ namespace Heddle.Language.Expressions
 
             // Mixed/unrelated operands run the engine's equality TAIL — a user-defined operator where the
             // pair binds one, null-safe object.Equals for the rest. That tail is TOTAL where both sides are
-            // statically null-assignable, so those pairs emit through the RuntimeOperators adapter, which
-            // replays the same chain over the same static types (see EqualityViaAdapter). A pair with a
-            // non-nullable value side can still reach the engine's HED1008 refusal and stays runtime-owned:
-            // a refusal stated at template compile must not become a render-time throw.
+            // statically null-assignable, so those pairs evaluate through the engine's own fallback chain
+            // (see EqualityViaAdapter). A pair with a non-nullable value side can still reach the engine's
+            // HED1008 refusal and stays runtime-owned: a refusal stated at template compile must not become
+            // a render-time throw.
             if (left.IsNullAssignable && right.IsNullAssignable)
                 return OperatorVerdict.Supported;
 
@@ -250,7 +250,7 @@ namespace Heddle.Language.Expressions
                 switch (witness)
                 {
                     case OperatorWitness.Bound:
-                        return OperatorVerdict.Supported;   // via the RuntimeOperators adapter
+                        return OperatorVerdict.Supported;
                     case OperatorWitness.Absent:
                         return OperatorVerdict.NotDefined;
                     default:
@@ -261,11 +261,10 @@ namespace Heddle.Language.Expressions
             return OperatorVerdict.NotDefined;
         }
 
-        /// <summary>Whether a <see cref="OperatorVerdict.Supported"/> equality emits through
-        /// <c>Heddle.Precompiled.RuntimeOperators</c> rather than verbatim: the mixed/unrelated pairs whose
-        /// semantics live in the engine's fallback chain, and the pairs a user-operator witness proved. The
-        /// verbatim shapes — a null comparison, promoted numerics, matched bools, strings, one enum type —
-        /// keep the C# operator.</summary>
+        /// <summary>Whether a <see cref="OperatorVerdict.Supported"/> equality evaluates through the
+        /// engine's fallback chain rather than verbatim: the mixed/unrelated pairs whose semantics live in
+        /// that chain, and the pairs a user-operator witness proved. The verbatim shapes — a null comparison,
+        /// promoted numerics, matched bools, strings, one enum type — keep the C# operator.</summary>
         public static bool EqualityViaAdapter(in OperandKind left, in OperandKind right,
             OperatorWitness witness = OperatorWitness.Unknown)
         {

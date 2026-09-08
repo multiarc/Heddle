@@ -7,9 +7,9 @@ namespace Heddle.Core
 {
     /// <summary>
     /// <para>The render-time decorator of a parameter-declaring extension. Binds the call
-    /// site's <c>[Prop]</c> values (the dynamic tier's <see cref="PropsBinder"/>, or the precompiled frozen
-    /// prototype + <see cref="PrecompiledPropSetter"/>s) and installs the parameter frame
-    /// (<see cref="Scope.WithExtensionParameters"/>) before delegating to the inner user extension.</para>
+    /// site's <c>[Prop]</c> values through the <see cref="PropsBinder"/> and installs the parameter
+    /// frame (<see cref="Scope.WithExtensionParameters"/>) before delegating to the inner user
+    /// extension.</para>
     /// <para><b>Attribute-transparent (security-sensitive):</b> the carrier carries neither
     /// <c>[EncodeOutput]</c> nor <c>[NotEncode]</c>, so it must never be the type the compiler's attribute
     /// reflection observes — the inner is fully initialized (render type, <c>InitStart</c>, deferred
@@ -25,23 +25,11 @@ namespace Heddle.Core
         private readonly IExtension _inner;
         private readonly ExtensionParameterMap _map;
         private readonly PropsBinder _binder;
-        private readonly object[] _prototype;
-        private readonly PrecompiledPropSetter[] _setters;
 
         internal ExtensionParameterCarrier(IExtension inner, PropsBinder binder, ExtensionParameterMap map)
         {
             _inner = inner;
             _binder = binder;
-            _map = map;
-            Position = (inner as AbstractExtension)?.Position ?? Position;
-        }
-
-        internal ExtensionParameterCarrier(IExtension inner, object[] prototype, PrecompiledPropSetter[] setters,
-            ExtensionParameterMap map)
-        {
-            _inner = inner;
-            _prototype = prototype;
-            _setters = setters;
             _map = map;
             Position = (inner as AbstractExtension)?.Position ?? Position;
         }
@@ -53,16 +41,7 @@ namespace Heddle.Core
         {
             if (_binder != null)
                 return _binder.Bind(scope);
-            if (_prototype == null)
-                return null;
-            if (_setters == null || _setters.Length == 0)
-                return _prototype;
-
-            var values = (object[]) _prototype.Clone();
-            var callerView = scope.Parent();
-            foreach (var setter in _setters)
-                values[setter.Index] = setter.Evaluate(callerView);
-            return values;
+            return null;
         }
 
         public override object ProcessData(in Scope scope)

@@ -4,7 +4,7 @@ namespace Heddle.Data
 {
     /// <summary>
     /// <para>The one line-start index behind every Heddle position surface: the
-    /// generator's <c>#line</c> mapper, the language server's LSP positions, and the <see cref="LinePosition"/>
+    /// build's <c>#line</c> mapper, the language server's LSP positions, and the <see cref="LinePosition"/>
     /// <see cref="HeddleCompileResult"/> attaches to a diagnostic. Before this type they were three indexes with
     /// two different <c>'\r'</c> rules, so one offset could render as three different columns.</para>
     /// <para><b>The canonical rule.</b> A line starts at offset 0 and after each <c>'\n'</c>. A <c>'\r'</c> is
@@ -13,8 +13,8 @@ namespace Heddle.Data
     /// <c>'\r'</c>-only document is one line. Offsets, columns and line lengths count UTF-16 code units, matching
     /// LSP's default <c>utf-16</c> position encoding, <c>BlockPosition</c>'s storage, and Roslyn's
     /// <c>SourceText</c> line semantics for the <c>#line</c> consumer.</para>
-    /// <para>Kept in <c>Data/</c> beside <see cref="LinePosition"/>, dependency-free and netstandard2.0, so it
-    /// links into the source generator as-is.</para>
+    /// <para>Kept in <c>Data/</c> beside <see cref="LinePosition"/>, dependency-free and netstandard2.0,
+    /// shared by every position consumer.</para>
     /// </summary>
     internal sealed class LineIndex
     {

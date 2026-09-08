@@ -43,6 +43,7 @@ namespace Heddle.Benchmarks.Dotnet.Bench
         {
             typeof(TechniqueRuntimeBenchmarks),
             typeof(TechniquePrecompiledBenchmarks),
+            typeof(TechniquePrecompiledDataOnlyBenchmarks),
         };
 
         public static Type[] InternalTypes => new[]

@@ -79,20 +79,20 @@ namespace Heddle.Data
     /// the generator's Roslyn <c>DiagnosticDescriptor</c>s, and two documentation tables — and had already
     /// drifted.</para>
     /// <para>Pure data over <see cref="string"/> and a two-value enum: no Roslyn, no dependencies, netstandard2.0,
-    /// so the file links into the source generator as-is and the generator's descriptor factory is the only place
-    /// that touches <c>DiagnosticDescriptor</c>. The documentation-side registries are gated against this
-    /// table by <c>DiagnosticIdTests</c> and the generator's registry lockstep test.</para>
+    /// so the build host formats from this table through <c>MessageFormat</c> rather than carrying a second copy.
+    /// The documentation-side registries are gated against this table by <c>DiagnosticIdTests</c> and the registry
+    /// lockstep test.</para>
     /// <para><b>Content authority.</b> For a runtime-raised id the raise site is authoritative for severity;
     /// <see cref="HeddleDiagnosticInfo.MessageFormat"/> stays <c>null</c> there, because the raise site is also
-    /// its message's only owner. For the <c>HED7xxx</c> block — which the runtime never raises — the shipped
-    /// generator descriptors are authoritative, and those rows do carry the format: the descriptor projection is
+    /// its message's only owner. For the <c>HED7xxx</c> block — which the runtime never raises — the build host's
+    /// projection is authoritative, and those rows do carry the format: the projection is
     /// the second consumer that makes the knowledge shared rather than duplicated.</para>
     /// </summary>
     internal static class HeddleDiagnosticCatalog
     {
-        /// <summary>Vocabulary both tiers' <c>[Prop]</c> declaration validators consume, so the rule exists once
-        /// rather than as matching literals in the runtime's <c>PropLayout</c>, the parser's def-header
-        /// pre-check, and the generator's emitter twin.</summary>
+        /// <summary>Vocabulary the <c>[Prop]</c> declaration validators consume, so the rule exists once
+        /// rather than as matching literals in the runtime's <c>PropLayout</c> and the parser's def-header
+        /// pre-check.</summary>
         public static class PropFaults
         {
             /// <summary>Names a <c>[Prop]</c>/def-header parameter may not take: they are the call-shape
@@ -225,7 +225,7 @@ namespace Heddle.Data
             Add(HeddleDiagnosticIds.FunctionRequiresExpressionArguments, "Function requires expression arguments",
                 error);
             // Carries MessageFormat because the id has TWO formatting consumers: the engine's expression
-            // compiler and the generator, which forwards the same id rather than minting a HED7xxx twin —
+            // compiler and the build host, which forwards the same id rather than minting a HED7xxx twin —
             // same fact, same id, same sentence on both tiers.
             Add(HeddleDiagnosticIds.DivisionByConstantZero, "Division by constant zero", error,
                 "Operator '{0}' has a constant zero divisor; the expression can only throw when rendered, so it " +
@@ -273,7 +273,7 @@ namespace Heddle.Data
             Add(HeddleDiagnosticIds.RegionNotPublic, "Region is not public", error);
             Add(HeddleDiagnosticIds.DuplicateRegionDeclaration, "Duplicate region declaration", error);
 
-            // These rows carry MessageFormat: the generator's descriptor factory projects them, so the format is
+            // These rows carry MessageFormat: the build host's projection formats them, so the format is
             // shared knowledge rather than a second copy.
             Add(HeddleDiagnosticIds.BuildUnreadableFile, "Unreadable Heddle template", error,
                 "Heddle template '{0}' could not be read: {1}");
@@ -289,14 +289,18 @@ namespace Heddle.Data
             // why, so a new spelling or a new reason needs no new descriptor.
             Add(HeddleDiagnosticIds.BuildInvalidKeyMetadata, "Invalid Heddle template key metadata", error,
                 "Invalid Heddle template key metadata on '{0}': {1}");
+            // Retired in place: no build raises this id; the row stays so the id is never reused.
             Add(HeddleDiagnosticIds.BuildSurrogatePiece, "Unpaired surrogate in static text", warning,
                 "Static text in '{0}' contains an unpaired surrogate; UTF-8 pre-encoded pieces are disabled for " +
                 "this template. Byte-sink renders will transcode at run time.");
+            // Retired in place: no build raises this id; the row stays so the id is never reused.
             Add(HeddleDiagnosticIds.BuildExtensionNotBindable, "Extension not bindable", error,
                 "Cannot find extension <{0}> in the referenced assemblies. Reference the assembly that defines " +
                 "it, or correct the name.");
+            // Retired as a generator-issued diagnostic; the build host still raises the same fact.
             Add(HeddleDiagnosticIds.BuildUnresolvableModelType, "Unresolvable model type", error,
                 "Model type '{0}' is not defined in this compilation or its references");
+            // Retired in place: no build raises this id; the row stays so the id is never reused.
             Add(HeddleDiagnosticIds.BuildUnresolvableMember, "Unresolvable member path", error,
                 "'{0}' does not contain an accessible member '{1}' (member path '{2}')");
             Add(HeddleDiagnosticIds.BuildOptionParseError, "Invalid Heddle build option", error,
@@ -324,21 +328,25 @@ namespace Heddle.Data
                 "build-time work is not being done for this template. Where precompilation is a requirement " +
                 "rather than an optimisation, make this fatal with " +
                 "<WarningsAsErrors>HED7031</WarningsAsErrors>.");
+            // Retired in place: no build raises this id; the row stays so the id is never reused.
             Add(HeddleDiagnosticIds.BuildExtensionOverridesHook, "Extension overrides a compile-time hook", warning,
                 "Extension <{0}> ({1}) overrides {2}, compile-time logic this build has not read; precompiled " +
                 "binding would silently skip it, so this template renders through the dynamic path at run time " +
                 "instead. The output is identical either way. To pre-compile it, keep the extension's " +
                 "compile-time behavior in the base implementation.");
+            // Retired in place: no build raises this id; the row stays so the id is never reused.
             Add(HeddleDiagnosticIds.BuildBranchRoleMissingScopeChannel, "Branch role without scope channel",
                 warning,
                 "Branch continuation/terminal '{0}' does not carry [ScopeChannel]. It cannot read the branch " +
                 "state at render time.");
+            // Retired in place: no build raises this id; the row stays so the id is never reused.
             Add(HeddleDiagnosticIds.BuildMalformedExtensionParameter, "Malformed extension parameter", error,
                 "Extension <{0}> declares a malformed [Prop] parameter: {1}");
             Add(HeddleDiagnosticIds.BuildTemplateOutsideRoot, "Heddle template outside the template root", warning,
                 "Heddle template '{0}' is not under the template root '{1}', so its directory is dropped and it " +
                 "registers under the flattened key '{2}'. Set HeddleTemplateRoot to a directory containing it, or " +
                 "give the item an explicit Key metadata.");
+            // Retired in place: no build raises this id; the row stays so the id is never reused.
             Add(HeddleDiagnosticIds.BuildEngineVersionUnresolved, "Heddle engine version could not be resolved",
                 warning,
                 "The Heddle engine assembly is not visible among this compilation's references, so the manifest " +
@@ -349,18 +357,22 @@ namespace Heddle.Data
                 "{0} The container exports no functions, and Heddle's runtime registry throws when the host " +
                 "assembly is registered. Make the container a public static class, or drop it from the " +
                 "[assembly: ExportFunctions(...)] list.");
+            // Retired in place: no build raises this id; the row stays so the id is never reused.
             Add(HeddleDiagnosticIds.BuildUnknownOutputProfile, "Unknown output profile", error,
                 "Unknown output profile '{0}'. Valid values: text, html. The Heddle runtime rejects this template " +
                 "with HED2001, so the build reports it here rather than pre-compiling output the dynamic tier " +
                 "would never produce.");
+            // Retired in place: no build raises this id; the row stays so the id is never reused.
             Add(HeddleDiagnosticIds.BuildAmbiguousTypeName, "Ambiguous type name", error,
                 "The type name '{0}' is ambiguous — more than one imported namespace declares it. Qualify it, or " +
                 "remove one of the @using imports. The Heddle runtime raises the same ambiguity when it resolves " +
                 "this name.");
+            // Retired in place: no build raises this id; the row stays so the id is never reused.
             Add(HeddleDiagnosticIds.BuildRegionNotPublic, "Region is not public", error,
                 "Region '{0}' of definition '{1}' is private and cannot be overridden from a call site. Mark it " +
                 "public with '<:{0}>' in the definition, or remove this override. The Heddle runtime raises the " +
                 "same error (HED5019) when it compiles this template.");
+            // Retired in place: no build raises this id; the row stays so the id is never reused.
             Add(HeddleDiagnosticIds.BuildFunctionCallNotBindable, "Function call cannot be bound", error,
                 "{0} The Heddle runtime rejects the same call with {1} when it compiles this template, so the " +
                 "build reports it here rather than pre-compiling a call it has already proved illegal. Cast an " +
@@ -376,6 +388,7 @@ namespace Heddle.Data
             // error-obsolescence alike, because from the consumer's side they are one situation with one shape:
             // something the engine reads by reflection is spelled in a way this assembly's compiler rejects.
             // Splitting them would say the same sentence at several ids.
+            // Retired in place: no build raises this id; the row stays so the id is never reused.
             Add(HeddleDiagnosticIds.BuildInaccessibleModelSymbol,
                 "Symbol cannot be named by generated code", warning,
                 "'{0}' cannot be named by code generated into this compilation, so this template cannot be " +
@@ -397,6 +410,7 @@ namespace Heddle.Data
                 "identical either way.");
             // Observation is an optimisation, so its absence is news rather than a fault: the template still
             // precompiles, through the engine's own accessors, and renders the same bytes either way.
+            // Retired in place: no build raises this id; the row stays so the id is never reused.
             Add(HeddleDiagnosticIds.BuildEngineNotObserved,
                 "Heddle build could not observe a real engine compile", info,
                 "Heddle could not observe a real engine compile ({0}). Bodies whose model type only an extension's " +
@@ -414,7 +428,7 @@ namespace Heddle.Data
             Add(HeddleDiagnosticIds.BuildRetiredPropertySet, "Retired MSBuild property is set", warning,
                 "The MSBuild property '{0}' is retired and ignored; delete it from the project.");
             Add(HeddleDiagnosticIds.BuildEmitterFault, "Heddle template emitter fault", error,
-                "The Heddle template emitter failed on '{0}': {1}: {2}. This is a generator defect rather than a " +
+                "The Heddle template emitter failed on '{0}': {1}: {2}. This is a build defect rather than a " +
                 "template error — please report it; setting Precompile=\"false\" on the item unblocks the build " +
                 "in the meantime (the template then renders through the dynamic path).");
 

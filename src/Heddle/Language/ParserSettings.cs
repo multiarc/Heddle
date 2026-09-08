@@ -7,9 +7,9 @@ namespace Heddle.Language
     /// <para>The parse-time configuration seam. Abstracts the two couplings the shared front end
     /// had on the runtime <c>CompileContext</c>: the import root path and the <c>@&lt;&lt;</c> file IO. The runtime
     /// path builds one of these from <see cref="Heddle.Data.TemplateOptions"/> (via the
-    /// <see cref="DocumentParser.Parse(string, CompileContext, out string)"/> adapter); the build-time generator
-    /// builds one whose <see cref="ImportReader"/> serves import content from <c>AdditionalFiles</c> rather than
-    /// disk, keeping generation deterministic and incremental.</para>
+    /// <see cref="DocumentParser.Parse(string, CompileContext, out string)"/> adapter); the build host
+    /// builds one whose <see cref="ImportReader"/> serves import content from the collected import map rather than
+    /// disk, keeping the build deterministic and incremental.</para>
     /// <para>Behavior-preserving by construction: a <see cref="ImportReader"/> of <c>null</c> falls back to the
     /// exact <c>File.OpenText(Path.Combine(RootPath, path))</c> read the listener performed inline before the seam
     /// existed.</para>
@@ -26,7 +26,7 @@ namespace Heddle.Language
         /// <summary>
         /// Serves the content of an <c>@&lt;&lt;</c> import. The argument is the import path exactly as written in the
         /// template (resolver-relative). When <c>null</c>, imports are read from disk via
-        /// <see cref="ReadImport(string)"/>'s default. A generator supplies a reader that resolves against the
+        /// <see cref="ReadImport(string)"/>'s default. A build host supplies a reader that resolves against the
         /// collected import map, records the transitive closure, and never touches the file system.
         /// </summary>
         public Func<string, string> ImportReader { get; set; }
@@ -48,10 +48,9 @@ namespace Heddle.Language
             if (ImportReader != null)
                 return ImportReader(importPath);
 
-            // RS1035 (no file IO in analyzers) fires because this file is linked into the generator, but the
-            // fallback below is the RUNTIME half of the seam: the generator always supplies an ImportReader
-            // serving AdditionalFiles — that is what this class exists to make possible — so in an analyzer
-            // context this read is unreachable, not exempted.
+            // The disk fallback below runs only where no ImportReader is supplied: the build host always
+            // supplies one serving the collected import map — that is what this class exists to make
+            // possible — so the file-system read is the runtime path, not an exemption.
 #pragma warning disable RS1035
             var resolvedPath = Path.Combine(RootPath ?? string.Empty, importPath);
             using (var file = File.OpenText(resolvedPath))

@@ -56,11 +56,11 @@ namespace Heddle.Tests
                 new CompileContext(renderOptions, modelType == null ? ExType.Dynamic : new ExType(modelType)));
             Assert.True(dynamic.CompileResult.Success, "Dynamic reference failed to compile.");
             Assert.Equal(dynamic.Generate(model),
-                PrecompiledRuntime.GenerateString(result.Strategy, model, null, null));
+                CompiledFormHarness.RenderStrategy(result.Strategy, model));
             for (int i = 0; i < 5; i++)
             {
                 dynamic.Generate(model);
-                PrecompiledRuntime.GenerateString(result.Strategy, model, null, null);
+                CompiledFormHarness.RenderStrategy(result.Strategy, model);
             }
             const int renders = 200;
             long dynamicAlloc = Measure(() =>
@@ -71,7 +71,7 @@ namespace Heddle.Tests
             long precompiledAlloc = Measure(() =>
             {
                 for (int i = 0; i < renders; i++)
-                    PrecompiledRuntime.GenerateString(result.Strategy, model, null, null);
+                    CompiledFormHarness.RenderStrategy(result.Strategy, model);
             });
             Assert.True(precompiledAlloc <= Math.Max(4096L, dynamicAlloc * 4),
                 "Precompiled renders allocated " + precompiledAlloc + " bytes vs dynamic " +

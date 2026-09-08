@@ -126,21 +126,12 @@ namespace Heddle.Tests
             Assert.Null(failure.Value.AssemblyName);
         }
 
-        private sealed class CarrierFakeStrategy : IProcessStrategy
+        /// <summary>A loader row fingerprinted Text/Native/false over an in-memory artifact.</summary>
+        private static PrecompiledTemplateInfo TextEntry(string key)
         {
-            public string Execute(in Scope scope) => string.Empty;
-            public void Render(in Scope scope) { }
+            var artifact = CompiledFormHarness.MinimalArtifact();
+            artifact.Templates.Add(CompiledFormHarness.TemplateRow(key));
+            return CompiledFormHarness.LoaderRow(artifact);
         }
-
-        private static PrecompiledTemplateInfo TextEntry(string key) =>
-            new PrecompiledTemplateInfo(
-                key, typeof(object), null, false, "0",
-                Array.Empty<PrecompiledImport>(),
-                new PrecompiledOptionsFingerprint(OutputProfile.Text, ExpressionMode.Native, false),
-                Array.Empty<PrecompiledExtensionBinding>(),
-                Array.Empty<PrecompiledFunctionBinding>(),
-                PrecompiledCapabilities.StringOutput, new CarrierFakeStrategy(),
-                registeredName: null,
-                linePathForm: PrecompiledLinePathForm.RootRelative);
     }
 }

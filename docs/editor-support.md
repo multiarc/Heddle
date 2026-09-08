@@ -172,6 +172,13 @@ installed the extension still colors `.heddle` files from the grammar — no con
 | A definition/prop shows stale types | Rebuild — model types update on rebuild, not on source edit. |
 | An extension or function is not offered | The export attribute is missing, the method is not an eligible public static, or the server needs a restart to rescan. Exported names are the **lowercase** method names; lookup is ordinal and case‑sensitive. |
 
+## Precompilation notes
+
+The editor reflects the last rebuild: model types, diagnostics and completions update on
+rebuild, not on source edit. Retired 2.x build options (`HeddleObserveEngine`,
+`HeddleNodeFallback`, `HeddleEmitUtf8Pieces`) have no editor effect — where set, the build
+warns `HED7037` and ignores them.
+
 See also: [syntax highlighting](syntax-highlighting.md) (grammar‑only setups),
 [getting started](getting-started.md), and [the C# API](csharp-api.md) (hosting the facade
 programmatically).

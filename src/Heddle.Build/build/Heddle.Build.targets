@@ -190,6 +190,25 @@
     </ItemGroup>
   </Target>
 
+  <!-- The five retired 2.x properties warn (HED7037) rather than error: an old project file keeps
+       building byte-identical output, and only the warning says the option no longer exists. The observe-path
+       properties retire silently. Their own target, ahead of CoreCompile, so a stale option warns even on a
+       project whose templates are all import-only (where the compile itself has nothing to do). -->
+  <Target Name="_HeddleRetiredPropertyWarnings"
+          BeforeTargets="CoreCompile"
+          Condition="'$(DesignTimeBuild)' != 'true'">
+    <Warning Code="HED7037" Text="HeddleObserveEngine is retired and ignored."
+             Condition="'$(HeddleObserveEngine)' != ''" />
+    <Warning Code="HED7037" Text="HeddleNodeFallback is retired and ignored."
+             Condition="'$(HeddleNodeFallback)' != ''" />
+    <Warning Code="HED7037" Text="HeddleEmitUtf8Pieces is retired and ignored."
+             Condition="'$(HeddleEmitUtf8Pieces)' != ''" />
+    <Warning Code="HED7037" Text="HeddleObserveIntermediatePath is retired and ignored."
+             Condition="'$(HeddleObserveIntermediatePath)' != ''" />
+    <Warning Code="HED7037" Text="HeddleObserveImplementationPath is retired and ignored."
+             Condition="'$(HeddleObserveImplementationPath)' != ''" />
+  </Target>
+
   <!-- The compile: MSBuild-level incrementality on inputs, stamp-level inside the host. Outputs join
        FileWrites; the source joins Compile before CoreCompile (live at the Csc task, unlike resources).
        The stubs pass writes none of these outputs. -->

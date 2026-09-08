@@ -10,8 +10,6 @@ using System.Runtime.InteropServices;
 // reaches the engine through its PUBLIC surface only: a benchmark that needs private access to the
 // thing it measures is measuring something no caller can reach.
 [assembly: InternalsVisibleTo("Heddle.LanguageServices, PublicKey = 00240000048000009400000006020000002400005253413100040000010001008F699CB432AD3DC770F9147DE37911B49099706C36AF5F14DB7C2031DD216FFAE283B63A2591814F371929AB231C4A82BCBFAC9803C37B96AE90DC703F4159E8B6AC6E2E9F364F072D1BA2FC5B79F26ACF3BD61637D2DB47F409E2B07CF3F49E988BF2C5F6DDAE6D8F804C770601CCE3F3CEA11F7D61A3583109D9AD3244F6C6")]
-// The integration suite mutates a process-global precompiled registry; internals access is needed to reset between tests.
-[assembly: InternalsVisibleTo("Heddle.Generator.IntegrationTests, PublicKey = 00240000048000009400000006020000002400005253413100040000010001008F699CB432AD3DC770F9147DE37911B49099706C36AF5F14DB7C2031DD216FFAE283B63A2591814F371929AB231C4A82BCBFAC9803C37B96AE90DC703F4159E8B6AC6E2E9F364F072D1BA2FC5B79F26ACF3BD61637D2DB47F409E2B07CF3F49E988BF2C5F6DDAE6D8F804C770601CCE3F3CEA11F7D61A3583109D9AD3244F6C6")]
 // The build host compiles through the engine's recording seam (CompileContext.RecordForm,
 // FormRecord.ToArtifact) and merges per-template artifacts; it runs out of process, so the
 // grant carries no in-process state risk.

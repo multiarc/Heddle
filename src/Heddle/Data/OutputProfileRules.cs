@@ -4,7 +4,7 @@ namespace Heddle.Data
 {
     /// <summary>The unnamed carrier a bodiless/bodied <c>@(…)</c> resolves to. The
     /// registry name is the wire form both tiers use — the runtime asks <c>TemplateFactory</c> for it, the
-    /// generator records it in the manifest binding row — so the mapping to a name lives here, once.</summary>
+    /// build records it in the manifest binding row — so the mapping to a name lives here, once.</summary>
     public enum UnnamedCarrierKind
     {
         /// <summary>The raw empty carrier (registry name <c>""</c> → <c>EmptyExtension</c>).</summary>
@@ -32,7 +32,7 @@ namespace Heddle.Data
         /// Parses an <c>@profile(){{…}}</c> body (or a host/editor option value) into an <see cref="OutputProfile"/>:
         /// trimmed, then matched ordinal-case-insensitively against exactly <c>text</c>/<c>html</c>. Anything else
         /// — including <c>null</c> and the empty string — is <c>false</c>, which the runtime reports as
-        /// <c>HED2001</c> and the generator as <c>HED7022</c>.
+        /// <c>HED2001</c> (the 2.x build reported the same fact as <c>HED7022</c>, retired in place).
         /// </summary>
         public static bool TryParseProfile(string value, out OutputProfile profile)
         {

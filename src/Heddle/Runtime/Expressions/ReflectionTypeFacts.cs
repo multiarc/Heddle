@@ -8,8 +8,7 @@ namespace Heddle.Runtime.Expressions
 {
     /// <summary>
     /// The <b>reflection</b> adapter of <see cref="ITypeFacts{TType}"/> — a thin veneer over
-    /// <see cref="Type"/>. It carries no corrections: reflection <em>is</em> the authority the Roslyn adapter is
-    /// corrected toward.
+    /// <see cref="Type"/>. It carries no corrections: reflection <em>is</em> the authority.
     /// </summary>
     internal sealed class ReflectionTypeFacts : ITypeFacts<Type>
     {

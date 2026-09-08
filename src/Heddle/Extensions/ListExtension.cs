@@ -37,7 +37,22 @@ namespace Heddle.Extensions
             var elementType = dataType.Type.TryGetElementType(typeof(ICollection<>));
             if (elementType != null)
             {
-                _collectionCountReader = (ICountReader) Activator.CreateInstance(typeof(CountReader<>).MakeGenericType(elementType));
+                // P3-R9: CountReader<T> shares one instantiation for reference-type elements, but a
+                // value-type element needs fresh codegen per T, which NativeAOT cannot make at load.
+                // Value-type elements take the non-generic ICollection.Count path instead (else no
+                // count, which only loses the result-array pre-size, never a byte).
+                if (elementType.IsValueType)
+                {
+                    _collectionCountReader = NonGenericCountReader.Instance;
+                }
+                else
+                {
+                    // P3-R9: reference-type instantiations share codegen, so this MakeGenericType is
+                    // AOT-safe; value-type elements never reach it.
+#pragma warning disable IL3050
+                    _collectionCountReader = (ICountReader) Activator.CreateInstance(typeof(CountReader<>).MakeGenericType(elementType));
+#pragma warning restore IL3050
+                }
             }
 
             ExType underlyingType = dataType.Type.TryGetElementType(typeof(IEnumerable<>)) ?? ExType.Dynamic;
@@ -121,6 +136,19 @@ namespace Heddle.Extensions
             public int? GetCount(object value)
             {
                 return (value as ICollection<T>)?.Count;
+            }
+        }
+
+        /// <summary>Reference-free count for value-type element types: the non-generic
+        /// <see cref="System.Collections.ICollection.Count"/>, else no count (the loop then grows a
+        /// <c>LinearList</c> instead of a pre-sized array; the bytes never change).</summary>
+        private sealed class NonGenericCountReader : ICountReader
+        {
+            public static readonly NonGenericCountReader Instance = new NonGenericCountReader();
+
+            public int? GetCount(object value)
+            {
+                return (value as System.Collections.ICollection)?.Count;
             }
         }
 

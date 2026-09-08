@@ -6,7 +6,7 @@ obvious, and a revisit trigger where one is useful.
 ## PD1 — Generator removal and cutover
 
 `Heddle.Generator` — package, three Roslyn builds, both suites, CI legs — and everything in
-`Heddle.dll` that existed for generated 2.x code are removed in v3 ([window items 1–3](v3-window.md#window-items)).
+`Heddle.dll` that existed for generated 2.x code are removed in v3 ([window items 1–3](v3-window-closed.md#window-items)).
 The last 2.x package is deprecated on NuGet pointing at `Heddle.Build`; nothing from this plan
 ships in 2.x.
 
@@ -59,7 +59,7 @@ images of the consumer's references (project references via their implementation
 via their lib folder, framework types via its own runtime), and an assembly that cannot load costs
 the templates naming its types a build error; a BCL member absent on the project's target
 framework surfaces as a load-time gate fallback and a dynamic-tier compile error on that target
-([window item 8](v3-window.md#window-items)). The spec owes framework-type identity normalization
+([window item 8](v3-window-closed.md#window-items)). The spec owes framework-type identity normalization
 across CoreLib and mscorlib. *Revisit:* builds that cannot carry a .NET 10 runtime → a
 self-contained host per RID.
 

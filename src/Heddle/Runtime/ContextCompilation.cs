@@ -25,7 +25,7 @@ namespace Heddle.Runtime
         /// never be read from — see <see cref="CompileCSharp"/>.</summary>
         private static readonly object LockObj = new object();
 
-        private static readonly HeddleTemplate CodeGenerator;
+        private static readonly HeddleTemplate CodeEmitter;
 
         public static HeddleCompileResult InitErrors { get; }
 
@@ -34,7 +34,7 @@ namespace Heddle.Runtime
             string document = null;
             try
             {
-                CodeGenerator = new HeddleTemplate();
+                CodeEmitter = new HeddleTemplate();
                 var path = $"{AppContext.BaseDirectory}/CSharpClassTemplate.tcs";
                 
                 if (File.Exists(path))
@@ -54,7 +54,7 @@ namespace Heddle.Runtime
                 }
 
                 InitErrors =
-                    CodeGenerator.Compile(document,
+                    CodeEmitter.Compile(document,
                         new CompileContext(new TemplateOptions
                         {
                             OutputProfile = OutputProfile.Text,
@@ -128,7 +128,21 @@ namespace Heddle.Runtime
             if (!InitErrors.Success)
                 throw new TemplateCompileException("Cannot compile base C# generation templates",
                     InitErrors.Errors);
-            var code = CodeGenerator.Generate(context.CSharpContext);
+            var tableSubstitutions = ResolveCSharpTableSites(context);
+            if (tableSubstitutions != null && tableSubstitutions.Count == context.CSharpContext.Methods.Count &&
+                context.CSharpContext.Methods.Count > 0)
+            {
+                foreach (var substitution in tableSubstitutions)
+                {
+                    if (substitution.Key.RuntimeCallParameter is CompiledParameter compiledParameter)
+                        compiledParameter.ParameterImplementation =
+                            (Func<object, object, object, object>)substitution.Value;
+                }
+
+                context.CSharpContext.Compiled = true;
+                return;
+            }
+            var code = CodeEmitter.Generate(context.CSharpContext);
 
             // There was a cache keyed on this source. It could not work: the source declares a class named
             // after CSharpContext.ClassGuid, a fresh Guid per context, so the key was unique per compile and
@@ -189,6 +203,17 @@ namespace Heddle.Runtime
             {
                 if (expressionCompilation.RuntimeCallParameter is CompiledParameter compiledParameter)
                 {
+                    Delegate substitution = null;
+                    bool served = tableSubstitutions != null &&
+                        tableSubstitutions.TryGetValue(expressionCompilation, out substitution);
+                    if (served)
+                    {
+                        compiledParameter.ParameterImplementation =
+                            (Func<object, object, object, object>)substitution;
+                        methodNumber++;
+                        continue;
+                    }
+
                     var method = classType.GetMethod(
                         $"ProcessData_{expressionCompilation.ExtensionName}{methodNumber}",
                         BindingFlags.Public | BindingFlags.Static);
@@ -215,6 +240,34 @@ namespace Heddle.Runtime
             }
 
             context.CSharpContext.Compiled = true;
+        }
+
+        /// <summary>Matches each embedded-C# method against the load's site records by source and
+        /// position. Returns null when no table is active; otherwise the served subset (possibly empty).
+        /// A record-backed site the table leaves unserved throws under strict load; unmatched text
+        /// always rebuilds from data (via Roslyn below).</summary>
+        private static Dictionary<ExpressionCompilation, Delegate> ResolveCSharpTableSites(
+            CompileScope context)
+        {
+            var state = context != null ? context.SiteTableState : null;
+            if (state == null || !state.Active)
+                return null;
+            var served = new Dictionary<ExpressionCompilation, Delegate>();
+            foreach (var method in context.CSharpContext.Methods)
+            {
+                Delegate site;
+                int ordinal;
+                string kind;
+                if (Heddle.Precompiled.SiteTableState.TryResolveCSharp(state,
+                    method.Expression,
+                    method.Position.StartIndex, method.Position.Length,
+                    out site, out ordinal, out kind) && site != null)
+                    served[method] = site;
+                else
+                    state.ThrowIfStrictUnserved(kind, ordinal);
+            }
+
+            return served;
         }
 
         internal static IEnumerable<HeddleCompileError> FormatErrors(ImmutableArray<Diagnostic> diagnostics, BlockPosition position)

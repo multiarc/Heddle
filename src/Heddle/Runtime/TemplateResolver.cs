@@ -199,7 +199,7 @@ namespace Heddle.Runtime {
             relativePath = null;
             foreach (var path in locations) {
                 var candidate = string.Format(path, viewName, controllerName);
-                // Candidate path uses the same shared TemplateKey normalization as the generator.
+                // Candidate path uses the same shared TemplateKey normalization as the build.
                 if (!TemplateKey.TryNormalize(candidate, out var key))
                     continue;
                 var options = requestOptions ?? HostedOptions(candidate, profile, trim);

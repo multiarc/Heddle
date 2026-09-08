@@ -5,38 +5,46 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.1.0]
+## [3.0.0]
 
-Additive at the language and rendering level — **no rendered byte changes on either tier** — with one
-declared **binary** break in the precompiled-manifest contract, the removal of assembly auto-loading,
-and three build-time behaviours that begin to occur because they were never wired. **2.1 is a ratified
-breaking window**, scoped to binary changes and minor API changes or additions; the running window
-record is in
+The precompilation build tier is rebuilt on a stored compiled form, and the Roslyn-generator tier is
+deleted. Additive at the language and rendering level — **no rendered byte changes on either tier** —
+with declared **binary and source** breaks in the precompiled-manifest contract, the removal of
+assembly auto-loading, and build-time behaviours that begin to occur because they were never wired.
+**3.0 is a ratified breaking window**, scoped to binary changes and minor API changes or additions;
+the running window record is in
 [breaking-windows.md](docs/spec/common/breaking-windows.md#current-window--21-open-as-implemented-pending-release)
-and the per-item judgements that predate the window's ratification remain in
+(the 2.1 window never shipped; its items release here) and the per-item judgements that predate the
+window's ratification remain in
 [breaking-windows.md](docs/spec/common/breaking-windows.md#explicit-not-window-gated-rulings).
 
 ### Changed (breaking)
 
-- **Precompiled assemblies built by a 2.0.x generator are no longer accepted.**
-  `PrecompiledSchema.MinSupportedSchemaVersion` rises `1` → `3`, and the manifest schema the generator
-  emits goes `2` → `3`. 2.0.0 shipped schema 2; this release moves the prop-layout fingerprint onto
-  `PrecompiledExtensionBinding` as an optional third constructor parameter, which **removes** the
-  two-argument `.ctor(string, string)` that every schema 1–2 manifest calls. Those manifests therefore
-  cannot run against the 2.1 engine at all, and a floor of `1` would *accept* them and then crash with
-  a `MissingMethodException` out of `PrecompiledTemplates.Register` at host startup. The gate rejects
-  them cleanly instead.
-  Schema 3 is a **single** increment carrying everything added since 2.0: the `PrecompiledRuntime.DynamicMember`
-  routing, the extension prop-layout fingerprint, the per-carrier `BindDefinition` overload, and the two
-  new per-template fields below. There is no schema 4 or 5 — intermediate numbers existed only inside
-  unreleased development and are not migration steps.
-  **What to do:** rebuild with the 2.1 `Heddle.Generator`. `Heddle.Generator` and `Heddle` are
-  version-locked — pair the matching versions.
-  **If you do not:** registration raises one `PrecompiledFallbackReason.SchemaVersionUnsupported`
-  callback (`HED7102`) per assembly and every template renders through the byte-identical dynamic
-  path; under `TemplateOptions.PrecompiledMismatchPolicy.Strict` it throws instead, which is that
-  option's purpose. No compatibility shim: restoring the two-argument constructor would keep the
-  unrunnable manifests accepted, which is the defect.
+- **Only schema 4 manifests are accepted, and every accepted manifest was built by this release.**
+  `PrecompiledSchema.MinSupportedSchemaVersion` and `MaxSupportedSchemaVersion` are both `4`, and a
+  manifest below 4 is not degraded — registration **throws** `PrecompiledRegistrationException`, because a
+  hand-written manifest row can claim any schema number while carrying none of the behaviour the
+  number promises, and a degrade path would bless it. 2.0.x and 2.1 manifests (schemas 1–3) are
+  therefore rejected outright, which also retires the question the 2.1 window left open: there is no
+  version of the old Roslyn generator whose output this engine runs.
+  **What to do:** rebuild with the 3.0 `Heddle.Build` package (or `heddle compile`), which emits
+  schema 4. `Heddle.Build` and `Heddle` are version-locked — pair the matching versions.
+  **If you do not:** registration throws before any template renders; there is no dynamic-tier
+  fallback for a rejected manifest, which is that throw's purpose. No compatibility shim.
+- **The Roslyn-generator tier is deleted: the `Heddle.Generator` package, its analyzer, and
+  everything in `Heddle.dll` whose only caller was generated 2.x code are gone** (`PrecompiledRuntime`
+  and the `Precompiled*` init-site/body/accessor/manifest helper types, the runtime-operators
+  adapters, the schema-gate constants, the observe mode; the full list is the phase-4 removal record
+  in the program record). Precompilation is now a build step — the `Heddle.Build` package compiles
+  templates through the real engine out of process and embeds the stored compiled form — not a
+  source generator. The `Microsoft.CodeAnalysis` dependency the engine carried only for the
+  generator goes with it.
+  **What to do:** remove the `Heddle.Generator` package reference and add `Heddle.Build`; no template
+  text changes are needed. A template the build cannot precompile is left out with an `HED7031`
+  warning naming it and renders through the byte-identical dynamic path. Hand-written manifests and
+  generator-constructed rows have no upgrade path: the loader binds only rows the 3.0 build wrote.
+  Migration details, including the per-member disposition of the deleted API, are in the
+  [generator-removal migration note](docs/precompilation.md#generator-removal-migration-note).
 
 - **`PrecompiledFallbackEvent.Key` is removed**, replaced by `TemplateKey` and `AssemblyName` with
   exactly one populated. The single `Key` carried two different kinds of string — a template key for
@@ -79,25 +87,25 @@ and the per-item judgements that predate the window's ratification remain in
 
 ### Added
 
-- **The expression-tier parity program: the generator now emits what it used to degrade.** Five classes
+- **The expression-tier parity program: the build now prints what 2.x degraded.** Five classes
   of native-expression construct that previously fell back to the dynamic tier now precompile, each by
   reproducing the engine's own semantics rather than trusting verbatim C# to agree with them: shifts,
   ternaries and coalesces over mixed numeric kinds (the engine's promotion is spelled as explicit
-  casts); mixed-type equality and string concatenation (through `Heddle.Precompiled.RuntimeOperators`
-  adapters that replay the engine's own decision chain, so parity holds by construction); constant
-  subtrees the two tiers type or value differently (emitted as the engine's folded value with a typed
-  literal spelling); same-enum and reference operand shapes (the shared operator table now carries type
-  identity, not just a category); and the structural shapes — `::`-rooted paths, indexers, targeted
-  paths, collided extension names, and `params` exports. Rendered bytes are unchanged — the two tiers
-  are parity-checked — this only moves templates off the slower dynamic path.
+  casts); mixed-type equality and string concatenation (replaying the engine's own decision chain, so
+  parity holds by construction); constant subtrees the two tiers type or value differently (emitted as
+  the engine's folded value with a typed literal spelling); same-enum and reference operand shapes
+  (the shared operator table now carries type identity, not just a category); and the structural
+  shapes — `::`-rooted paths, indexers, targeted paths, collided extension names, and `params`
+  exports. Rendered bytes are unchanged — the two tiers are parity-checked — this only moves templates
+  off the slower dynamic path.
 - **`HED1018` — constant division by zero is a compile error, on both tiers.** `@(1/0)` used to compile
   and throw `DivideByZeroException` at render; rendering it can only ever throw, so both the engine and
-  the generator now refuse it at compile time under one id. Scoped exactly where C# draws `CS0020`'s
+  the build now refuse it at compile time under one id. Scoped exactly where C# draws `CS0020`'s
   lines: integral and `decimal` only, the divisor folded rather than spelled (`1/(1-1)` counts),
   floating point stays legal (`@(1.0/0)` renders `∞`), and a runtime divisor that happens to be zero
   still throws at render.
 - **The engine's refusals fire at build: `HED1003`–`HED1011` forwarded as build errors.** Where the
-  generator can *prove* the engine would refuse a construct on every input — method-call syntax,
+  build can *prove* the engine would refuse a construct on every input — method-call syntax,
   declared-`dynamic` roots, logical operators over non-`bool`, ununifiable ternary/coalesce arms,
   undefined binary/unary operator pairings, a known indexer target with no matching indexer, a
   non-`bool` condition — it raises the engine's own id with the engine's own sentence at build time
@@ -105,7 +113,7 @@ and the per-item judgements that predate the window's ratification remain in
   refusal it still degrades silently: never an error on a guess.
 - **`ModelType` item metadata** types a template from the project file:
   `<HeddleTemplate Update="Templates/invoice.heddle" ModelType="My.App.InvoiceModel" />` feeds the same
-  pipeline the in-file `@model` directive feeds (resolution, `@using` imports, the `HED7007`/`HED7023`
+  pipeline the in-file `@model` directive feeds (resolution, `@using` imports, the `HED7007`
   gating), so a template can be typed without a directive in its text. When both channels are present
   they must agree: different resolved types are **`HED7032`**, a build error, because the runtime reads
   only the directive and the build refuses to type the same template differently on the two tiers.
@@ -147,9 +155,13 @@ and the per-item judgements that predate the window's ratification remain in
   failures, so a binding that drifted between build and deployment fails your startup once instead of
   degrading on every request. `PassedForValidatedOptions` is the green property; the report names the
   options shape it validated, because four of the gauntlet's inputs are per-request.
-- **`PrecompiledTemplateInfo.LinePathForm`** records which form a template's generated `#line` file names
-  are in — `RootRelative`, `TemplatePath`, or `Unspecified` for a fallback-marker row that has no
-  generated source. Machine-readable, for stack-trace symbolizers and editor tooling.
+- **`HED7037`** (warning): setting a retired 2.x MSBuild property (`HeddleObserveEngine`,
+  `HeddleNodeFallback`, `HeddleEmitUtf8Pieces`) warns naming the property. The observe-path
+  properties retire silently. Output is byte-identical either way — delete the element.
+- **Retired build ids stay claimed.** Every `HED70xx` id whose fact no longer exists is retired in
+  place: the constant, the catalog row and the published mention stay, so the id is never reused.
+  See the [generator-removal migration note](docs/precompilation.md#generator-removal-migration-note)
+  for the twin → engine-id re-keying.
 - **`Precompile="false"` items are validated and advised.** An opted-out item's `Key`/`Name` now raise the
   same `HED7004` faults an included item's would, instead of failing silently and surfacing as `HED7011`
   at whichever file imported it; and its own imports can draw the `HED7028` advisory. It still contributes
@@ -178,17 +190,11 @@ and the per-item judgements that predate the window's ratification remain in
   `InvalidOperationException` the moment the nullable side was null; the result now lifts to the
   nullable enum and the null propagates — exactly C#'s answer.
 - **Three build-tier type-binding defects.** A type nested in a generic (`Outer<int>.Inner`) degraded
-  because the generator compared per-type arity against a cumulative spelling; a dotted spelling
+  because the build compared per-type arity against a cumulative spelling; a dotted spelling
   reachable through two `@using` imports was decided by declaration order on both tiers instead of
-  being ambiguous (now the engine's ambiguity error / the generator's `HED7023`, matching `CS0104`);
+  being ambiguous (now the engine's ambiguity error at render, matching `CS0104`);
   and an assembly-qualified model spelling stating a `Version` **ahead** of the referenced assembly
   bound at build and threw at runtime — it now degrades, while exact and behind versions bind.
-- **`#line` directives in generated code name the template file, not its registration key.** The two
-  were always equal for a path-derived key; an explicit `Key` made the difference observable and would
-  have pointed every mapped span at a path that does not exist. A template **outside**
-  `HeddleTemplateRoot` now gets its own (absolute) path rather than a bare filename the compiler cannot
-  open, and which form a template's `#line` names are in is recorded on its manifest row (see
-  `LinePathForm` under *Added*) rather than as a comment in the generated file, so tooling can act on it.
 - **`heddle-lsp --version` and the LSP `initialize` response reported `1.0.0`** for the whole 2.0 line.
   The value is now read off the assembly rather than hand-maintained.
 - **`HED7004`'s message** names the offending metadata and the reason, covering an unusable or
@@ -196,17 +202,11 @@ and the per-item judgements that predate the window's ratification remain in
 
 ### Build and packaging
 
-- **`Heddle.Generator` ships one build per Roslyn generation, with a .NET Framework leg.** The single
-  netstandard2.0 build against Microsoft.CodeAnalysis 4.4.0 matched no compiler the engine pins; the
-  package now carries three builds of the same sources (Roslyn 4.1.0 / 4.11.0 / 5.3.0, mirroring the
-  engine's per-TFM pins) under `analyzers/dotnet/roslyn{4.1,4.11,5.3}/cs`, so a versioning-aware host
-  selects the newest folder its compiler can bind and the `buildTransitive` targets trim older hosts to
-  the 4.1 floor — the only variant a VS 2022-era `msbuild.exe` can use. Standing the net48 test legs up
-  surfaced and fixed four generator defects a VS-hosted consumer could hit: `u8` literals emitted to
-  consumers parsing below C# 11, entry points that boxed `TypedReference` on net48 (whose mscorlib
-  predates `IsByRefLikeAttribute`), template keys derived through `Path.GetFileName` (which validates
-  characters on .NET Framework and silently dropped templates), and a reference closure read from
-  `TRUSTED_PLATFORM_ASSEMBLIES` where it does not exist.
+- **The `Heddle.Build` package replaces `Heddle.Generator`.** The last 2.x `Heddle.Generator` is
+  deprecated on NuGet naming `Heddle.Build`. The new package carries no Roslyn and no analyzer: an
+  MSBuild task plus targets drive the out-of-process `heddle compile` host, which compiles templates
+  through the real engine and embeds the stored compiled form. The multi-Roslyn build variants and the
+  .NET Framework legs are gone with the generator they served.
 - The dedicated `net6.0` target is retired: the libraries now target `netstandard2.0;net8.0;net10.0`.
   A .NET 6 host still runs Heddle — it binds the `netstandard2.0` build, as .NET 7 always has — losing
   only the modern-BCL extras that build carries anyway (`Range.FromSystemRange`, the span/UTF-8
@@ -351,6 +351,6 @@ engine's rendered bytes are unchanged, except for the items under **Changed (bre
 
 Initial public release.
 
-[2.1.0]: https://github.com/multiarc/Heddle/compare/v2.0.0...v2.1.0
+[3.0.0]: https://github.com/multiarc/Heddle/compare/v2.0.0...v3.0.0
 [2.0.0]: https://github.com/multiarc/Heddle/compare/v1.0.1...v2.0.0
 [1.0.0]: https://github.com/multiarc/Heddle/releases/tag/v1.0.0

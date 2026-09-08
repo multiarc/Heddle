@@ -5,31 +5,64 @@ template from text to rendered output and points at the types that do each job.
 
 ## High‑level pipeline
 
-```mermaid
-flowchart TD
-    src["Template text"] --> lex
-
-    subgraph parse["DocumentParser.Parse (steps 1-3)"]
-        lex["1. LEX<br/>HeddleLexer (ANTLR, mode stack)"] -->|tokens| prs["2. PARSE<br/>HeddleParser - SLL, fallback LL"]
-        prs -->|parse tree| walk["3. WALK<br/>HeddleMainListener + ParseContext"]
-        prs -.->|syntax errors| errs["HeddleSyntaxErrorListener"]
-    end
-
-    subgraph compile["HeddleCompiler.Compile (steps 4-5)"]
-        cmp["4. COMPILE (HeddleCompiler)<br/>extensions + compiled accessors"] --> mem["member paths -> expression-tree delegates"]
-        cmp --> cs["@(...) C# -> Roslyn delegates"]
-    end
-
-    walk -->|"definitions, output chains"| cmp
-    cmp --> rt["RuntimeDocument (+ IProcessStrategy)"]
-    rt --> render["6. RENDER<br/>HeddleTemplate.Generate(data)<br/>ScopeRenderer -> string"]
-    errs -.->|collected| result["HeddleCompileResult"]
-    cmp -.-> result
+```text
+Template text
+  │
+  ▼
+1. LEX ── HeddleLexer (ANTLR, mode stack) ── tokens ──► 2. PARSE ── HeddleParser (SLL, fallback LL)
+  │                                                        │  ▲
+  │ syntax errors                                          │  │ parse tree
+  ▼                                                        ▼  │
+HeddleSyntaxErrorListener ── collected ──► HeddleCompileResult ◄── 3. WALK ── HeddleMainListener + ParseContext
+                                                              │
+                                              definitions, output chains
+                                                              ▼
+                        4. COMPILE ── HeddleCompiler (extensions + compiled accessors)
+                          ├── member paths ──► expression-tree delegates
+                          └── `@(...)` C# ──► Roslyn delegates
+                                                              │
+                                                              ▼
+                        RuntimeDocument (+ IProcessStrategy)
+                                                              │
+                                                              ▼
+                        6. RENDER ── HeddleTemplate.Generate(data) ── ScopeRenderer ──► string
 ```
 
 The orchestration entry points are
 [`DocumentParser.Parse`](../src/Heddle/Language/DocumentParser.cs) (steps 1–3) and
 [`HeddleTemplate.Compile`](../src/Heddle/HeddleTemplate.cs) → `HeddleCompiler.Compile` (steps 4–5).
+
+### The MSBuild build host
+
+Precompilation runs the same pipeline out of process. The `Heddle.Build` targets serialize items
+and properties into a response file; `heddle compile` parses, compiles with form recording,
+and writes two outputs: the embedded compiled-form artifact
+(`Heddle.CompiledForm.bin`) and the generated source (`Heddle.CompiledForm.g.cs`) — one typed entry
+class per template plus one static site method per printable site. At run time the loader reads the
+artifact rows through `PrecompiledTemplateInfo`, serves printable sites from the table, and rebuilds
+declined sites from the recorded form. Nothing runs inside the compiler. See
+[Build‑Time Pre‑compilation](precompilation.md) and
+[Build integration](building.md#build-integration-heddlebuild).
+
+### Under the hood: form and gauntlet
+
+The compiled form (`src/Heddle/Precompiled/CompiledForm/`) is a versioned binary section layout —
+templates, documents, extensions, functions, members — written by `CompiledFormWriter` and read by
+`CompiledFormReader` (schema 4 is the only readable shape; the reader rejects anything else before
+any row is trusted). The run-time gauntlet (`PrecompiledGauntlet.Validate`) checks a row against the
+*live* request — options fingerprint, ambient model type, extension identities, function targets,
+member bindings, content staleness — and any failure degrades that template to the dynamic tier with
+a `PrecompiledFallbackEvent`. Regeneration is byte-exact by construction: `CompiledFormWriter`
+stamps a content digest, and `CompiledFormFixtureTests` pins a stored real-build artifact
+(`src/Heddle.Tool.Tests/TestData/compiled-form-v4.bin`) byte-for-byte through read and re-encode.
+
+### What no longer exists
+
+The 2.x Roslyn-analyzer generator tier (`Heddle.Generator`, its tests, its `analyzers/` package
+layout), the `PrecompiledRuntime` helper surface, hand-written manifests, the public
+`PrecompiledTemplateInfo` constructors, the schema feature-gate constants, and the observe/emit
+MSBuild options. The full list is the phase-4 removal record in the
+[program record](spec/common/cross-cutting-decisions.md#program-record--precompilation-v2-closed).
 
 ---
 
@@ -252,6 +285,8 @@ compile as separate rows because they are separate steps; full table in the
 | `Heddle/Strings` | Fast string building (`ExStringBuilder`). |
 | `Heddle/LanguageTemplates` | `.tcs` resources used to emit C# for Roslyn. |
 | [src/Heddle.Language](../src/Heddle.Language) | ANTLR grammar + generated lexer/parser + editor assets. |
+| [src/Heddle.Build](../src/Heddle.Build) | MSBuild task + targets/props: the out-of-process build host. |
+| [src/Heddle.Tool](../src/Heddle.Tool) | The `heddle` CLI incl. `compile`: form writer, site printers, source emitter. |
 | [src/Heddle.Tests](../src/Heddle.Tests) | xUnit tests + `.heddle` fixtures. |
 | [benchmarks/dotnet](../benchmarks/dotnet) | BenchmarkDotNet benchmarks — the cross-stack .NET leg. Not in `Heddle.sln`. |
 

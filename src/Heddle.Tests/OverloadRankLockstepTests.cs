@@ -15,7 +15,7 @@ namespace Heddle.Tests
     /// over a type matrix that includes every numeric primitive, the lifted forms, <c>object</c>, <c>string</c>, a
     /// reference hierarchy and an unrelated struct — so the rank table cannot drift while the runtime delegates.</para>
     /// <para>The rank being pinned is <b>Heddle's</b>, not C#'s: every widening ranks 1, flat. That is precisely why
-    /// the generator can no longer hand overload selection to the consumer's compiler.</para>
+    /// the build cannot hand overload selection to the consumer's compiler.</para>
     /// </summary>
     public class OverloadRankLockstepTests
     {
@@ -129,7 +129,7 @@ namespace Heddle.Tests
         [Fact]
         public void RankIsFlat_EveryWideningScoresOne()
         {
-            // The property C# betterness does *not* have, and the reason the generator cannot delegate selection.
+            // The property C# betterness does *not* have, and the reason the build cannot delegate selection.
             Assert.Equal(OverloadRank.Widening,
                 OverloadRank.ConversionRank(TypeRankModel.Instance, RankArgument<Type>.Of(typeof(int)), typeof(long)));
             Assert.Equal(OverloadRank.Widening,
@@ -176,7 +176,7 @@ namespace Heddle.Tests
         public void Min_IntUInt_IsAmbiguous_TheShippedCounterExample()
         {
             // (long,long), (double,double) and (decimal,decimal) all rank (1,1); C# betterness would pick
-            // Min(long,long) and render. The generator degrades here instead, which is what makes the two tiers
+            // Min(long,long) and render. The build reports HED1013 here instead, which is what makes the two tiers
             // agree.
             var binding = OverloadRank.Bind(TypeRankModel.Instance, MinCandidates,
                 new[] { RankArgument<Type>.Of(typeof(int)), RankArgument<Type>.Of(typeof(uint)) });

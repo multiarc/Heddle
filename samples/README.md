@@ -1,6 +1,6 @@
 # Heddle integration gallery
 
-Ten small, complete, runnable projects — one per supported way to integrate Heddle. Each is a real app you can
+Eleven small, complete, runnable projects — one per supported way to integrate Heddle. Each is a real app you can
 `git clone` + `dotnet run`, and each is also an **end-to-end CI test**: every sample captures deterministic output
 that CI compares against a committed golden. A broken sample *is* a failed integration test (phase 9).
 
@@ -31,6 +31,7 @@ bash samples/tools/compare-golden.sh samples/dynamic-models
 | 8 | [`codegen-t4-successor`](codegen-t4-successor) | [Pre-compilation](../docs/precompilation.md) | Build-time text/code generation, no runtime Heddle dependency (asserted structurally) |
 | 9 | [`precompiled-app`](precompiled-app) | [Pre-compilation](../docs/precompilation.md) | Pre-compilation + mixed mode + discovery enumeration; the differential rule (precompiled == dynamic twin) |
 | 10 | [`streaming-ssr`](streaming-ssr) | [Streaming](../docs/csharp-api.md#streaming-generate-into-a-sink) | `Generate(data, IBufferWriter<byte>)` into `Response.BodyWriter` + `FlushAsync`; string-parity asserted in capture |
+| 11 | [`precompiled-aot`](precompiled-aot) | [Phase 3 generated sites](../docs/spec/precompilation-v2/phase-3-generated-sites.md) | NativeAOT posture: trimmed publish, strict load, typed wrappers + registry + dynamic differential; Roslyn-free assembly list |
 | — | `editors/vscode` walkthrough | [Editor support](../docs/editor-support.md) | LSP setup + typed completion tour — see [docs/editor-support.md](../docs/editor-support.md) and [editors/vscode](../editors/vscode). Documentation + the extension smoke test, not a runnable golden project. |
 
 ## Adding a sample

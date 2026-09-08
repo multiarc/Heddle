@@ -502,10 +502,15 @@ output. The additions live in the `Heddle.Precompiled` namespace:
   recommended host API for templates known at compile time (compile‑checked model, no lookup).
   Each typed entry also gains the two **sink overloads** — `Generate(model, TextWriter)` and
   `Generate(model, IBufferWriter<byte>)` — mirroring `HeddleTemplate` (same no‑materialization
-  contract, same `Generate(model, null)` CS0121 corner). Building with `HeddleEmitUtf8Pieces=true`
-  emits pre‑encoded `"…"u8` static pieces that flow to the byte sink with zero transcoding.
+  contract, same `Generate(model, null)` CS0121 corner).
 
-See [Build‑Time Pre‑compilation](precompilation.md) for the generator package, the MSBuild
+The public surface is pinned by `PublicApiSurfaceTests` against `src/Heddle.Tests/TestTemplate/public-api-heddle.txt`:
+any added or removed public type or member fails the build. v3 removed the 2.x generator-era surface
+(`PrecompiledRuntime` and its sibling helper types, hand-written manifests, public template-info
+constructors, schema feature gates, observe/emit options) and added nothing; the golden moves by
+exactly those lines.
+
+See [Build‑Time Pre‑compilation](precompilation.md) for the `Heddle.Build` package, the MSBuild
 options, the validation gauntlet, `[ExportFunctions]` binding, and the `heddle` codegen CLI.
 
 ## Advanced: disabling the C# tier for trimmed hosts

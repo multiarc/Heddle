@@ -12,7 +12,7 @@ namespace Heddle.Tests
     /// The front-end <see cref="ParserSettings"/>/<c>ImportReader</c> seam. Asserts the
     /// build-time entry (<see cref="DocumentParser.Parse(string, ParserSettings, out string)"/> with an in-memory
     /// <c>ImportReader</c>) produces a <see cref="ParseContext"/> byte-identical to the runtime file-IO path, so the
-    /// same shared front-end source can compile into the generator without disk access.
+    /// build host compiles the same shared front-end source without disk access.
     /// </summary>
     public class ParserSettingsSeamTests
     {

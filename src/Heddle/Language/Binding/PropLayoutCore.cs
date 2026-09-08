@@ -29,7 +29,7 @@ namespace Heddle.Language.Binding
         public object Tag;
     }
 
-    /// <summary>One resolved layout slot. <see cref="Index"/> is the wire format between the generator's frozen
+    /// <summary>One resolved layout slot. <see cref="Index"/> is the wire format between the build's frozen
     /// <c>object[]</c> prototype and the runtime's <c>ExtensionParameterCarrier</c>.</summary>
     internal sealed class PropSlot<TType>
     {

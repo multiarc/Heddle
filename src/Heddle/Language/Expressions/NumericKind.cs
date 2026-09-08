@@ -73,7 +73,7 @@ namespace Heddle.Language.Expressions
         }
 
         /// <summary>The CLR type → kind adapter. <see cref="Type"/> is BCL, so this one lives in the shared file;
-        /// the Roslyn <c>SpecialType</c> adapter stays on the generator side.</summary>
+        /// the Roslyn <c>SpecialType</c> adapter went with the deleted 2.x generator.</summary>
         public static NumericKind FromClrType(Type type)
         {
             if (type == null)

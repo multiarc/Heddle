@@ -85,11 +85,6 @@ namespace Heddle
         // precompiled child seam below puts an instance the engine's own compile path created into this mode.
         private bool _precompiled;
 
-        // The request options a precompiled-adapter render runs under. Only late-bound function sites read them
-        // (through PrecompiledRuntime's ambient), and only the adapter needs to carry them: every other
-        // precompiled entry point IS PrecompiledRuntime, which establishes the ambient itself.
-        private readonly TemplateOptions _precompiledOptions;
-
         /// <summary>The type the bound strategy's generated code was compiled against — the manifest's
         /// <c>ModelType</c> — or null where there is nothing to check: an untyped entry (whose recorded type is
         /// <c>object</c>, which admits every value) or a hand-written manifest that declines to name one. Held
@@ -105,7 +100,6 @@ namespace Heddle
             _processStrategy = precompiledStrategy;
             _encoder = encoder;
             _renderBudget = renderBudget;
-            _precompiledOptions = options;
             _precompiledModelType = modelType == typeof(object) ? null : modelType;
             _precompiled = true;
             CompileResult = new HeddleCompileResult(true, null, null);
@@ -297,24 +291,9 @@ namespace Heddle
 
                 var scope = new Scope(data, callerData, data, chained, renderer, null,
                     (doc?.NeedsLocals ?? false) ? new ScopeLocals() : null);
-                if (_precompiledOptions == null)
-                {
-                    strategy.Render(scope);
-                }
-                else
-                {
-                    // The adapter drives the generated strategy itself, so it — not PrecompiledRuntime — is what
-                    // makes the request's registry the one a late-bound function site binds against.
-                    var previousAmbient = Precompiled.PrecompiledRuntime.EnterAmbient(_precompiledOptions);
-                    try
-                    {
-                        strategy.Render(scope);
-                    }
-                    finally
-                    {
-                        Precompiled.PrecompiledRuntime.LeaveAmbient(previousAmbient);
-                    }
-                }
+                // Late-bound sites bind the request's registry at materialization (one strategy per request
+                // shape), so there is no render-time ambient to establish here: the adapter renders directly.
+                strategy.Render(scope);
             }
             finally
             {
@@ -345,18 +324,6 @@ namespace Heddle
         {
             if (_runtimeDocument != null)
                 throw new TemplateInitException("Template already compiled.");
-
-            // The child-template seam. Named compiles are the only ones that reach here, so this is the door a
-            // [ChildTemplateHost] hook walks through when it compiles the template its body named; when a
-            // precompiled call site has armed the supply, the child is bound the precompiled way instead of being
-            // read off disk. Nothing is armed on the dynamic tier, so that path pays one thread-static read.
-            if (context != null && Core.PrecompiledChildSupply.TryConsume(context, out var suppliedChild))
-            {
-                _processStrategy = suppliedChild;
-                _precompiled = true;
-                CompileResult = new HeddleCompileResult(true, null, null);
-                return CompileResult;
-            }
 
             // The form-cursor seam: while materializing, a named child the hook requests is served from
             // the same artifact (pushed as its document) instead of being read off disk. Unarmed for a

@@ -7,7 +7,8 @@ using Xunit;
 
 namespace Heddle.Tests
 {
-    /// <summary>Pins that both drivers invoke the shared DocumentShaping passes in contract order.</summary>
+    /// <summary>Pins that the runtime driver invokes the shared DocumentShaping passes in contract order.
+    /// The generator-driver half went with the 2.x generator.</summary>
     public class DocumentShapingPassOrderLockstepTests
     {
         private static readonly string[] ExpectedOrder =
@@ -57,39 +58,25 @@ namespace Heddle.Tests
             Assert.Equal(ExpectedOrder, calls);
         }
 
+        /// <summary>The runtime driver must construct a zero-length element at document end for empty
+        /// default chains and may not reintroduce the count-based skip removed during alignment.</summary>
         [Fact]
-        public void GeneratorDriverInvokesTheSharedPassesInContractOrder()
-        {
-            var shape = MethodBody(
-                Path.Combine(RepoRoot(), "Heddle.Generator", "Emit", "DocumentShaper.cs"),
-                "public static Result Shape(", "/// <summary>Maps the generator's");
-
-            Assert.Equal(ExpectedOrder, SharedPassCalls(shape));
-        }
-
-        /// <summary>Both drivers must construct a zero-length element at document end for empty default chains
-        /// and neither may reintroduce the count-based skip removed during alignment.</summary>
-        [Fact]
-        public void NeitherDriverSkipsAnEmptyDefaultChain()
+        public void DriverDoesNotSkipAnEmptyDefaultChain()
         {
             var root = RepoRoot();
             var compileBody = MethodBody(Path.Combine(root, "Heddle", "Runtime", "HeddleCompiler.cs"),
-                "foreach (var extensions in parseContext.DefaultChains)", "return new RuntimeDocument(");
-            var shape = MethodBody(Path.Combine(root, "Heddle.Generator", "Emit", "DocumentShaper.cs"),
-                "foreach (var chain in parseContext.DefaultChains)", "return new Result(");
+                "foreach (var extensions in parseContext.DefaultChains)",
+                "var record = compileScope.CompileContext.FormRecord;");
 
-            foreach (var pair in new[] { ("runtime CompileBody", compileBody), ("generator Shape", shape) })
-            {
-                // Zero-length element at document end for both tiers.
-                Assert.Contains("BlockPosition(", pair.Item2);
-                Assert.Contains(", 0)", pair.Item2);
-                Assert.Matches(@"new BlockPosition\(\s*\w+(\.\w+)*(\.Length)?,\s*0\s*\)", pair.Item2);
+            // Zero-length element at document end.
+            Assert.Contains("BlockPosition(", compileBody);
+            Assert.Contains(", 0)", compileBody);
+            Assert.Matches(@"new BlockPosition\(\s*\w+(\.\w+)*(\.Length)?,\s*0\s*\)", compileBody);
 
-                // No reintroduced count-based skip on default-chain loop.
-                Assert.DoesNotMatch(@"Chain\s*==\s*null", pair.Item2);
-                Assert.DoesNotMatch(@"Chain\.Count\s*==\s*0", pair.Item2);
-                Assert.DoesNotMatch(@"Count\s*==\s*0", pair.Item2);
-            }
+            // No reintroduced count-based skip on default-chain loop.
+            Assert.DoesNotMatch(@"Chain\s*==\s*null", compileBody);
+            Assert.DoesNotMatch(@"Chain\.Count\s*==\s*0", compileBody);
+            Assert.DoesNotMatch(@"Count\s*==\s*0", compileBody);
         }
     }
 }

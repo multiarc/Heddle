@@ -36,8 +36,8 @@ namespace Heddle.TestCorpus
         private static List<CorpusFile> _templates;
         private static string _dir;
 
-        /// <summary>One corpus template: its <c>/</c>-relativized key (the same key the generator's
-        /// <c>AdditionalFiles</c> and the resolver use) and its decoded text.</summary>
+        /// <summary>One corpus template: its <c>/</c>-relativized key (the same key the build's
+        /// import map and the resolver use) and its decoded text.</summary>
         public sealed class CorpusFile
         {
             public CorpusFile(string key, string content)

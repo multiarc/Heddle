@@ -310,6 +310,12 @@ namespace Heddle.Precompiled.CompiledForm
             UsesProps = usesProps;
         }
 
+        /// <summary>The typed bound tree the engine compiled (a <c>System.Linq.Expressions</c>
+        /// <c>Expression</c>): the chosen overloads as <c>MethodCall</c> methods, promotions as
+        /// <c>Convert</c> types, hop forms as <c>Condition</c> shapes. Set only when the compile
+        /// recorded with bound trees (the build tier); null on records the printer never reads.</summary>
+        internal System.Linq.Expressions.Expression Bound { get; set; }
+
         internal ExprNode Tree { get; }
 
         internal ExType ModelType { get; }
@@ -513,6 +519,30 @@ namespace Heddle.Precompiled.CompiledForm
 
         internal int RootDocument => _rootDocument;
 
+        /// <summary>The printer's read surface (the build tier consumes the record in memory; the
+        /// artifact carries only the data path). Order matches the converted tables row for row.</summary>
+        internal IReadOnlyList<FormMemberRow> MemberRows => _members;
+
+        internal IReadOnlyList<FormExprTree> ExpressionTrees => _trees;
+
+        internal IReadOnlyList<FormCSharp> CSharpSites => _csharp;
+
+        /// <summary>The template offset of the item carrying a member payload, or -1. The artifact's
+        /// member rows carry no position; the HED7031 decline list reports this offset.</summary>
+        internal int FindMemberPosition(int memberIndex)
+        {
+            foreach (var form in _items.Values)
+            {
+                if (form == null)
+                    continue;
+                var member = form.Payload as FormMemberRef;
+                if (member != null && member.MemberIndex == memberIndex)
+                    return form.Position.StartIndex;
+            }
+
+            return -1;
+        }
+
         internal FormItem BeginItem(OutputItem item, ParseContext context)
         {
             FormItem form;
@@ -550,11 +580,15 @@ namespace Heddle.Precompiled.CompiledForm
         }
 
         internal void RecordExpressionParameter(IRuntimeParameter parameter, ExprNode tree, ExType modelType,
-            ExType chainedType, ExType rootType, bool usesProps)
+            ExType chainedType, ExType rootType, bool usesProps,
+            System.Linq.Expressions.Expression bound = null)
         {
             if (parameter == null || tree == null)
                 return;
-            _trees.Add(new FormExprTree(tree, modelType, chainedType, rootType, usesProps));
+            _trees.Add(new FormExprTree(tree, modelType, chainedType, rootType, usesProps)
+            {
+                Bound = bound
+            });
             _params[parameter] = new FormExprUse(_trees.Count - 1);
         }
 

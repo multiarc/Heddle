@@ -1,7 +1,7 @@
 ---
 paths:
   - "src/Heddle/**/*.cs"
-  - "src/Heddle.Generator/**/*.cs"
+  - "src/Heddle.Tool/**/*.cs"
   - "src/Heddle.Language*/**/*.cs"
 ---
 

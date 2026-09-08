@@ -57,7 +57,7 @@ namespace Heddle.Tests
                 "HED1008", "HED1009", "HED1010", "HED1011", "HED1012", "HED1013", "HED1014",
                 "HED1015", "HED1016", "HED1017",
                 // HED1018: constant integer/decimal division by zero, refused at compile time by BOTH tiers
-                // under this one id -- the engine raises it and the generator forwards it, per the
+                // under this one id -- the engine raises it and the build host forwards it, per the
                 // same-fact-same-id rule in the claimed-ID registry.
                 "HED1018",
                 "HED2001", "HED2002", "HED2003", "HED2004",
@@ -67,12 +67,12 @@ namespace Heddle.Tests
                 "HED5007", "HED5008", "HED5009", "HED5010", "HED5011", "HED5012",
                 "HED5013", "HED5014", "HED5015", "HED5016", "HED5017", "HED5018",
                 "HED5019", "HED5020",
-                // HED7xxx: generator/engine shared rule cores; ids were Roslyn descriptors but lacked reflectable home.
+                // HED7xxx: build-host/engine shared rule cores; ids were Roslyn descriptors but lacked reflectable home.
                 "HED7001", "HED7002", "HED7003", "HED7004", "HED7005", "HED7006", "HED7007",
                 "HED7008", "HED7009", "HED7010", "HED7011", "HED7012", "HED7013", "HED7014",
                 "HED7015", "HED7016", "HED7017", "HED7018", "HED7019", "HED7020", "HED7021", "HED7022",
                 "HED7023", "HED7024", "HED7025", "HED7028", "HED7030",
-                // HED7031: the emitter declined to precompile and the generator now says so. Before it, the
+                // HED7031: the emitter declined to precompile and the build host now says so. Before it, the
                 // decline was silent -- no source, no manifest row, no diagnostic -- so a template could
                 // render dynamically forever while the project believed it was precompiled.
                 "HED7031",
@@ -108,10 +108,49 @@ namespace Heddle.Tests
 
         /// <summary>
         /// The claimed-ID registry and <see cref="HeddleDiagnosticIds"/> agree bidirectionally over **every** block a
-        /// constant exists in — including `HED7xxx`, which the generator suite also checks from its own side. The only
-        /// exclusion is <see cref="RegistryOnly"/>: a claimed id with no public constant. `HED6xxx`/`HED8xxx` are
-        /// reserved and claim nothing, so they need no exclusion.
+        /// constant exists in. The only exclusion is <see cref="RegistryOnly"/>: a claimed id with no public
+        /// constant. `HED6xxx`/`HED8xxx` are reserved and claim nothing, so they need no exclusion.
         /// </summary>
+        /// <summary>Retired ids: the constant stays, the catalog row stays, and the registry row carries
+        /// the retirement marker — so the number can never be silently reused for a new fact. A reuse
+        /// attempt would have to delete the marker, which is the review-visible act retirement exists to
+        /// require.</summary>
+        [Fact]
+        public void RetiredIdsKeepConstantsCatalogRowsAndRegistryMarkers()
+        {
+            var retired = new[]
+            {
+                "HED7005", "HED7006", "HED7008", "HED7015", "HED7016", "HED7017", "HED7019",
+                "HED7022", "HED7023", "HED7024", "HED7025", "HED7030", "HED7034"
+            };
+            var constants = new HashSet<string>(typeof(HeddleDiagnosticIds)
+                .GetFields()
+                .Where(f => f.IsLiteral && f.FieldType == typeof(string))
+                .Select(f => (string)f.GetRawConstantValue()));
+            var rows = RegistrySection(ReadSpec("cross-cutting-decisions.md"))
+                .Split('\n')
+                .Where(l => l.StartsWith("| `HED", StringComparison.Ordinal))
+                .ToList();
+
+            foreach (var id in retired)
+            {
+                Assert.Contains(id, constants);
+                Assert.True(HeddleDiagnosticCatalog.TryGet(id, out _),
+                    "Catalog row missing for retired " + id + ".");
+                var row = rows.FirstOrDefault(l => l.StartsWith("| `" + id + "`", StringComparison.Ordinal));
+                Assert.False(string.IsNullOrEmpty(row), "Registry row missing for retired " + id + ".");
+                Assert.Contains("Retired in place", row);
+            }
+
+            // HED7007 is the exception that proves the marker's precision: still raised by the build host
+            // for an unresolvable @model spelling, retired only as a generator-issued diagnostic.
+            Assert.Contains("HED7007", constants);
+            Assert.True(HeddleDiagnosticCatalog.TryGet("HED7007", out _));
+            var hostRow = rows.FirstOrDefault(l => l.StartsWith("| `HED7007`", StringComparison.Ordinal));
+            Assert.False(string.IsNullOrEmpty(hostRow));
+            Assert.Contains("Retired as a generator-issued diagnostic", hostRow);
+        }
+
         [Fact]
         public void ConstantsAndTheClaimedIdRegistryAgree()
         {

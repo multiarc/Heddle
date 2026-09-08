@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Reflection.Emit;
 using Heddle.Data;
 using Heddle.Precompiled;
+using Heddle.Precompiled.CompiledForm;
 using Heddle.Runtime;
 using Xunit;
 
@@ -47,62 +48,27 @@ namespace Heddle.Tests
             PrecompiledTemplates.ResetForTests();
         }
 
-        private sealed class NameFakeStrategy : IProcessStrategy
+        /// <summary>Builds rows carrying a key and, optionally, a registered name over an in-memory
+        /// artifact; the loader's internal constructor reads them at registration.</summary>
+        private static CompiledArtifact NamedRows(params (string key, string name)[] rows)
         {
-            public string Execute(in Scope scope) => string.Empty;
-            public void Render(in Scope scope) { }
+            var artifact = CompiledFormHarness.MinimalArtifact();
+            foreach (var row in rows)
+                artifact.Templates.Add(CompiledFormHarness.TemplateRow(row.key,
+                    registeredName: row.name));
+            return artifact;
         }
 
-        private static readonly IProcessStrategy Strategy = new NameFakeStrategy();
+        private static (string key, string name) Entry(string key, string registeredName = null) =>
+            (key, registeredName);
 
-        /// <summary>An entry carrying a key and, optionally, a registered name. The name is passed already
-        /// normalized, as the generator emits it.</summary>
-        private static PrecompiledTemplateInfo Entry(string key, string registeredName = null) =>
-            new PrecompiledTemplateInfo(
-                key, typeof(object), null, false, "0",
-                Array.Empty<PrecompiledImport>(),
-                new PrecompiledOptionsFingerprint(OutputProfile.Text, ExpressionMode.Native, false),
-                Array.Empty<PrecompiledExtensionBinding>(),
-                Array.Empty<PrecompiledFunctionBinding>(),
-                PrecompiledCapabilities.StringOutput, Strategy,
-                registeredName: registeredName,
-                linePathForm: PrecompiledLinePathForm.RootRelative);
-
-        /// <summary>Manifest entries are handed in through a static slot because the manifest type is instantiated
-        /// reflectively by <c>Register</c> and cannot take constructor arguments.</summary>
-        private static readonly Dictionary<string, PrecompiledTemplateInfo[]> Pending =
-            new Dictionary<string, PrecompiledTemplateInfo[]>(StringComparer.Ordinal);
-
-        public sealed class SlotManifestA : IHeddleTemplateManifest
+        /// <summary>Registers rows as a fresh dynamic marker assembly, and returns the assembly's simple
+        /// name (the string the registry attributes ownership to).</summary>
+        private static string Register(string slot, params (string key, string name)[] rows)
         {
-            public IReadOnlyList<PrecompiledTemplateInfo> GetTemplates() => Pending["A"];
-        }
-
-        public sealed class SlotManifestB : IHeddleTemplateManifest
-        {
-            public IReadOnlyList<PrecompiledTemplateInfo> GetTemplates() => Pending["B"];
-        }
-
-        private static Version RuntimeVersion =>
-            typeof(PrecompiledTemplates).Assembly.GetName().Version ?? new Version(1, 0, 0, 0);
-
-        private static string CompatibleVersion =>
-            $"{RuntimeVersion.Major}.{Math.Max(RuntimeVersion.Minor, 0)}.{Math.Max(RuntimeVersion.Build, 0)}";
-
-        /// <summary>Registers a manifest carrying <paramref name="entries"/> as a fresh dynamic assembly, and returns
-        /// its simple name (the string the registry attributes ownership to).</summary>
-        private static string Register(string slot, params PrecompiledTemplateInfo[] entries)
-        {
-            Pending[slot] = entries;
-            var manifestType = slot == "A" ? typeof(SlotManifestA) : typeof(SlotManifestB);
             var name = "HeddleNameAsm_" + slot + "_" + Guid.NewGuid().ToString("N");
-            var ab = AssemblyBuilder.DefineDynamicAssembly(new AssemblyName(name), AssemblyBuilderAccess.Run);
-            var ctor = typeof(HeddleCompiledTemplatesAttribute)
-                .GetConstructor(new[] { typeof(Type), typeof(int), typeof(string) });
-            ab.SetCustomAttribute(new CustomAttributeBuilder(ctor,
-                new object[] { manifestType, PrecompiledSchema.CurrentSchemaVersion, CompatibleVersion }));
-            PrecompiledTemplates.Register(ab);
-            return name;
+            var asm = CompiledFormHarness.RegisterArtifact(NamedRows(rows), name);
+            return asm.GetName().Name;
         }
 
         private static TemplateOptions Options() =>
@@ -316,16 +282,9 @@ namespace Heddle.Tests
             Register("A", Entry("shared/banner.heddle", "Shared.heddle"));
             Register("B", Entry("b/second.heddle", "Shared.heddle"));
 
-            Pending["B"] = new[] { Entry("shared/banner.heddle") };
-            var ab = AssemblyBuilder.DefineDynamicAssembly(
-                new AssemblyName("HeddleNameAsm_Dup_" + Guid.NewGuid().ToString("N")),
-                AssemblyBuilderAccess.Run);
-            var ctor = typeof(HeddleCompiledTemplatesAttribute)
-                .GetConstructor(new[] { typeof(Type), typeof(int), typeof(string) });
-            ab.SetCustomAttribute(new CustomAttributeBuilder(ctor,
-                new object[] { typeof(SlotManifestB), PrecompiledSchema.CurrentSchemaVersion, CompatibleVersion }));
-
-            Assert.Throws<PrecompiledRegistrationException>(() => PrecompiledTemplates.Register(ab));
+            var dup = NamedRows(Entry("shared/banner.heddle"));
+            Assert.Throws<PrecompiledRegistrationException>(() =>
+                CompiledFormHarness.RegisterArtifact(dup, "HeddleNameAsm_Dup"));
         }
 
         /// <summary>A name equal to the template's <b>own</b> key is a redundant request, not a collision: the same

@@ -12,7 +12,7 @@ namespace Heddle.Tests
     /// The runtime half of the catalog gates. Diagnostic identity (id → title, severity, and the message
     /// knowledge that genuinely has two consumers) lives in exactly one code-side table; these keep it bijective
     /// with <see cref="HeddleDiagnosticIds"/> and keep every populated format string well-formed. The
-    /// descriptor-equality half runs generator-side, where Roslyn types live.
+    /// descriptor-equality half runs projection-side, where Roslyn types live.
     /// </summary>
     public class DiagnosticCatalogTests
     {
@@ -77,7 +77,7 @@ namespace Heddle.Tests
         }
 
         /// <summary>The <c>MessageFormat</c> column is scoped to rows with a second consumer: the
-        /// <c>HED70xx</c> block, whose text the generator's descriptor projection formats. A runtime-raised id's
+        /// <c>HED70xx</c> block, whose text the build host's descriptor projection formats. A runtime-raised id's
         /// message has exactly one owner — its raise site — so populating it here would create the second copy
         /// the catalog exists to remove.</summary>
         [Fact]
@@ -85,7 +85,7 @@ namespace Heddle.Tests
         {
             foreach (var row in HeddleDiagnosticCatalog.All)
             {
-                // HED1018 is runtime-raised AND carries a format: the generator FORWARDS the id as a build
+                // HED1018 is runtime-raised AND carries a format: the build host FORWARDS the id as a build
                 // error (the same-fact-same-id registry rule) and formats the same sentence, which is exactly
                 // the second-consumer condition this column is scoped to.
                 var consumed = row.Id.StartsWith("HED70", StringComparison.Ordinal) ||
@@ -98,9 +98,9 @@ namespace Heddle.Tests
             }
         }
 
-        /// <summary>The shared <c>[Prop]</c> reserved-name set: the runtime's parse-time def-header check, its
-        /// attribute-source twin in <c>PropLayout</c>, and the generator's emitter twin all consult this one
-        /// list, so the set cannot differ by tier.</summary>
+        /// <summary>The shared <c>[Prop]</c> reserved-name set: the runtime's parse-time def-header check and its
+        /// attribute-source twin in <c>PropLayout</c> consult this one
+        /// list, so the set cannot differ by consumer.</summary>
         [Fact]
         public void ReservedPropNamesAreTheSharedSet()
         {

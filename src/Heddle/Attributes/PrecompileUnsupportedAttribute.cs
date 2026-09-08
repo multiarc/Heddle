@@ -4,7 +4,7 @@ namespace Heddle.Attributes {
     /// <summary>
     /// Declares that an extension's compile-time behaviour cannot be reproduced from a static initializer, so a
     /// precompiled template must bind this extension's call sites dynamically instead of running its
-    /// <c>InitStart</c> through <see cref="Heddle.Precompiled.PrecompiledRuntime.Init"/>.
+    /// <c>InitStart</c> at load.
     /// <para>The cost is <b>one call site</b>: the rest of the template still precompiles, and the declaring call
     /// renders by compiling its own source text at first render — the same substitute a hook that threw would have
     /// earned. Output is unchanged either way; the two tiers are parity-checked.</para>

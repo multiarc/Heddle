@@ -35,14 +35,14 @@ namespace Heddle.Runtime
                     miscellaneousOptions: SymbolDisplayMiscellaneousOptions.ExpandNullable);
         }
 
-        private static readonly HeddleTemplate PreparseGenerator;
+        private static readonly HeddleTemplate PreparseEmitter;
 
         static CSharpContext()
         {
             string document = null;
             try
             {
-                PreparseGenerator = new HeddleTemplate();
+                PreparseEmitter = new HeddleTemplate();
                 var path = $"{AppContext.BaseDirectory}/CSharpPreparseTemplate.tcs";
                 if (File.Exists(path))
                 {
@@ -61,7 +61,7 @@ namespace Heddle.Runtime
                     }
                 }
 
-                InitErrors = PreparseGenerator.Compile(document,
+                InitErrors = PreparseEmitter.Compile(document,
                     new CompileContext(new TemplateOptions
                     {
                         OutputProfile = OutputProfile.Text,
@@ -161,7 +161,7 @@ namespace Heddle.Runtime
             if (!InitErrors.Success)
                 throw new TemplateCompileException("Cannot compile base C# generation templates",
                     InitErrors.Errors);
-            var generatedCode = PreparseGenerator.Generate(expressionOptions);
+            var generatedCode = PreparseEmitter.Generate(expressionOptions);
             if (!PreparseCache.TryGet(generatedCode, AssemblyHelper.Generation, out var cached))
             {
                 var firstDiagnostic = context.CompileErrors.Count;

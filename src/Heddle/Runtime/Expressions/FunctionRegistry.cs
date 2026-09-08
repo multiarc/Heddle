@@ -80,7 +80,7 @@ namespace Heddle.Runtime.Expressions
                 throw new ArgumentNullException(nameof(name));
             if (staticMethod == null)
                 throw new ArgumentNullException(nameof(staticMethod));
-            // Shared ExportRules predicate keeps generator manifest counts in sync with this method's rejections.
+            // Shared ExportRules predicate keeps build manifest counts in sync with this method's rejections.
             var rejection = ExportRules.Evaluate(DescribeMethod(staticMethod));
             if (rejection != ExportRejection.None)
                 throw new ArgumentException(ExportRules.RejectionMessage(rejection), nameof(staticMethod));

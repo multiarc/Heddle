@@ -108,7 +108,7 @@ namespace Heddle.Samples.Precompiled
             var discovery = new StringBuilder();
             foreach (var entry in PrecompiledTemplates.Entries.OrderBy(e => e.Key, StringComparer.Ordinal))
                 discovery.Append(entry.Key).Append("  model=").Append(entry.ModelType?.Name ?? "(none)")
-                    .Append("  precompiled=").Append(entry.IsPrecompiled).Append('\n');
+                    .Append('\n');
 
             var capture = SampleCapture.Resolve(args);
             if (capture != null)

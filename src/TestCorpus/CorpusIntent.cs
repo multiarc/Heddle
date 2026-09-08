@@ -69,7 +69,8 @@ namespace Heddle.TestCorpus
     internal sealed class CorpusIntentRow
     {
         public CorpusIntentRow(string name, CorpusTier tier, CorpusRender render, string why, bool bom = false,
-            ExpressionMode mode = ExpressionMode.Native, params RefusalClass[] refusals)
+            ExpressionMode mode = ExpressionMode.Native, string[] lateBound = null,
+            string[] printerDeclines = null, params RefusalClass[] refusals)
         {
             Name = name;
             Tier = tier;
@@ -77,6 +78,8 @@ namespace Heddle.TestCorpus
             Why = why;
             Bom = bom;
             Mode = mode;
+            LateBound = lateBound ?? new string[0];
+            PrinterDeclines = printerDeclines ?? new string[0];
             Refusals = refusals ?? new RefusalClass[0];
         }
 
@@ -113,6 +116,17 @@ namespace Heddle.TestCorpus
         /// <summary>The refusal classes the row's record must carry, as a set. Empty for every row that
         /// compiles clean; the gate asserts set equality against the record's <c>RefusalSites</c>.</summary>
         public IReadOnlyList<RefusalClass> Refusals { get; }
+
+        /// <summary>The late-bound function names the row's record carries (P3-R7). Empty unless the row
+        /// renders through functions bound at load from the request's registry; the strict-mode gate
+        /// asserts these rows — and only these, the refusal rows and the printer-decline rows — throw
+        /// <c>PrecompiledStrictLoadException</c> under strict load.</summary>
+        public IReadOnlyList<string> LateBound { get; }
+
+        /// <summary>The declined site kinds the printer records for this row, each with its
+        /// <c>Why</c> (P3-R7). The corpus is expected to declare none: a decline the printer records
+        /// on a row without this field is a red gate.</summary>
+        public IReadOnlyList<string> PrinterDeclines { get; }
     }
 
     /// <summary>
@@ -293,9 +307,11 @@ namespace Heddle.TestCorpus
             new CorpusIntentRow("fn-late-bound.heddle", CorpusTier.Compiles, CorpusRender.ResolveOnly,
                 "Calls a function resolvable from neither the default table nor any referenced export; LateBoundFunctionTests owns its bytes and its ranking."),
             new CorpusIntentRow("fn-standalone-late-bound.heddle", CorpusTier.Compiles, CorpusRender.ResolveOnly,
-                "A standalone late-bound call: deferral needs no consumer to hang off, and the record carries no refusal."),
+                "A standalone late-bound call: deferral needs no consumer to hang off, and the record carries no refusal.",
+                lateBound: new[] { "toUpper" }),
             new CorpusIntentRow("fn-typed-consumer-late-bound.heddle", CorpusTier.Compiles, CorpusRender.ResolveOnly,
-                "A late-bound call under a typed consumer: the site still defers through the engine's ranker instead of refusing."),
+                "A late-bound call under a typed consumer: the site still defers through the engine's ranker instead of refusing.",
+                lateBound: new[] { "toUpper" }),
             new CorpusIntentRow("fn-unresolvable-marker.heddle", CorpusTier.Compiles, CorpusRender.ResolveOnly,
                 "Was the corpus's marker entry until late binding arrived. Its outer call's ARGUMENT is an expression over a second unbindable name — but an argument is neither a bodied nor a chained consumer, so no class-(c) refusal fires and the site late-binds like any other value site. UnresolvableFunctionTests owns its classification and its diagnostic."),
 

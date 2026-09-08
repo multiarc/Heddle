@@ -3,9 +3,8 @@ using System.Collections.Generic;
 namespace Heddle.Language.Members
 {
     /// <summary>
-    /// The facts a type system must supply for the shared member walk. Roslyn implements it over
-    /// <c>ITypeSymbol</c>/<c>IPropertySymbol</c>; the runtime implements it over <c>Type</c>/<c>PropertyInfo</c>.
-    /// Neither implementation gets to own the walk <i>order</i> — that lives in <see cref="MemberPathWalk"/>.
+    /// The facts a type system must supply for the shared member walk, implemented over
+    /// <c>Type</c>/<c>PropertyInfo</c>. No implementation gets to own the walk <i>order</i> — that lives in <see cref="MemberPathWalk"/>.
     /// </summary>
     internal interface ITypeModel<TType, TMember>
     {

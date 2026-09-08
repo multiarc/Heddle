@@ -59,6 +59,6 @@ registry surface hosts already use. The build runs the real engine and serialize
   compile with stubs, reused on an unchanged rebuild.
 - `net48`, `net8.0` and `net10.0` projects build with one `Heddle.Build` on a machine with a .NET
   10 runtime; a template reading a BCL member absent on `net48` builds, and `ValidateAll` on the
-  `net48` host reports the miss ([window item 8](v3-window.md#window-items)).
+  `net48` host reports the miss ([window item 8](v3-window-closed.md#window-items)).
 - A typed wrapper whose artifact fails validation throws `PrecompiledMismatchException`; with the
   host's default options assigned, a late-bound function resolves against the host's registry.

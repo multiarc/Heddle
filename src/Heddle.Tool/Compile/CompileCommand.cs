@@ -262,6 +262,22 @@ namespace Heddle.Tool.Compile
             internal CompiledArtifact Artifact;
             internal readonly List<SourceEmitter.EmittedTemplate> Emitted =
                 new List<SourceEmitter.EmittedTemplate>();
+            internal readonly List<PrintPart> PrintParts = new List<PrintPart>();
+        }
+
+        /// <summary>One template's printer input: the in-memory form record (live types, bound
+        /// trees) beside the payload-table counts its rows convert to, so the printer correlates
+        /// merged artifact rows back to record rows after the merge re-bases every index.</summary>
+        private sealed class PrintPart
+        {
+            internal TemplateInput Template;
+            internal FormRecord Record;
+            internal CompiledArtifact Single;
+            internal int Members;
+            internal int Expressions;
+            internal int CSharp;
+            internal int TemplateIndex;
+            internal int EmittedIndex;
         }
 
         private const string KeyShapeRule =
@@ -559,6 +575,7 @@ namespace Heddle.Tool.Compile
             if (failed || parts.Count == 0)
                 return null;
             outcome.Artifact = CompiledArtifactMerger.Merge(parts);
+            PrintGeneratedSites(request, outcome, diagnostics);
             return outcome;
         }
 
@@ -710,28 +727,86 @@ namespace Heddle.Tool.Compile
                 return null;
             }
 
-            ReportNotPrecompiled(request, template, single, diagnostics);
-            // Import-only rows load and serve but emit no entry-point wrapper.
-            if (!template.Item.IsImportOnly)
-                outcome.Emitted.Add(new SourceEmitter.EmittedTemplate
-                {
-                    Key = template.Key,
-                    Sanitized = sanitized,
-                    ModelTypeName = modelType == null
-                        ? "object"
-                        : "global::" + modelType.FullName.Replace('+', '.')
-                });
+            // Every compiled row emits its table arms and site methods (import-only rows load
+            // and serve but emit no entry-point wrapper); the printer runs post-merge, when every
+            // template index is final, and HED7031 reports from the merged rows then.
+            var emitted = new SourceEmitter.EmittedTemplate
+            {
+                Key = template.Key,
+                Sanitized = sanitized,
+                ModelTypeName = modelType == null
+                    ? "object"
+                    : "global::" + modelType.FullName.Replace('+', '.'),
+                ContentHash = template.ContentHash ?? string.Empty,
+                EmitWrapper = !template.Item.IsImportOnly
+            };
+            int emittedIndex = outcome.Emitted.Count;
+            outcome.Emitted.Add(emitted);
+            outcome.PrintParts.Add(new PrintPart
+            {
+                Template = template,
+                Record = context.FormRecord,
+                Single = single,
+                Members = single.Members != null ? single.Members.Count : 0,
+                Expressions = single.Expressions != null ? single.Expressions.Count : 0,
+                CSharp = single.CSharpSites != null ? single.CSharpSites.Count : 0,
+                TemplateIndex = outcome.PrintParts.Count,
+                EmittedIndex = emittedIndex
+            });
             return single;
         }
 
-        /// <summary>HED7031, Info, once per template whose row carries a refusal site, a late-bound
-        /// site or a C# site carried as data.</summary>
-        private static void ReportNotPrecompiled(CompileRequest request, TemplateInput template,
-            CompiledArtifact single, DiagnosticWriter diagnostics)
+        /// <summary>Runs the site printer over every compiled template once the merge has fixed
+        /// every template index, attaches the printed sites to the emitted rows, and reports
+        /// HED7031 from the merged rows.</summary>
+        private static void PrintGeneratedSites(CompileRequest request, CompileOutcome outcome,
+            DiagnosticWriter diagnostics)
         {
-            if (single.Templates.Count == 0)
+            int memberBase = 0;
+            int expressionBase = 0;
+            int csharpBase = 0;
+            foreach (var part in outcome.PrintParts)
+            {
+                var input = new Sites.SitePrinter.Input
+                {
+                    Record = part.Record,
+                    ContentHash = part.Template.ContentHash ?? string.Empty,
+                    TemplateIndex = part.TemplateIndex,
+                    MemberBase = memberBase,
+                    ExpressionBase = expressionBase,
+                    CSharpBase = csharpBase
+                };
+                var printed = Sites.SitePrinter.Print(input, outcome.Artifact);
+                var emitted = outcome.Emitted[part.EmittedIndex];
+                emitted.TemplateIndex = part.TemplateIndex;
+                foreach (var site in printed.Sites)
+                    emitted.Sites.Add(site);
+                foreach (var decline in printed.Declines)
+                    emitted.Declines.Add(decline);
+                foreach (var cls in printed.CSharpClasses)
+                    emitted.CSharpClasses.Add(cls);
+                foreach (var ns in printed.CSharpUsings)
+                    emitted.CSharpUsings.Add(ns);
+                memberBase += part.Members;
+                expressionBase += part.Expressions;
+                csharpBase += part.CSharp;
+                ReportNotPrecompiled(request, part, outcome, emitted, diagnostics);
+            }
+        }
+
+        /// <summary>HED7031, Info, once per template whose row carries a refusal site, a late-bound
+        /// site, a C# site carried as data, or a printer decline (n sites rebuilt at load: kinds
+        /// and positions).</summary>
+        private static void ReportNotPrecompiled(CompileRequest request, PrintPart part,
+            CompileOutcome outcome, SourceEmitter.EmittedTemplate emitted,
+            DiagnosticWriter diagnostics)
+        {
+            var artifact = outcome.Artifact;
+            if (artifact.Templates == null || part.TemplateIndex < 0 ||
+                part.TemplateIndex >= artifact.Templates.Count)
                 return;
-            var row = single.Templates[0];
+            var row = artifact.Templates[part.TemplateIndex];
+            var template = part.Template;
             var refusalParts = new List<string>();
             foreach (var site in row.RefusalSites)
             {
@@ -744,18 +819,29 @@ namespace Heddle.Tool.Compile
             var seenLate = new HashSet<string>(StringComparer.Ordinal);
             foreach (int functionRef in row.FunctionRefs)
             {
-                if (functionRef < 0 || functionRef >= single.Functions.Count)
+                if (artifact.Functions == null || functionRef < 0 ||
+                    functionRef >= artifact.Functions.Count)
                     continue;
-                var function = single.Functions[functionRef];
+                var function = artifact.Functions[functionRef];
                 if (function.Target == null && seenLate.Add(function.Name))
                     lateBound.Add(function.Name);
             }
 
+            int printedCSharp = 0;
+            foreach (var site in emitted.Sites)
+                if (site.Kind == "CSharp")
+                    printedCSharp++;
             int csharp = 0;
-            foreach (var site in single.Sites)
-                if (site.Kind == CompiledSiteKind.EmbeddedCSharp)
-                    csharp++;
-            if (refusalParts.Count == 0 && lateBound.Count == 0 && csharp == 0)
+            if (artifact.Sites != null)
+                foreach (var site in artifact.Sites)
+                    if (site != null && site.TemplateIndex == part.TemplateIndex &&
+                        site.Kind == CompiledSiteKind.EmbeddedCSharp)
+                        csharp++;
+            csharp -= printedCSharp;
+            if (csharp < 0)
+                csharp = 0;
+            if (refusalParts.Count == 0 && lateBound.Count == 0 && csharp == 0 &&
+                emitted.Declines.Count == 0)
                 return;
             var parts = new List<string>();
             parts.AddRange(refusalParts);
@@ -763,6 +849,16 @@ namespace Heddle.Tool.Compile
                 parts.Add("late-bound functions: " + string.Join(", ", lateBound));
             if (csharp != 0)
                 parts.Add(csharp + " C# site" + (csharp == 1 ? "" : "s") + " carried as data");
+            if (emitted.Declines.Count != 0)
+            {
+                var declines = new List<string>();
+                foreach (var decline in emitted.Declines)
+                    declines.Add(decline.ToString());
+                parts.Add(emitted.Declines.Count + " site" +
+                    (emitted.Declines.Count == 1 ? "" : "s") + " rebuilt at load: " +
+                    string.Join("; ", declines.ToArray()));
+            }
+
             diagnostics.Info(template.FullPath, HeddleDiagnosticIds.BuildTemplateNotPrecompiled,
                 "not fully precompiled: " + string.Join("; ", parts));
         }
@@ -795,10 +891,14 @@ namespace Heddle.Tool.Compile
             string artifactDirectory = Path.GetDirectoryName(request.ArtifactOut);
             if (!string.IsNullOrEmpty(artifactDirectory))
                 Directory.CreateDirectory(artifactDirectory);
+            // The digest is computed by the writer before the source prints: the generated table's
+            // ArtifactDigest names the exact bytes beside it, and the loader fails fast on any skew.
+            byte[] image = CompiledFormWriter.Write(outcome.Artifact);
             using (var destination = File.Create(request.ArtifactOut))
-                CompiledFormWriter.Write(outcome.Artifact, destination);
+                destination.Write(image, 0, image.Length);
             SourceEmitter.Write(request.SourceOut, generatedNamespace, outcome.Emitted,
-                outcome.Artifact.Header != null ? outcome.Artifact.Header.EngineVersion : string.Empty);
+                outcome.Artifact.Header != null ? outcome.Artifact.Header.EngineVersion : string.Empty,
+                outcome.Artifact.DigestHex ?? string.Empty);
         }
     }
 }

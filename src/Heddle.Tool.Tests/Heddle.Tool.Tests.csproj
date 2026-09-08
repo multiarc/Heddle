@@ -20,6 +20,11 @@
     <ProjectReference Include="..\Heddle.Tool\Heddle.Tool.csproj" />
   </ItemGroup>
 
+  <!-- The stored binary firewall fixture, copied beside the test assembly. -->
+  <ItemGroup>
+    <None Include="TestData\compiled-form-v4.bin" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <!-- The test-class inventory gate: this suite's classes, checked in and set-equality asserted. -->
   <Import Project="..\TestInventory\TestInventory.props" />
 

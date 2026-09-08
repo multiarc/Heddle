@@ -48,6 +48,20 @@ namespace Heddle.Tool.Tests
         }
 
         [Fact]
+        public void HostLoadedImageIsSharedNeverReloaded()
+        {
+            // An image the host already loaded (its engine assemblies, or this assembly in an
+            // in-process run) must resolve to the loaded instance: a second copy in the build ALC
+            // splits attribute identity and export discovery silently misses.
+            string engine = typeof(Heddle.HeddleTemplate).Assembly.Location;
+            using (var images = new ImageLoadContext())
+            {
+                var image = images.LoadImage(engine);
+                Assert.Same(typeof(Heddle.HeddleTemplate).Assembly, image);
+            }
+        }
+
+        [Fact]
         public void MissingProjectIsExitTwo()
         {
             var result = Run("compile", "--artifact-out", Out("form.bin"));

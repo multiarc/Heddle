@@ -244,8 +244,7 @@ namespace Heddle.Runtime {
 
             public string Execute(in Scope scope) => _document;
 
-            // Same shape as PrecompiledRuntime.WritePiece, whose semantics the parity gates pin: a
-            // UTF-8 sink takes pre-encoded bytes, everything else takes the chars. Static pieces
+            // A UTF-8 sink takes pre-encoded bytes, everything else takes the chars. Static pieces
             // reach the sink directly and never pass through the encode proxy, so the
             // never-bypass-encoding invariant is untouched.
             public void Render(in Scope scope)

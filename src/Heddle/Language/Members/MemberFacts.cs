@@ -1,7 +1,6 @@
 namespace Heddle.Language.Members
 {
-    /// <summary>The declared accessibility of a property getter, as both fact sources can report it (Roslyn's
-    /// <c>Accessibility</c> on the generator side, <c>MethodBase</c>'s attribute bits on the runtime side).</summary>
+    /// <summary>The declared accessibility of a property getter, as reported by <c>MethodBase</c>'s attribute bits.</summary>
     internal enum MemberAccess
     {
         Public,
@@ -31,8 +30,8 @@ namespace Heddle.Language.Members
 
         public MemberAccess Access { get; }
 
-        /// <summary>Matched by <b>full metadata name</b> — <c>Heddle.Attributes.HiddenAttribute</c> — on both sides.
-        /// The generator's historic unqualified-name match could let a foreign <c>*.HiddenAttribute</c> hide a member
+        /// <summary>Matched by <b>full metadata name</b> — <c>Heddle.Attributes.HiddenAttribute</c>.
+        /// The 2.x generator's historic unqualified-name match could let a foreign <c>*.HiddenAttribute</c> hide a member
         /// the runtime happily exposed; matching the full name prevents this.</summary>
         public bool HasHidden { get; }
 
@@ -42,7 +41,7 @@ namespace Heddle.Language.Members
     /// <summary>
     /// The policy for the member-tier sandbox filter: a path segment binds to a readable, non-<c>[Hidden]</c>
     /// instance property whose getter is public-or-internal. The <b>runtime's</b> observable accept/reject behavior
-    /// is normative; the generator conforms downward. Widening the filter (accepting <c>protected internal</c>,
+    /// is normative. Widening the filter (accepting <c>protected internal</c>,
     /// surfacing base-interface members) is a breaking-window item, never a drift fix.
     /// </summary>
     internal static class MemberVisibility

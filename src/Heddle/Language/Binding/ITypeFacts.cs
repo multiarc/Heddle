@@ -3,19 +3,19 @@ using Heddle.Language.Expressions;
 namespace Heddle.Language.Binding
 {
     /// <summary>
-    /// The type-system seam for shared binding rules. <typeparamref name="TType"/> is opaque: reflection adapter
-    /// over <c>System.Type</c>, Roslyn adapter over <c>ITypeSymbol</c>; neither appears in shared files.
+    /// The type-system seam for shared binding rules. <typeparamref name="TType"/> is opaque: the reflection adapter
+    /// works over <c>System.Type</c>; neither the adapter nor <c>System.Type</c> appears in shared files.
     /// </summary>
     internal interface ITypeFacts<TType>
     {
-        /// <summary>The <b>CLR</b> relation <c>target.IsAssignableFrom(source)</c>, exactly. The Roslyn adapter
+        /// <summary>The <b>CLR</b> relation <c>target.IsAssignableFrom(source)</c>, exactly. An adapter
         /// must return the CLR answer even where Roslyn's conversion classification disagrees — the two verified
         /// disagreements (<c>int → int?</c> assignable but classified <c>ImplicitNullable</c>;
-        /// <c>int? → IComparable</c> classified boxing but not CLR-assignable) are corrected there, once.</summary>
+        /// <c>int? → IComparable</c> classified boxing but not CLR-assignable) are corrected once.</summary>
         bool IsAssignableFrom(TType target, TType source);
 
         /// <summary>True iff <paramref name="type"/> is <c>System.Nullable&lt;T&gt;</c>; the one spelling that
-        /// replaces the three divergent ones the generator carried.</summary>
+        /// replaces the three divergent ones the 2.x generator carried.</summary>
         bool TryGetNullableUnderlying(TType type, out TType underlying);
 
         bool IsInterface(TType type);

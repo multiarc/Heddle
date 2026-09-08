@@ -170,18 +170,14 @@ namespace Heddle.Precompiled
                 if (current.Assemblies.Contains(assemblyName))
                     return; // idempotent per assembly
 
-                // A supported schema opens the artifact when the marker names one; otherwise the marker
-                // names a hand-written manifest, instantiated exactly as before.
+                // A supported schema opens the artifact the marker names. Hand-written manifests went
+                // with the 2.x generator: a marker that names anything else is rejected whole.
                 IReadOnlyList<PrecompiledTemplateInfo> templates;
                 var manifestType = attribute.ManifestType;
                 if (manifestType != null && typeof(IHeddleCompiledArtifact).IsAssignableFrom(manifestType))
                     templates = LoadCompiledRows(assembly, manifestType);
                 else
-                {
-                    var manifest =
-                        (IHeddleTemplateManifest)Activator.CreateInstance(attribute.ManifestType);
-                    templates = manifest.GetTemplates() ?? Array.Empty<PrecompiledTemplateInfo>();
-                }
+                    throw new PrecompiledRegistrationException(assemblyName, attribute.SchemaVersion);
 
                 var byKey = new Dictionary<string, PrecompiledTemplateInfo>(current.ByKey, StringComparer.Ordinal);
                 var keyOwner = new Dictionary<string, string>(current.KeyOwner, StringComparer.Ordinal);
@@ -223,7 +219,7 @@ namespace Heddle.Precompiled
 
                     var key = TemplateKey.Normalize(template.Key);
 
-                    // A name the shared key rule refuses. The generator cannot emit one — a malformed `Name` is
+                    // A name the shared key rule refuses. The build cannot emit one — a malformed `Name` is
                     // HED7004 at build time and never reaches a manifest — so this arm is reached only by a manifest
                     // no build tier vetted, which is exactly the population that most needs telling. It used to `continue`
                     // in silence, the one wholly silent drop in registration; it now reports through the same HED7104
@@ -307,7 +303,8 @@ namespace Heddle.Precompiled
             var decoded = CompiledFormReader.Read(image);
             var rows = new List<PrecompiledTemplateInfo>(decoded.Templates.Count);
             for (int i = 0; i < decoded.Templates.Count; i++)
-                rows.Add(new PrecompiledTemplateInfo(assembly, image, decoded, i));
+                rows.Add(new PrecompiledTemplateInfo(assembly, image, decoded, i,
+                    artifactInstance as IPrecompiledSiteTable));
             return rows;
         }
 

@@ -89,6 +89,45 @@ namespace Heddle.Runtime.Expressions
             var body = compiler.Visit(expression);
             if (compiler._deferredCall != null && !compiler._failed)
                 return Defer(compiler, record, expression, compileScope, chainedType, out resultType);
+            var tableState = compileScope != null ? compileScope.SiteTableState : null;
+            if (tableState != null)
+            {
+                int nativeFound = Heddle.Precompiled.SiteTableState.FindNativeRecord(tableState,
+                    expression.Position.StartIndex, expression.Position.Length);
+                if (nativeFound >= 0 &&
+                    Heddle.Precompiled.SiteTableState.NativeRecordDeferred(tableState, nativeFound) &&
+                    tableState.Strict)
+                    tableState.ThrowStrict("LateBound",
+                        Heddle.Precompiled.SiteTableState.NativeRecordOrdinal(tableState, nativeFound));
+            }
+
+            if (tableState != null && tableState.Active)
+            {
+                Type tableShape = compiler._usesProps
+                    ? typeof(Func<object, object, object, object[], object>)
+                    : typeof(Func<object, object, object, object>);
+                Delegate site;
+                int ordinal;
+                string kind;
+                if (Heddle.Precompiled.SiteTableState.TryResolveNative(tableState,
+                    expression.Position.StartIndex, expression.Position.Length, tableShape,
+                    out site, out ordinal, out kind) && site != null)
+                {
+                    resultType = new ExType(body.Type);
+                    if (compiler._usesProps)
+                        return new PropsCompiledParameter
+                        {
+                            ParameterImplementation =
+                                (Func<object, object, object, object[], object>)site
+                        };
+                    return new CompiledParameter
+                    {
+                        ParameterImplementation = (Func<object, object, object, object>)site
+                    };
+                }
+
+                tableState.ThrowIfStrictUnserved(kind, ordinal);
+            }
             if (compiler._failed || body == null)
             {
                 resultType = typeof(object);
@@ -124,7 +163,7 @@ namespace Heddle.Runtime.Expressions
                     { ParameterImplementation = propsLambda.Compile() };
                 if (record != null)
                     record.RecordExpressionParameter(propsParameter, expression, compileScope.ScopeType,
-                        chainedType, compileScope.RootScopeType, true);
+                        chainedType, compileScope.RootScopeType, true, body);
                 return propsParameter;
             }
 
@@ -133,7 +172,7 @@ namespace Heddle.Runtime.Expressions
             var compiled = new CompiledParameter { ParameterImplementation = lambda.Compile() };
             if (record != null)
                 record.RecordExpressionParameter(compiled, expression, compileScope.ScopeType, chainedType,
-                    compileScope.RootScopeType, false);
+                    compileScope.RootScopeType, false, body);
             return compiled;
         }
 
@@ -469,7 +508,7 @@ namespace Heddle.Runtime.Expressions
         /// <summary>
         /// The reflection fact source for the shared overload ranker. The rank logic itself —
         /// <c>ConversionRank</c>/<c>TryRank</c>/<c>Dominates</c> and the Pareto tier bind — now lives once in
-        /// <see cref="OverloadRank"/>, where the generator's linked build consults the identical rule instead of
+        /// <see cref="OverloadRank"/>, where the build consults the identical rule instead of
         /// delegating overload selection to the consumer's C# compiler.
         /// </summary>
         private sealed class ReflectionRankModel : IRankModel<Type>
@@ -509,8 +548,8 @@ namespace Heddle.Runtime.Expressions
         }
 
         /// <summary>The rank-argument form of the bind, shared with the precompiled tier's late-bound call site
-        /// (<see cref="Precompiled.PrecompiledFunctionSite"/>) so both tiers select the SAME overload through the
-        /// SAME <see cref="OverloadRank"/> tiers over the same reflection rank model.</summary>
+        /// so both tiers select the SAME overload through the SAME <see cref="OverloadRank"/> tiers over the same
+        /// reflection rank model.</summary>
         internal static BindOutcome BindOverload(IReadOnlyList<FunctionEntry> overloads,
             IReadOnlyList<RankArgument<Type>> rankArgs, out FunctionEntry chosen, out bool expanded)
         {

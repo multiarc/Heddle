@@ -21,6 +21,9 @@
     <Project Path="precompiled-app/PrecompiledApp.csproj" />
     <Project Path="precompiled-app/external-models/ExternalModels.csproj" />
   </Folder>
+  <Folder Name="/precompiled-aot/">
+    <Project Path="precompiled-aot/PrecompiledAot.csproj" />
+  </Folder>
   <Folder Name="/sandboxed-user-templates/">
     <Project Path="sandboxed-user-templates/SandboxedUserTemplates.csproj" />
   </Folder>

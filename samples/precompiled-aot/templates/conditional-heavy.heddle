@@ -1,0 +1,3 @@
+@using(){{Heddle.Samples.PrecompiledAot}}
+@model(){{ConditionalHeavyModel}}
+@if(IsFeatured){{<p>Featured</p>}}@elif(IsArchived){{<p>Archived</p>}}@else(){{<p>Regular</p>}}

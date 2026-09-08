@@ -5,6 +5,7 @@ using Heddle.Attributes;
 using Heddle.Language;
 using Heddle.Precompiled;
 using Heddle.Runtime;
+using Heddle.Runtime.Expressions;
 using Xunit;
 
 namespace Heddle.Tests
@@ -108,7 +109,8 @@ namespace Heddle.Tests
         [Fact]
         public void DefaultFunctionNamesDoNotCollideWithBuiltInExtensionNames()
         {
-            var functions = new HashSet<string>(DefaultFunctionTable.Rows.Select(r => r.Name),
+            var functions = new HashSet<string>(FunctionRegistry.Default.EnumerateOverloads()
+                .Select(r => r.Name),
                 StringComparer.Ordinal);
             var extensions = new HashSet<string>(TemplateFactory.RegisteredNames(), StringComparer.Ordinal);
             functions.IntersectWith(extensions);

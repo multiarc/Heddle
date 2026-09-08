@@ -8,7 +8,7 @@ namespace Heddle.Tests
 {
     /// <summary>
     /// The literal formatter is the documented inverse of the AST decoder, so <c>decode(format(v))</c> must return
-    /// <c>v</c> bit-for-bit and with the identical CLR type. The generator runs inside the compiler process and the
+    /// <c>v</c> bit-for-bit and with the identical CLR type. The build prints literals into generated code and the
     /// runtime never re-formats a literal (the compiler keeps the decoder's boxed value), so a formatter that does
     /// not round-trip makes the same template compute a different value precompiled than at runtime — depending on
     /// which machine built it. That is exactly what <c>ToString("R")</c> did for <c>double</c> under a .NET Framework
@@ -16,7 +16,7 @@ namespace Heddle.Tests
     /// <para>The randomized legs use a fixed seed so a failure is reproducible; the corner cases are enumerated.
     /// Values the decoder rejects by its own range rules (NaN, ±∞) can never come out of it, so the formatter never
     /// sees them and they are out of scope.</para>
-    /// <para>The formatter lives in <c>Heddle</c> rather than the generator, so this test lives in the runtime
+    /// <para>The formatter lives in <c>Heddle</c> rather than the build host, so this test lives in the runtime
     /// suite — which puts it on the <b>net48</b> leg, the exact TFM where <c>"R"</c> misbehaves, and makes a future
     /// decoder change break a shared test instead of only breaking generated code.</para>
     /// </summary>
@@ -169,7 +169,7 @@ namespace Heddle.Tests
         }
 
         [Fact]
-        public void NoRoundTripFormatRemainsInTheGenerator()
+        public void NoRoundTripFormatRemains()
         {
             // Regression guard: "R" does not round-trip on .NET Framework.
             Assert.Equal("0.10000000000000001D", LiteralFormatter.Format(0.1d));

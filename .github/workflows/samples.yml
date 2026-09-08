@@ -34,6 +34,7 @@ jobs:
           - component-props-slots
           - streaming-ssr
           - precompiled-app
+          - precompiled-aot
           - codegen-t4-successor
     runs-on: ubuntu-latest
     steps:

@@ -105,7 +105,7 @@ namespace Heddle.Tests
         }
 
         /// <summary>
-        /// A host that resolves imports itself — the generator resolves them by template key, from files it was
+        /// A host that resolves imports itself — the build resolves them by template key, from files it was
         /// handed rather than from disk — must have the cycle guard call an import the same document its reader
         /// does. Keying the guard on the file path while the reader keyed on the template key gave one document as
         /// many identities as it had spellings, and the guard walked their permutations before noticing the repeat:

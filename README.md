@@ -30,7 +30,7 @@ public class Greeting { public string Name { get; set; } public int Count { get;
 | --- | --- |
 | `Heddle` | Core engine: parser host, compiler, runtime, built‑in extensions. |
 | `Heddle.Language` | ANTLR grammar + generated lexer/parser and editor assets. |
-| `Heddle.Generator` | Build‑time source generator that pre‑compiles `.heddle` files into your assembly. Add with `PrivateAssets="all"` (an analyzer package). |
+| `Heddle.Build` | Build‑time host that pre‑compiles `.heddle` files into your assembly (MSBuild targets driving the out‑of‑process `heddle compile`). Replaces `Heddle.Generator` (2.x, deprecated). |
 | `Heddle.LanguageServices` | Editor language‑service facade (completion, diagnostics, hover, go‑to‑definition) you can host yourself. |
 | `Heddle.LanguageServer` | LSP server for editors, shipped as a `dotnet tool` (`heddle-lsp`). |
 | `Heddle.Tool` | The `heddle` CLI — a `dotnet tool` for rendering templates and build‑time code generation (the T4 successor). |
@@ -43,6 +43,7 @@ Full documentation lives in **[docs/](docs/README.md)**:
 - [Language Reference](docs/language-reference.md) — every Heddle construct and its nuances.
 - [Built‑in Extensions](docs/built-in-extensions.md) — `list`, `if`, `date`, `money`, and more.
 - [C# API Reference](docs/csharp-api.md) — `HeddleTemplate`, options, contexts, results.
+- [Build‑Time Pre‑compilation](docs/precompilation.md) — compiling `.heddle` files into the assembly with `Heddle.Build` (v3).
 - [Writing Custom Extensions](docs/custom-extensions.md) — add your own directives.
 - [Architecture](docs/architecture.md) — the lex → parse → compile → render pipeline.
 - [Building & Testing](docs/building.md) — SDK, scripts, tests, packaging, CI.

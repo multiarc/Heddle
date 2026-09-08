@@ -8,7 +8,7 @@ namespace Heddle.Attributes
     /// <c>public static</c> class whose eligible public static methods become registrable functions under their
     /// lowercase-invariant method names.</para>
     /// <para>Read by <see cref="Heddle.Runtime.Expressions.FunctionRegistry.RegisterFrom"/> (runtime), the
-    /// workspace scan (editor), and the source generator (build): one attribute, three readers.
+    /// workspace scan (editor), and the build host (build): one attribute, three readers.
     /// Deliberately mirrors <see cref="ExportExtensionsAttribute"/>'s shape, but has <b>no</b> parameterless
     /// "all" form: function containers carry no structural marker, so an assembly-wide sweep is undefined.</para>
     /// </summary>

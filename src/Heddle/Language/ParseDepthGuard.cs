@@ -36,7 +36,7 @@ namespace Heddle.Language
         /// <summary>
         /// Chosen against the smallest stack the engine can be hosted on, in the configuration it ships in. Both parts
         /// matter and the second was got wrong once: 300 was derived from a Debug build, where a 1 MB thread survives
-        /// to 503, while a <b>Release</b> build — what a source generator actually runs as — dies at 284 and the
+        /// to 503, while a <b>Release</b> build — what ships — dies at 284 and the
         /// guard fired at 293, so it could never fire first. Measured last-safe depths, Release on a 1 MB thread:
         /// 284 for prefix operators and <c>?:</c>, 287 for <c>??</c>, 574 for parentheses.
         /// <para>This bounds the parser's own descent. It does <b>not</b> bound ANTLR's prediction, which recurses

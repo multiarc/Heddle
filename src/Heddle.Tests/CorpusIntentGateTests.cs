@@ -11,7 +11,7 @@ namespace Heddle.Tests
 {
     /// <summary>
     /// The gates that keep the shared corpus and its declared intent from drifting apart, asserted in
-    /// the engine tier (which owns the corpus directory) as well as in the generator tier.
+    /// the engine tier (which owns the corpus directory).
     /// <para>Every gate here is <b>set equality</b>. None is a count and none is a floor, and that is not stylistic
     /// fastidiousness: this repository shipped a <c>&gt;= 25</c> floor against an actual 40 and lost fifteen templates
     /// in silence, then shipped a <c>&gt;= 40</c> floor against an actual 62 next to a comment claiming "~45". A count

@@ -2,7 +2,7 @@
 
 **Status:** Specified — ready for implementation. **Plan item:**
 [phase-4-removal-and-release-tail.md](../../plan/precompilation-v2/phase-4-removal-and-release-tail.md); the window's
-release tail under [v3-window.md](../../plan/precompilation-v2/v3-window.md#execution-order). **Entry document:**
+release tail under [v3-window-closed.md](../../plan/precompilation-v2/v3-window-closed.md#execution-order). **Entry document:**
 [README.md](README.md). **Depends on:** phases [1](phase-1-compiled-form.md), [2](phase-2-build-integration.md) and
 [3](phase-3-generated-sites.md) merged with their evidence published.
 

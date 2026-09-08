@@ -17,7 +17,8 @@ namespace Heddle.Precompiled
     /// resolved <see cref="PrecompiledTemplateInfo"/> and the request's effective <see cref="TemplateOptions"/>,
     /// returning the first failure as a <see cref="PrecompiledFallbackEvent"/> (with the pinned detail string) or
     /// <c>null</c> when every check passes. Pure apart from the optional staleness step's file reads.
-    /// <para>Ordered: marker → options → model type → extensions → bindings → functions → staleness.</para></summary>
+    /// <para>Ordered: options → model type → extensions → bindings → functions → staleness. A row's
+    /// presence in the entries is the precompiled fact; there is no marker step.</para></summary>
     internal static class PrecompiledGauntlet
     {
         internal const string Hed7101 = Data.HeddleDiagnosticIds.PrecompiledGauntletFallback;
@@ -29,13 +30,6 @@ namespace Heddle.Precompiled
         internal static PrecompiledFallbackEvent? Validate(PrecompiledTemplateInfo entry, TemplateOptions options,
             Func<PrecompiledExtensionBinding, Type, bool> bindingResolver, Type requestModelType = null)
         {
-            if (!entry.IsPrecompiled)
-            {
-                var name = entry.FunctionBindings.FirstOrDefault(r => r.TargetTypeName == null).Name ?? "?";
-                return Fail(entry.Key, PrecompiledFallbackReason.UnsupportedFunction,
-                    $"Function '{name}': not precompiled (no default or exported binding; build warning HED7014)");
-            }
-
             var optionsFailure = CheckOptions(entry, options);
             if (optionsFailure != null)
                 return optionsFailure;
@@ -51,10 +45,6 @@ namespace Heddle.Precompiled
             var bindingsFailure = CheckMemberBindings(entry);
             if (bindingsFailure != null)
                 return bindingsFailure;
-
-            var initFailure = CheckInitSites(entry);
-            if (initFailure != null)
-                return initFailure;
 
             var functionFailure = CheckFunctions(entry, options);
             if (functionFailure != null)
@@ -77,13 +67,6 @@ namespace Heddle.Precompiled
             TemplateOptions options,
             Func<PrecompiledExtensionBinding, Type, bool> bindingResolver, Type modelType)
         {
-            if (!entry.IsPrecompiled)
-            {
-                var name = entry.FunctionBindings.FirstOrDefault(r => r.TargetTypeName == null).Name ?? "?";
-                return Fail(entry.Key, PrecompiledFallbackReason.UnsupportedFunction,
-                    $"Function '{name}': not precompiled (no default or exported binding; build warning HED7014)");
-            }
-
             var optionsFailure = CheckTypedOptions(entry, options);
             if (optionsFailure != null)
                 return optionsFailure;
@@ -99,10 +82,6 @@ namespace Heddle.Precompiled
             var bindingsFailure = CheckMemberBindings(entry);
             if (bindingsFailure != null)
                 return bindingsFailure;
-
-            var initFailure = CheckInitSites(entry);
-            if (initFailure != null)
-                return initFailure;
 
             var functionFailure = CheckFunctions(entry, options);
             if (functionFailure != null)
@@ -504,9 +483,9 @@ namespace Heddle.Precompiled
             if (rows.Count == 0)
                 return null;
 
-            // A request with no registry compiles against the frozen default set — and so does a late-bound site
-            // (PrecompiledRuntime.EffectiveFunctions), which is why a null-target row still has to be checked
-            // where the all-built-in shortcut used to answer for the whole entry.
+            // A request with no registry compiles against the frozen default set — and so does a late-bound site,
+            // which is why a null-target row still has to be checked where the all-built-in shortcut used to
+            // answer for the whole entry.
             var registry = options.Functions ?? FunctionRegistry.Default;
             var allBuiltIn = rows.All(r => r.TargetTypeName == DefaultFunctionTable.ShimTargetTypeName);
 
@@ -532,7 +511,7 @@ namespace Heddle.Precompiled
                 if (recordedForName.Count == 0)
                 {
                     // A null-target row on a PRECOMPILED entry is a late-bound call site: the build knew the call
-                    // shape but not the target, and PrecompiledFunctionSite resolves it at first render through
+                    // shape but not the target, and the materialized site resolves it at first render through
                     // the engine's own ranker. Two render-time configurations are outside what that site can
                     // reproduce, and both are the dynamic tier's to answer, so they fall back here rather than at
                     // a render: a name that is a registered EXTENSION (whose render protocol is not a value), and
@@ -603,7 +582,7 @@ namespace Heddle.Precompiled
 
         /// <summary>Decode-then-hash: the file is read with BOM detection (a BOM is honored and
         /// stripped; no BOM means UTF-8) and its <b>decoded text</b> is hashed through the shared
-        /// <see cref="ContentHash"/> rule — the same input the generator hashed at build time. Hashing the raw byte
+        /// <see cref="ContentHash"/> rule — the same input the build hashed at build time. Hashing the raw byte
         /// stream here is what made every BOM'd/UTF-16 template permanently <c>StaleContent</c>.</summary>
         internal static string HashFile(string path)
         {
@@ -613,24 +592,11 @@ namespace Heddle.Precompiled
         }
 
         /// <summary>The manifest identity string, produced by the shared <see cref="AqnFormatter"/>
-        /// through its reflection adapter — the same rule the generator's Roslyn adapter applies, so a nested or
+        /// through its reflection adapter — the same rule the build host applies when it writes the row, so a nested or
         /// generic container can no longer spell its identity two different ways.</summary>
         internal static string AqnSansVersion(Type type) => ReflectionTypeIdentity.AqnSansVersion(type);
 
         private static string Lower(bool value) => value ? "true" : "false";
-
-        /// <summary>The answers the template's own extensions gave when their hooks ran at registration. A
-        /// call-site fault costs nothing here — that call already renders through its substitute and the rest of the
-        /// template is precompiled — while a template-scope one is a refusal the dynamic tier would repeat, or a
-        /// typing answer the emitted casts contradict, and either takes the request off this tier.</summary>
-        private static PrecompiledFallbackEvent? CheckInitSites(PrecompiledTemplateInfo entry)
-        {
-            var fault = PrecompiledRuntime.FirstTemplateFault(entry.InitSites);
-            if (fault == null)
-                return null;
-            return Fail(entry.Key,
-                fault.Reason ?? PrecompiledFallbackReason.ExtensionInitCompileError, fault.Detail);
-        }
 
         private static PrecompiledFallbackEvent Fail(string key, PrecompiledFallbackReason reason, string detail)
         {

@@ -17,6 +17,11 @@ namespace Heddle.Runtime.Parameters
             _compiledAccessor = GetPropertyChainAccessor(getModelParameter).Compile();
         }
 
+        internal ModelParameter(Func<object, object> accessor)
+        {
+            _compiledAccessor = accessor ?? throw new ArgumentNullException(nameof(accessor));
+        }
+
         internal static Expression<Func<object, object>> GetPropertyChainAccessor(
             IEnumerable<(Type type, PropertyInfo property)> getModelParameter)
         {

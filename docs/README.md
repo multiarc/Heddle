@@ -16,7 +16,7 @@ The engine is published as a set of NuGet packages:
 | `Heddle.LanguageServer` | [src/Heddle.LanguageServer](../src/Heddle.LanguageServer) | LSP server for editors, shipped as a `dotnet tool` (`heddle-lsp`). |
 | `Heddle.Tool` | [src/Heddle.Tool](../src/Heddle.Tool) | The `heddle` CLI — a `dotnet tool` for rendering templates and build‑time code generation (the T4 successor). |
 
-Current release line: **2.1.0**. The published version is set from the latest
+Current release line: **3.0.0**. The published version is set from the latest
 [release tag](https://github.com/multiarc/Heddle/releases) (`vX.Y.Z`) at publish time —
 see [nuget.org](https://www.nuget.org/packages/Heddle) — so the version in the source
 tree is just a placeholder.
@@ -91,7 +91,7 @@ Roslyn code generation, lexer modes) and **[Building & Testing](building.md)**.
 | [Built‑in Extensions](built-in-extensions.md) | Reference for every bundled extension, its expected input type, and HTML‑encoding behavior. |
 | [Patterns & Recipes](patterns.md) | Task‑oriented idioms: with‑blocks, presence checks, first/last, local helper definitions, root context, JSON injection, and more. |
 | [C# API Reference](csharp-api.md) | `IHeddleTemplate`/`HeddleTemplate`, `TemplateOptions`, `CompileContext`, `HeddleCompileResult`, registration, and error handling. |
-| [Build‑Time Pre‑compilation](precompilation.md) | Compiling `.heddle` files into the assembly: generator setup, typed entry points, registry, mismatch policy. |
+| [Build‑Time Pre‑compilation](precompilation.md) | Compiling `.heddle` files into the assembly: `Heddle.Build` setup, typed entry points, registry, mismatch policy. |
 | [Writing Custom Extensions](custom-extensions.md) | The extension contract, `Scope`, attributes, and registration. |
 | [Architecture](architecture.md) | Internal pipeline, ANTLR grammar, compilation, and editor tooling. |
 | [Syntax Highlighting](syntax-highlighting.md) | The portable TextMate grammar, its token→scope mapping, and how editors/sites consume it. |

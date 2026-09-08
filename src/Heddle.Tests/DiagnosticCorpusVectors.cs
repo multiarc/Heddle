@@ -6,17 +6,16 @@ namespace Heddle.Tests
     /// <para>The projection-equivalence corpus: one template per diagnostic block plus a clean control, each with
     /// the <c>(Id, IsWarning, Offset, Length)</c> multiset the shared <c>HeddleDiagnosticProjection</c> drain
     /// produces — and the per-host deltas each host <b>declares</b> rather than merely exhibits.</para>
-    /// <para>Three suites assert against this one table, so the hosts are compared to each other transitively and
+    /// <para>Two suites assert against this one table, so the hosts are compared to each other transitively and
     /// a host that silently drops a channel turns the suite red: <c>Heddle.Tests</c> (the drain itself, the
-    /// parse-channel subset, and <c>HeddleCompileResult</c>), <c>Heddle.LanguageServices.Tests</c> (the editor),
-    /// and <c>Heddle.Generator.Tests</c> (the build tier). The file is linked into the latter two, following a
-    /// shared precedent.</para>
+    /// parse-channel subset, and <c>HeddleCompileResult</c>) and <c>Heddle.LanguageServices.Tests</c> (the
+    /// editor). The file is linked into the latter, following a shared precedent.</para>
     /// <para>Every value here was <b>measured</b>, not derived. Templates deliberately avoid model members: a
     /// typeless editor session types the model as <c>null</c> and a runtime compile types it as
     /// <c>ExType.Dynamic</c>, so a member path would draw <c>HED0001</c> on one side only — a model-typing
     /// difference, not a drain difference, and not what this corpus is for.</para>
     /// <para><b>Not covered:</b> the <c>HED5xxx</c> declaration block (its templates need an extension assembly
-    /// each host registers differently), and cases like import origin re-anchoring and the generator's region-fill
+    /// each host registers differently), and cases like import origin re-anchoring and the region-fill
     /// retract filter — which are asserted in their own suites (<c>ImportOriginTests</c>,
     /// <c>DiagnosticProjectionTests.TheIncludePredicateFiltersBeforeProjection</c>) because neither has a cross-host
     /// counterpart to compare against.</para>
@@ -54,12 +53,12 @@ namespace Heddle.Tests
             public string[] TextProfileEntries { get; }
 
             /// <summary>The subset reachable from the parse channel alone. It stopped being the same thing as
-            /// what the build tier forwards once the generator gained the shaping-time compile warnings, so the
+            /// what the build tier forwards once the build gained the shaping-time compile warnings, so the
             /// two are separate columns and the difference between them is legible per fixture.</summary>
             public string[] ParseChannel { get; }
 
             /// <summary>What the <b>build</b> tier forwards under the front end's own ids. It is the parse channel
-            /// plus whichever compile-channel warnings the generator's own walk reaches; a fixture where the two
+            /// plus whichever compile-channel warnings the build's own walk reaches; a fixture where the two
             /// columns differ is one the build tier used to report nothing for.</summary>
             public string[] BuildForwarded { get; }
 

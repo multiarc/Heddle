@@ -2,5 +2,7 @@
 # Set-equality asserted by TestClassInventoryTests. A class added or removed here is the diff a
 # reviewer reads; nothing in this file measures how many tests a class carries.
 Heddle.Tool.Tests.CompileVerbTests
+Heddle.Tool.Tests.CompiledFormFixtureTests
+Heddle.Tool.Tests.GeneratedSiteRoundtripTests
 Heddle.Tool.Tests.HeddleToolTests
 Heddle.Tool.Tests.TestClassInventoryTests

@@ -3,7 +3,7 @@
 **Shows:** build-time precompilation, the differential rule (precompiled output equals its dynamically-compiled
 twin), public discovery enumeration, and configuring both tiers for a model assembly the project does not
 reference. **Source of record:**
-[Pre-compilation](../../docs/precompilation.md) (phase 9 D13 row 9).
+[Build-Time Pre-compilation](../../docs/precompilation.md).
 
 ## Run it
 
@@ -11,7 +11,7 @@ reference. **Source of record:**
 dotnet run --project samples/precompiled-app
 ```
 
-`templates/*.heddle` are precompiled at build time by `Heddle.Generator` (referenced as an analyzer) into typed
+`templates/*.heddle` are precompiled at build time by `Heddle.Build` into typed
 entry points under `Heddle.Generated`. `Program.cs`:
 
 1. renders `invoice.heddle` through its **precompiled** typed entry point (`Templates_Invoice.Generate(model)`) —
@@ -20,10 +20,10 @@ entry points under `Heddle.Generated`. `Program.cs`:
    byte-identical output (a mismatch fails the run); and
 3. renders `ticket.heddle`, whose `@model` type lives in `external-models/` — an assembly this project takes **no
    compile-time reference on**. `@(HeddleModelAssembly)` appends it to `@(ReferencePath)`, which is the only reason
-   the generator can bind `Acme.Models.Ticket` and the only reason `Program.cs` can name it; the assembly attribute
+   the build host can bind `Acme.Models.Ticket` and the only reason `Program.cs` can name it; the assembly attribute
    is what registers the same assembly with the engine so the dynamic twin compiles too. Both differentials must
    hold; and
-4. enumerates the public registry (`PrecompiledTemplates.Entries`) — key, model type, precompiled flag.
+4. enumerates the public registry (`PrecompiledTemplates.Entries`) — key and model type.
 
 > The `EmitCompilerGeneratedFiles` output lands in `generated/` (gitignored). All three templates are precompiled
 > here; a production app mixes precompiled and dynamically-resolved templates freely under

@@ -48,7 +48,7 @@ namespace Heddle.Tests.MemberConformance
 namespace Foreign
 {
     /// <summary>A <b>different</b> <c>HiddenAttribute</c>. The runtime matches <c>[Hidden]</c> by real attribute
-    /// type, so this one hides nothing; the generator's unqualified-name match used to hide the member, which this
+    /// type, so this one hides nothing; the 2.x generator's unqualified-name match used to hide the member, which this
     /// row guards against.</summary>
     [AttributeUsage(AttributeTargets.Property)]
     public sealed class HiddenAttribute : Attribute { }
@@ -56,9 +56,8 @@ namespace Foreign
 
 namespace Heddle.Tests
 {
-    /// <summary>Member-visibility conformance corpus run against the reflection adapter. Rows are shared data both
-    /// adapters must agree on; the generator's Roslyn adapter runs the same rows, making divergent policies structurally
-    /// impossible. Every verdict pins the runtime's current observable behavior; departures from the sandbox contract
+    /// <summary>Member-visibility conformance corpus run against the reflection adapter. The
+    /// 2.x generator's Roslyn adapter ran the same rows. Every verdict pins the runtime's current observable behavior; departures from the sandbox contract
     /// are breaking-window candidates, not drift fixes.</summary>
     public class MemberVisibilityConformanceTests
     {

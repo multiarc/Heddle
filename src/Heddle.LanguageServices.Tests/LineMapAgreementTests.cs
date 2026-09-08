@@ -10,7 +10,7 @@ using Xunit;
 namespace Heddle.LanguageServices.Tests
 {
     /// <summary>The LSP's line map is a wrapper over the shared <c>LineIndex</c>, so it must report the shared
-    /// golden vectors — the same <c>HeddleCompileResult</c> and the generator's <c>LineMapper</c> assert — in LSP
+    /// golden vectors — the same <c>HeddleCompileResult</c> asserts — in LSP
     /// convention (zero-based line and character).</summary>
     public class LineMapAgreementTests
     {

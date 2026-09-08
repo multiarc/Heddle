@@ -42,12 +42,12 @@ namespace Heddle.Tests.AliasNestBeta
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Runtime half of the shared type-name corpus, resolved symbolically in <c>Heddle.Generator.Tests</c>.
+    /// Runtime half of the shared type-name corpus (the symbol-side half went with the deleted 2.x generator suite).
     /// Regression test: short-name ties now error (ambiguous) instead of silent order-dependent picks, matching dotted-form behavior.
     /// </summary>
     public class TypeSpellingLockstepTests
     {
-        /// <summary>Shared corpus: spelling, imports, expected outcome (used by generator-side driver too).</summary>
+        /// <summary>Shared corpus: spelling, imports, expected outcome (formerly also by the generator-side driver).</summary>
         public static IEnumerable<object[]> Corpus()
         {
             // (spelling, imports, expectation) — expectation is a type full name, "AMBIGUOUS", or "UNRESOLVED".

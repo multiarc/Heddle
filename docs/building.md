@@ -35,7 +35,7 @@ dotnet test               # runs all test projects
 
 All shipping projects use `LangVersion=latest` and are **strong‑name signed** with
 `heddle.snk` (`SignAssembly=true`, `AssemblyOriginatorKeyFile=..\..\heddle.snk`).
-The current release line is **2.1.0**; the published version is set from the release tag
+The current release line is **3.0.0**; the published version is set from the release tag
 (`vX.Y.Z`) at publish time, so the version in the source tree is just a placeholder.
 
 ### Key dependencies
@@ -52,9 +52,9 @@ Tests use **xUnit v3** on Microsoft.Testing.Platform — each suite builds as a 
 test executable, and `dotnet test` drives them per project or per solution. The core engine
 suite lives in [src/Heddle.Tests](../src/Heddle.Tests) — its
 key file is [HeddleTemplateTests.cs](../src/Heddle.Tests/HeddleTemplateTests.cs), with other suites
-covering the compiler, reflection helpers, and string builders. Four more test projects cover the
-rest of the toolchain: `Heddle.Generator.Tests` and `Heddle.Generator.IntegrationTests` (the source
-generator), `Heddle.Tool.Tests` (the `heddle` CLI), and `Heddle.LanguageServices.Tests` (the editor
+covering the compiler, reflection helpers, and string builders. Three more test projects cover the
+rest of the toolchain: `Heddle.Build.Tests` (the MSBuild host), `Heddle.Tool.Tests` (the `heddle` CLI),
+and `Heddle.LanguageServices.Tests` (the editor
 language services).
 
 Run the whole solution:
@@ -65,8 +65,8 @@ dotnet test
 
 Or scope to a single project, e.g. `dotnet test src/Heddle.Tests`. CI
 ([dotnet.yml](../.github/workflows/dotnet.yml)) runs each suite as its own step through a
-guarded wrapper that fails the run unless the suite's expected number of tests actually
-executed — a whole‑solution run would report one aggregate count, which would let a single
+guarded wrapper that turns a skipped test into a failed one — and each suite asserts its own
+`test-classes.txt` inventory, so a whole‑solution run's aggregate count can never let a single
 suite going quiet pass unnoticed.
 
 Many tests are **golden‑file** comparisons: a `.heddle` template under
@@ -136,9 +136,29 @@ full report; for *why*, see
 > benchmark is a representative, component‑heavy page where the compiled document's advantage
 > is most visible.
 
+## Build integration (`Heddle.Build`)
+
+Precompilation runs out of process: the `Heddle.Build` targets collect `HeddleTemplate` items and
+scalar properties, serialize them into a response file, and invoke `heddle compile`. **Inputs** are
+exactly the items and properties — per-item metadata `Key`, `Name`, `ModelType`, `Precompile` and the
+`OutputProfile` override, plus the scalar properties in
+[src/Heddle.Build/build/Heddle.Build.props](../src/Heddle.Build/build/Heddle.Build.props). **Outputs**
+are the embedded compiled-form artifact (`Heddle.CompiledForm.bin`), the generated source
+(`Heddle.CompiledForm.g.cs`, joined into `Compile` before `CoreCompile`), and a stamp file the host
+uses for incrementality. No `CompilerVisibleProperty`, no `AdditionalFiles`: nothing runs inside the
+compiler, so build output is a pure function of declared inputs.
+
+Custom MSBuild items extend the reach without changing the shape: `HeddleModelAssembly` and
+`HeddleExtensionAssembly` append assemblies to `@(ReferencePath)` so the host can bind over their
+implementations (see [Build‑Time Pre‑compilation](precompilation.md#assemblies-the-build-must-see)).
+
+Retired 2.x knobs (`HeddleObserveEngine`, `HeddleNodeFallback`, `HeddleEmitUtf8Pieces` and the
+two observe-path properties) are not read. Each of the first three draws one `HED7037` warning when
+set; delete the element. Output is byte-identical either way.
+
 ## Packaging
 
-Pack all six shipping packages (`Heddle`, `Heddle.Language`, `Heddle.Generator`,
+Pack all six shipping packages (`Heddle`, `Heddle.Language`, `Heddle.Build`,
 `Heddle.LanguageServices`, `Heddle.LanguageServer`, `Heddle.Tool`) by packing the whole solution,
 as CI does:
 

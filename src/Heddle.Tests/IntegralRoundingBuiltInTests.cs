@@ -103,16 +103,17 @@ namespace Heddle.Tests
         }
 
         /// <summary>The build tier reads the same rows, so an overload added to one and not the other is a
-        /// silent tier divergence. This is the structural half; the byte-for-byte half is the generator suite's.</summary>
+        /// silent tier divergence. This is the structural half; the byte-for-byte half is the generated-site
+        /// roundtrip suite's.</summary>
         [Theory]
         [InlineData("round")]
         [InlineData("floor")]
         [InlineData("ceil")]
         public void TheSharedTableCarriesFourNumericTiers(string name)
         {
-            var singleArg = DefaultFunctionTable.Rows
-                .Where(r => r.Name == name && r.ParameterTypeNames.Length == 1)
-                .Select(r => r.ParameterTypeNames[0])
+            var singleArg = FunctionRegistry.Default.EnumerateOverloads()
+                .Where(r => r.Name == name && r.ParameterTypes.Length == 1)
+                .Select(r => r.ParameterTypes[0].FullName)
                 .OrderBy(t => t, System.StringComparer.Ordinal)
                 .ToArray();
 

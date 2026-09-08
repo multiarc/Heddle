@@ -43,6 +43,44 @@ namespace Heddle.Tool.Compile
         internal Assembly LoadImage(string path)
         {
             string full = Path.GetFullPath(path);
+            // An image the host already loaded (its own engine assemblies, or the test assembly
+            // in an in-process run) is shared, never reloaded into the build ALC: a second copy
+            // splits attribute identity, and export discovery ([ExportFunctions] on a consumer
+            // image) silently misses when the copy's attribute type is not the host's.
+            string simple;
+            try
+            {
+                simple = AssemblyName.GetAssemblyName(full).Name;
+            }
+            catch (Exception ex) when (ex is IOException || ex is BadImageFormatException ||
+                ex is UnauthorizedAccessException)
+            {
+                throw ImageLoadFailure(path, ex.Message);
+            }
+
+            foreach (var loaded in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                if (loaded.IsCollectible)
+                    continue;
+                AssemblyName name;
+                try
+                {
+                    name = loaded.GetName();
+                }
+                catch (Exception ex) when (ex is IOException || ex is BadImageFormatException)
+                {
+                    continue;
+                }
+
+                if (string.Equals(name.Name, simple, StringComparison.OrdinalIgnoreCase))
+                {
+                    if (!_pathsBySimpleName.ContainsKey(simple))
+                        _pathsBySimpleName[simple] = full;
+                    _images.Add(loaded);
+                    return loaded;
+                }
+            }
+
             Assembly image;
             try
             {
@@ -54,7 +92,7 @@ namespace Heddle.Tool.Compile
                 throw ImageLoadFailure(path, ex.Message);
             }
 
-            string simple = image.GetName().Name;
+            simple = image.GetName().Name;
             if (!_pathsBySimpleName.ContainsKey(simple))
                 _pathsBySimpleName[simple] = full;
             _images.Add(image);

@@ -2,7 +2,7 @@
 
 **Status:** Specified — ready for implementation.
 **Owning plan:** [docs/plan/precompilation-v2/](../../plan/precompilation-v2/README.md) (final, ratified; decisions
-[PD1–PD11](../../plan/precompilation-v2/decisions.md); the [v3 window](../../plan/precompilation-v2/v3-window.md)).
+[PD1–PD11](../../plan/precompilation-v2/decisions.md); the [v3 window](../../plan/precompilation-v2/v3-window-closed.md)).
 **Assumed prior specs:** none — this initiative builds on the 2.1 line as found in source.
 
 | Document | Purpose |
@@ -143,7 +143,7 @@ equality; its intent table is redefined in
 
 ## Back-compat and migration
 
-Everything here is a v3 window item ([v3-window.md](../../plan/precompilation-v2/v3-window.md#window-items)): items 3,
+Everything here is a v3 window item ([v3-window-closed.md](../../plan/precompilation-v2/v3-window-closed.md#window-items)): items 3,
 7 and 9 land in phase 1, items 5 and 8 in phase 2, items 1, 2, 4, 6 and 10 in phase 4 together with the migration
 note, the golden re-ratification commit (expected zero rendered-golden churn) and the post-release reconciliation.
 Each phase's *Back-compat and migration* section names the items it lands.

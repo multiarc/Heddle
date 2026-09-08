@@ -8,7 +8,10 @@ namespace Heddle.Precompiled
         SchemaVersionUnsupported,
         EngineVersionIncompatible,
 
-        /// <summary>Fallback-marker entry.</summary>
+        /// <summary>A late-bound call site names a function no registry answers — a null-target row the
+        /// build could not resolve and the request cannot either. Eager target mismatches (a recorded
+        /// target the live registry answers differently) are <see cref="FunctionBindingMismatch"/>; this
+        /// reason is the late-bound arm only.</summary>
         UnsupportedFunction,
 
         OptionsMismatch,
@@ -37,8 +40,8 @@ namespace Heddle.Precompiled
         /// numeric value moves.</para></summary>
         ModelTypeMismatch,
 
-        /// <summary>An extension's own compile-time hook, run at registration through
-        /// <see cref="PrecompiledRuntime.Init"/>, reported compile errors for one of the template's call sites. The
+        /// <summary>An extension's own compile-time hook, run at load, reported compile errors for one of
+        /// the template's call sites. The
         /// dynamic tier runs the same hook and would refuse the template too, so this costs the template rather than
         /// the call site — the request compiles dynamically and gets the engine's own errors.
         /// <para>Appended for the same reason as <see cref="ModelTypeMismatch"/>: no existing member's numeric value

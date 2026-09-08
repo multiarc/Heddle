@@ -66,7 +66,7 @@ namespace Heddle.Runtime.Expressions
         /// fingerprint row and the gauntlet check that compares it against the live extension type.
         /// <para>Built by the same shared <see cref="PropLayoutCore"/> the compile path uses, with faults
         /// discarded: a malformed declaration set is not this method's business (the compile path diagnoses it),
-        /// and the fingerprint of whatever layout the core produces is exactly what the generator's frozen
+        /// and the fingerprint of whatever layout the core produces is exactly what the build's frozen
         /// prototype was indexed against. Returns <c>null</c> for a parameter-less extension, which is what makes
         /// the gauntlet check vacuous where there is nothing to check.</para>
         /// </summary>

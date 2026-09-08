@@ -1,7 +1,7 @@
 # Phase 4 — Removal and release tail
 
 Back to the [plan](README.md). Depends on phases 1–3; the window's release tail under
-[v3-window.md](v3-window.md#execution-order).
+[v3-window-closed.md](v3-window-closed.md#execution-order).
 
 ## Goal
 
@@ -9,7 +9,7 @@ End the second compiler in the v3 release and ship the window's deliverables.
 
 ## Scope
 
-- **Removals** ([window items 1–4, 6](v3-window.md#window-items)): `src/Heddle.Generator` (three
+- **Removals** ([window items 1–4, 6](v3-window-closed.md#window-items)): `src/Heddle.Generator` (three
   csproj), `src/Heddle.Generator.Tests`, `src/Heddle.Generator.IntegrationTests`, their solution
   rows, CI legs, analyzer packaging and observe machinery; everything in `Heddle.dll` that
   existed for generated 2.x code, enumerated by the spec from `public-api-heddle.txt`; the
@@ -28,7 +28,7 @@ End the second compiler in the v3 release and ship the window's deliverables.
   `editor-support.md`, `custom-extensions.md` updated in the same landing; documentation-currency
   gates green.
 - **Release-tail deliverables**: NuGet deprecation of the last 2.x `Heddle.Generator`; the
-  [migration note](v3-window.md#migration-note) with release notes and CHANGELOG; the golden
+  [migration note](v3-window-closed.md#migration-note) with release notes and CHANGELOG; the golden
   re-ratification commit (expected zero rendered-golden churn; the intent table's owner column and
   the deleted suites' snapshots are its only churn); reconciliation after `v3.0.0` is tagged.
 

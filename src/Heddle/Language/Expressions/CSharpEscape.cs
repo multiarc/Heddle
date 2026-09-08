@@ -80,9 +80,9 @@ namespace Heddle.Language.Expressions
         public static bool HasLoneSurrogate(string value) => IndexOfLoneSurrogate(value) >= 0;
 
         /// <summary>The char index of the first unpaired UTF-16 surrogate in <paramref name="value"/>, or -1 —
-        /// the position <c>HED7005</c> reports. <c>null</c> scans clear. This centralizes a check that previously
-        /// had three separate implementations; the escape table above, the generator's <c>PieceWriter</c>, and the
-        /// runtime all now share one answer.</summary>
+        /// the position <c>HED7005</c> reported. <c>null</c> scans clear. This centralizes a check that previously
+        /// had three separate implementations; the escape table above, the 2.x generator's <c>PieceWriter</c>, and the
+        /// runtime all shared one answer.</summary>
         public static int IndexOfLoneSurrogate(string value)
         {
             if (value == null)

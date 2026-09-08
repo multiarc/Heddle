@@ -31,11 +31,11 @@ namespace Heddle.Tests
         }
 
         private static string Read(string relative) =>
-            File.ReadAllText(PipelineContractTests.FindRepoFile(relative.Replace('/', Path.DirectorySeparatorChar)))
+            File.ReadAllText(BuildSurfaceContractTests.FindRepoFile(relative.Replace('/', Path.DirectorySeparatorChar)))
                 .Replace("\r\n", "\n");
 
         private static string RepoRoot =>
-            Path.GetDirectoryName(PipelineContractTests.FindRepoFile("Directory.Build.props"));
+            Path.GetDirectoryName(BuildSurfaceContractTests.FindRepoFile("Directory.Build.props"));
 
         private static bool IsNotSource(string relative) =>
             relative.Split(Path.DirectorySeparatorChar)
@@ -178,8 +178,8 @@ namespace Heddle.Tests
                     continue;
 
                 var text = File.ReadAllText(project);
-                // A project may state its signing in a shared local props file — the multi-Roslyn generator
-                // variants import Heddle.Generator.Common.props — so literal same-directory imports are
+                // A project may state its signing in a shared local props file — the deleted multi-Roslyn
+                // build variants imported a shared Common props file — so literal same-directory imports are
                 // inlined before a project is declared unsigned. Imports spelled through MSBuild properties
                 // are skipped: nothing signing-related hides behind one.
                 foreach (Match import in Regex.Matches(text, @"<Import\s+Project=""(?<p>[^""$]+)"""))

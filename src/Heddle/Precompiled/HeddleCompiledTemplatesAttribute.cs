@@ -2,7 +2,7 @@ using System;
 
 namespace Heddle.Precompiled
 {
-    /// <summary>The assembly-level discovery marker the generator emits — one per assembly, following the
+    /// <summary>The assembly-level discovery marker the build emits — one per assembly, following the
     /// <c>RazorCompiledItemAttribute</c> model. A single reflection touch during
     /// <see cref="PrecompiledTemplates.Register"/> reads the manifest type and runs the schema/engine gate.
     /// The constructor signature is the stable outermost contract and never changes; evolution happens behind
@@ -21,7 +21,7 @@ namespace Heddle.Precompiled
 
         public int SchemaVersion { get; }
 
-        /// <summary>The referenced <c>Heddle</c> assembly version the generator saw (<c>major.minor.patch</c>).</summary>
+        /// <summary>The referenced <c>Heddle</c> assembly version the build saw (<c>major.minor.patch</c>).</summary>
         public string EngineVersion { get; }
     }
 }

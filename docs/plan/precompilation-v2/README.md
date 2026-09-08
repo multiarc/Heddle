@@ -1,7 +1,7 @@
 # Precompilation v2 — a serialized compiled form, not a second compiler
 
 > Final plan, ratified by the maintainer, and the planning document of the **v3 breaking
-> window** ([v3-window.md](v3-window.md)). Decisions: [decisions.md](decisions.md). Specs turn
+> window** (closed with 3.0.0 — [v3-window-closed.md](v3-window-closed.md)). Decisions: [decisions.md](decisions.md). Specs turn
 > each phase into "exactly how"
 > ([spec conventions](../../spec/common/spec-conventions.md#relationship-to-the-owning-plan)).
 

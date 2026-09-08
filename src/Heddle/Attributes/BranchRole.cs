@@ -2,7 +2,7 @@ namespace Heddle.Attributes
 {
     /// <summary>
     /// <para>Positions an extension within a branch set.</para>
-    /// <para>The numeric values are a pinned contract (source generators decode them from Roslyn metadata);
+    /// <para>The numeric values are a pinned contract (decoded from assembly metadata by the build host and the runtime);
     /// renumbering any member or reordering is a breaking change.</para>
     /// </summary>
     public enum BranchRole

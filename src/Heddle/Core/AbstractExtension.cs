@@ -14,7 +14,6 @@ namespace Heddle.Core
         private RuntimeDocument _subTemplate;
         private IProcessStrategy _processStrategy;
         private bool _needsLocals;
-        private bool _hasPrecompiledBody;
 
         public void Dispose()
         {
@@ -63,25 +62,11 @@ namespace Heddle.Core
             }
         }
 
-        protected bool InnerExist => _subTemplate != null || _hasPrecompiledBody;
+        protected bool InnerExist => _subTemplate != null;
 
         public virtual void SetUpRenderType(RenderType renderType)
         {
             DirectRender = renderType == RenderType.Encode;
-        }
-
-        /// <summary>
-        /// Install a precompiled body without a <c>RuntimeDocument</c>. Thread-safe via CLR type-init;
-        /// the extension is never mutated after it returns.
-        /// </summary>
-        internal void BindPrecompiled(IProcessStrategy body, RenderType renderType, bool needsLocals,
-            BlockPosition position)
-        {
-            _processStrategy = body;
-            _needsLocals = needsLocals;
-            _hasPrecompiledBody = body != null;
-            SetUpRenderType(renderType);
-            Position = position;
         }
 
         private static ExType InitSubTemplate(ref string parameterTemplate, ExType dataType, ExType chainedType,
@@ -148,18 +133,8 @@ namespace Heddle.Core
         {
             if (initContext.CompileScope == null)
                 throw new ArgumentNullException(nameof(initContext.CompileScope));
-            if (PrecompiledBodySupply.TryConsume(dataType, chainedType, ref initContext.ParameterTemplate,
-                out var supplied))
-            {
-                if (supplied.AssignInnerResult)
-                    _innerResult = supplied.InnerResult;
-                _subTemplate = null;
-                _processStrategy = supplied.Strategy;
-                _needsLocals = supplied.NeedsLocals;
-                _hasPrecompiledBody = supplied.Strategy != null;
-                return typeof(string);
-            }
-
+            // The loader materializes a real RuntimeDocument, so the body always compiles from
+            // the template text; there is no second (precompiled-body) source.
             var rawTemplate = initContext.ParameterTemplate;
             var type = InitSubTemplate(ref initContext.ParameterTemplate, dataType, chainedType, initContext.CompileScope,
                 initContext.ParseContext, initContext.SourceItem, out var subTemplate,

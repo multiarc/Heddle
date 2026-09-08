@@ -151,7 +151,75 @@ namespace Heddle.Tests
             public Stream OpenArtifact() => new MemoryStream(Image ?? new byte[0], false);
         }
 
-        /// <summary>Registers artifact bytes through a dynamic marker assembly, the way the generator's
+        /// <summary>Builds the smallest artifact a loader row needs: a header plus caller-supplied
+        /// template/extension/function rows. For gauntlet/registry unit tests that need rows without
+        /// compiling a template.</summary>
+        internal static CompiledArtifact MinimalArtifact()
+        {
+            var artifact = new CompiledArtifact
+            {
+                Header = new CompiledHeader
+                {
+                    EngineVersion = CompatibleVersion,
+                    BuilderVersion = "test",
+                    ExpressionMode = "Native",
+                    TrimDirectiveLines = false,
+                    DefaultOutputProfile = "Text"
+                }
+            };
+            // Template rows point at document 0 by default; the writer requires the target to exist
+            // even though the gauntlet and the registry never read it.
+            artifact.Documents.Add(new CompiledDocument
+            {
+                ParseFacts = new CompiledParseFacts
+                {
+                    Offset = 0,
+                    VisibleDefinitionRefs = new List<int>()
+                }
+            });
+            return artifact;
+        }
+
+        internal static CompiledTemplateRow TemplateRow(string key,
+            string profile = "Text", string mode = "Native", bool trim = false,
+            string registeredName = null, string contentHash = "0",
+            CompiledTypeRef modelType = null, bool ambient = false,
+            IList<int> extensionRefs = null, IList<int> functionRefs = null) =>
+            new CompiledTemplateRow
+            {
+                Key = key,
+                RegisteredName = registeredName,
+                ContentHash = contentHash,
+                ModelType = modelType,
+                ModelTypeIsAmbient = ambient,
+                Options = new CompiledOptionsFingerprint { Profile = profile, Mode = mode, Trim = trim },
+                ExtensionRefs = extensionRefs ?? new List<int>(),
+                FunctionRefs = functionRefs ?? new List<int>()
+            };
+
+        internal static NamedTypeRef TypeRef(Type type) =>
+            new NamedTypeRef(type.FullName, type.Assembly.GetName().Name, false);
+
+        internal static NamedTypeRef TypeRef(string fullName, string assemblySimpleName) =>
+            new NamedTypeRef(fullName, assemblySimpleName, false);
+
+        /// <summary>Round-trips an artifact through bytes and returns the loader row — the internal-constructor
+        /// path every post-generator test uses instead of the deleted public constructors.</summary>
+        internal static PrecompiledTemplateInfo LoaderRow(CompiledArtifact artifact, int rowIndex = 0)
+        {
+            var image = CompiledFormWriter.Write(artifact);
+            var back = CompiledFormReader.Read(image);
+            return new PrecompiledTemplateInfo(typeof(CompiledFormHarness).Assembly, image, back, rowIndex,
+                null);
+        }
+
+        /// <summary>Registers an artifact's rows through a dynamic marker assembly and returns it, for the
+        /// registry suites. Each call mints a fresh assembly; bytes are consumed synchronously at register
+        /// time, so sequential registrations with different rows are independent.</summary>
+        internal static Assembly RegisterArtifact(CompiledArtifact artifact, string assemblyName) =>
+            RegisterImage(CompiledFormWriter.Write(artifact), assemblyName);
+
+        /// <summary>Registers artifact bytes through a dynamic marker assembly, the way the build's
         /// output registers: a [HeddleCompiledTemplates] marker naming an artifact opener.</summary>
         internal static Assembly RegisterImage(byte[] image, string assemblyName)
         {
@@ -175,6 +243,40 @@ namespace Heddle.Tests
             if (IsLateBoundRow(row.Name))
                 options.Functions = LateBoundFunctions();
             return options;
+        }
+
+        /// <summary>The public switch the P3-R7 evidence runs pivot on: the loader prefers a generated
+        /// site unless this is <c>false</c> (default <c>true</c>). Set through the public surface so the
+        /// "without" arm exercises the data path exactly as a host would.</summary>
+        internal const string UseGeneratedSitesSwitch = "Heddle.Precompiled.UseGeneratedSites";
+
+        /// <summary>True once the P3-A engine slice lands: the strict-load exception type and the
+        /// <c>PrecompiledStrictLoad</c> option exist. The P3-R7 strict facts skip until then, so this
+        /// slice stays green on the data path alone.</summary>
+        internal static bool StrictModeSupported
+        {
+            get
+            {
+                var assembly = typeof(PrecompiledTemplates).Assembly;
+                if (assembly.GetType("Heddle.Precompiled.PrecompiledStrictLoadException") == null)
+                    return false;
+                return typeof(TemplateOptions).GetProperty("PrecompiledStrictLoad") != null;
+            }
+        }
+
+        /// <summary>Per-row pipeline with the site-table preference pinned to one position (P3-R7: every
+        /// corpus row runs twice, switch on and off). Restores the default-<c>true</c> position after.</summary>
+        internal static RowResult RegisterRowWithSites(CorpusIntentRow row, string rootPath, bool useGeneratedSites)
+        {
+            AppContext.SetSwitch(UseGeneratedSitesSwitch, useGeneratedSites);
+            try
+            {
+                return RegisterRow(row, rootPath);
+            }
+            finally
+            {
+                AppContext.SetSwitch(UseGeneratedSitesSwitch, true);
+            }
         }
 
         /// <summary>Full per-row pipeline through registration. Asserts at the first divergent step.</summary>
@@ -233,6 +335,19 @@ namespace Heddle.Tests
             return parts.Count == 0 ? "<no detail>" : string.Join("; ", parts);
         }
 
+        /// <summary>Renders a materialized strategy through the adapter's three sinks — the successor of
+        /// the deleted <c>PrecompiledRuntime.Generate*</c> roots, which likewise provisioned no locals
+        /// frame of their own (the frame rides the strategy).</summary>
+        internal static string RenderStrategy(IProcessStrategy strategy, object model) =>
+            new HeddleTemplate(strategy).Generate(model);
+
+        internal static void RenderStrategy(IProcessStrategy strategy, object model, TextWriter writer) =>
+            new HeddleTemplate(strategy).Generate(model, writer);
+
+        internal static void RenderStrategy(IProcessStrategy strategy, object model,
+            IBufferWriter<byte> writer) =>
+            new HeddleTemplate(strategy).Generate(model, writer);
+
         /// <summary>Renders both tiers through all three sinks and asserts byte identity, returning the
         /// shared output. The dynamic reference compiles without recording or deferral.</summary>
         internal static string AssertThreeSinkParity(CorpusIntentRow row, IProcessStrategy strategy,
@@ -243,15 +358,15 @@ namespace Heddle.Tests
             var modelEx = ModelExFor(row, out modelType, out model);
             string text = CorpusText(row.Name);
 
-            string s1 = PrecompiledRuntime.GenerateString(strategy, model, null, null);
+            string s1 = RenderStrategy(strategy, model);
             string s2;
             using (var writer = new StringWriter())
             {
-                PrecompiledRuntime.GenerateToWriter(strategy, model, null, null, writer);
+                RenderStrategy(strategy, model, writer);
                 s2 = writer.ToString();
             }
             var seq = new ArrayBufferWriter<byte>();
-            PrecompiledRuntime.GenerateUtf8(strategy, model, null, null, seq);
+            RenderStrategy(strategy, model, seq);
             string s3 = Encoding.UTF8.GetString(seq.WrittenSpan.ToArray());
 
             var renderOptions = RequestOptions(row, rootPath);

@@ -39,7 +39,7 @@ Categories, not layouts; the spec fixes the encoding.
   allocation.
 - **Binding gate**: member-path identities and late-bound function names are checked bindings, so
   `ValidateAll` and the gauntlet report a member that no longer binds or a function the registry
-  lacks before materialization, as must-surface fallbacks ([window item 9](v3-window.md#window-items)).
+  lacks before materialization, as must-surface fallbacks ([window item 9](v3-window-closed.md#window-items)).
 - **Refusal classes**, each return-shaped and costing the site alone: (a) an extension declaring
   `[PrecompileUnsupported]`; (b) a value typed by reflection enumeration order; (c) a body or hook
   whose model type depends on an unbindable function call. The intent table is the sole definition

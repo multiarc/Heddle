@@ -68,7 +68,7 @@ public interface IExtension : IDisposable
 > registration or name list needs updating.
 >
 > On the **dynamic tier** that is all it takes. For the block to be removed when the template is
-> **precompiled**, declare [`[ZeroOutput]`](#precompiled-mode): a build-time generator reads symbols
+> **precompiled**, declare [`[ZeroOutput]`](#precompiled-mode): the build host reads symbols
 > and cannot observe that your `InitStart` returns `null`, so without the attribute the block is
 > removed dynamically and kept as output precompiled — the two tiers disagree on bytes, which is the
 > one thing pre-compilation may never do. Declare it whenever `InitStart` returns `null`.
@@ -518,8 +518,8 @@ Three things are load‑bearing:
 `ISlotContent` and `Scope` are both confined to one render lineage — consume them in the call that
 received them and never store them.
 
-**Precompilation.** A slot projection precompiles: the generator dispatches on the declaration rather
-than on a name, constructs your extension, and runs the `InitStart` above inside your own assembly, so
+**Precompilation.** A slot projection precompiles: the build records the declaration, and the loader
+constructs your extension and runs the `InitStart` above inside your own assembly at load, so
 the slot state is decided by your hook rather than predicted.
 
 ---
@@ -594,8 +594,8 @@ Declared in [src/Heddle/Attributes](../src/Heddle/Attributes):
 | `[BranchRole(BranchRole.Opener\|Continuation\|Terminal)]` | class | Declares the extension's position in a branch set (opener/continuation/terminal), giving it the same set semantics as the built‑in `@if`/`@elif`/`@else` family. Compile‑time only; inherited by subclasses. See [Building your own branch set](#building-your-own-branch-set). |
 | `[ScopeChannel]` | class | Declares that the extension publishes to or reads from the [local context channel](#the-local-context-channel). Bodies containing one are provisioned with a locals frame at compile time; without one, `Scope.Publish` throws and `Scope.TryRead` returns `false`. Compile‑time only; inherited by subclasses. |
 | `[SlotProjection]` | class | Declares that the extension is a **slot projection**: inside a definition body that declares a slot parameter (`<name(out:: Type)>`) the call carries that slot's value and renders the caller's content in its place, and outside one it splices the caller's content against the enclosing model. Both tiers dispatch the slot channel on this declaration rather than on the name the extension answers to, so a custom projection is served exactly as the built‑in `@out` is. Carrying it obliges the extension to read the enclosing definition's slot type off the compile context in its own `InitStart`, to report the slot diagnostics that reading implies, and to render through the scope's slot carrier rather than through its own body. Compile‑time only; inherited by subclasses. |
-| `[ChildTemplateHost]` | class | Declares that the extension is a **child‑template host**: its body is not content but a name, which it resolves at compile time to a second template, compiles as a child of the one being compiled, and hosts — rendering that child's output in place of its own body. Both tiers dispatch the child‑template route on this declaration rather than on the name the extension answers to, so a custom host is served exactly as the built‑in `@partial` is. Carrying it obliges the extension to evaluate its own body once at compile time to produce the name, to queue the child compile so the child's errors reach the parent's compile result, and to take delivery of the compiled child in `CompleteInit`. A call to one **precompiles in a default build**: the extension is constructed and its hook run at static init, and the child arrives through the engine's child supply — the precompiled entry when the registry holds the named template, the extension's own compile under the request's options when it does not. Compile‑time only; inherited by subclasses. |
-| `[ZeroOutput]` | class | Declares a **directive**: the extension emits nothing and its whole block is removed from the document rather than kept as rendered output. The runtime’s own protocol for this is behavioral — a directive’s `InitStart` returns `null` — and stays authoritative; this attribute is the declarative form of it, and it is what makes the **precompiled tier** classify your extension correctly (a build‑time generator can only read symbols). Declare it whenever `InitStart` returns `null`: without it, the block is removed dynamically and kept as output when precompiled. The four built‑in directives (`@model`, `@using`, `@import`, `@profile`) carry it. Inherited by subclasses. |
+| `[ChildTemplateHost]` | class | Declares that the extension is a **child‑template host**: its body is not content but a name, which it resolves at compile time to a second template, compiles as a child of the one being compiled, and hosts — rendering that child's output in place of its own body. Both tiers dispatch the child‑template route on this declaration rather than on the name the extension answers to, so a custom host is served exactly as the built‑in `@partial` is. Carrying it obliges the extension to evaluate its own body once at compile time to produce the name, to queue the child compile so the child's errors reach the parent's compile result, and to take delivery of the compiled child in `CompleteInit`. A call to one **precompiles in a default build**: the loader constructs the extension and runs its hook at load, and the child arrives for the length of that one call's drain — the precompiled entry when the registry holds the named template, the extension's own compile under the request's options when it does not. Compile‑time only; inherited by subclasses. |
+| `[ZeroOutput]` | class | Declares a **directive**: the extension emits nothing and its whole block is removed from the document rather than kept as rendered output. The runtime’s own protocol for this is behavioral — a directive’s `InitStart` returns `null` — and stays authoritative; this attribute is the declarative form of it, and it is what makes the **precompiled tier** classify your extension correctly (the build host can only read symbols). Declare it whenever `InitStart` returns `null`: without it, the block is removed dynamically and kept as output when precompiled. The four built‑in directives (`@model`, `@using`, `@import`, `@profile`) carry it. Inherited by subclasses. |
 | `[Prop("name", typeof(T))]` | class | Declares one typed, named input **parameter** the caller passes by name (`@grid(Photos, columns: 4)`) — the identical call shape a definition with props accepts, with the identical diagnostics. One attribute per parameter (`AllowMultiple = true`); inherited by subclasses. Optional when `Default = value` is set (or `Optional = true` for a null default); required otherwise. Read at render via `Scope.TryGetParameter`/`Scope.GetParameter`. |
 | `[NotEncode]` | model property | Reserved, currently **inert** — the attribute type ships but has no effect (its only check runs against extension classes, never properties). Do not rely on it; its per‑property meaning is revisited with typed props. |
 | `[Hidden]` | model property | Hide a model property from template resolution. |
@@ -674,18 +674,18 @@ precompiled templates by updating the package, no regeneration.
 
 **Your extension precompiles.** Bodied, hook‑overriding, `[Prop]`‑declaring, `[BranchRole]`‑carrying —
 in a default build, with no property to set and no name list to be on. It needs a parameterless
-constructor. If its compile‑time behaviour genuinely cannot be reproduced from a static initializer, it
+constructor. If its compile‑time behaviour genuinely cannot be reproduced by load-time execution, it
 declares `[PrecompileUnsupported]` and the calls to it fall back **one call site at a time**, never
 taking the template with them. The rest of this section is those three sentences with their reasons:
 
-- **A parameterless constructor.** The generator constructs one shared, pre‑built instance per
-  call site (`new YourExtension()`); no `Activator`, no registry lookup at run time.
+- **A parameterless constructor.** The loader constructs your extension inside your own assembly
+  at load, once per bound request (`new YourExtension()`); no `Activator`, no registry lookup at render.
 - **No reliance on runtime registry mutation.** The instance is built once and never mutated
   after binding; extensions that expect to be re‑registered or reconfigured per render are not
   supported.
-- **An `InitStart`/`CompleteInit` override is fine — it runs for real.** The generated static
-  initializer constructs your extension inside your own assembly and calls its actual hook, supplying
-  the already‑generated body in place of a body compile. Everything the hook decides is decided by your
+- **An `InitStart`/`CompleteInit` override is fine — it runs for real.** The loader constructs
+  your extension inside your own assembly at load and calls its actual hook, supplying the
+  deserialized body in place of a body compile. Everything the hook decides is decided by your
   code: the typing it hands the body, the state it caches, the diagnostics it raises. A bodied call to
   your extension precompiles too. Where your hook chooses a model type the build could not resolve, the
   body is emitted with **no model cast** and its member reads bind to the engine's own accessor once
@@ -736,7 +736,7 @@ Extensions that only ever run through the dynamic path are unaffected.
 Registered functions (the native‑expression helpers of
 [native expressions](native-expressions.md)) can also be exported **declaratively** from an
 assembly, so the same set is visible to the host at runtime, to the editor tooling, and — in a
-build‑time compilation — to the source generator. One attribute, three readers.
+build‑time compilation — to the build host. One attribute, three readers.
 
 1. **Export** the function container(s) with the assembly‑level attribute
    [`ExportFunctions`](../src/Heddle/Attributes/ExportFunctionsAttribute.cs). A container is a

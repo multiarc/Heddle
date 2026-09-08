@@ -3,8 +3,7 @@ using Heddle.Runtime;
 
 namespace Heddle.Language
 {
-    /// <summary>Runtime <c>CompileContext</c> adapters over <see cref="DocumentParser"/>;
-    /// kept separate so the generator's shared-source compile excludes this file.</summary>
+    /// <summary>Runtime <c>CompileContext</c> adapters over <see cref="DocumentParser"/>.</summary>
     public static partial class DocumentParser
     {
         /// <summary>Parse document and copy diagnostics to compile context.</summary>

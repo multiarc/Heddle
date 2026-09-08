@@ -7,11 +7,10 @@ namespace Heddle.Tests
     /// LF, CRLF, a CRLF blank line, a <c>"\n\r"</c> sequence, a lone <c>'\r'</c>, a mixed document, one without a
     /// trailing newline, and the empty document — with one expected 1-based line and 0-based column per offset
     /// from 0 to <c>Length</c> inclusive.</para>
-    /// <para>Plain data with no Heddle dependency, so the three surfaces that must agree can each assert it from
-    /// their own suite: <c>Heddle.Tests</c> (the shared <c>LineIndex</c> and <c>HeddleCompileResult</c>),
-    /// <c>Heddle.Generator.Tests</c> (the generator's <c>LineMapper</c>) and
-    /// <c>Heddle.LanguageServices.Tests</c> (the LSP's <c>LineMap</c>) — the file is linked into the latter two.
-    /// One table, three consumers; a rule change cannot be made to look right on one surface only.</para>
+    /// <para>Plain data with no Heddle dependency, so the two surfaces that must agree can each assert it from
+    /// their own suite: <c>Heddle.Tests</c> (the shared <c>LineIndex</c> and <c>HeddleCompileResult</c>) and
+    /// <c>Heddle.LanguageServices.Tests</c> (the LSP's <c>LineMap</c>) — the file is linked into the latter.
+    /// One table, two consumers; a rule change cannot be made to look right on one surface only.</para>
     /// </summary>
     internal static class LineIndexVectors
     {

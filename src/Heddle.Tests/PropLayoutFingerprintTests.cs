@@ -1,7 +1,9 @@
+using System;
 using Heddle.Attributes;
 using Heddle.Core;
 using Heddle.Data;
 using Heddle.Precompiled;
+using Heddle.Precompiled.CompiledForm;
 using Heddle.Runtime.Expressions;
 using Xunit;
 
@@ -43,7 +45,7 @@ namespace Heddle.Tests
     /// <summary>
     /// The prop-layout manifest row and its gauntlet check. Prop layouts were the one wire-format
     /// contract with <b>no</b> gauntlet coverage: the gauntlet checked options, extension identity, functions and
-    /// staleness, so a layout disagreement between the generator's frozen <c>object[]</c> prototype and the
+    /// staleness, so a layout disagreement between the build's frozen <c>object[]</c> prototype and the
     /// runtime's <c>ExtensionParameterCarrier</c> was silent wrong rendered output rather than a fallback.
     /// </summary>
     public class PropLayoutFingerprintTests
@@ -96,9 +98,8 @@ namespace Heddle.Tests
         public void GauntletFallsBackWhenTheRecordedLayoutNoLongerMatchesTheLiveOne()
         {
             var live = typeof(FingerprintFixtures.FingerprintBaseExtension);
-            var entry = Entry(new PrecompiledExtensionBinding("fpbase",
-                PrecompiledGauntlet.AqnSansVersion(live),
-                PropLayout.Fingerprint(typeof(FingerprintFixtures.FingerprintAddedExtension))));
+            var entry = Entry("fpbase", live,
+                PropLayout.Fingerprint(typeof(FingerprintFixtures.FingerprintAddedExtension)));
 
             var failure = PrecompiledGauntlet.Validate(entry, new TemplateOptions(),
                 (binding, type) => true);
@@ -120,9 +121,8 @@ namespace Heddle.Tests
             var live = typeof(FingerprintFixtures.NoPropsExtension);
             Assert.Null(PropLayout.Fingerprint(live));
 
-            var entry = Entry(new PrecompiledExtensionBinding("fpnone",
-                PrecompiledGauntlet.AqnSansVersion(live),
-                PropLayout.Fingerprint(typeof(FingerprintFixtures.FingerprintBaseExtension))));
+            var entry = Entry("fpnone", live,
+                PropLayout.Fingerprint(typeof(FingerprintFixtures.FingerprintBaseExtension)));
 
             var failure = PrecompiledGauntlet.Validate(entry, new TemplateOptions(), (binding, type) => true);
 
@@ -134,44 +134,46 @@ namespace Heddle.Tests
         public void GauntletPassesWhenTheLayoutMatches()
         {
             var live = typeof(FingerprintFixtures.FingerprintBaseExtension);
-            var entry = Entry(new PrecompiledExtensionBinding("fpbase",
-                PrecompiledGauntlet.AqnSansVersion(live), PropLayout.Fingerprint(live)));
+            var entry = Entry("fpbase", live, PropLayout.Fingerprint(live));
 
             Assert.Null(PrecompiledGauntlet.Validate(entry, new TemplateOptions(), (binding, type) => true));
         }
 
         /// <summary>
-        /// Rows without a fingerprint are checked vacuously, so the layout check does not invalidate pre-fingerprint rows.
-        /// (This test does not prove old manifests still load — that is in <c>OldSchemaManifestRejectionTests</c>.)
+        /// Rows without a fingerprint are checked vacuously, so the layout check does not invalidate
+        /// fingerprint-less rows.
         /// </summary>
         [Fact]
         public void ARowWithNoFingerprintIsCheckedVacuously()
         {
             var live = typeof(FingerprintFixtures.FingerprintBaseExtension);
-            var entry = Entry(new PrecompiledExtensionBinding("fpbase", PrecompiledGauntlet.AqnSansVersion(live)));
+            var entry = Entry("fpbase", live, null);
             Assert.Null(entry.ExtensionBindings[0].PropLayoutFingerprint);
 
             Assert.Null(PrecompiledGauntlet.Validate(entry, new TemplateOptions(), (binding, type) => true));
         }
 
-        private static PrecompiledTemplateInfo Entry(PrecompiledExtensionBinding binding)
+        /// <summary>A loader row over an in-memory artifact carrying one extension row. The row's options
+        /// mirror a default <see cref="TemplateOptions"/> so the gauntlet reaches the extension step.</summary>
+        private static PrecompiledTemplateInfo Entry(string name, Type liveType, string fingerprint)
         {
             var options = new TemplateOptions();
-            return new PrecompiledTemplateInfo("fp.heddle", typeof(PropLayoutFingerprintTests), null, false,
-                "hash", null,
-                new PrecompiledOptionsFingerprint(options.OutputProfile, options.ExpressionMode,
-                    options.TrimDirectiveLines),
-                new[] { binding }, null, default, NoOpStrategy.Instance);
-        }
-
-        /// <summary>Dummy strategy to mark the entry as precompiled; does not render.</summary>
-        private sealed class NoOpStrategy : Heddle.Runtime.IProcessStrategy
-        {
-            internal static readonly NoOpStrategy Instance = new NoOpStrategy();
-
-            public string Execute(in Scope scope) => string.Empty;
-
-            public void Render(in Scope scope) { }
+            var artifact = CompiledFormHarness.MinimalArtifact();
+            artifact.Extensions.Add(new CompiledExtensionRow
+            {
+                RegistryName = name,
+                Type = CompiledFormHarness.TypeRef(liveType),
+                Fingerprint = fingerprint
+            });
+            var row = CompiledFormHarness.TemplateRow("fp.heddle", extensionRefs: new[] { 0 });
+            row.Options = new CompiledOptionsFingerprint
+            {
+                Profile = options.OutputProfile.ToString(),
+                Mode = options.ExpressionMode.ToString(),
+                Trim = options.TrimDirectiveLines
+            };
+            artifact.Templates.Add(row);
+            return CompiledFormHarness.LoaderRow(artifact);
         }
 
         /// <summary>Normalizes the assembly name to <c>System.Private.CoreLib</c> so the assertion is platform-independent.</summary>

@@ -38,6 +38,10 @@ Reports copy these sentences exactly wherever the corresponding data appears:
   differentiating benefit of contextual encoding; a contextual encoder's encoded-suite result
   must not be read as 'context awareness is pure overhead.'"* — required in every report that
   presents encoded-suite results, adjacent to them.
+- Startup/non-comparability label: *"Startup figures are cold per-process measurements from one
+  machine and are not comparable across machines, across runs, or with warm render figures; the
+  artifact path is compared only against CompileHeddle in the same run."* — required in every
+  report that presents startup results, adjacent to them.
 
 ## Wall-time statistic mapping (Q2.1)
 
@@ -80,6 +84,8 @@ reference row, also normalize to **nanoseconds per render** so the ratio column 
    ecosystem and publishes no global cross-ecosystem leaderboard of non-Heddle engines.
 5. **Dual-track labeling.** Every table names its track (`controlled` / `idiomatic`) in its
    caption; numbers from different tracks are never mixed in one table.
+6. **Startup tables.** Each Heddle row is labeled `Heddle (startup — <method>)`; the table carries
+   the startup label above and never shares a table with warm render figures.
 
 ## Machine and environment (Q1.6)
 

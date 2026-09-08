@@ -6,96 +6,107 @@ using System.Reflection.Emit;
 using Heddle.Data;
 using Heddle.Extensions;
 using Heddle.Precompiled;
+using Heddle.Precompiled.CompiledForm;
 using Heddle.Runtime;
 using Heddle.Runtime.Expressions;
 using Xunit;
 
 namespace Heddle.Tests
 {
-    internal sealed class PassFakeStrategy : IProcessStrategy
-    {
-        public string Execute(in Scope scope) => string.Empty;
-        public void Render(in Scope scope) { }
-    }
-
+    /// <summary>Fixture artifacts over in-memory rows. Each builder returns an artifact whose rows the
+    /// loader's internal constructor reads; registration goes through
+    /// <see cref="CompiledFormHarness.RegisterArtifact"/>.</summary>
     internal static class PassEntries
     {
-        internal static readonly IProcessStrategy Strategy = new PassFakeStrategy();
+        private static CompiledArtifact Artifact() => CompiledFormHarness.MinimalArtifact();
 
-        internal static readonly PrecompiledOptionsFingerprint TextNative =
-            new PrecompiledOptionsFingerprint(OutputProfile.Text, ExpressionMode.Native, false);
+        private static int Extension(CompiledArtifact artifact, string name, string fullName,
+            string assemblySimpleName, string fingerprint = null)
+        {
+            artifact.Extensions.Add(new CompiledExtensionRow
+            {
+                RegistryName = name,
+                Type = CompiledFormHarness.TypeRef(fullName, assemblySimpleName),
+                Fingerprint = fingerprint
+            });
+            return artifact.Extensions.Count - 1;
+        }
 
-        /// <summary>A well-formed entry fingerprinted Text/Native/false with no bindings — passes under
+        private static int Function(CompiledArtifact artifact, string name, CompiledTypeRef target,
+            int overloads)
+        {
+            artifact.Functions.Add(new CompiledFunctionRow
+            {
+                Name = name,
+                Target = target,
+                OverloadCount = overloads
+            });
+            return artifact.Functions.Count - 1;
+        }
+
+        /// <summary>A well-formed row fingerprinted Text/Native/false with no bindings — passes under
         /// <see cref="PrecompiledValidationPassTests.Match"/>.</summary>
-        public static PrecompiledTemplateInfo Clean(string key) => new PrecompiledTemplateInfo(
-            key, typeof(object), null, false, "0",
-            Array.Empty<PrecompiledImport>(), TextNative,
-            Array.Empty<PrecompiledExtensionBinding>(),
-            Array.Empty<PrecompiledFunctionBinding>(),
-            PrecompiledCapabilities.StringOutput, Strategy);
+        public static CompiledArtifact Clean(string key)
+        {
+            var artifact = Artifact();
+            artifact.Templates.Add(CompiledFormHarness.TemplateRow(key));
+            return artifact;
+        }
 
-        /// <summary>An entry whose only defect is an extension binding no live registry answers — fails step 2.</summary>
-        public static PrecompiledTemplateInfo BadExtension(string key) => new PrecompiledTemplateInfo(
-            key, typeof(object), null, false, "0",
-            Array.Empty<PrecompiledImport>(), TextNative,
-            new[] { new PrecompiledExtensionBinding("nosuchextension", "No.Such.Type, No.Such.Assembly") },
-            Array.Empty<PrecompiledFunctionBinding>(),
-            PrecompiledCapabilities.StringOutput, Strategy);
+        /// <summary>A row whose only defect is an extension binding no live registry answers — fails step 2.</summary>
+        public static CompiledArtifact BadExtension(string key)
+        {
+            var artifact = Artifact();
+            var ext = Extension(artifact, "nosuchextension", "No.Such.Type", "No.Such.Assembly");
+            artifact.Templates.Add(CompiledFormHarness.TemplateRow(key,
+                extensionRefs: new[] { ext }));
+            return artifact;
+        }
 
-        /// <summary>An entry fingerprinted Html/Native/false — fails step 1 against a Text request.</summary>
-        public static PrecompiledTemplateInfo HtmlFingerprint(string key) => new PrecompiledTemplateInfo(
-            key, typeof(object), null, false, "0",
-            Array.Empty<PrecompiledImport>(),
-            new PrecompiledOptionsFingerprint(OutputProfile.Html, ExpressionMode.Native, false),
-            Array.Empty<PrecompiledExtensionBinding>(),
-            Array.Empty<PrecompiledFunctionBinding>(),
-            PrecompiledCapabilities.StringOutput, Strategy);
+        /// <summary>A row fingerprinted Html/Native/false — fails step 1 against a Text request.</summary>
+        public static CompiledArtifact HtmlFingerprint(string key)
+        {
+            var artifact = Artifact();
+            artifact.Templates.Add(CompiledFormHarness.TemplateRow(key, profile: "Html"));
+            return artifact;
+        }
 
-        /// <summary>An entry naming an extension the live registry <b>does</b> answer ("if") under a type name that
+        /// <summary>A row naming an extension the live registry <b>does</b> answer ("if") under a type name that
         /// is not its AQN: the default binding match refuses it, a custom
         /// <see cref="PrecompiledTemplates.BindingResolver"/> can accept it. The one fixture whose verdict depends
         /// on the resolver being passed through.</summary>
-        public static PrecompiledTemplateInfo ResolverSensitive(string key) => new PrecompiledTemplateInfo(
-            key, typeof(object), null, false, "0",
-            Array.Empty<PrecompiledImport>(), TextNative,
-            new[] { new PrecompiledExtensionBinding("if", "Some.Other.If, Some.Other.Assembly") },
-            Array.Empty<PrecompiledFunctionBinding>(),
-            PrecompiledCapabilities.StringOutput, Strategy);
-
-        /// <summary>A fallback marker for delegate-only function rows (no entry point) — fails step 0.</summary>
-        public static PrecompiledTemplateInfo Marker(string key) => new PrecompiledTemplateInfo(
-            key, null, null, false, "0", Array.Empty<PrecompiledImport>(), TextNative,
-            Array.Empty<PrecompiledExtensionBinding>(),
-            new[] { new PrecompiledFunctionBinding("titlecase", null, 0) },
-            PrecompiledCapabilities.None, strategy: null);
-    }
-
-    internal sealed class PassManifestMixed : IHeddleTemplateManifest
-    {
-        // Deliberately not in key order: the report's ordering must come from the pass, not from manifest or
-        // dictionary order (PrecompiledTemplates.Entries is a Dictionary.Values snapshot).
-        public IReadOnlyList<PrecompiledTemplateInfo> GetTemplates() => new[]
+        public static CompiledArtifact ResolverSensitive(string key)
         {
-            PassEntries.HtmlFingerprint("pass/c.heddle"),
-            PassEntries.Clean("pass/a.heddle"),
-            PassEntries.BadExtension("pass/b.heddle"),
-        };
-    }
+            var artifact = Artifact();
+            var ext = Extension(artifact, "if", "Some.Other.If", "Some.Other.Assembly");
+            artifact.Templates.Add(CompiledFormHarness.TemplateRow(key,
+                extensionRefs: new[] { ext }));
+            return artifact;
+        }
 
-    internal sealed class PassManifestResolver : IHeddleTemplateManifest
-    {
-        public IReadOnlyList<PrecompiledTemplateInfo> GetTemplates() => new[]
+        /// <summary>A row with a null-target function row — a late-bound call site for a name no registry
+        /// answers ("titlecase"): fails the function step.</summary>
+        public static CompiledArtifact Marker(string key)
         {
-            PassEntries.ResolverSensitive("pass/resolver.heddle"),
-        };
-    }
+            var artifact = Artifact();
+            var fn = Function(artifact, "titlecase", null, 0);
+            artifact.Templates.Add(CompiledFormHarness.TemplateRow(key,
+                functionRefs: new[] { fn }));
+            return artifact;
+        }
 
-    internal sealed class PassManifestMarker : IHeddleTemplateManifest
-    {
-        public IReadOnlyList<PrecompiledTemplateInfo> GetTemplates() => new[]
+        /// <summary>Deliberately not in key order: the report's ordering must come from the pass, not from
+        /// artifact or dictionary order (PrecompiledTemplates.Entries is a Dictionary.Values snapshot).</summary>
+        public static CompiledArtifact Mixed()
         {
-            PassEntries.Marker("pass/marker.heddle"),
-        };
+            var artifact = Artifact();
+            artifact.Templates.Add(CompiledFormHarness.TemplateRow("pass/c.heddle", profile: "Html"));
+            artifact.Templates.Add(CompiledFormHarness.TemplateRow("pass/a.heddle"));
+            var ext = Extension(artifact, "nosuchextension", "No.Such.Type", "No.Such.Assembly");
+            artifact.Templates.Add(CompiledFormHarness.TemplateRow("pass/b.heddle",
+                extensionRefs: new[] { ext }));
+            return artifact;
+        }
     }
 
     /// <summary>
@@ -135,23 +146,15 @@ namespace Heddle.Tests
         private static string CompatibleVersion =>
             $"{RuntimeVersion.Major}.{Math.Max(RuntimeVersion.Minor, 0)}.{Math.Max(RuntimeVersion.Build, 0)}";
 
-        private static void Register(Type manifestType, string name)
-        {
-            var ab = AssemblyBuilder.DefineDynamicAssembly(
-                new AssemblyName(name + "_" + Guid.NewGuid().ToString("N")), AssemblyBuilderAccess.Run);
-            var ctor = typeof(HeddleCompiledTemplatesAttribute)
-                .GetConstructor(new[] { typeof(Type), typeof(int), typeof(string) });
-            ab.SetCustomAttribute(new CustomAttributeBuilder(ctor,
-                new object[] { manifestType, PrecompiledSchema.MinSupportedSchemaVersion, CompatibleVersion }));
-            PrecompiledTemplates.Register(ab);
-        }
+        private static void Register(CompiledArtifact artifact, string name) =>
+            CompiledFormHarness.RegisterArtifact(artifact, name);
 
         /// <summary>The point of the pass versus the per-request gate: two entries fail for two different reasons
         /// and both are reported from one call, with the gauntlet's own pinned detail strings.</summary>
         [Fact]
         public void CollectsEveryFailureRatherThanStoppingAtTheFirst()
         {
-            Register(typeof(PassManifestMixed), "HeddleTestAsm_PassMixed");
+            Register(PassEntries.Mixed(), "HeddleTestAsm_PassMixed");
 
             var report = PrecompiledTemplates.ValidateAll(Match());
 
@@ -175,7 +178,7 @@ namespace Heddle.Tests
         [Fact]
         public void FailuresAreOrderedByTemplateKey()
         {
-            Register(typeof(PassManifestMixed), "HeddleTestAsm_PassOrder");
+            Register(PassEntries.Mixed(), "HeddleTestAsm_PassOrder");
 
             var report = PrecompiledTemplates.ValidateAll(Match());
 
@@ -189,7 +192,7 @@ namespace Heddle.Tests
         [Fact]
         public void ReportNamesTheOptionsItValidatedAgainst()
         {
-            Register(typeof(PassManifestMixed), "HeddleTestAsm_PassScope");
+            Register(PassEntries.Mixed(), "HeddleTestAsm_PassScope");
 
             var text = PrecompiledTemplates.ValidateAll(Match());
             Assert.Equal(OutputProfile.Text, text.ValidatedFingerprint.Profile);
@@ -212,7 +215,7 @@ namespace Heddle.Tests
         [Fact]
         public void ReportNamesTheFunctionRegistryAndWhetherStalenessRan()
         {
-            Register(typeof(PassManifestMixed), "HeddleTestAsm_PassFunctions");
+            Register(PassEntries.Mixed(), "HeddleTestAsm_PassFunctions");
 
             var registry = new FunctionRegistry();
             var options = Match();
@@ -233,7 +236,7 @@ namespace Heddle.Tests
         [Fact]
         public void HonoursTheHostBindingResolver()
         {
-            Register(typeof(PassManifestResolver), "HeddleTestAsm_PassResolver");
+            Register(PassEntries.ResolverSensitive("pass/resolver.heddle"), "HeddleTestAsm_PassResolver");
 
             // The default AQN-sans-version match refuses this entry's binding…
             PrecompiledTemplates.BindingResolver = null;
@@ -279,8 +282,8 @@ namespace Heddle.Tests
         [Fact]
         public void AgreesWithThePerRequestGauntletEntryByEntry()
         {
-            Register(typeof(PassManifestMixed), "HeddleTestAsm_PassAgree");
-            Register(typeof(PassManifestMarker), "HeddleTestAsm_PassAgreeMarker");
+            Register(PassEntries.Mixed(), "HeddleTestAsm_PassAgree");
+            Register(PassEntries.Marker("pass/marker.heddle"), "HeddleTestAsm_PassAgreeMarker");
 
             var options = Match();
             var report = PrecompiledTemplates.ValidateAll(options);
@@ -308,7 +311,7 @@ namespace Heddle.Tests
         [Fact]
         public void MarkerEntriesAreReported()
         {
-            Register(typeof(PassManifestMarker), "HeddleTestAsm_PassMarker");
+            Register(PassEntries.Marker("pass/marker.heddle"), "HeddleTestAsm_PassMarker");
 
             var report = PrecompiledTemplates.ValidateAll(Match());
 
@@ -323,7 +326,7 @@ namespace Heddle.Tests
         [Fact]
         public void DoesNotRaiseOnFallbackAndDoesNotThrowUnderStrict()
         {
-            Register(typeof(PassManifestMixed), "HeddleTestAsm_PassQuiet");
+            Register(PassEntries.Mixed(), "HeddleTestAsm_PassQuiet");
 
             var raised = new List<PrecompiledFallbackEvent>();
             PrecompiledTemplates.OnFallback = raised.Add;
@@ -359,7 +362,7 @@ namespace Heddle.Tests
         [Fact]
         public void ToStringCarriesTheScopeAlongsideTheVerdict()
         {
-            Register(typeof(PassManifestMixed), "HeddleTestAsm_PassToString");
+            Register(PassEntries.Mixed(), "HeddleTestAsm_PassToString");
 
             Assert.Equal(
                 "Precompiled validation: 2 of 3 registered entries failed under OutputProfile=Text, " +

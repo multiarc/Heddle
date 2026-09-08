@@ -38,7 +38,7 @@ namespace Heddle.Language.Binding
     }
 
     /// <summary>
-    /// The <c>[ExportFunctions]</c> eligibility, naming and merge rules. The generator's original transcription
+    /// The <c>[ExportFunctions]</c> eligibility, naming and merge rules. The 2.x generator's original transcription
     /// silently miscounted methods the runtime refuses, breaking precompilation's manifest gauntlet for entire
     /// export containers. These rules, stated once, prevent that divergence.
     /// </summary>
@@ -56,7 +56,7 @@ namespace Heddle.Language.Binding
             facts.IsPublic && facts.IsStatic && !facts.IsSpecialName;
 
         /// <summary>Per-method eligibility. The runtime raises <c>ArgumentException</c> for each of these; the
-        /// generator must exclude exactly the same methods from its manifest counts, which alone fixes the standing
+        /// build must exclude exactly the same methods from its manifest counts, which alone fixes the standing
         /// overload-count gauntlet failure.</summary>
         internal static ExportRejection Evaluate(in ExportedMethodFacts facts)
         {

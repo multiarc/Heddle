@@ -12,8 +12,8 @@ namespace Heddle.Tests
     /// (the pre-swap <c>HeddleCompiler</c> privates, driven through reflection over the same vector table);
     /// the extraction is byte-neutral exactly when these literals still hold. They are the definition of "byte-neutral"
     /// at machine granularity — never regenerate one to absorb a diff.</para>
-    /// <para><see cref="Heddle.Generator.Tests"/> carries the identical twin over the generator's linked copy of
-    /// this file, with the same literals: that pair is the parity pin.</para>
+    /// <para>The deleted 2.x generator suite carried the identical twin over its linked copy of this file,
+    /// with the same literals.</para>
     /// </summary>
     public class DocumentShapingCharacterizationTests
     {

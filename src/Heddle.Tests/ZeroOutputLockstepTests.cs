@@ -15,18 +15,15 @@ namespace Heddle.Tests
     /// forgot a built-in is a red build").</para>
     /// <para>The runtime decides zero-output by <em>computation</em> — <c>returnTypeChainedPrevious == null</c>
     /// after the chain compiles, i.e. the extension's <c>InitStart</c> returned a null <c>ExType</c> — and the
-    /// removal is observable as the chain's block being excised from the compiled working document. The generator
-    /// decides it from a hardcoded four-name list (<c>TemplateEmitter.IsDirectiveName</c>), mirrored below. The
-    /// drift this closes is structurally one-way: a new zero-output built-in changes runtime output with zero
-    /// generator signal. When the <c>[ZeroOutput]</c> attribute ships, the mirror side of this guard becomes the
-    /// attribute-derived set and the hardcoded list dies there, not here.</para>
+    /// removal is observable as the chain's block being excised from the compiled working document. The four
+    /// template-directive names below are the only built-ins that may be zero-output: a new zero-output
+    /// built-in outside this list changes runtime output with zero build signal. When the <c>[ZeroOutput]</c>
+    /// attribute ships, this hardcoded list dies in favour of the attribute-derived set.</para>
     /// </summary>
     public class ZeroOutputLockstepTests
     {
-        /// <summary>The generator's <c>TemplateEmitter.IsDirectiveName</c> list, mirrored (the generator assembly
-        /// is not referenced from this project; <c>Heddle.Generator.Tests</c> pins the mirror against the real
-        /// method).</summary>
-        internal static readonly string[] GeneratorDirectiveNames = { "model", "using", "import", "profile" };
+        /// <summary>The template-directive names, mirrored here against the runtime's attribute-derived set.</summary>
+        internal static readonly string[] DirectiveNames = { "model", "using", "import", "profile" };
 
         private static IEnumerable<string> BuiltInExtensionNames()
             => typeof(HeddleTemplate).GetTypeInfo().Assembly.GetTypes()
@@ -63,7 +60,7 @@ namespace Heddle.Tests
         }
 
         [Fact]
-        public void NoBuiltInIsZeroOutputOutsideTheGeneratorList()
+        public void NoBuiltInIsZeroOutputOutsideTheDirectiveList()
         {
             var offenders = new List<string>();
             int covered = 0;
@@ -74,22 +71,22 @@ namespace Heddle.Tests
                 if (zeroOutput == null)
                     continue;
                 covered++;
-                if (zeroOutput.Value != GeneratorDirectiveNames.Contains(name, StringComparer.Ordinal))
+                if (zeroOutput.Value != DirectiveNames.Contains(name, StringComparer.Ordinal))
                     offenders.Add(name + " (runtime zero-output: " + zeroOutput.Value + ")");
             }
 
             Assert.True(covered >= 10, $"Only {covered} built-ins were probed — the guard has gone hollow.");
             Assert.True(offenders.Count == 0,
-                "Runtime zero-output classification disagrees with the generator's directive list for: "
+                "Runtime zero-output classification disagrees with the directive list for: "
                 + string.Join(", ", offenders)
-                + ". Add or remove the name on BOTH sides (TemplateEmitter.IsDirectiveName and this mirror).");
+                + ". Add or remove the name here and on the runtime side together.");
         }
 
         [Fact]
-        public void EveryGeneratorDirectiveNameIsZeroOutputAtRuntime()
+        public void EveryDirectiveNameIsZeroOutputAtRuntime()
         {
             var unprobeable = new List<string>();
-            foreach (var name in GeneratorDirectiveNames)
+            foreach (var name in DirectiveNames)
             {
                 var zeroOutput = IsZeroOutputAtRuntime(name);
                 if (zeroOutput == null)
@@ -99,7 +96,7 @@ namespace Heddle.Tests
                 }
 
                 Assert.True(zeroOutput.Value,
-                    $"'{name}' is on the generator's directive list but the runtime renders it.");
+                    $"'{name}' is on the directive list but the runtime renders it.");
             }
 
             // '@import' is unprobeable by design (HED4003); any other unprobeable directive is a red flag.

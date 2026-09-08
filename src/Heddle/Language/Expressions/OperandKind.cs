@@ -32,8 +32,8 @@ namespace Heddle.Language.Expressions
 
     /// <summary>
     /// How two operand types relate, as the engine's unifier sees them. The descriptor holds no conversion
-    /// graph, so the caller supplies it — the generator from Roslyn conversion classification, tests from
-    /// CLR reflection. User-defined conversions never count, because the engine's unifier never binds them.
+    /// graph, so the caller supplies it — tests from CLR reflection. User-defined conversions never count,
+    /// because the engine's unifier never binds them.
     /// </summary>
     internal enum TypeRelation
     {
@@ -55,7 +55,7 @@ namespace Heddle.Language.Expressions
 
     /// <summary>
     /// Whether the engine's user-defined-operator lookup binds for an operand pair. Caller-supplied like
-    /// <see cref="TypeRelation"/> — the generator proves it from operator symbols, tests from reflection —
+    /// <see cref="TypeRelation"/> — tests prove it from reflection —
     /// and only the sound claims are made: Bound needs an operator declared on an operand type itself with
     /// exactly the operands' types; Absent needs no operator by that name anywhere in either base chain.
     /// </summary>
@@ -71,7 +71,7 @@ namespace Heddle.Language.Expressions
         Absent
     }
 
-    /// <summary>Operand classification: category, numeric kind (if applicable), and nullability. The sole shape used by operator rules, enabling one table to serve both generator and runtime.</summary>
+    /// <summary>Operand classification: category, numeric kind (if applicable), and nullability. The sole shape used by operator rules, enabling one table to serve the printed tier and runtime.</summary>
     internal readonly struct OperandKind
     {
         private OperandKind(OperandCategory category, NumericKind kind, bool isNullable, string typeIdentity)

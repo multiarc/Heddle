@@ -1,9 +1,10 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
-using System.Reflection;
 using Heddle.Data;
 using Heddle.Extensions;
 using Heddle.Precompiled;
+using Heddle.Precompiled.CompiledForm;
 using Heddle.Runtime;
 using Heddle.Runtime.Expressions;
 using Xunit;
@@ -11,34 +12,81 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Per-request validation gauntlet: the ordered checks (marker → options → extensions →
-    /// functions → staleness) with the pinned reason and detail strings.
+    /// Per-request validation gauntlet: the ordered checks (options → model type → extensions →
+    /// bindings → functions → staleness) with the pinned reason and detail strings. Every row arrives
+    /// through the loader's internal constructor over an in-memory artifact.
     /// </summary>
     public class PrecompiledGauntletTests
     {
-        private sealed class FakeStrategy : IProcessStrategy
-        {
-            public string Execute(in Scope scope) => string.Empty;
-            public void Render(in Scope scope) { }
-        }
+        private static CompiledExtensionRow ExtensionRow(string name, string fullName,
+            string assemblySimpleName, string fingerprint = null) =>
+            new CompiledExtensionRow
+            {
+                RegistryName = name,
+                Type = CompiledFormHarness.TypeRef(fullName, assemblySimpleName),
+                Fingerprint = fingerprint
+            };
 
-        private static readonly IProcessStrategy Strategy = new FakeStrategy();
+        private static CompiledExtensionRow ExtensionRow(string name, Type type) =>
+            new CompiledExtensionRow
+            {
+                RegistryName = name,
+                Type = CompiledFormHarness.TypeRef(type)
+            };
+
+        private static CompiledFunctionRow FunctionRow(string name, string fullName,
+            string assemblySimpleName, int overloads) =>
+            new CompiledFunctionRow
+            {
+                Name = name,
+                Target = CompiledFormHarness.TypeRef(fullName, assemblySimpleName),
+                OverloadCount = overloads
+            };
+
+        private static CompiledFunctionRow LateBoundRow(string name) =>
+            new CompiledFunctionRow { Name = name, Target = null, OverloadCount = 0 };
+
+        private static string IfAssemblyName => typeof(IfExtension).Assembly.GetName().Name;
 
         private static string IfBindingType =>
-            typeof(IfExtension).FullName + ", " + typeof(IfExtension).Assembly.GetName().Name;
+            typeof(IfExtension).FullName + ", " + IfAssemblyName;
 
         private static PrecompiledTemplateInfo Entry(
             PrecompiledOptionsFingerprint fingerprint = default,
-            PrecompiledExtensionBinding[] extensions = null,
-            PrecompiledFunctionBinding[] functions = null,
-            PrecompiledImport[] imports = null,
+            CompiledExtensionRow[] extensions = null,
+            CompiledFunctionRow[] functions = null,
+            CompiledImport[] imports = null,
             string contentHash = "0",
-            IProcessStrategy strategy = null,
             string key = "views/x.heddle")
         {
-            return new PrecompiledTemplateInfo(key, typeof(object), typeof(object), false, contentHash,
-                imports, fingerprint, extensions, functions, PrecompiledCapabilities.StringOutput,
-                strategy ?? Strategy);
+            var artifact = CompiledFormHarness.MinimalArtifact();
+            var extRefs = new List<int>();
+            if (extensions != null)
+                foreach (var row in extensions)
+                {
+                    artifact.Extensions.Add(row);
+                    extRefs.Add(artifact.Extensions.Count - 1);
+                }
+            var fnRefs = new List<int>();
+            if (functions != null)
+                foreach (var row in functions)
+                {
+                    artifact.Functions.Add(row);
+                    fnRefs.Add(artifact.Functions.Count - 1);
+                }
+            var template = CompiledFormHarness.TemplateRow(key, contentHash: contentHash,
+                extensionRefs: extRefs, functionRefs: fnRefs);
+            template.Options = new CompiledOptionsFingerprint
+            {
+                Profile = fingerprint.Profile.ToString(),
+                Mode = fingerprint.ExpressionMode.ToString(),
+                Trim = fingerprint.TrimDirectiveLines
+            };
+            if (imports != null)
+                foreach (var import in imports)
+                    template.Imports.Add(import);
+            artifact.Templates.Add(template);
+            return CompiledFormHarness.LoaderRow(artifact);
         }
 
         /// <summary>An entry whose model type is the build's assumption rather than a type the template pins —
@@ -46,9 +94,17 @@ namespace Heddle.Tests
         private static PrecompiledTemplateInfo AmbientEntry(Type modelType,
             PrecompiledOptionsFingerprint fingerprint)
         {
-            return new PrecompiledTemplateInfo("views/x.heddle", typeof(object), modelType, false, "0", null,
-                fingerprint, null, null, PrecompiledCapabilities.StringOutput, Strategy, registeredName: null,
-                linePathForm: PrecompiledLinePathForm.Unspecified, modelTypeIsAmbient: true);
+            var artifact = CompiledFormHarness.MinimalArtifact();
+            var template = CompiledFormHarness.TemplateRow("views/x.heddle",
+                modelType: CompiledFormHarness.TypeRef(modelType), ambient: true);
+            template.Options = new CompiledOptionsFingerprint
+            {
+                Profile = fingerprint.Profile.ToString(),
+                Mode = fingerprint.ExpressionMode.ToString(),
+                Trim = fingerprint.TrimDirectiveLines
+            };
+            artifact.Templates.Add(template);
+            return CompiledFormHarness.LoaderRow(artifact);
         }
 
         private static PrecompiledFallbackEvent? Run(PrecompiledTemplateInfo entry, TemplateOptions options)
@@ -70,20 +126,18 @@ namespace Heddle.Tests
         public void AllPassReturnsNull()
         {
             var entry = Entry(TextNative,
-                new[] { new PrecompiledExtensionBinding("if", IfBindingType) });
+                new[] { ExtensionRow("if", typeof(IfExtension)) });
             Assert.Null(Run(entry, Match()));
         }
 
         [Fact]
-        public void MarkerEntryShortCircuits()
+        public void LateBoundCallSiteForAnUnregisteredNameIsUnsupported()
         {
-            var entry = new PrecompiledTemplateInfo("views/x.heddle", null, null, false, "0", null, TextNative,
-                null, new[] { new PrecompiledFunctionBinding("titlecase", null, 0) },
-                PrecompiledCapabilities.None, strategy: null);
-            var evt = Run(entry, new TemplateOptions());
+            var entry = Entry(TextNative, functions: new[] { LateBoundRow("titlecase") });
+            var evt = Run(entry, Match());
             Assert.NotNull(evt);
             Assert.Equal(PrecompiledFallbackReason.UnsupportedFunction, evt.Value.Reason);
-            Assert.Equal("Function 'titlecase': not precompiled (no default or exported binding; build warning HED7014)",
+            Assert.Equal("Function 'titlecase': manifest=<late-bound> live=<unregistered>",
                 evt.Value.Detail);
             Assert.Equal("HED7101", evt.Value.DiagnosticId);
         }
@@ -168,7 +222,7 @@ namespace Heddle.Tests
         public void ExtensionUnresolved()
         {
             var entry = Entry(TextNative,
-                new[] { new PrecompiledExtensionBinding("no-such-ext-xyz", "Foo.Bar, Baz") });
+                new[] { ExtensionRow("no-such-ext-xyz", "Foo.Bar", "Baz") });
             var evt = Run(entry, Match());
             Assert.Equal(PrecompiledFallbackReason.ExtensionBindingMismatch, evt.Value.Reason);
             Assert.Equal("Extension 'no-such-ext-xyz': manifest=Foo.Bar, Baz live=<unresolved>", evt.Value.Detail);
@@ -178,7 +232,7 @@ namespace Heddle.Tests
         public void ExtensionTypeDiverges()
         {
             var entry = Entry(TextNative,
-                new[] { new PrecompiledExtensionBinding("if", "Wrong.Type, Heddle") });
+                new[] { ExtensionRow("if", "Wrong.Type", "Heddle") });
             var evt = Run(entry, Match());
             Assert.Equal(PrecompiledFallbackReason.ExtensionBindingMismatch, evt.Value.Reason);
             Assert.Equal($"Extension 'if': manifest=Wrong.Type, Heddle live={IfBindingType}", evt.Value.Detail);
@@ -189,7 +243,7 @@ namespace Heddle.Tests
         {
             var entry = Entry(TextNative, functions: new[]
             {
-                new PrecompiledFunctionBinding("upper", DefaultFunctionTable.ShimTargetTypeName, 1)
+                FunctionRow("upper", "Heddle.Runtime.Expressions.BuiltInFunctions", "Heddle", 1)
             });
             Assert.Null(Run(entry, Match())); // options.Functions == null, all built-in
         }
@@ -199,7 +253,7 @@ namespace Heddle.Tests
         {
             var entry = Entry(TextNative, functions: new[]
             {
-                new PrecompiledFunctionBinding("titlecase", "Acme.Web.TemplateFunctions, Acme.Web", 1)
+                FunctionRow("titlecase", "Acme.Web.TemplateFunctions", "Acme.Web", 1)
             });
             var evt = Run(entry, Match());
             Assert.Equal(PrecompiledFallbackReason.FunctionBindingMismatch, evt.Value.Reason);
@@ -214,7 +268,7 @@ namespace Heddle.Tests
             registry.Register("titlecase", (Func<string, string>)(s => s));
             var entry = Entry(TextNative, functions: new[]
             {
-                new PrecompiledFunctionBinding("titlecase", "Acme.Web.TemplateFunctions, Acme.Web", 1)
+                FunctionRow("titlecase", "Acme.Web.TemplateFunctions", "Acme.Web", 1)
             });
             var evt = Run(entry, new TemplateOptions { OutputProfile = OutputProfile.Text, TrimDirectiveLines = false, Functions = registry });
             Assert.Equal(PrecompiledFallbackReason.FunctionBindingMismatch, evt.Value.Reason);

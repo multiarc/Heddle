@@ -1,8 +1,8 @@
 namespace Heddle.Language.Expressions
 {
     /// <summary>
-    /// The single <see cref="ExprOperator"/> → C# lexeme table, consolidated to prevent drift across
-    /// the generator, runtime, and AST builder. Netstandard2.0-clean and linked into the generator.
+    /// The single <see cref="ExprOperator"/> → C# lexeme table, consolidated to prevent drift between
+    /// the runtime compiler and the AST builder.
     /// </summary>
     internal static class OperatorLexeme
     {

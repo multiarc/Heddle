@@ -15,6 +15,11 @@ namespace Heddle.Runtime.Parameters
             _compiledAccessor = ModelParameter.GetPropertyChainAccessor(getModelParameter).Compile();
         }
 
+        internal RootModelParameter(Func<object, object> accessor)
+        {
+            _compiledAccessor = accessor ?? throw new ArgumentNullException(nameof(accessor));
+        }
+
         public void Dispose()
         {
         }

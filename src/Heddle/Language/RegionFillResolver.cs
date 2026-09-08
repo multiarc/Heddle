@@ -4,8 +4,9 @@ using System.Collections.Generic;
 namespace Heddle.Language
 {
     /// <summary>The per-candidate outcome of the region-fill matching rule. The
-    /// <em>decision</em> is shared; the <em>reactions</em> are each backend's own — the runtime retracts and
-    /// raises HED5019, the generator un-precompiles — which is why this is a verdict rather than a bool.</summary>
+    /// <em>decision</em> is shared; the <em>reactions</em> are each tier's own — the runtime retracts and
+    /// raises HED5019, the build reports the same error at the override's position — which is why this is
+    /// a verdict rather than a bool.</summary>
     internal enum RegionFillVerdict
     {
         /// <summary>A public region matched and its region default was found; the fill is materialized.</summary>
@@ -22,7 +23,7 @@ namespace Heddle.Language
     }
 
     /// <summary>Abstracts the callee's region table: the runtime wraps its cached reflection-bound
-    /// <c>RegionLayout</c>, the generator a flat ordinal scan over the parsed declarations.</summary>
+    /// <c>RegionLayout</c>.</summary>
     internal delegate bool TryLookupRegion(string name, out bool isPublic);
 
     /// <summary>

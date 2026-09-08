@@ -15,7 +15,7 @@
       silently no-op'd five integration tests. Locating the corpus is
       `Path.Combine(AppContext.BaseDirectory, "TestTemplate")` and nothing else.
 
-    * The generator suites read the same files the engine suites do, which is what lets a template cross the
+    * Every suite reads the same files, which is what lets a template cross the
       precompiled gauntlet at all.
 
     * One glob replaces 112 hand-listed `<None Update="TestTemplate\…">` rows, where a file added without its

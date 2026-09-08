@@ -1,0 +1,5 @@
+@using(){{Heddle.Samples.PrecompiledAot}}
+@model(){{MixedPageModel}}
+<h1>@(Heading)</h1>
+@if(ShowBanner){{<p>Banner</p>}}
+<p>@(Subtotal * 2)</p>

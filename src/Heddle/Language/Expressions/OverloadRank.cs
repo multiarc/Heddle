@@ -2,9 +2,8 @@ using System.Collections.Generic;
 
 namespace Heddle.Language.Expressions
 {
-    /// <summary>The type-system facts the shared overload ranker needs. The runtime implements it over reflected
-    /// <c>Type</c>s; the generator implements it over the CLR type-name strings <c>DefaultFunctionRow</c> already
-    /// carries.</summary>
+    /// <summary>The type-system facts the shared overload ranker needs, implemented over reflected
+    /// <c>Type</c>s.</summary>
     internal interface IRankModel<TType>
     {
         bool AreSame(TType a, TType b);
@@ -18,8 +17,8 @@ namespace Heddle.Language.Expressions
         NumericKind KindOf(TType type);
 
         /// <summary>Reference conversion source → target (the <c>IsAssignableFrom</c> arm). A model that cannot
-        /// decide this must answer false: under-ranking makes the generator degrade, over-ranking would make it pick
-        /// an overload the runtime does not.</summary>
+        /// decide this must answer false: under-ranking makes the build decline, over-ranking would make it print
+        /// an overload the runtime does not pick.</summary>
         bool IsReferenceAssignable(TType from, TType to);
     }
 

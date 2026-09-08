@@ -11,8 +11,8 @@ namespace Heddle.Tests
     /// The <b>reflection-side</b> driver of the shared assignability conformance corpus. It proves
     /// two things: that every committed expectation equals the live CLR relation (so the corpus is generated data,
     /// not belief), and that the reflection <see cref="ITypeFacts{TType}"/> adapter answers it row for row.
-    /// <para>The symbol-side driver in <c>Heddle.Generator.Tests</c> reads the same file. Corrupting one row turns
-    /// both red — that is the point.</para>
+    /// <para>The deleted 2.x generator suite carried a symbol-side driver over the same file; this suite is the
+    /// surviving driver. Corrupting one row turns it red — that is the point.</para>
     /// </summary>
     public class AssignabilityCorpusReflectionTests
     {
@@ -28,15 +28,14 @@ namespace Heddle.Tests
         /// <summary>
         /// The expectation for the CLR actually running this test.
         ///
-        /// <para>The shared corpus commits the relation as CoreCLR and Roslyn's symbol model both
-        /// answer it, because that is the pair the generator and the modern runtime must agree on.
+        /// <para>The shared corpus commits the relation as CoreCLR answers it.</para>
         /// The .NET Framework CLR answers one row differently: on x64 it permits
         /// <c>IntPtr[]</c> -&gt; <c>Int64[]</c> array covariance, reducing <c>IntPtr</c> to its
-        /// 64-bit underlying primitive, where CoreCLR refuses and the symbol tier refuses. Skipping
+        /// 64-bit underlying primitive, where CoreCLR refuses. Skipping
         /// the row on netfx would drop a real assertion; flipping the committed value would break
-        /// both the CoreCLR driver and the generator's symbol driver, which read the same file. So
+        /// the CoreCLR driver, which reads the same file. So
         /// the divergence is recorded here and the netfx run asserts the behaviour netfx actually
-        /// has. A change on either side turns a run red, which is the point of the corpus.</para>
+        /// has. A change on either side of the divergence turns a run red, which is the point of the corpus.</para>
         /// </summary>
         private static bool ExpectedOnThisRuntime(string source, string target, bool committed)
         {

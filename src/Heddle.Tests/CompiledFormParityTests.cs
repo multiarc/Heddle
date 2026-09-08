@@ -56,19 +56,27 @@ namespace Heddle.Tests
         [MemberData(nameof(BoundRows))]
         public void BoundRowRendersByteIdentically(string name)
         {
-            var row = Find(name);
-            PrecompiledTemplates.ResetForTests();
-            if (CompiledFormHarness.IsUnresolvableRow(name))
+            // P3-R7: every row runs twice — Heddle.Precompiled.UseGeneratedSites on and off — both
+            // byte-identical to the dynamic tier on all three sinks. The "without" arm proves the
+            // data path is complete under the table.
+            foreach (var useGeneratedSites in new[] { true, false })
             {
-                AssertSymmetricRefusal(row);
-                return;
-            }
-            using (var guard = new FallbackGuard())
-            {
-                var result = CompiledFormHarness.RegisterRow(row, TestCorpusIndex.CorpusDir);
-                if (row.Render != CorpusRender.ResolveOnly)
-                    CompiledFormHarness.AssertThreeSinkParity(row, result.Strategy, TestCorpusIndex.CorpusDir);
-                guard.AssertQuiet();
+                var row = Find(name);
+                PrecompiledTemplates.ResetForTests();
+                if (CompiledFormHarness.IsUnresolvableRow(name))
+                {
+                    AssertSymmetricRefusal(row);
+                    return;
+                }
+                using (var guard = new FallbackGuard())
+                {
+                    var result = CompiledFormHarness.RegisterRowWithSites(
+                        row, TestCorpusIndex.CorpusDir, useGeneratedSites);
+                    if (row.Render != CorpusRender.ResolveOnly)
+                        CompiledFormHarness.AssertThreeSinkParity(row, result.Strategy, TestCorpusIndex.CorpusDir);
+                    guard.AssertQuiet();
+                }
+                PrecompiledTemplates.ResetForTests();
             }
         }
 

@@ -11,7 +11,7 @@ namespace Heddle.Language
     /// <see cref="ShiftBySkippedTokens"/>, <see cref="TrimHiddenRemnantLines"/>,
     /// <see cref="RemoveDefinitions"/>, <see cref="ReplaceRawOutput"/>, <see cref="StripBranchSets"/>,
     /// <see cref="RemoveEmptyItem"/>) must be preserved. Constraint: netstandard2.0-clean, no Roslyn
-    /// types, no <c>unsafe</c> — this file is linked into the generator with zero csproj edits.
+    /// types, no <c>unsafe</c>.
     /// </summary>
     internal static class DocumentShaping
     {

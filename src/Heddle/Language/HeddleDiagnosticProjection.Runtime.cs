@@ -6,9 +6,7 @@ using Heddle.Runtime;
 namespace Heddle.Language
 {
     /// <summary>The compile-channel half of the drain, split out of the shared file because
-    /// <see cref="CompileContext"/> lives in the runtime rather than in the linked front-end closure — the same
-    /// split <c>DocumentParser.Runtime.cs</c> uses, so the source generator links the parse-channel rule and
-    /// nothing it cannot compile.</summary>
+    /// <see cref="CompileContext"/> lives in the runtime — the same split <c>DocumentParser.Runtime.cs</c> uses.</summary>
     internal static partial class HeddleDiagnosticProjection
     {
         /// <summary>Drains all four channels: compile errors, compile warnings, parse errors, parse warnings —

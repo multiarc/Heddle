@@ -13,8 +13,8 @@ namespace Heddle.Language
     /// Parses documents into a reusable template cache representation.
     /// </summary>
     /// <remarks>
-    /// ParserSettings-based methods are the shared front-end core compiled into both Heddle and Heddle.Generator.
-    /// Runtime CompileContext adapters are in DocumentParser.Runtime.cs, which the generator does not compile.
+    /// ParserSettings-based methods are the shared front-end core of Heddle and the language services.
+    /// Runtime CompileContext adapters are in DocumentParser.Runtime.cs.
     /// </remarks>
     public static partial class DocumentParser
     {

@@ -61,7 +61,7 @@ namespace Heddle.Benchmarks.Dotnet.Engines
         {
             /// <summary>Compiled at runtime by <see cref="HeddleTemplate"/>.</summary>
             Runtime,
-            /// <summary>Compiled at build time by Heddle.Generator (lands in W7).</summary>
+            /// <summary>Compiled at build time by Heddle.Build.</summary>
             Precompiled,
         }
 

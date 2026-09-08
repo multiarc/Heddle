@@ -12,10 +12,10 @@ namespace Heddle.Attributes
     /// references its assembly, so the reference stops being a documentation rule the host can violate silently
     /// and becomes a fact the C# compiler enforces — a missing one is CS0246 in the host's own source, not a
     /// degrade at first render. The same reference is what the <b>build</b> tier needs: it reaches
-    /// <c>@(ReferencePath)</c>, the source generator indexes it with the rest of the compilation's reference
-    /// closure, and the same <c>@model</c> spelling binds there too. One declaration, both tiers.</para>
-    /// <para>Read by <see cref="HeddleTemplate.Register(System.Reflection.Assembly)"/> (runtime), by the compiler's
-    /// reference resolution on behalf of the source generator (build), and — through its own workspace
+    /// <c>@(ReferencePath)</c>, the build host indexes it with the rest of the reference closure,
+    /// and the same <c>@model</c> spelling binds there too. One declaration, both tiers.</para>
+    /// <para>Read by <see cref="HeddleTemplate.Register(System.Reflection.Assembly)"/> (runtime), by the build
+    /// host's reference resolution (build), and — through its own workspace
     /// <c>assemblies</c> setting — by the editor: one contract, three readers. Deliberately mirrors
     /// <see cref="ExportExtensionsAttribute"/>'s shape, but has <b>no</b> parameterless "all" form: an assembly
     /// carries no structural marker saying it holds model types, so an assembly-wide sweep is undefined.</para>

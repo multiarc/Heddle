@@ -9,10 +9,10 @@
     <!-- The release line, stated once. The statements that cannot live here — npm manifests, the VS Code
          extension's NuGet tool pin, the LSP workflow's explicit version argument, the prose release-line sentences —
          are held in step by VersionConsistencyTests.
-         VersionPrefix, not Version, so a `dotnet pack` version-suffix argument of `beta.N` composes 2.1.0-beta.N and
+         VersionPrefix, not Version, so a `dotnet pack` version-suffix argument of `beta.N` composes 3.0.0-beta.N and
          CI's release job can still override the whole thing from the tag. A suffix must NOT carry its own leading
          dash: the SDK joins prefix and suffix with one. -->
-    <VersionPrefix>2.1.0</VersionPrefix>
+    <VersionPrefix>3.0.0</VersionPrefix>
     <Authors>Aliaksandr Kukrash</Authors>
     <Company />
     <Copyright>Copyright 2026 Aliaksandr Kukrash</Copyright>

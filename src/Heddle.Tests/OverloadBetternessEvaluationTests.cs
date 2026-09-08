@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Heddle.Language.Expressions;
-using Heddle.Precompiled;
+using Heddle.Runtime.Expressions;
 using Xunit;
 
 namespace Heddle.Tests
@@ -46,13 +46,14 @@ namespace Heddle.Tests
         /// not all-numeric (format/str/substr/…) have no overload-selection question to answer.</summary>
         private static IEnumerable<(string Name, List<NumericKind[]> Signatures)> NumericOverloadGroups()
         {
-            foreach (var group in DefaultFunctionTable.Rows.GroupBy(r => r.Name, StringComparer.Ordinal))
+            foreach (var group in FunctionRegistry.Default.EnumerateOverloads()
+                .GroupBy(e => e.Name, StringComparer.Ordinal))
             {
                 var signatures = new List<NumericKind[]>();
                 bool allNumeric = true;
                 foreach (var row in group)
                 {
-                    var kinds = row.ParameterTypeNames.Select(KindOfName).ToArray();
+                    var kinds = row.ParameterTypes.Select(t => t.FullName).Select(KindOfName).ToArray();
                     if (kinds.Any(k => k == NumericKind.None))
                     {
                         allNumeric = false;

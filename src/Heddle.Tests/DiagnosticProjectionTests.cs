@@ -9,7 +9,7 @@ namespace Heddle.Tests
 {
     /// <summary>
     /// Verification of the unified diagnostic drain rule: channels, severity determination, fix carriage, and de-duplication
-    /// across language server, generator, and compile result.
+    /// across language server, build host, and compile result.
     /// </summary>
     public class DiagnosticProjectionTests
     {
@@ -92,8 +92,8 @@ namespace Heddle.Tests
             Assert.Equal(2, HeddleDiagnosticProjection.Drain(compile, parse).Count);
         }
 
-        /// <summary>The predicate is how a host states its own policy without the rule growing a flag: the
-        /// generator filters region-fill candidate errors it may still retract.</summary>
+        /// <summary>The predicate is how a host states its own policy without the rule growing a flag: a host
+        /// filters region-fill candidate errors it may still retract.</summary>
         [Fact]
         public void TheIncludePredicateFiltersBeforeProjection()
         {

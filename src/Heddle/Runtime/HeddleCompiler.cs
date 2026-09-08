@@ -132,6 +132,10 @@ namespace Heddle.Runtime
                             element.CallChain.Add(compiledItem);
                         }
                     }
+                    catch (Heddle.Precompiled.PrecompiledStrictLoadException)
+                    {
+                        throw;
+                    }
                     catch (Exception e)
                     {
                         compileScope.CompileErrors.Add(CompileItemFault(item, e));
@@ -172,6 +176,10 @@ namespace Heddle.Runtime
                             MarkChainConsumer(compiledItem, item, hasProducerToRight);
                             element.CallChain.Add(compiledItem);
                         }
+                    }
+                    catch (Heddle.Precompiled.PrecompiledStrictLoadException)
+                    {
+                        throw;
                     }
                     catch (Exception e)
                     {
@@ -714,6 +722,32 @@ namespace Heddle.Runtime
                 record.SetItemPayload(extensionItem, new FormRefusal(index.Value));
         }
 
+        /// <summary>Builds a member-path parameter from the generated site table when the load carries
+        /// one that serves this chain, else compiles the chain as before. A record-backed site the
+        /// table leaves unserved throws under strict load; unmatched text always rebuilds from data.</summary>
+        private static IRuntimeParameter ResolveMemberParameter(CompileScope compileContext, ExType scopeType,
+            string[] segments, bool rootReference, List<(Type Type, PropertyInfo Property)> properties)
+        {
+            var state = compileContext != null ? compileContext.SiteTableState : null;
+            Delegate site;
+            int ordinal;
+            string kind;
+            if (Heddle.Precompiled.SiteTableState.TryResolveAccessor(state, segments, rootReference, scopeType,
+                HopTriples(properties), out site, out ordinal, out kind) && site != null)
+            {
+                var accessor = (Func<object, object>)site;
+                return rootReference
+                    ? (IRuntimeParameter)new RootModelParameter(accessor)
+                    : new ModelParameter(accessor);
+            }
+
+            if (state != null)
+                state.ThrowIfStrictUnserved(kind, ordinal);
+            return rootReference
+                ? (IRuntimeParameter)new RootModelParameter(properties)
+                : new ModelParameter(properties);
+        }
+
         private static List<(Type Declaring, string Name, Type Member)> HopTriples(
             List<(Type Type, PropertyInfo Property)> properties)
         {
@@ -803,14 +837,9 @@ namespace Heddle.Runtime
             }
 
             inputType = resolution.ResultType;
-            if (extensionItem.CallParameter.RootReference)
-            {
-                result.CompiledItem.Parameter = new RootModelParameter(resolution.Properties);
-            }
-            else
-            {
-                result.CompiledItem.Parameter = new ModelParameter(resolution.Properties);
-            }
+            result.CompiledItem.Parameter = ResolveMemberParameter(compileContext, scopeType,
+                extensionItem.CallParameter.ModelParameter, extensionItem.CallParameter.RootReference,
+                resolution.Properties);
 
             if (record != null)
             {

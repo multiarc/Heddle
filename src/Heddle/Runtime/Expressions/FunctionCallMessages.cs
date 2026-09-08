@@ -6,9 +6,8 @@ namespace Heddle.Runtime.Expressions
     /// <summary>
     /// The function-call compile-error sentences, stated once. Three writers share them: the dynamic
     /// compiler's expression tier (<see cref="NativeExpressionCompiler"/>), its top-level call dispatch
-    /// (<c>HeddleCompiler.CompileItem</c>), and the precompiled tier's late-bound call site
-    /// (<see cref="Precompiled.PrecompiledFunctionSite"/>), whose failure must be byte-identical to the engine's —
-    /// which is only structural while the sentence has one home.
+    /// (<c>HeddleCompiler.CompileItem</c>), and the precompiled tier's late-bound call site, whose failure must
+    /// be byte-identical to the engine's — which is only structural while the sentence has one home.
     /// </summary>
     internal static class FunctionCallMessages
     {

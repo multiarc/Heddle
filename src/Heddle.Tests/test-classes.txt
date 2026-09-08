@@ -7,7 +7,6 @@ Heddle.Tests.AssemblyNameEqualityTests
 Heddle.Tests.AssemblyRegistrationTests
 Heddle.Tests.AssignabilityCorpusReflectionTests
 Heddle.Tests.AtEscapeTests
-Heddle.Tests.BindDefinitionOverloadTests
 Heddle.Tests.BodyModelTypingTests
 Heddle.Tests.BraceMisreadWarningTests
 Heddle.Tests.BranchAllocationTests
@@ -18,6 +17,7 @@ Heddle.Tests.BranchRoleDriftDiagnosticTests
 Heddle.Tests.BranchRoleUniversalityTests
 Heddle.Tests.BranchSetCompilerTests
 Heddle.Tests.BranchingGoldenTests
+Heddle.Tests.BuildSurfaceContractTests
 Heddle.Tests.CSharpEscapeTests
 Heddle.Tests.CSharpTierMetadataTests
 Heddle.Tests.CSharpTypeNamesTests
@@ -39,7 +39,6 @@ Heddle.Tests.ContextEncodingGoldenTests
 Heddle.Tests.CorpusIntentGateTests
 Heddle.Tests.DeepNestingTests
 Heddle.Tests.DefaultConvertibleReflectionTests
-Heddle.Tests.DefaultFunctionLockstepTests
 Heddle.Tests.DefinitionRecursionTests
 Heddle.Tests.DiagnosticCatalogTests
 Heddle.Tests.DiagnosticIdTests
@@ -68,6 +67,8 @@ Heddle.Tests.ForSugarAllocationTests
 Heddle.Tests.ForSugarTests
 Heddle.Tests.FunctionExportTests
 Heddle.Tests.FunctionRegistryTests
+Heddle.Tests.GeneratedAccessorAllocationTests
+Heddle.Tests.GeneratedSiteTests
 Heddle.Tests.GenericTypeResolutionTests
 Heddle.Tests.HeddleTemplateDisposalTests
 Heddle.Tests.HeddleTemplateModelTypeGuardTests
@@ -79,7 +80,6 @@ Heddle.Tests.HtmlEncodedRendererSpanParityTests
 Heddle.Tests.ImportCycleTests
 Heddle.Tests.ImportFormsPinningTests
 Heddle.Tests.ImportOriginTests
-Heddle.Tests.InitSynthesisFidelityTests
 Heddle.Tests.IntegralRoundingBuiltInTests
 Heddle.Tests.LayoutDefinitionCompositionTests
 Heddle.Tests.LegacyImportRemovalTests
@@ -100,7 +100,6 @@ Heddle.Tests.NestedTypeResolutionTests
 Heddle.Tests.NetFrameworkDegradePathTests
 Heddle.Tests.NullSafeHopEvaluationTests
 Heddle.Tests.NumericTableLockstepTests
-Heddle.Tests.OldSchemaManifestRejectionTests
 Heddle.Tests.OperatorLexemeTests
 Heddle.Tests.OutStaticBodyInertTests
 Heddle.Tests.OutputProfileAndRenderTypeRuleTests
@@ -111,17 +110,16 @@ Heddle.Tests.OverloadBetternessEvaluationTests
 Heddle.Tests.OverloadRankLockstepTests
 Heddle.Tests.ParserSettingsSeamTests
 Heddle.Tests.ParticipantScanLockstepTests
-Heddle.Tests.PipelineContractTests
 Heddle.Tests.PrecompiledFallbackCarrierTests
 Heddle.Tests.PrecompiledGauntletTests
 Heddle.Tests.PrecompiledMismatchPolicyTests
 Heddle.Tests.PrecompiledModelGateTests
 Heddle.Tests.PrecompiledRegistryTests
-Heddle.Tests.PrecompiledRuntimeTests
 Heddle.Tests.PrecompiledTypedEntryTests
 Heddle.Tests.PrecompiledValidationPassTests
 Heddle.Tests.PreparseCacheGenerationTests
 Heddle.Tests.PreparseDiagnosticReplayTests
+Heddle.Tests.PrinterCoverageTests
 Heddle.Tests.ProfileDirectiveTests
 Heddle.Tests.PropLayoutCoreReflectionTests
 Heddle.Tests.PropLayoutFingerprintTests
@@ -154,6 +152,7 @@ Heddle.Tests.Streaming.SinkEncodingParityTests
 Heddle.Tests.Streaming.SinkParityTests
 Heddle.Tests.Streaming.StreamingFixtureAndGuaranteeTests
 Heddle.Tests.Streaming.Utf8ChunkBoundaryTests
+Heddle.Tests.StrictLoadTests
 Heddle.Tests.StringBuilderExTest
 Heddle.Tests.TemplateFactoryRegistrationTests
 Heddle.Tests.TemplateKeyNormalizationTests

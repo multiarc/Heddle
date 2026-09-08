@@ -1,17 +1,78 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
 using Heddle.Attributes;
 using Heddle.Data;
 using Heddle.Exceptions;
+using Heddle.Extensions;
 using Heddle.Helpers;
 using Heddle.Language;
 using Heddle.Language.Binding;
 using Heddle.Strings.Core;
 
 using Heddle.Native;
+
+#if NETSTANDARD2_0
+// The trim/AOT attributes ship in-box only on modern targets. This file is the one place that
+// needs them on netstandard2.0, so the polyfill lives here rather than in a new file. The linker
+// matches the attribute by namespace and name, which is why the shape mirrors the framework type.
+namespace System.Diagnostics.CodeAnalysis
+{
+    [AttributeUsage(AttributeTargets.Assembly | AttributeTargets.Class | AttributeTargets.Struct |
+        AttributeTargets.Constructor | AttributeTargets.Method | AttributeTargets.Property |
+        AttributeTargets.Event, AllowMultiple = true)]
+    internal sealed class DynamicDependencyAttribute : Attribute
+    {
+        public DynamicDependencyAttribute(string memberSignature, Type type)
+        {
+        }
+
+        public DynamicDependencyAttribute(
+            DynamicallyAccessedMemberTypes memberTypes, Type type)
+        {
+        }
+
+        public DynamicDependencyAttribute(
+            DynamicallyAccessedMemberTypes memberTypes, string typeName, string assemblyName)
+        {
+        }
+    }
+
+    [AttributeUsage(AttributeTargets.GenericParameter | AttributeTargets.Parameter |
+        AttributeTargets.Method | AttributeTargets.Property | AttributeTargets.Field |
+        AttributeTargets.ReturnValue, AllowMultiple = false, Inherited = false)]
+    internal sealed class DynamicallyAccessedMembersAttribute : Attribute
+    {
+        public DynamicallyAccessedMembersAttribute(DynamicallyAccessedMemberTypes memberTypes)
+        {
+        }
+    }
+
+    [Flags]
+    internal enum DynamicallyAccessedMemberTypes
+    {
+        None = 0,
+        PublicParameterlessConstructor = 1,
+        PublicConstructors = 2,
+        NonPublicConstructors = 4,
+        PublicMethods = 8,
+        NonPublicMethods = 16,
+        PublicFields = 32,
+        NonPublicFields = 64,
+        PublicNestedTypes = 128,
+        NonPublicNestedTypes = 256,
+        PublicProperties = 512,
+        NonPublicProperties = 1024,
+        PublicEvents = 2048,
+        NonPublicEvents = 4096,
+        Interfaces = 8192,
+        All = -1,
+    }
+}
+#endif
 
 namespace Heddle.Runtime {
     public struct ExtensionType
@@ -111,7 +172,7 @@ namespace Heddle.Runtime {
 
         /// <summary>
         /// Registers extension types, resolving name collisions through the shared
-        /// <see cref="ExtensionRegistrationRules"/> — the same rule the source generator applies at build time.
+        /// <see cref="ExtensionRegistrationRules"/> — the same rule the build host applies at build time.
         /// </summary>
         public static void AddExtensions(IEnumerable<ExtensionType> toAdd)
         {
@@ -162,7 +223,9 @@ namespace Heddle.Runtime {
             try
             {
                 var extensionType = Volatile.Read(ref _registry)[templateName];
+#pragma warning disable IL2072 // P3-R9: the registry is fed by LoadExtensions, whose types the DynamicDependency roots preserve.
                 var resultExtension = CreateExtension(extensionType);
+#pragma warning restore IL2072
                 resultExtension.Position = absoluteTextPosition;
                 return resultExtension;
             }
@@ -211,6 +274,37 @@ namespace Heddle.Runtime {
         /// Loads all built-in extensions from this assembly.
         /// </summary>
         /// <returns>All discovered extensions.</returns>
+        // P3-R9 rooting story: LoadExtensions enumerates the engine assembly, which trimming would
+        // otherwise empty. One root per built-in extension type keeps CreateExtension's
+        // Activator.CreateInstance working after trimming; host extensions are rooted by the
+        // typeof in [ExportExtensions]/[ExportFunctions]/[HeddleModelAssembly].
+        [DynamicDependency(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor, typeof(AttrExtension))]
+        [DynamicDependency(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor, typeof(DateExtension))]
+        [DynamicDependency(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor, typeof(ElifExtension))]
+        [DynamicDependency(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor, typeof(ElseExtension))]
+        [DynamicDependency(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor, typeof(EmptyExtension))]
+        [DynamicDependency(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor, typeof(EmptyHtmlExtension))]
+        [DynamicDependency(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor, typeof(ForIndexExtension))]
+        [DynamicDependency(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor, typeof(GuidExtension))]
+        [DynamicDependency(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor, typeof(IfExtension))]
+        [DynamicDependency(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor, typeof(IfNotExtension))]
+        // The archived import tombstone is still enumerated by LoadExtensions, so it needs the same
+        // root — but the type is obsolete-as-error, so the string overload names it without a typeof.
+        [DynamicDependency(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor, "Heddle.Extensions.ImportExtension", "Heddle")]
+        [DynamicDependency(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor, typeof(IntegerExtension))]
+        [DynamicDependency(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor, typeof(JsExtension))]
+        [DynamicDependency(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor, typeof(ListExtension))]
+        [DynamicDependency(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor, typeof(ModelExtension))]
+        [DynamicDependency(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor, typeof(MoneyExtension))]
+        [DynamicDependency(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor, typeof(OutExtension))]
+        [DynamicDependency(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor, typeof(ParamExtension))]
+        [DynamicDependency(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor, typeof(PartialExtension))]
+        [DynamicDependency(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor, typeof(ProfileExtension))]
+        [DynamicDependency(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor, typeof(StringExtension))]
+        [DynamicDependency(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor, typeof(SwapExtension))]
+        [DynamicDependency(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor, typeof(TimeExtension))]
+        [DynamicDependency(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor, typeof(UrlExtension))]
+        [DynamicDependency(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor, typeof(UsingExtension))]
         private static IEnumerable<ExtensionType> LoadBaseExtensions ()
         {
             return LoadExtensions(typeof(TemplateFactory).GetTypeInfo().Assembly);
@@ -232,7 +326,9 @@ namespace Heddle.Runtime {
             Type[] types;
             try
             {
+#pragma warning disable IL2026 // P3-R9: the enumeration is the discovery the DynamicDependency roots on LoadBaseExtensions preserve.
                 types = assembly.GetTypes();
+#pragma warning restore IL2026
             }
             catch (ReflectionTypeLoadException e)
             {
@@ -244,7 +340,7 @@ namespace Heddle.Runtime {
 
         internal static IEnumerable<ExtensionType> LoadExtensions(IEnumerable<Type> extensions)
         {
-            // OrderingKey decides the incumbent candidate; both discovery and generator sort by this call.
+            // OrderingKey decides the incumbent candidate; both discovery and the build sort by this call.
             var types =
                 extensions.Where(t => t.IsImplement<IExtension>() && t.IsHaveAttribute<ExtensionNameAttribute>(true))
                     .OrderBy(t => ExtensionRegistrationRules.OrderingKey(
@@ -266,7 +362,8 @@ namespace Heddle.Runtime {
         /// </summary>
         /// <param name="templateType">Extension type to instantiate.</param>
         /// <returns>A new instance of the extension.</returns>
-        private static IExtension CreateExtension (Type templateType)
+        private static IExtension CreateExtension (
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)] Type templateType)
         {
             try {
                 return (IExtension) Activator.CreateInstance(templateType);

@@ -21,7 +21,7 @@ namespace Heddle.Tests
         }
 
         [Fact]
-        public void OvershootFixtureShapesToTheSameWorkingDocumentTheGeneratorNowProduces()
+        public void OvershootFixtureShapesToTheSameWorkingDocumentTheShaperNowProduces()
         {
             var template = CompileFixture("shaper-clamp-overshoot");
             Assert.True(template.CompileResult.Success, template.CompileResult.ToString());
@@ -30,7 +30,7 @@ namespace Heddle.Tests
                 .GetField("_runtimeDocument", BindingFlags.NonPublic | BindingFlags.Instance)
                 .GetValue(template);
 
-            // The same literal the generator's adapter test asserts for this shape.
+            // The pinned literal for this shape.
             Assert.Equal("X\n", document.Document);
             Assert.Equal("X\n", template.Generate(null));
         }

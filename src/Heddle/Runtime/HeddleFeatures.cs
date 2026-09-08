@@ -27,5 +27,16 @@ namespace Heddle.Runtime
         /// </summary>
         internal static bool CSharpTierEnabled =>
             !AppContext.TryGetSwitch("Heddle.CSharpTierEnabled", out bool enabled) || enabled;
+
+        /// <summary>The loader prefers a generated site-table delegate over rebuilding the site from
+        /// data. Default (switch unset) is <c>true</c>; a host sets
+        /// <c>Heddle.Precompiled.UseGeneratedSites</c> to <c>false</c> for the data-path arm.</summary>
+        internal static bool UseGeneratedSites =>
+            !AppContext.TryGetSwitch("Heddle.Precompiled.UseGeneratedSites", out bool enabled) || enabled;
+
+        /// <summary>Fail materialization instead of compiling a site at load. Default (switch unset)
+        /// is <c>false</c>; seeds <c>TemplateOptions.PrecompiledStrictLoad</c>.</summary>
+        internal static bool StrictLoad =>
+            AppContext.TryGetSwitch("Heddle.Precompiled.StrictLoad", out bool enabled) && enabled;
     }
 }

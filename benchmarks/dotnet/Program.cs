@@ -23,6 +23,7 @@ namespace Heddle.Benchmarks.Dotnet
     ///   bench-techniques  Heddle's six render techniques against each other. NOT in run-all.
     ///   bench-internal    Heddle-internal suites (props, branching, language-service metadata).
     ///   bench-cold        cold parse/compile sidebar.
+    ///   bench-startup     the cold-start row: fresh-process compile vs register+bind+first render.
     ///
     /// Every bench verb passes its remaining arguments straight to BenchmarkDotNet, so a master
     /// runner selects one suite per step and layers the measurement budget on top:
@@ -50,6 +51,9 @@ namespace Heddle.Benchmarks.Dotnet
                     "bench-techniques" => BenchRunner.Run("bench-techniques", BenchRunner.TechniqueTypes, rest),
                     "bench-internal" => BenchRunner.Run("bench-internal", BenchRunner.InternalTypes, rest),
                     "bench-cold" => BenchRunner.Run("bench-cold", BenchRunner.ColdTypes, rest),
+                    // Named inline: BenchRunner's per-verb type sets are its own reviewable surface, and the
+                    // startup suite is one type owned by the P3-R8 slice.
+                    "bench-startup" => BenchRunner.Run("bench-startup", new[] { typeof(StartupBenchmarks) }, rest),
                     "--help" or "-h" or "help" => Usage(0),
                     _ => Usage(2, $"unknown verb '{verb}'"),
                 };
@@ -196,6 +200,10 @@ namespace Heddle.Benchmarks.Dotnet
                 Console.WriteLine(
                     $"  parity: {covered.Count} workloads x 3 sinks agree byte-for-byte with the runtime tier.");
 
+            // The P3-R8 materialisation trailer: artifact size in bytes and materialization time
+            // per workload, measured here behind the same gate that proved the bytes.
+            StartupBenchmarks.WriteGateTrailer(covered);
+
             foreach (var workload in uncovered)
             {
                 Console.Error.WriteLine(
@@ -222,6 +230,7 @@ namespace Heddle.Benchmarks.Dotnet
             w.WriteLine("  bench-crossstack     the sweep: 8 suites x 6 engines x 2 tracks");
             w.WriteLine("  bench-techniques     Heddle's six render techniques against each other");
             w.WriteLine("  bench-cold           cold parse/compile, per engine");
+            w.WriteLine("  bench-startup        cold start: compile vs register+bind+first render");
             w.WriteLine("  bench-internal       props, branching, language-service metadata");
             w.WriteLine("");
             w.WriteLine("Every bench verb forwards its remaining args to BenchmarkDotNet, e.g.");

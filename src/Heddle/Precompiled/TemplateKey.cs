@@ -4,9 +4,8 @@ using System.Text;
 namespace Heddle.Precompiled
 {
     /// <summary>
-    /// <para>The shared key-normalization rule for precompiled templates. One pure function,
-    /// one source file, compiled into both <c>Heddle</c> (runtime lookup) and the <c>Heddle.Generator</c>
-    /// analyzer (build-time emit) so emit-time and lookup-time keys are byte-identical by construction.</para>
+    /// <para>The shared key-normalization rule for precompiled templates. One pure function, so emit-time
+    /// (build host) and lookup-time (runtime) keys are byte-identical by construction.</para>
     /// <para>Keys are the template's path relative to the resolver root, with backslashes unified to
     /// <c>/</c>, duplicate separators collapsed, leading <c>~/</c>/<c>./</c>/<c>/</c> stripped, <c>.</c> and
     /// <c>..</c> segments rejected, <c>.heddle</c> appended when the final segment carries no extension, and
@@ -16,11 +15,11 @@ namespace Heddle.Precompiled
     /// </summary>
     public static class TemplateKey
     {
-        /// <summary>The template file extension; referenced by MSBuild glob <c>**\*.heddle</c> in <c>Heddle.Generator.targets</c>.</summary>
+        /// <summary>The template file extension; referenced by MSBuild glob <c>**\*.heddle</c> in <c>Heddle.Build.targets</c>.</summary>
         public const string TemplateExtension = ".heddle";
 
         /// <summary>Whether a path or key carries the template extension. <b>Case-insensitive</b> — the policy both
-        /// pre-existing sites (generator discovery, partial-name stripping) already used.</summary>
+        /// pre-existing sites (build discovery, partial-name stripping) already used.</summary>
         public static bool HasTemplateExtension(string pathOrKey) =>
             pathOrKey != null &&
             pathOrKey.EndsWith(TemplateExtension, StringComparison.OrdinalIgnoreCase);

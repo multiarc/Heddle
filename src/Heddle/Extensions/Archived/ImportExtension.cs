@@ -6,7 +6,7 @@ using Heddle.Data;
 namespace Heddle.Extensions {
     // Tombstone to prevent cross-tier divergence: the dynamic tier must resolve 'import'
     // even though it's removed, or TemplateFactory.Create would generate a diagnostic that
-    // the generator does not produce. [Obsolete] blocks source references while allowing
+    // the build does not produce. [Obsolete] blocks source references while allowing
     // runtime instantiation via reflection.
     [Obsolete("'@import' has been removed and this extension is an inert tombstone. Do not use or derive from it. " +
               "Use '@<<{{ path }}' to share definitions and layouts, or '@partial(){{ name }}' to embed rendered output.",

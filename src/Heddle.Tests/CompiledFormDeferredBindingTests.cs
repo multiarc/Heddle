@@ -38,7 +38,7 @@ namespace Heddle.Tests
             Type modelType;
             object model;
             CompiledFormHarness.ModelExFor(Find("fn-standalone-late-bound.heddle"), out modelType, out model);
-            Assert.Equal("ADA\n", PrecompiledRuntime.GenerateString(result.Strategy, model, null, null));
+            Assert.Equal("ADA\n", CompiledFormHarness.RenderStrategy(result.Strategy, model));
         }
 
         [Fact]
@@ -50,7 +50,7 @@ namespace Heddle.Tests
             Type modelType;
             object model;
             CompiledFormHarness.ModelExFor(Find("fn-typed-consumer-late-bound.heddle"), out modelType, out model);
-            Assert.Equal("ADA\n", PrecompiledRuntime.GenerateString(result.Strategy, model, null, null));
+            Assert.Equal("ADA\n", CompiledFormHarness.RenderStrategy(result.Strategy, model));
         }
 
         [Fact]
@@ -85,8 +85,8 @@ namespace Heddle.Tests
             Assert.NotNull(lower);
             Assert.True(upper == entry.GetStrategy(first), "Same registry should memoize one strategy.");
             Assert.True(!ReferenceEquals(upper, lower), "A different registry should re-compile.");
-            Assert.Equal("ADA\n", PrecompiledRuntime.GenerateString(upper, model, null, null));
-            Assert.Equal("ada\n", PrecompiledRuntime.GenerateString(lower, model, null, null));
+            Assert.Equal("ADA\n", CompiledFormHarness.RenderStrategy(upper, model));
+            Assert.Equal("ada\n", CompiledFormHarness.RenderStrategy(lower, model));
         }
 
         [Fact]

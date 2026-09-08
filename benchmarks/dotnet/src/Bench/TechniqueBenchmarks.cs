@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using BenchmarkDotNet.Attributes;
 using Heddle.Benchmarks.Dotnet.Corpus;
+using Heddle;
 using Heddle.Benchmarks.Dotnet.Engines;
 using Heddle.Benchmarks.Dotnet.Gate;
 
@@ -107,6 +108,9 @@ namespace Heddle.Benchmarks.Dotnet.Bench
         [GlobalSetup]
         public void Setup()
         {
+            // Pinned on: the shared backend cache materializes once per workload per process, so this
+            // suite states its arm up front rather than inheriting whatever a sibling suite bound first.
+            AppContext.SetSwitch(TechniqueSetup.UseGeneratedSitesSwitch, true);
             _model = HeddleEngine.ModelFor(Workload);
             var output = Engines.Precompiled.Render("controlled", Workload, HeddleEngine.Sink.String);
             Controlled.AssertCell("Heddle (precompiled/string)", Workload, output);
@@ -140,11 +144,110 @@ namespace Heddle.Benchmarks.Dotnet.Bench
     }
 
     /// <summary>
+    /// The same three sinks with the site table off (P3-R8): the data path the "without" arm of the
+    /// parity suite proves complete. The published table places each row beside
+    /// <c>TechniqueRuntimeBenchmarks</c> on the same machine and job: mean within BenchmarkDotNet's
+    /// reported error, allocated bytes equal.
+    ///
+    /// <para><b>Own materialization cache, deliberately.</b> <see cref="Engines.Precompiled"/> memoizes
+    /// one bound entry per workload per process at whatever switch position bound first — sharing it
+    /// would let whichever suite ran first pick the other suite's arm. This suite binds through the
+    /// same public typed route (<c>BindTyped</c> once per workload, then
+    /// <c>HeddleTemplate.Generate</c>) into its own cache, with the switch pinned off, so both arms
+    /// stay honest in one process in either order.</para>
+    /// </summary>
+    [MemoryDiagnoser]
+    public class TechniquePrecompiledDataOnlyBenchmarks
+    {
+        /// <summary>Only the workloads this assembly actually carries a precompiled entry for.</summary>
+        public static IEnumerable<string> Workloads() => Engines.Precompiled.CoveredWorkloads();
+
+        [ParamsSource(nameof(Workloads))]
+        public string Workload { get; set; }
+
+        private object _model;
+        private HeddleTemplate _bound;
+        private BenchSinks.BenchBufferWriter _buffer;
+        private BenchSinks.BenchTextWriter _writer;
+
+        private static readonly Dictionary<string, HeddleTemplate> BoundByWorkload =
+            new Dictionary<string, HeddleTemplate>(StringComparer.Ordinal);
+
+        private static HeddleTemplate BoundDataOnly(string workload)
+        {
+            lock (BoundByWorkload)
+            {
+                if (BoundByWorkload.TryGetValue(workload, out var cached))
+                    return cached;
+                AppContext.SetSwitch(TechniqueSetup.UseGeneratedSitesSwitch, false);
+                var assembly = typeof(Engines.Precompiled).Assembly;
+                Heddle.Precompiled.PrecompiledTemplates.Register(assembly);
+                Heddle.Precompiled.PrecompiledTemplateInfo entry = null;
+                foreach (var candidate in Heddle.Precompiled.PrecompiledTemplates.Entries)
+                    if (string.Equals(candidate.Key, workload + ".heddle", StringComparison.Ordinal))
+                        entry = candidate;
+                if (entry == null)
+                    throw new InvalidOperationException(
+                        $"no precompiled entry for '{workload}' — this cell should not have been registered.");
+                Heddle.Precompiled.PrecompiledTemplates.DefaultOptions =
+                    new Heddle.Data.TemplateOptions("benchmarks-data-only")
+                    {
+                        OutputProfile = entry.OptionsFingerprint.Profile,
+                        ExpressionMode = entry.OptionsFingerprint.ExpressionMode,
+                    };
+                var bound = Heddle.Precompiled.PrecompiledTemplates.BindTyped(
+                    assembly, workload + ".heddle", entry.ModelType);
+                BoundByWorkload[workload] = bound;
+                return bound;
+            }
+        }
+
+        [GlobalSetup]
+        public void Setup()
+        {
+            _model = HeddleEngine.ModelFor(Workload);
+            _bound = BoundDataOnly(Workload);
+            var output = _bound.Generate(_model);
+            Controlled.AssertCell("Heddle (precompiled-data-only/string)", Workload, output);
+
+            _buffer = new BenchSinks.BenchBufferWriter(output.Length * 4 + 4096);
+            _writer = new BenchSinks.BenchTextWriter(output.Length + 1024);
+            TechniqueSetup.AssertSinks(output, _buffer, _writer,
+                b => _bound.Generate(_model, b),
+                w => _bound.Generate(_model, w),
+                Workload, "precompiled-data-only");
+        }
+
+        [Benchmark(Baseline = true)]
+        public int Utf8()
+        {
+            _buffer.Reset();
+            _bound.Generate(_model, _buffer);
+            return _buffer.WrittenCount;
+        }
+
+        [Benchmark]
+        public int TextWriter()
+        {
+            _writer.Reset();
+            _bound.Generate(_model, _writer);
+            return _writer.Length;
+        }
+
+        [Benchmark]
+        public int String() => _bound.Generate(_model).Length;
+    }
+
+    /// <summary>
     /// The once-per-process proof that the bench sinks see the whole output, shared by both technique
     /// suites. Runs in <c>[GlobalSetup]</c>, so it costs a timed iteration nothing.
     /// </summary>
     internal static class TechniqueSetup
     {
+        /// <summary>The public switch both precompiled technique suites pin before binding: the loader
+        /// prefers a generated site unless this is <c>false</c> (default <c>true</c>).</summary>
+        internal const string UseGeneratedSitesSwitch = "Heddle.Precompiled.UseGeneratedSites";
+
         public static void AssertSinks(string oracle,
             BenchSinks.BenchBufferWriter buffer, BenchSinks.BenchTextWriter writer,
             Action<BenchSinks.BenchBufferWriter> renderBuffer,

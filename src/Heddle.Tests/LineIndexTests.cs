@@ -16,8 +16,8 @@ namespace Heddle.Tests
     /// <c>'\r'</c> never terminates a line by itself; <c>'\r'</c> adjacent to <c>'\n'</c> belongs to the line
     /// <c>'\n'</c> terminates; offsets and columns count UTF-16 code units. The table (<see cref="LineIndexVectors"/>)
     /// is asserted here against <see cref="LineIndex"/> and against the surface that renders a position to a user,
-    /// <see cref="HeddleCompileResult"/>; the generator's <c>LineMapper</c> and the LSP's <c>LineMap</c> assert the
-    /// same table in their own suites.</para>
+    /// <see cref="HeddleCompileResult"/>; the LSP's <c>LineMap</c> asserts the
+    /// same table in its own suite.</para>
     /// <para>Pre-extraction characterization (before the split-based rule): the leading-<c>'\r'</c> offset bump
     /// made three of the eight documents disagree with the canonical rule — <c>"a\r\n\r\nb"</c>, <c>"a\n\rb"</c>,
     /// and <c>"a\nb\r\n\rc\n"</c> reported positions incorrectly. LF-only, plain CRLF, lone-<c>'\r'</c>, no-EOL and

@@ -14,6 +14,10 @@ namespace Heddle.Runtime
 
         public List<HeddleCompileError> CompileErrors => CompileContext.CompileErrors;
 
+        /// <summary>Generated-site state for one compiled-form materialization. Null on every ordinary
+        /// compile; set by the loader before replaying the row, read by the site creation points.</summary>
+        internal Precompiled.SiteTableState SiteTableState { get; set; }
+
         public List<HeddleCompileWarning> CompileWarnings => CompileContext.CompileWarnings;
 
         public ICollection<string> Namespaces => CSharpContext.Namespaces;

@@ -9,9 +9,8 @@
   This directory deliberately belongs to no project, on the same terms as `src/TestCorpus/`: no csproj's
   default glob reaches it, so all five consuming suites import it identically.
 
-  The build copy is named `<AssemblyName>.test-classes.txt`, not `test-classes.txt`. One suite copies
-  another's build output into its own directory (Heddle.Generator.IntegrationTests takes Heddle.Tests's),
-  and two files with one name in one directory is a race, not a gate.
+  The build copy is named `<AssemblyName>.test-classes.txt`, not `test-classes.txt`, so two suites
+  sharing a build output directory never race on one name.
 -->
 <Project>
 

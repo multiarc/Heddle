@@ -47,6 +47,10 @@ namespace Heddle.Data {
         /// Participates in cache key; compile-time only.</summary>
         public bool TrimDirectiveLines { get; set; }
 
+        /// <summary>Fail materialization instead of compiling a site at load. Default: the
+        /// Heddle.Precompiled.StrictLoad AppContext switch, else false. Not part of options identity.</summary>
+        public bool PrecompiledStrictLoad { get; set; }
+
         /// <summary>Output encoder at HTML-encoding sites. <c>null</c> selects the legacy built-in path; supply a
         /// <see cref="System.Text.Encodings.Web.TextEncoder"/> for modern contract. Participates in cache key
         /// by reference; thread-safe implementations are required.</summary>
@@ -66,7 +70,7 @@ namespace Heddle.Data {
         {
         }
 
-        /// <summary>Defaults come from <see cref="Heddle.Precompiled.HeddleBuildOptions"/>, shared with the generator and MSBuild.</summary>
+        /// <summary>Defaults come from <see cref="Heddle.Precompiled.HeddleBuildOptions"/>, shared with the build host and MSBuild.</summary>
         public TemplateOptions(string templateName) {
             FileNamePostfix = string.Empty;
             RootPath = AppContext.BaseDirectory;
@@ -76,6 +80,7 @@ namespace Heddle.Data {
             MaxRecursionCount = Heddle.Precompiled.HeddleBuildOptions.DefaultMaxRecursionCount;
             OutputProfile = Heddle.Precompiled.HeddleBuildOptions.DefaultOutputProfile;
             TrimDirectiveLines = Heddle.Precompiled.HeddleBuildOptions.DefaultTrimDirectiveLines;
+            PrecompiledStrictLoad = Heddle.Runtime.HeddleFeatures.StrictLoad;
         }
 
         public TemplateOptions(TemplateOptions value, string templateName = null)
@@ -95,6 +100,7 @@ namespace Heddle.Data {
             Encoder = value.Encoder;
             RenderBudget = value.RenderBudget;   // Copied, but not part of Equals/GetHashCode or the fingerprint.
             ValidateModelType = value.ValidateModelType;   // Copied, but not part of Equals/GetHashCode or the fingerprint.
+            PrecompiledStrictLoad = value.PrecompiledStrictLoad;   // Copied, but not part of Equals/GetHashCode or the fingerprint.
         }
 
         /// <summary>The composed on-disk path, using <see cref="System.IO.Path.Combine(string,string)"/>.</summary>

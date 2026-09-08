@@ -7,11 +7,8 @@ using Heddle.Runtime;
 
 namespace Heddle.Precompiled
 {
-    /// <summary>One precompiled template as recorded in a generated manifest. Immutable; safe to share
-    /// across threads. A <b>fallback-marker entry</b> (<see cref="IsPrecompiled"/> == false) carries the
-    /// key, hashes, fingerprint and a null-target <see cref="FunctionBindings"/> row but no entry class or strategy —
-    /// the template is known but not precompiled, and the per-request gauntlet short-circuits it with
-    /// <see cref="PrecompiledFallbackReason.UnsupportedFunction"/>.</summary>
+    /// <summary>One precompiled template as recorded in a compiled-form artifact row. Immutable; safe
+    /// to share across threads. A row's presence in the entries is the precompiled fact.</summary>
     public sealed class PrecompiledTemplateInfo
     {
         private static readonly IReadOnlyList<PrecompiledImport> NoImports = Array.Empty<PrecompiledImport>();
@@ -19,124 +16,17 @@ namespace Heddle.Precompiled
             Array.Empty<PrecompiledExtensionBinding>();
         private static readonly IReadOnlyList<PrecompiledFunctionBinding> NoFunctions =
             Array.Empty<PrecompiledFunctionBinding>();
-        private static readonly IReadOnlyList<PrecompiledInitSite> NoInitSites =
-            Array.Empty<PrecompiledInitSite>();
         private static readonly IReadOnlyList<PrecompiledRefusalSite> NoRefusals =
             Array.Empty<PrecompiledRefusalSite>();
         private static readonly IReadOnlyList<CompiledMemberRow> NoMembers =
             Array.Empty<CompiledMemberRow>();
-
-        /// <summary>The eleven-value shape. Retained as a real constructor to preserve the shorter signature in
-        /// metadata (optional parameters remove it), which past versions relied on. Hand-written manifests use this.</summary>
-        public PrecompiledTemplateInfo(
-            string key,
-            Type entryPointType,
-            Type modelType,
-            bool isDynamic,
-            string contentHash,
-            IReadOnlyList<PrecompiledImport> imports,
-            PrecompiledOptionsFingerprint optionsFingerprint,
-            IReadOnlyList<PrecompiledExtensionBinding> extensionBindings,
-            IReadOnlyList<PrecompiledFunctionBinding> functionBindings,
-            PrecompiledCapabilities capabilities,
-            IProcessStrategy strategy)
-            : this(key, entryPointType, modelType, isDynamic, contentHash, imports, optionsFingerprint,
-                extensionBindings, functionBindings, capabilities, strategy,
-                registeredName: null, linePathForm: PrecompiledLinePathForm.Unspecified)
-        {
-        }
-
-        /// <summary>The schema 3 shape: the eleven values plus optional <see cref="RegisteredName"/> and
-        /// <see cref="LinePathForm"/>.</summary>
-        public PrecompiledTemplateInfo(
-            string key,
-            Type entryPointType,
-            Type modelType,
-            bool isDynamic,
-            string contentHash,
-            IReadOnlyList<PrecompiledImport> imports,
-            PrecompiledOptionsFingerprint optionsFingerprint,
-            IReadOnlyList<PrecompiledExtensionBinding> extensionBindings,
-            IReadOnlyList<PrecompiledFunctionBinding> functionBindings,
-            PrecompiledCapabilities capabilities,
-            IProcessStrategy strategy,
-            string registeredName,
-            PrecompiledLinePathForm linePathForm)
-            : this(key, entryPointType, modelType, isDynamic, contentHash, imports, optionsFingerprint,
-                extensionBindings, functionBindings, capabilities, strategy, registeredName, linePathForm,
-                modelTypeIsAmbient: false)
-        {
-        }
-
-        /// <summary>The schema 3 shape plus <see cref="ModelTypeIsAmbient"/>. A real constructor rather than an
-        /// optional parameter on the shorter one, which would remove that one from metadata and fault every
-        /// already-built consumer assembly whose manifest calls it.</summary>
-        public PrecompiledTemplateInfo(
-            string key,
-            Type entryPointType,
-            Type modelType,
-            bool isDynamic,
-            string contentHash,
-            IReadOnlyList<PrecompiledImport> imports,
-            PrecompiledOptionsFingerprint optionsFingerprint,
-            IReadOnlyList<PrecompiledExtensionBinding> extensionBindings,
-            IReadOnlyList<PrecompiledFunctionBinding> functionBindings,
-            PrecompiledCapabilities capabilities,
-            IProcessStrategy strategy,
-            string registeredName,
-            PrecompiledLinePathForm linePathForm,
-            bool modelTypeIsAmbient)
-            : this(key, entryPointType, modelType, isDynamic, contentHash, imports, optionsFingerprint,
-                extensionBindings, functionBindings, capabilities, strategy, registeredName, linePathForm,
-                modelTypeIsAmbient, initSites: null)
-        {
-        }
-
-        /// <summary>The shape carrying <see cref="InitSites"/>. A real constructor rather than an optional
-        /// parameter for the reason every widening here has been one: an optional parameter removes the narrower
-        /// signature from metadata and faults every already-built consumer assembly whose manifest calls it.</summary>
-        public PrecompiledTemplateInfo(
-            string key,
-            Type entryPointType,
-            Type modelType,
-            bool isDynamic,
-            string contentHash,
-            IReadOnlyList<PrecompiledImport> imports,
-            PrecompiledOptionsFingerprint optionsFingerprint,
-            IReadOnlyList<PrecompiledExtensionBinding> extensionBindings,
-            IReadOnlyList<PrecompiledFunctionBinding> functionBindings,
-            PrecompiledCapabilities capabilities,
-            IProcessStrategy strategy,
-            string registeredName,
-            PrecompiledLinePathForm linePathForm,
-            bool modelTypeIsAmbient,
-            IReadOnlyList<PrecompiledInitSite> initSites)
-        {
-            InitSites = initSites ?? NoInitSites;
-            ModelTypeIsAmbient = modelTypeIsAmbient;
-            Key = key ?? throw new ArgumentNullException(nameof(key));
-            RegisteredName = registeredName;
-            LinePathForm = linePathForm;
-            EntryPointType = entryPointType;
-            ModelType = modelType;
-            IsDynamic = isDynamic;
-            ContentHash = contentHash;
-            Imports = imports ?? NoImports;
-            OptionsFingerprint = optionsFingerprint;
-            ExtensionBindings = extensionBindings ?? NoExtensions;
-            FunctionBindings = functionBindings ?? NoFunctions;
-            Capabilities = capabilities;
-            _strategy = strategy;
-            RefusalSites = NoRefusals;
-            MemberRows = NoMembers;
-        }
 
         /// <summary>The loader constructor: one row decoded from a compiled-form artifact. Takes no strategy;
         /// <see cref="Strategy"/> materializes on first read over the kept artifact bytes and is memoized, and a
         /// materialization fault is memoized with it. Type identities resolve nominally against assemblies
         /// already loaded — nothing is loaded here.</summary>
         internal PrecompiledTemplateInfo(Assembly registeringAssembly, byte[] artifactImage,
-            CompiledArtifact artifact, int rowIndex)
+            CompiledArtifact artifact, int rowIndex, IPrecompiledSiteTable siteTable = null)
         {
             if (registeringAssembly == null)
                 throw new ArgumentNullException(nameof(registeringAssembly));
@@ -149,13 +39,12 @@ namespace Heddle.Precompiled
                 throw new ArgumentOutOfRangeException(nameof(rowIndex));
             var row = artifact.Templates[rowIndex];
 
-            _isLoaderRow = true;
             _artifactImage = artifactImage;
             _rowIndex = rowIndex;
+            _siteTable = siteTable;
 
             Key = row.Key ?? throw new InvalidOperationException("A compiled-form template row has no key.");
             RegisteredName = row.RegisteredName;
-            LinePathForm = PrecompiledLinePathForm.Unspecified;
             EntryPointType = ResolveEntryPoint(registeringAssembly, row.EntryPointTypeName);
             _modelTypeRef = row.ModelType;
             ModelType = ResolveModelType(row.ModelType, out _modelTypeNominal, out _modelTypeUnresolved);
@@ -166,8 +55,6 @@ namespace Heddle.Precompiled
             OptionsFingerprint = ToFingerprint(row.Options);
             ExtensionBindings = ToExtensionBindings(artifact, row.ExtensionRefs);
             FunctionBindings = ToFunctionBindings(artifact, row.FunctionRefs);
-            Capabilities = PrecompiledCapabilities.StringOutput;
-            InitSites = NoInitSites;
             RefusalSites = row.RefusalSites != null
                 ? (IReadOnlyList<PrecompiledRefusalSite>)new List<PrecompiledRefusalSite>(row.RefusalSites).AsReadOnly()
                 : NoRefusals;
@@ -182,13 +69,7 @@ namespace Heddle.Precompiled
         /// the item declared no usable name. The registry answers to it after keys, never instead of them.</summary>
         public string RegisteredName { get; }
 
-        /// <summary>Which form this template's generated <c>#line</c> file names are in. Machine-readable
-        /// here rather than a comment in the generated file, which no symbolizer could act on.
-        /// <see cref="PrecompiledLinePathForm.Unspecified"/> for a fallback-marker entry, which has no generated
-        /// source.</summary>
-        public PrecompiledLinePathForm LinePathForm { get; }
-
-        /// <summary>The generated static entry class; null iff <see cref="IsPrecompiled"/> is false.</summary>
+        /// <summary>The generated static entry class.</summary>
         public Type EntryPointType { get; }
 
         /// <summary>The type the generated code was compiled against — the declared <c>@model</c>/<c>::</c> type, the
@@ -222,28 +103,12 @@ namespace Heddle.Precompiled
         /// <summary>Function bindings; empty when the template calls no functions, never null.</summary>
         public IReadOnlyList<PrecompiledFunctionBinding> FunctionBindings { get; }
 
-        public PrecompiledCapabilities Capabilities { get; }
-
-        /// <summary>The extension call sites this template binds through <see cref="PrecompiledRuntime.Init"/>,
-        /// carried so the gauntlet can read the answers those hooks gave at registration. A site whose
-        /// <see cref="PrecompiledInitSite.Fault"/> reaches template scope — the hook reported compile errors, or its
-        /// answer about body typing contradicts what the build assumed — takes the request to the dynamic tier
-        /// before any render. Empty for a template whose calls need no hook run, and for every manifest written
-        /// before the seam existed.</summary>
-        public IReadOnlyList<PrecompiledInitSite> InitSites { get; }
-
-        /// <summary>The generated root body; null iff <see cref="IsPrecompiled"/> is false.
-        /// On a loader row materializes on first read and is memoized (thread-safe); null when
-        /// materialization faulted — the fault is memoized and reported by the gauntlet, never thrown here.
-        /// Internal from phase 4.</summary>
-        public IProcessStrategy Strategy
+        /// <summary>The generated root body. On a loader row materializes on first read and is
+        /// memoized (thread-safe); null when materialization faulted — the fault is memoized and
+        /// reported by the gauntlet, never thrown here.</summary>
+        internal IProcessStrategy Strategy
         {
-            get
-            {
-                if (!_isLoaderRow)
-                    return _strategy;
-                return GetStrategy(null);
-            }
+            get { return GetStrategy(null); }
         }
 
         /// <summary>Materializes under one request's options and memoizes per request shape
@@ -255,8 +120,6 @@ namespace Heddle.Precompiled
         /// silently become an empty render. Thread-safe; faults memoize like strategies.</summary>
         internal IProcessStrategy GetStrategy(TemplateOptions request)
         {
-            if (!_isLoaderRow)
-                return _strategy;
             var shape = RequestShape.For(request);
             lock (_materializeLock)
             {
@@ -293,8 +156,6 @@ namespace Heddle.Precompiled
         {
             reason = default(PrecompiledFallbackReason);
             detail = null;
-            if (!_isLoaderRow)
-                return false;
             lock (_materializeLock)
             {
                 MaterializationFaultException fault;
@@ -305,11 +166,6 @@ namespace Heddle.Precompiled
                 return true;
             }
         }
-
-        /// <summary>False for a fallback-marker entry (a build-degraded template, HED7014): the gauntlet
-        /// short-circuits it with <see cref="PrecompiledFallbackReason.UnsupportedFunction"/> and
-        /// <see cref="Strategy"/> is null. True for every loader row; reading it never materializes.</summary>
-        public bool IsPrecompiled => _isLoaderRow || _strategy != null;
 
         /// <summary>The template's refusal sites, in site-ordinal order; empty for a fully precompiled template.
         /// Available without materializing.</summary>
@@ -349,11 +205,9 @@ namespace Heddle.Precompiled
             }
         }
 
-        private readonly IProcessStrategy _strategy;
-
-        private readonly bool _isLoaderRow;
         private readonly byte[] _artifactImage;
         private readonly int _rowIndex;
+        private readonly IPrecompiledSiteTable _siteTable;
         private readonly CompiledTypeRef _modelTypeRef;
         private readonly string _modelTypeNominal;
         private readonly bool _modelTypeUnresolved;
@@ -402,7 +256,11 @@ namespace Heddle.Precompiled
                     FileNamePostfix = request.FileNamePostfix,
                     MaxRecursionCount = request.MaxRecursionCount,
                     EnableFileChangeCheck = request.EnableFileChangeCheck,
-                    ProvideLanguageFeatures = request.ProvideLanguageFeatures
+                    ProvideLanguageFeatures = request.ProvideLanguageFeatures,
+                    // Strict materialization throws where a lax one succeeds: different
+                    // outcomes memoize under different shapes, or a lax render would
+                    // silently disarm a later strict bind of the same entry.
+                    PrecompiledStrictLoad = request.PrecompiledStrictLoad
                 };
             }
 
@@ -418,6 +276,7 @@ namespace Heddle.Precompiled
             private int MaxRecursionCount;
             private bool EnableFileChangeCheck;
             private bool ProvideLanguageFeatures;
+            private bool PrecompiledStrictLoad;
 
             public bool Equals(RequestShape other)
             {
@@ -432,7 +291,8 @@ namespace Heddle.Precompiled
                     string.Equals(FileNamePostfix, other.FileNamePostfix, StringComparison.Ordinal) &&
                     MaxRecursionCount == other.MaxRecursionCount &&
                     EnableFileChangeCheck == other.EnableFileChangeCheck &&
-                    ProvideLanguageFeatures == other.ProvideLanguageFeatures;
+                    ProvideLanguageFeatures == other.ProvideLanguageFeatures &&
+                    PrecompiledStrictLoad == other.PrecompiledStrictLoad;
             }
 
             public override bool Equals(object obj) => Equals(obj as RequestShape);
@@ -449,6 +309,7 @@ namespace Heddle.Precompiled
                     StringComparer.Ordinal.GetHashCode(FileNamePostfix) : 0);
                 hash = (hash * 397) ^ (EnableFileChangeCheck ? 1 : 0);
                 hash = (hash * 397) ^ (ProvideLanguageFeatures ? 1 : 0);
+                hash = (hash * 397) ^ (PrecompiledStrictLoad ? 1 : 0);
                 return hash;
             }
         }
@@ -481,6 +342,10 @@ namespace Heddle.Precompiled
                     "Type '" + _modelTypeNominal + "': manifest=" + AssemblyOf(row.ModelType) +
                     " live=<unresolved>");
 
+            if (request != null && request.PrecompiledStrictLoad && row.RefusalSites != null &&
+                row.RefusalSites.Count > 0)
+                throw new PrecompiledStrictLoadException(Key, 0, "RefusalSite");
+
             var options = new TemplateOptions(row.Key);
             var fingerprint = ToFingerprint(row.Options);
             options.OutputProfile = fingerprint.Profile;
@@ -488,6 +353,7 @@ namespace Heddle.Precompiled
             options.TrimDirectiveLines = fingerprint.TrimDirectiveLines;
             if (request != null)
             {
+                options.PrecompiledStrictLoad = request.PrecompiledStrictLoad;
                 // Request-scoped compile inputs: the registry late-bound sites bind against, the
                 // paths file-backed partials and composition imports read from, the recursion limit
                 // definition hooks enforce, and the parse-shaping flags. Profile, mode and trimming
@@ -517,7 +383,14 @@ namespace Heddle.Precompiled
                 context.ImportReader = ImportMap.ReaderFor(importContents, options.RootPath);
                 context.ImportIdentifier = ImportMap.IdentifierFor(importContents, options.RootPath);
                 scope = new CompileScope(context);
+                scope.SiteTableState = SiteTableState.Create(_siteTable, Heddle.Runtime.HeddleFeatures.UseGeneratedSites,
+                    Key, row.ContentHash ?? string.Empty, _rowIndex, options.PrecompiledStrictLoad,
+                    artifact.Sites, artifact);
                 document = HeddleCompiler.Materialize(artifact, row, scope);
+            }
+            catch (PrecompiledStrictLoadException)
+            {
+                throw;
             }
             catch (MaterializationFaultException)
             {
@@ -563,8 +436,22 @@ namespace Heddle.Precompiled
             // (any [ScopeChannel] participant: branches, slots) must therefore self-wrap, or its
             // opener's published state is invisible to its terminal at render.
             return document.NeedsLocals
-                ? PrecompiledRuntime.WithLocalsFrame(document.Strategy)
+                ? (IProcessStrategy)new LocalsFrameStrategy(document.Strategy)
                 : document.Strategy;
+        }
+
+        /// <summary>The loader's <c>ScopeLocals</c>-provisioning decorator, for the one body materialization
+        /// produces but no render provisions: a document root hosting branch participants. Every Render/Execute
+        /// runs under a fresh frame; roots without participants stay unwrapped.</summary>
+        private sealed class LocalsFrameStrategy : IProcessStrategy
+        {
+            private readonly IProcessStrategy _inner;
+
+            public LocalsFrameStrategy(IProcessStrategy inner) => _inner = inner;
+
+            public string Execute(in Scope scope) => _inner.Execute(scope.WithLocals(new ScopeLocals()));
+
+            public void Render(in Scope scope) => _inner.Render(scope.WithLocals(new ScopeLocals()));
         }
 
         private static MaterializationFaultException ClassifyCompileErrors(string key,

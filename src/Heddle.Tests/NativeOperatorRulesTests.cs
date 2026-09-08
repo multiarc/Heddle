@@ -76,7 +76,7 @@ namespace Heddle.Tests
         };
 
         /// <summary>The test producer's <see cref="OperatorWitness"/>, from CLR reflection — the same sound
-        /// claims the generator makes from symbols: Bound for an exact-signature operator declared on an
+        /// claims the 2.x generator made from symbols: Bound for an exact-signature operator declared on an
         /// operand type, Absent only when the name exists nowhere in either hierarchy.</summary>
         private static OperatorWitness Witness(ExprOperator op, Type left, Type right)
         {
@@ -225,8 +225,8 @@ namespace Heddle.Tests
                 Assert.Equal(OperatorVerdict.RequiresRuntimeSemantics,
                     NativeOperatorRules.Classify(op, OperandKind.Of(OperandCategory.Enum),
                         OperandKind.Of(OperandCategory.Enum)));
-                // …while a pair that is null-assignable on BOTH sides runs the engine's total fallback chain,
-                // replayed by RuntimeOperators over the same static types.
+                // …while a pair that is null-assignable on BOTH sides runs the engine's total fallback chain
+                // over the same static types.
                 Assert.Equal(OperatorVerdict.Supported, NativeOperatorRules.Classify(op, reference, reference));
                 Assert.Equal(OperatorVerdict.Supported, NativeOperatorRules.Classify(op, str, reference));
                 Assert.Equal(OperatorVerdict.Supported, NativeOperatorRules.Classify(op, ni32, reference));

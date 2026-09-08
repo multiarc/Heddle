@@ -4,52 +4,15 @@ using System.Reflection;
 using System.Reflection.Emit;
 using Heddle.Data;
 using Heddle.Precompiled;
-using Heddle.Runtime;
+using Heddle.Precompiled.CompiledForm;
 using Xunit;
 
 namespace Heddle.Tests
 {
-    internal sealed class RegFakeStrategy : IProcessStrategy
-    {
-        public string Execute(in Scope scope) => string.Empty;
-        public void Render(in Scope scope) { }
-    }
-
-    internal static class RegEntries
-    {
-        private static readonly IProcessStrategy Strategy = new RegFakeStrategy();
-
-        public static PrecompiledTemplateInfo One(string key) => new PrecompiledTemplateInfo(
-            key, typeof(object), null, false, "0",
-            Array.Empty<PrecompiledImport>(),
-            new PrecompiledOptionsFingerprint(OutputProfile.Text, ExpressionMode.Native, false),
-            Array.Empty<PrecompiledExtensionBinding>(),
-            Array.Empty<PrecompiledFunctionBinding>(),
-            PrecompiledCapabilities.StringOutput, Strategy);
-    }
-
-    internal sealed class RegManifestOne : IHeddleTemplateManifest
-    {
-        public IReadOnlyList<PrecompiledTemplateInfo> GetTemplates()
-            => new[] { RegEntries.One("reg/one.heddle") };
-    }
-
-    internal sealed class RegManifestDup : IHeddleTemplateManifest
-    {
-        public IReadOnlyList<PrecompiledTemplateInfo> GetTemplates()
-            => new[] { RegEntries.One("reg/dup.heddle") };
-    }
-
-    internal sealed class RegManifestCase : IHeddleTemplateManifest
-    {
-        public IReadOnlyList<PrecompiledTemplateInfo> GetTemplates()
-            => new[] { RegEntries.One("Reg/Case.heddle") };
-    }
-
     [CollectionDefinition("PrecompiledRegistrySerial", DisableParallelization = true)]
     public sealed class PrecompiledRegistrySerialCollection { }
 
-    /// <summary>Validates registry registration, duplicate-key rejection, per-assembly idempotence, normalized <see cref="PrecompiledTemplates.TryGet"/>, and case-mismatch fallback. Serialized — the registry is process-global static state.</summary>
+    /// <summary>Validates registry registration, duplicate-key rejection, per-assembly idempotence, normalized <see cref="PrecompiledTemplates.TryGet"/>, and case-mismatch fallback. Rows arrive through the loader's internal constructor over an in-memory artifact, registered through a dynamic marker assembly. Serialized — the registry is process-global static state.</summary>
     [Collection("PrecompiledRegistrySerial")]
     public class PrecompiledRegistryTests : IDisposable
     {
@@ -76,28 +39,40 @@ namespace Heddle.Tests
         /// <summary>Uses the minimum supported schema version, not a literal, so tests use the oldest schema the engine accepts.</summary>
         private static int SupportedSchema => PrecompiledSchema.MinSupportedSchemaVersion;
 
-        /// <summary>Out-of-window edges derived from the window rather than written as literals, so they update automatically on schema version bumps.</summary>
-        public static IEnumerable<object[]> OutOfWindowSchemas => new[]
+        private static CompiledArtifact OneRow(string key)
         {
-            new object[] { PrecompiledSchema.MinSupportedSchemaVersion - 1 },
-            new object[] { PrecompiledSchema.MaxSupportedSchemaVersion + 1 }
-        };
+            var artifact = CompiledFormHarness.MinimalArtifact();
+            artifact.Templates.Add(CompiledFormHarness.TemplateRow(key));
+            return artifact;
+        }
 
-        private static Assembly BuildAssembly(Type manifestType, int schema, string engineVersion, string name)
+        /// <summary>Registers one artifact's rows through a dynamic marker assembly carrying the given
+        /// schema version — the only hand control the suite needs over the marker.</summary>
+        private static Assembly BuildAssembly(CompiledArtifact artifact, int schema, string engineVersion,
+            string name)
         {
+            CompiledFormHarness.HarnessMarker.Image = CompiledFormWriter.Write(artifact);
             var ab = AssemblyBuilder.DefineDynamicAssembly(new AssemblyName(name), AssemblyBuilderAccess.Run);
             var ctor = typeof(HeddleCompiledTemplatesAttribute)
                 .GetConstructor(new[] { typeof(Type), typeof(int), typeof(string) });
             ab.SetCustomAttribute(new CustomAttributeBuilder(ctor,
-                new object[] { manifestType, schema, engineVersion }));
+                new object[] { typeof(CompiledFormHarness.HarnessMarker), schema, engineVersion }));
             return ab;
+        }
+
+        private static Assembly Register(CompiledArtifact artifact, int schema, string engineVersion,
+            string name)
+        {
+            var asm = BuildAssembly(artifact, schema, engineVersion,
+                name + "_" + Guid.NewGuid().ToString("N"));
+            PrecompiledTemplates.Register(asm);
+            return asm;
         }
 
         [Fact]
         public void RegisterThenTryGet()
         {
-            var asm = BuildAssembly(typeof(RegManifestOne), SupportedSchema, CompatibleVersion, "HeddleTestAsm_One_" + Guid.NewGuid().ToString("N"));
-            PrecompiledTemplates.Register(asm);
+            Register(OneRow("reg/one.heddle"), SupportedSchema, CompatibleVersion, "HeddleTestAsm_One");
 
             Assert.True(PrecompiledTemplates.TryGet("reg/one.heddle", out var entry));
             Assert.Equal("reg/one.heddle", entry.Key);
@@ -108,8 +83,8 @@ namespace Heddle.Tests
         [Fact]
         public void RegisterIsIdempotentPerAssembly()
         {
-            var asm = BuildAssembly(typeof(RegManifestOne), SupportedSchema, CompatibleVersion, "HeddleTestAsm_Idem_" + Guid.NewGuid().ToString("N"));
-            PrecompiledTemplates.Register(asm);
+            var asm = Register(OneRow("reg/one.heddle"), SupportedSchema, CompatibleVersion,
+                "HeddleTestAsm_Idem");
             PrecompiledTemplates.Register(asm); // no throw, no duplicate
             Assert.Single(PrecompiledTemplates.Entries);
         }
@@ -117,9 +92,9 @@ namespace Heddle.Tests
         [Fact]
         public void DuplicateKeyAcrossAssembliesThrows()
         {
-            var a = BuildAssembly(typeof(RegManifestDup), SupportedSchema, CompatibleVersion, "HeddleTestAsm_DupA_" + Guid.NewGuid().ToString("N"));
-            var b = BuildAssembly(typeof(RegManifestDup), SupportedSchema, CompatibleVersion, "HeddleTestAsm_DupB_" + Guid.NewGuid().ToString("N"));
-            PrecompiledTemplates.Register(a);
+            var a = Register(OneRow("reg/dup.heddle"), SupportedSchema, CompatibleVersion, "HeddleTestAsm_DupA");
+            var b = BuildAssembly(OneRow("reg/dup.heddle"), SupportedSchema, CompatibleVersion,
+                "HeddleTestAsm_DupB_" + Guid.NewGuid().ToString("N"));
             var ex = Assert.Throws<PrecompiledRegistrationException>(() => PrecompiledTemplates.Register(b));
             Assert.Equal("reg/dup.heddle", ex.Key);
             Assert.Equal(a.GetName().Name, ex.ExistingAssemblyName);
@@ -127,15 +102,29 @@ namespace Heddle.Tests
             Assert.Contains("already registered", ex.Message);
         }
 
-        /// <summary>Both edges of the supported schema window; derived to avoid staleness on version bumps.</summary>
+        /// <summary>A marker below the compiled-form schema is a 2.x manifest: refused before the artifact
+        /// is touched, by throw — not by fallback, since there is no entry to degrade.</summary>
         [Theory]
-        [MemberData(nameof(OutOfWindowSchemas))]
-        public void UnsupportedSchemaIgnoresManifest(int schema)
+        [InlineData(1)]
+        [InlineData(2)]
+        [InlineData(3)]
+        public void BelowCompiledFormSchemaThrowsWithoutRegistering(int schema)
+        {
+            var asm = BuildAssembly(OneRow("reg/one.heddle"), schema, CompatibleVersion,
+                "HeddleTestAsm_Schema_" + Guid.NewGuid().ToString("N"));
+            Assert.Throws<PrecompiledRegistrationException>(() => PrecompiledTemplates.Register(asm));
+            Assert.False(PrecompiledTemplates.TryGet("reg/one.heddle", out _));
+        }
+
+        /// <summary>Above the supported window the marker is well-formed but unreadable: the assembly is
+        /// refused whole through the HED7102 fallback and nothing registers.</summary>
+        [Fact]
+        public void AboveSupportedSchemaIgnoresManifest()
         {
             PrecompiledFallbackEvent? captured = null;
             PrecompiledTemplates.OnFallback = e => captured = e;
-            var asm = BuildAssembly(typeof(RegManifestOne), schema, CompatibleVersion, "HeddleTestAsm_Schema_" + Guid.NewGuid().ToString("N"));
-            PrecompiledTemplates.Register(asm);
+            var schema = PrecompiledSchema.MaxSupportedSchemaVersion + 1;
+            Register(OneRow("reg/one.heddle"), schema, CompatibleVersion, "HeddleTestAsm_SchemaHi");
             Assert.False(PrecompiledTemplates.TryGet("reg/one.heddle", out _));
             Assert.NotNull(captured);
             Assert.Equal(PrecompiledFallbackReason.SchemaVersionUnsupported, captured.Value.Reason);
@@ -151,8 +140,7 @@ namespace Heddle.Tests
             PrecompiledFallbackEvent? captured = null;
             PrecompiledTemplates.OnFallback = e => captured = e;
             var newer = $"{RuntimeVersion.Major + 1}.0.0";
-            var asm = BuildAssembly(typeof(RegManifestOne), SupportedSchema, newer, "HeddleTestAsm_Engine_" + Guid.NewGuid().ToString("N"));
-            PrecompiledTemplates.Register(asm);
+            Register(OneRow("reg/one.heddle"), SupportedSchema, newer, "HeddleTestAsm_Engine");
             Assert.False(PrecompiledTemplates.TryGet("reg/one.heddle", out _));
             Assert.NotNull(captured);
             Assert.Equal(PrecompiledFallbackReason.EngineVersionIncompatible, captured.Value.Reason);
@@ -163,8 +151,9 @@ namespace Heddle.Tests
         {
             PrecompiledFallbackEvent? captured = null;
             PrecompiledTemplates.OnFallback = e => captured = e;
-            var asm = BuildAssembly(typeof(RegManifestCase), SupportedSchema, CompatibleVersion, "HeddleTestAsm_Case_" + Guid.NewGuid().ToString("N"));
-            PrecompiledTemplates.Register(asm);
+            var artifact = CompiledFormHarness.MinimalArtifact();
+            artifact.Templates.Add(CompiledFormHarness.TemplateRow("Reg/Case.heddle"));
+            Register(artifact, SupportedSchema, CompatibleVersion, "HeddleTestAsm_Case");
 
             // Exact case hits.
             Assert.True(PrecompiledTemplates.TryGet("Reg/Case.heddle", out _));

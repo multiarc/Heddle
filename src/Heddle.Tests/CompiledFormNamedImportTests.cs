@@ -65,7 +65,7 @@ namespace Heddle.Tests
             var strategy = entry.GetStrategy(requestOptions);
             Assert.NotNull(strategy);
             string expected = DynamicRender(mainText, map, rootPath);
-            Assert.Equal(expected, PrecompiledRuntime.GenerateString(strategy, null, null, null));
+            Assert.Equal(expected, CompiledFormHarness.RenderStrategy(strategy, null));
             Assert.Equal("BEFORE\nAFTER\nNICK\n", expected);
         }
 
@@ -111,7 +111,7 @@ namespace Heddle.Tests
                 }
 
                 Assert.Equal("BEFORE\nAFTER\nDISK\n",
-                    PrecompiledRuntime.GenerateString(strategy, null, null, null));
+                    CompiledFormHarness.RenderStrategy(strategy, null));
             }
             finally
             {

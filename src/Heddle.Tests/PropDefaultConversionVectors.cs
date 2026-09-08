@@ -4,10 +4,9 @@ using System.Collections.Generic;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// The prop-default conversion vectors, authored once and asserted by both tiers:
+    /// The prop-default conversion vectors, authored once and asserted by the runtime:
     /// <c>Heddle.Tests.DefaultConvertibleReflectionTests</c> drives the runtime's
-    /// <c>PropConversion.CanConvertTypes</c> and <c>Heddle.Generator.Tests.DefaultConvertibleLockstepTests</c>
-    /// drives the emitter's symbol-side <c>DefaultConvertible</c>. Plain data, no Heddle dependency — the same
+    /// <c>PropConversion.CanConvertTypes</c>. Plain data, no Heddle dependency — the same
     /// linked-vectors shape <c>LineIndexVectors</c> established.
     /// </summary>
     public static class PropDefaultConversionVectors

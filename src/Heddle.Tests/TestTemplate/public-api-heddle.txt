@@ -134,6 +134,7 @@ TYPE Heddle.Data.HeddleDiagnosticIds
   FIELD System.String BuildDuplicateSanitizedName
   FIELD System.String BuildEmitterFault
   FIELD System.String BuildEngineNotObserved
+  FIELD System.String BuildEngineVersionMismatch
   FIELD System.String BuildEngineVersionUnresolved
   FIELD System.String BuildExtensionNotBindable
   FIELD System.String BuildExtensionOverridesHook
@@ -141,6 +142,7 @@ TYPE Heddle.Data.HeddleDiagnosticIds
   FIELD System.String BuildForwardedError
   FIELD System.String BuildForwardedWarning
   FIELD System.String BuildFunctionCallNotBindable
+  FIELD System.String BuildImplementationImageNotLoaded
   FIELD System.String BuildImportNotIncluded
   FIELD System.String BuildInaccessibleModelSymbol
   FIELD System.String BuildIneligibleExportContainer
@@ -149,6 +151,7 @@ TYPE Heddle.Data.HeddleDiagnosticIds
   FIELD System.String BuildNamedTemplateImportedByKey
   FIELD System.String BuildOptionParseError
   FIELD System.String BuildRegionNotPublic
+  FIELD System.String BuildRetiredPropertySet
   FIELD System.String BuildSurrogatePiece
   FIELD System.String BuildTemplateNotPrecompiled
   FIELD System.String BuildTemplateOutsideRoot
@@ -307,6 +310,7 @@ TYPE Heddle.Data.TemplateOptions
   PROP Heddle.Runtime.Expressions.FunctionRegistry Functions {get;set;}
   PROP System.Boolean AllowCSharp {get;set;}
   PROP System.Boolean EnableFileChangeCheck {get;set;}
+  PROP System.Boolean PrecompiledStrictLoad {get;set;}
   PROP System.Boolean ProvideLanguageFeatures {get;set;}
   PROP System.Boolean TrimDirectiveLines {get;set;}
   PROP System.Boolean ValidateModelType {get;set;}
@@ -719,6 +723,332 @@ TYPE Heddle.Models.Range : System.ValueType
   PROP System.Int32 Last {get;}
   PROP System.Int32 Start {get;}
   PROP System.Int32 Step {get;}
+TYPE Heddle.Precompiled.CompiledForm.ArrayTypeRef : Heddle.Precompiled.CompiledForm.CompiledTypeRef
+  CTOR(Heddle.Precompiled.CompiledForm.CompiledTypeRef, System.Int32)
+  METHOD System.Boolean Equals(System.Object)
+  METHOD System.Int32 GetHashCode()
+  METHOD System.String Nominal()
+  PROP Heddle.Precompiled.CompiledForm.CompiledTypeRef Element {get;}
+  PROP System.Int32 Rank {get;}
+TYPE Heddle.Precompiled.CompiledForm.CompiledAltBody
+  CTOR()
+  PROP Heddle.Precompiled.CompiledForm.CompiledBody Body {get;set;}
+  PROP System.String Template {get;set;}
+TYPE Heddle.Precompiled.CompiledForm.CompiledArtifact
+  CTOR()
+  PROP Heddle.Precompiled.CompiledForm.CompiledHeader Header {get;set;}
+  PROP System.Collections.Generic.IList<Heddle.Precompiled.CompiledForm.CompiledCSharpSite> CSharpSites {get;set;}
+  PROP System.Collections.Generic.IList<Heddle.Precompiled.CompiledForm.CompiledDefinition> Definitions {get;set;}
+  PROP System.Collections.Generic.IList<Heddle.Precompiled.CompiledForm.CompiledDocument> Documents {get;set;}
+  PROP System.Collections.Generic.IList<Heddle.Precompiled.CompiledForm.CompiledExpressionTree> Expressions {get;set;}
+  PROP System.Collections.Generic.IList<Heddle.Precompiled.CompiledForm.CompiledExtensionRow> Extensions {get;set;}
+  PROP System.Collections.Generic.IList<Heddle.Precompiled.CompiledForm.CompiledFunctionRow> Functions {get;set;}
+  PROP System.Collections.Generic.IList<Heddle.Precompiled.CompiledForm.CompiledMemberRow> Members {get;set;}
+  PROP System.Collections.Generic.IList<Heddle.Precompiled.CompiledForm.CompiledSiteRow> Sites {get;set;}
+  PROP System.Collections.Generic.IList<Heddle.Precompiled.CompiledForm.CompiledTemplateRow> Templates {get;set;}
+  PROP System.String DigestHex {get;set;}
+TYPE Heddle.Precompiled.CompiledForm.CompiledBody
+  CTOR()
+  PROP Heddle.Precompiled.CompiledForm.CompiledTypeRef ChainedType {get;set;}
+  PROP Heddle.Precompiled.CompiledForm.CompiledTypeRef DataType {get;set;}
+  PROP System.Nullable<System.Int32> CompiledDocumentRef {get;set;}
+  PROP System.String RawText {get;set;}
+  PROP System.String ShapedText {get;set;}
+TYPE Heddle.Precompiled.CompiledForm.CompiledCSharpSite
+  CTOR()
+  PROP Heddle.Precompiled.CompiledForm.CompiledPosition Position {get;set;}
+  PROP Heddle.Precompiled.CompiledForm.CompiledTypeRef ChainedType {get;set;}
+  PROP Heddle.Precompiled.CompiledForm.CompiledTypeRef ModelType {get;set;}
+  PROP Heddle.Precompiled.CompiledForm.CompiledTypeRef RootType {get;set;}
+  PROP System.Collections.Generic.IList<System.String> Usings {get;set;}
+  PROP System.String Source {get;set;}
+TYPE Heddle.Precompiled.CompiledForm.CompiledChain
+  CTOR()
+  PROP System.Collections.Generic.IList<Heddle.Precompiled.CompiledForm.CompiledItem> Items {get;set;}
+TYPE Heddle.Precompiled.CompiledForm.CompiledDefinition
+  CTOR()
+  PROP Heddle.Precompiled.CompiledForm.CompiledPosition Position {get;set;}
+  PROP Heddle.Precompiled.CompiledForm.CompiledTypeRef ModelType {get;set;}
+  PROP Heddle.Precompiled.CompiledForm.CompiledTypeRef SlotType {get;set;}
+  PROP System.Collections.Generic.IList<Heddle.Precompiled.CompiledForm.CompiledPropDecl> PropDecls {get;set;}
+  PROP System.Collections.Generic.IList<Heddle.Precompiled.CompiledForm.CompiledRegionFill> Fills {get;set;}
+  PROP System.Collections.Generic.IList<System.String> Regions {get;set;}
+  PROP System.String BaseName {get;set;}
+  PROP System.String ModelTypeSpelling {get;set;}
+  PROP System.String Name {get;set;}
+  PROP System.String ParameterTemplate {get;set;}
+TYPE Heddle.Precompiled.CompiledForm.CompiledDocument
+  CTOR()
+  PROP Heddle.Precompiled.CompiledForm.CompiledParseFacts ParseFacts {get;set;}
+  PROP System.Boolean NeedsLocals {get;set;}
+  PROP System.Collections.Generic.IList<Heddle.Precompiled.CompiledForm.CompiledElement> Elements {get;set;}
+  PROP System.Collections.Generic.IList<Heddle.Precompiled.CompiledForm.CompiledItem> RemovedItems {get;set;}
+  PROP System.String RawText {get;set;}
+  PROP System.String ShapedText {get;set;}
+TYPE Heddle.Precompiled.CompiledForm.CompiledDynamicSlot
+  CTOR()
+  PROP Heddle.Precompiled.CompiledForm.CompiledTypeRef TargetType {get;set;}
+  PROP System.Int32 ExpressionRef {get;set;}
+  PROP System.Int32 SlotIndex {get;set;}
+TYPE Heddle.Precompiled.CompiledForm.CompiledElement
+  CTOR()
+  PROP Heddle.Precompiled.CompiledForm.CompiledChain Chain {get;set;}
+  PROP System.Boolean IsChain {get;set;}
+  PROP System.String StaticPiece {get;set;}
+TYPE Heddle.Precompiled.CompiledForm.CompiledExprKind : System.Enum
+  FIELD Heddle.Precompiled.CompiledForm.CompiledExprKind Binary
+  FIELD Heddle.Precompiled.CompiledForm.CompiledExprKind Call
+  FIELD Heddle.Precompiled.CompiledForm.CompiledExprKind Index
+  FIELD Heddle.Precompiled.CompiledForm.CompiledExprKind Literal
+  FIELD Heddle.Precompiled.CompiledForm.CompiledExprKind MethodCall
+  FIELD Heddle.Precompiled.CompiledForm.CompiledExprKind Path
+  FIELD Heddle.Precompiled.CompiledForm.CompiledExprKind Ternary
+  FIELD Heddle.Precompiled.CompiledForm.CompiledExprKind This
+  FIELD Heddle.Precompiled.CompiledForm.CompiledExprKind Unary
+  FIELD System.Int32 value__
+TYPE Heddle.Precompiled.CompiledForm.CompiledExprOperator : System.Enum
+  FIELD Heddle.Precompiled.CompiledForm.CompiledExprOperator Add
+  FIELD Heddle.Precompiled.CompiledForm.CompiledExprOperator And
+  FIELD Heddle.Precompiled.CompiledForm.CompiledExprOperator AndAlso
+  FIELD Heddle.Precompiled.CompiledForm.CompiledExprOperator Coalesce
+  FIELD Heddle.Precompiled.CompiledForm.CompiledExprOperator Divide
+  FIELD Heddle.Precompiled.CompiledForm.CompiledExprOperator Equal
+  FIELD Heddle.Precompiled.CompiledForm.CompiledExprOperator ExclusiveOr
+  FIELD Heddle.Precompiled.CompiledForm.CompiledExprOperator GreaterThan
+  FIELD Heddle.Precompiled.CompiledForm.CompiledExprOperator GreaterThanOrEqual
+  FIELD Heddle.Precompiled.CompiledForm.CompiledExprOperator LeftShift
+  FIELD Heddle.Precompiled.CompiledForm.CompiledExprOperator LessThan
+  FIELD Heddle.Precompiled.CompiledForm.CompiledExprOperator LessThanOrEqual
+  FIELD Heddle.Precompiled.CompiledForm.CompiledExprOperator Modulo
+  FIELD Heddle.Precompiled.CompiledForm.CompiledExprOperator Multiply
+  FIELD Heddle.Precompiled.CompiledForm.CompiledExprOperator Negate
+  FIELD Heddle.Precompiled.CompiledForm.CompiledExprOperator Not
+  FIELD Heddle.Precompiled.CompiledForm.CompiledExprOperator NotEqual
+  FIELD Heddle.Precompiled.CompiledForm.CompiledExprOperator OnesComplement
+  FIELD Heddle.Precompiled.CompiledForm.CompiledExprOperator Or
+  FIELD Heddle.Precompiled.CompiledForm.CompiledExprOperator OrElse
+  FIELD Heddle.Precompiled.CompiledForm.CompiledExprOperator RightShift
+  FIELD Heddle.Precompiled.CompiledForm.CompiledExprOperator Subtract
+  FIELD Heddle.Precompiled.CompiledForm.CompiledExprOperator UnaryPlus
+  FIELD System.Int32 value__
+TYPE Heddle.Precompiled.CompiledForm.CompiledExpression
+  CTOR()
+  PROP Heddle.Precompiled.CompiledForm.CompiledExprKind Kind {get;set;}
+  PROP Heddle.Precompiled.CompiledForm.CompiledExprOperator Operator {get;set;}
+  PROP Heddle.Precompiled.CompiledForm.CompiledExpression Condition {get;set;}
+  PROP Heddle.Precompiled.CompiledForm.CompiledExpression Left {get;set;}
+  PROP Heddle.Precompiled.CompiledForm.CompiledExpression Operand {get;set;}
+  PROP Heddle.Precompiled.CompiledForm.CompiledExpression Right {get;set;}
+  PROP Heddle.Precompiled.CompiledForm.CompiledExpression Target {get;set;}
+  PROP Heddle.Precompiled.CompiledForm.CompiledExpression WhenFalse {get;set;}
+  PROP Heddle.Precompiled.CompiledForm.CompiledExpression WhenTrue {get;set;}
+  PROP Heddle.Precompiled.CompiledForm.CompiledLiteral Literal {get;set;}
+  PROP Heddle.Precompiled.CompiledForm.CompiledPosition Position {get;set;}
+  PROP System.Boolean RootRef {get;set;}
+  PROP System.Collections.Generic.IList<Heddle.Precompiled.CompiledForm.CompiledExpression> Arguments {get;set;}
+  PROP System.Collections.Generic.IList<System.String> Segments {get;set;}
+  PROP System.String Name {get;set;}
+TYPE Heddle.Precompiled.CompiledForm.CompiledExpressionTree
+  CTOR()
+  PROP Heddle.Precompiled.CompiledForm.CompiledExpression Root {get;set;}
+  PROP Heddle.Precompiled.CompiledForm.CompiledTypeRef ChainedType {get;set;}
+  PROP Heddle.Precompiled.CompiledForm.CompiledTypeRef ModelType {get;set;}
+  PROP Heddle.Precompiled.CompiledForm.CompiledTypeRef RootType {get;set;}
+  PROP System.Boolean ContainsDeferredCall {get;set;}
+TYPE Heddle.Precompiled.CompiledForm.CompiledExtensionRow
+  CTOR()
+  PROP Heddle.Precompiled.CompiledForm.CompiledTypeRef Type {get;set;}
+  PROP System.String Fingerprint {get;set;}
+  PROP System.String RegistryName {get;set;}
+TYPE Heddle.Precompiled.CompiledForm.CompiledFormReader
+  METHOD Heddle.Precompiled.CompiledForm.CompiledArtifact Read(System.Byte[])
+  METHOD Heddle.Precompiled.CompiledForm.CompiledArtifact Read(System.IO.Stream)
+TYPE Heddle.Precompiled.CompiledForm.CompiledFormWriter
+  METHOD System.Byte[] Write(Heddle.Precompiled.CompiledForm.CompiledArtifact)
+  METHOD System.Void Write(Heddle.Precompiled.CompiledForm.CompiledArtifact, System.IO.Stream)
+TYPE Heddle.Precompiled.CompiledForm.CompiledFunctionRow
+  CTOR()
+  PROP Heddle.Precompiled.CompiledForm.CompiledTypeRef Target {get;set;}
+  PROP System.Int32 OverloadCount {get;set;}
+  PROP System.String Name {get;set;}
+TYPE Heddle.Precompiled.CompiledForm.CompiledHeader
+  CTOR()
+  PROP System.Boolean TrimDirectiveLines {get;set;}
+  PROP System.String BuilderVersion {get;set;}
+  PROP System.String DefaultOutputProfile {get;set;}
+  PROP System.String EngineVersion {get;set;}
+  PROP System.String ExpressionMode {get;set;}
+TYPE Heddle.Precompiled.CompiledForm.CompiledImport
+  CTOR()
+  PROP System.String ContentHash {get;set;}
+  PROP System.String Key {get;set;}
+TYPE Heddle.Precompiled.CompiledForm.CompiledItem
+  CTOR()
+  PROP Heddle.Precompiled.CompiledForm.CompiledBody Body {get;set;}
+  PROP Heddle.Precompiled.CompiledForm.CompiledParameter Parameter {get;set;}
+  PROP Heddle.Precompiled.CompiledForm.CompiledPosition Position {get;set;}
+  PROP Heddle.Precompiled.CompiledForm.CompiledProps Props {get;set;}
+  PROP Heddle.Precompiled.CompiledForm.CompiledTypeRef ReturnType {get;set;}
+  PROP System.Collections.Generic.IList<Heddle.Precompiled.CompiledForm.CompiledAltBody> AltBodies {get;set;}
+  PROP System.Int32 ExtensionRef {get;set;}
+  PROP System.String ParameterTemplate {get;set;}
+TYPE Heddle.Precompiled.CompiledForm.CompiledLiteral
+  CTOR()
+  PROP Heddle.Precompiled.CompiledForm.CompiledLiteralKind Kind {get;set;}
+  PROP System.Boolean Boolean {get;set;}
+  PROP System.Decimal Decimal {get;set;}
+  PROP System.Double Double {get;set;}
+  PROP System.Int32 CharCode {get;set;}
+  PROP System.Int64 Int64 {get;set;}
+  PROP System.Single Float32 {get;set;}
+  PROP System.String Text {get;set;}
+  PROP System.UInt64 UInt64 {get;set;}
+TYPE Heddle.Precompiled.CompiledForm.CompiledLiteralKind : System.Enum
+  FIELD Heddle.Precompiled.CompiledForm.CompiledLiteralKind Boolean
+  FIELD Heddle.Precompiled.CompiledForm.CompiledLiteralKind Char
+  FIELD Heddle.Precompiled.CompiledForm.CompiledLiteralKind Decimal
+  FIELD Heddle.Precompiled.CompiledForm.CompiledLiteralKind Double
+  FIELD Heddle.Precompiled.CompiledForm.CompiledLiteralKind Float
+  FIELD Heddle.Precompiled.CompiledForm.CompiledLiteralKind Int64
+  FIELD Heddle.Precompiled.CompiledForm.CompiledLiteralKind Null
+  FIELD Heddle.Precompiled.CompiledForm.CompiledLiteralKind String
+  FIELD Heddle.Precompiled.CompiledForm.CompiledLiteralKind UInt64
+  FIELD System.Int32 value__
+TYPE Heddle.Precompiled.CompiledForm.CompiledMemberHop
+  CTOR()
+  PROP Heddle.Precompiled.CompiledForm.CompiledTypeRef DeclaringType {get;set;}
+  PROP Heddle.Precompiled.CompiledForm.CompiledTypeRef MemberType {get;set;}
+  PROP System.String MemberName {get;set;}
+TYPE Heddle.Precompiled.CompiledForm.CompiledMemberRow
+  CTOR()
+  PROP Heddle.Precompiled.CompiledForm.CompiledTypeRef StartType {get;set;}
+  PROP System.Collections.Generic.IList<Heddle.Precompiled.CompiledForm.CompiledMemberHop> Hops {get;set;}
+  PROP System.Collections.Generic.IList<System.String> Segments {get;set;}
+TYPE Heddle.Precompiled.CompiledForm.CompiledOptionsFingerprint
+  CTOR()
+  PROP System.Boolean Trim {get;set;}
+  PROP System.String Mode {get;set;}
+  PROP System.String Profile {get;set;}
+TYPE Heddle.Precompiled.CompiledForm.CompiledParameter
+  CTOR()
+  PROP Heddle.Precompiled.CompiledForm.CompiledChain NestedChain {get;set;}
+  PROP Heddle.Precompiled.CompiledForm.CompiledLiteral Constant {get;set;}
+  PROP Heddle.Precompiled.CompiledForm.CompiledParameterKind Kind {get;set;}
+  PROP Heddle.Precompiled.CompiledForm.CompiledRefusalSource Refusal {get;set;}
+  PROP System.Boolean PropDynamicRest {get;set;}
+  PROP System.Boolean SlotMode {get;set;}
+  PROP System.Boolean UsesPropsSlot {get;set;}
+  PROP System.Collections.Generic.IList<Heddle.Precompiled.CompiledForm.CompiledMemberHop> PropHops {get;set;}
+  PROP System.Collections.Generic.IList<System.String> Segments {get;set;}
+  PROP System.Int32 CallerContentRef {get;set;}
+  PROP System.Int32 DefinitionRef {get;set;}
+  PROP System.Int32 ExpressionRef {get;set;}
+  PROP System.Int32 MemberRef {get;set;}
+  PROP System.Int32 SiteRef {get;set;}
+  PROP System.Int32 SlotIndex {get;set;}
+TYPE Heddle.Precompiled.CompiledForm.CompiledParameterKind : System.Enum
+  FIELD Heddle.Precompiled.CompiledForm.CompiledParameterKind CSharpExpression
+  FIELD Heddle.Precompiled.CompiledForm.CompiledParameterKind Chain
+  FIELD Heddle.Precompiled.CompiledForm.CompiledParameterKind Constant
+  FIELD Heddle.Precompiled.CompiledForm.CompiledParameterKind DefinitionCall
+  FIELD Heddle.Precompiled.CompiledForm.CompiledParameterKind DynamicPath
+  FIELD Heddle.Precompiled.CompiledForm.CompiledParameterKind LateBoundCall
+  FIELD Heddle.Precompiled.CompiledForm.CompiledParameterKind ModelPath
+  FIELD Heddle.Precompiled.CompiledForm.CompiledParameterKind NativeExpression
+  FIELD Heddle.Precompiled.CompiledForm.CompiledParameterKind None
+  FIELD Heddle.Precompiled.CompiledForm.CompiledParameterKind PropsSlot
+  FIELD Heddle.Precompiled.CompiledForm.CompiledParameterKind RefusalSite
+  FIELD Heddle.Precompiled.CompiledForm.CompiledParameterKind RootPath
+  FIELD System.Int32 value__
+TYPE Heddle.Precompiled.CompiledForm.CompiledParseFacts
+  CTOR()
+  PROP System.Boolean InDefinitionContext {get;set;}
+  PROP System.Collections.Generic.IList<System.Int32> VisibleDefinitionRefs {get;set;}
+  PROP System.Int32 Offset {get;set;}
+TYPE Heddle.Precompiled.CompiledForm.CompiledPosition
+  CTOR(System.Int32, System.Int32)
+  PROP System.Int32 Length {get;set;}
+  PROP System.Int32 Start {get;set;}
+TYPE Heddle.Precompiled.CompiledForm.CompiledPropDecl
+  CTOR()
+  PROP Heddle.Precompiled.CompiledForm.CompiledLiteral DefaultValue {get;set;}
+  PROP Heddle.Precompiled.CompiledForm.CompiledTypeRef SlotType {get;set;}
+  PROP System.Int32 SlotIndex {get;set;}
+  PROP System.String Name {get;set;}
+TYPE Heddle.Precompiled.CompiledForm.CompiledProps
+  CTOR()
+  PROP System.Collections.Generic.IList<Heddle.Precompiled.CompiledForm.CompiledDynamicSlot> DynamicSlots {get;set;}
+  PROP System.Collections.Generic.IList<Heddle.Precompiled.CompiledForm.CompiledLiteral> FrozenPrototype {get;set;}
+TYPE Heddle.Precompiled.CompiledForm.CompiledRefusalSource
+  CTOR()
+  PROP Heddle.Precompiled.CompiledForm.CompiledPosition Position {get;set;}
+  PROP Heddle.Precompiled.CompiledForm.CompiledTypeRef ChainedType {get;set;}
+  PROP Heddle.Precompiled.CompiledForm.CompiledTypeRef ModelType {get;set;}
+  PROP Heddle.Precompiled.CompiledForm.CompiledTypeRef RootType {get;set;}
+  PROP Heddle.Precompiled.PrecompiledRefusalClass Class {get;set;}
+  PROP System.Collections.Generic.IList<System.String> Namespaces {get;set;}
+  PROP System.String SourceText {get;set;}
+TYPE Heddle.Precompiled.CompiledForm.CompiledRegionFill
+  CTOR()
+  PROP System.Int32 DocumentRef {get;set;}
+  PROP System.String RegionName {get;set;}
+TYPE Heddle.Precompiled.CompiledForm.CompiledSiteKind : System.Enum
+  FIELD Heddle.Precompiled.CompiledForm.CompiledSiteKind EmbeddedCSharp
+  FIELD Heddle.Precompiled.CompiledForm.CompiledSiteKind LateBoundCall
+  FIELD Heddle.Precompiled.CompiledForm.CompiledSiteKind MemberAccessor
+  FIELD Heddle.Precompiled.CompiledForm.CompiledSiteKind NativeExpression
+  FIELD Heddle.Precompiled.CompiledForm.CompiledSiteKind Refusal
+  FIELD System.Int32 value__
+TYPE Heddle.Precompiled.CompiledForm.CompiledSiteRow
+  CTOR()
+  PROP Heddle.Precompiled.CompiledForm.CompiledSiteKind Kind {get;set;}
+  PROP System.Int32 PayloadRef {get;set;}
+  PROP System.Int32 SiteOrdinal {get;set;}
+  PROP System.Int32 TemplateIndex {get;set;}
+TYPE Heddle.Precompiled.CompiledForm.CompiledTemplateRow
+  CTOR()
+  PROP Heddle.Precompiled.CompiledForm.CompiledOptionsFingerprint Options {get;set;}
+  PROP Heddle.Precompiled.CompiledForm.CompiledTypeRef ModelType {get;set;}
+  PROP System.Boolean IsDynamic {get;set;}
+  PROP System.Boolean ModelTypeIsAmbient {get;set;}
+  PROP System.Collections.Generic.IList<Heddle.Precompiled.CompiledForm.CompiledImport> Imports {get;set;}
+  PROP System.Collections.Generic.IList<Heddle.Precompiled.PrecompiledRefusalSite> RefusalSites {get;set;}
+  PROP System.Collections.Generic.IList<System.Int32> DefinitionRefs {get;set;}
+  PROP System.Collections.Generic.IList<System.Int32> ExtensionRefs {get;set;}
+  PROP System.Collections.Generic.IList<System.Int32> FunctionRefs {get;set;}
+  PROP System.Int32 RootDocumentRef {get;set;}
+  PROP System.Int32 SiteCount {get;set;}
+  PROP System.String ContentHash {get;set;}
+  PROP System.String EntryPointTypeName {get;set;}
+  PROP System.String Key {get;set;}
+  PROP System.String RegisteredName {get;set;}
+TYPE Heddle.Precompiled.CompiledForm.CompiledTypeRef
+  METHOD System.String Nominal()
+TYPE Heddle.Precompiled.CompiledForm.DynamicTypeRef : Heddle.Precompiled.CompiledForm.CompiledTypeRef
+  FIELD Heddle.Precompiled.CompiledForm.DynamicTypeRef Instance
+  METHOD System.Boolean Equals(System.Object)
+  METHOD System.Int32 GetHashCode()
+  METHOD System.String Nominal()
+TYPE Heddle.Precompiled.CompiledForm.GenericTypeRef : Heddle.Precompiled.CompiledForm.CompiledTypeRef
+  CTOR(Heddle.Precompiled.CompiledForm.NamedTypeRef, System.Collections.Generic.IReadOnlyList<Heddle.Precompiled.CompiledForm.CompiledTypeRef>)
+  METHOD System.Boolean Equals(System.Object)
+  METHOD System.Int32 GetHashCode()
+  METHOD System.String Nominal()
+  PROP Heddle.Precompiled.CompiledForm.NamedTypeRef Definition {get;}
+  PROP System.Collections.Generic.IReadOnlyList<Heddle.Precompiled.CompiledForm.CompiledTypeRef> Arguments {get;}
+TYPE Heddle.Precompiled.CompiledForm.NamedTypeRef : Heddle.Precompiled.CompiledForm.CompiledTypeRef
+  CTOR(System.String, System.String, System.Boolean)
+  METHOD System.Boolean Equals(System.Object)
+  METHOD System.Int32 GetHashCode()
+  METHOD System.String Nominal()
+  PROP System.Boolean IsFramework {get;}
+  PROP System.String AssemblySimpleName {get;}
+  PROP System.String FullName {get;}
+TYPE Heddle.Precompiled.CompiledForm.TypeIdentityTable
+  CTOR()
+  METHOD System.Boolean TryGetIndex(Heddle.Precompiled.CompiledForm.CompiledTypeRef, out System.Int32)
+  METHOD System.Int32 Intern(Heddle.Precompiled.CompiledForm.CompiledTypeRef)
+  PROP System.Collections.Generic.IReadOnlyList<Heddle.Precompiled.CompiledForm.CompiledTypeRef> OrderedRefs {get;}
 TYPE Heddle.Precompiled.ContentHash
   METHOD System.String HashBytes(System.Byte[])
   METHOD System.String HashText(System.String)
@@ -726,26 +1056,16 @@ TYPE Heddle.Precompiled.ContentHash
 TYPE Heddle.Precompiled.HeddleBuildOptions
   FIELD Heddle.Data.ExpressionMode DefaultExpressionMode
   FIELD Heddle.Data.OutputProfile DefaultOutputProfile
-  FIELD Heddle.Precompiled.ObserveMode DefaultObserveMode
-  FIELD System.Boolean DefaultEmitUtf8Pieces
-  FIELD System.Boolean DefaultNodeFallback
   FIELD System.Boolean DefaultTrimDirectiveLines
   FIELD System.Int32 DefaultMaxRecursionCount
-  FIELD System.String BuildPropertyPrefix
   FIELD System.String DefaultGeneratedNamespace
-  FIELD System.String DefaultObserveImplementationPath
-  FIELD System.String DefaultObserveIntermediatePath
   FIELD System.String DefaultTemplateRoot
-  FIELD System.String EmitUtf8PiecesProperty
   FIELD System.String ExpectedBool
   FIELD System.String ExpectedPositiveInt
   FIELD System.String ExpressionModeProperty
   FIELD System.String GeneratedNamespaceProperty
   FIELD System.String MaxRecursionCountProperty
-  FIELD System.String NodeFallbackProperty
-  FIELD System.String ObserveEngineProperty
-  FIELD System.String ObserveImplementationPathProperty
-  FIELD System.String ObserveIntermediatePathProperty
+  FIELD System.String OutputProfileMetadata
   FIELD System.String OutputProfileProperty
   FIELD System.String TemplateRootProperty
   FIELD System.String TrimDirectiveLinesProperty
@@ -759,26 +1079,11 @@ TYPE Heddle.Precompiled.HeddleCompiledTemplatesAttribute : System.Attribute
   PROP System.Int32 SchemaVersion {get;}
   PROP System.String EngineVersion {get;}
   PROP System.Type ManifestType {get;}
-TYPE Heddle.Precompiled.IHeddleTemplateManifest
-  METHOD System.Collections.Generic.IReadOnlyList<Heddle.Precompiled.PrecompiledTemplateInfo> GetTemplates()
-TYPE Heddle.Precompiled.ObserveMode : System.Enum
-  FIELD Heddle.Precompiled.ObserveMode Auto
-  FIELD Heddle.Precompiled.ObserveMode Off
-  FIELD Heddle.Precompiled.ObserveMode Strict
-  FIELD System.Int32 value__
-TYPE Heddle.Precompiled.PrecompiledCallShape : System.Enum
-  FIELD Heddle.Precompiled.PrecompiledCallShape CSharpExpression
-  FIELD Heddle.Precompiled.PrecompiledCallShape Chain
-  FIELD Heddle.Precompiled.PrecompiledCallShape ModelPath
-  FIELD Heddle.Precompiled.PrecompiledCallShape NativeExpression
-  FIELD Heddle.Precompiled.PrecompiledCallShape None
-  FIELD Heddle.Precompiled.PrecompiledCallShape PropArguments
-  FIELD System.Int32 value__
-TYPE Heddle.Precompiled.PrecompiledCapabilities : System.Enum
-  FIELD Heddle.Precompiled.PrecompiledCapabilities None
-  FIELD Heddle.Precompiled.PrecompiledCapabilities StringOutput
-  FIELD Heddle.Precompiled.PrecompiledCapabilities Utf8Pieces
-  FIELD System.Int32 value__
+TYPE Heddle.Precompiled.IHeddleCompiledArtifact
+  METHOD System.IO.Stream OpenArtifact()
+TYPE Heddle.Precompiled.IPrecompiledSiteTable
+  METHOD System.Boolean TryGetSite(System.String, System.Int32, System.Int32, out System.Delegate)
+  PROP System.String ArtifactDigest {get;}
 TYPE Heddle.Precompiled.PrecompiledExtensionBinding : System.ValueType
   CTOR(System.String, System.String, System.String)
   PROP System.String ExtensionTypeName {get;}
@@ -799,6 +1104,7 @@ TYPE Heddle.Precompiled.PrecompiledFallbackReason : System.Enum
   FIELD Heddle.Precompiled.PrecompiledFallbackReason ExtensionInitCompileError
   FIELD Heddle.Precompiled.PrecompiledFallbackReason ExtensionInitTypingMismatch
   FIELD Heddle.Precompiled.PrecompiledFallbackReason FunctionBindingMismatch
+  FIELD Heddle.Precompiled.PrecompiledFallbackReason MemberBindingMismatch
   FIELD Heddle.Precompiled.PrecompiledFallbackReason ModelTypeMismatch
   FIELD Heddle.Precompiled.PrecompiledFallbackReason OptionsMismatch
   FIELD Heddle.Precompiled.PrecompiledFallbackReason RegisteredNameUnavailable
@@ -812,132 +1118,10 @@ TYPE Heddle.Precompiled.PrecompiledFunctionBinding : System.ValueType
   PROP System.Int32 OverloadCount {get;}
   PROP System.String Name {get;}
   PROP System.String TargetTypeName {get;}
-TYPE Heddle.Precompiled.PrecompiledFunctionSite
-  CTOR(System.String, System.Int32, System.Boolean, System.Boolean, System.Int32, System.Int32)
-  FIELD System.Int32 MaxArgumentCount
-  METHOD System.Object Invoke()
-  METHOD System.Object Invoke(T0)
-  METHOD System.Object Invoke(T0, T1)
-  METHOD System.Object Invoke(T0, T1, T2)
-  METHOD System.Object Invoke(T0, T1, T2, T3)
-  METHOD System.Object Invoke(T0, T1, T2, T3, T4)
-  METHOD System.Object Invoke(T0, T1, T2, T3, T4, T5)
-  METHOD System.Object Invoke(T0, T1, T2, T3, T4, T5, T6)
-  METHOD System.Object Invoke(T0, T1, T2, T3, T4, T5, T6, T7)
-TYPE Heddle.Precompiled.PrecompiledFunctions
-  METHOD Heddle.Models.Range Range(System.Int32, System.Int32)
-  METHOD Heddle.Models.Range Range(System.Int32, System.Int32, System.Int32)
-  METHOD System.Boolean Contains(System.String, System.String)
-  METHOD System.Boolean EndsWith(System.String, System.String)
-  METHOD System.Boolean StartsWith(System.String, System.String)
-  METHOD System.Decimal Abs(System.Decimal)
-  METHOD System.Decimal Ceil(System.Decimal)
-  METHOD System.Decimal Floor(System.Decimal)
-  METHOD System.Decimal Max(System.Decimal, System.Decimal)
-  METHOD System.Decimal Min(System.Decimal, System.Decimal)
-  METHOD System.Decimal Round(System.Decimal)
-  METHOD System.Decimal Round(System.Decimal, System.Int32)
-  METHOD System.Double Abs(System.Double)
-  METHOD System.Double Ceil(System.Double)
-  METHOD System.Double Floor(System.Double)
-  METHOD System.Double Max(System.Double, System.Double)
-  METHOD System.Double Min(System.Double, System.Double)
-  METHOD System.Double Round(System.Double)
-  METHOD System.Double Round(System.Double, System.Int32)
-  METHOD System.Int32 Abs(System.Int32)
-  METHOD System.Int32 Ceil(System.Int32)
-  METHOD System.Int32 Floor(System.Int32)
-  METHOD System.Int32 Len(System.String)
-  METHOD System.Int32 Max(System.Int32, System.Int32)
-  METHOD System.Int32 Min(System.Int32, System.Int32)
-  METHOD System.Int32 Round(System.Int32)
-  METHOD System.Int32 Round(System.Int32, System.Int32)
-  METHOD System.Int64 Abs(System.Int64)
-  METHOD System.Int64 Ceil(System.Int64)
-  METHOD System.Int64 Floor(System.Int64)
-  METHOD System.Int64 Max(System.Int64, System.Int64)
-  METHOD System.Int64 Min(System.Int64, System.Int64)
-  METHOD System.Int64 Round(System.Int64)
-  METHOD System.Int64 Round(System.Int64, System.Int32)
-  METHOD System.String Format(System.Object, System.String)
-  METHOD System.String Format(System.String, System.Object[])
-  METHOD System.String Lower(System.String)
-  METHOD System.String Replace(System.String, System.String, System.String)
-  METHOD System.String Str(System.Object)
-  METHOD System.String Substr(System.String, System.Int32)
-  METHOD System.String Substr(System.String, System.Int32, System.Int32)
-  METHOD System.String Trim(System.String)
-  METHOD System.String Upper(System.String)
 TYPE Heddle.Precompiled.PrecompiledImport : System.ValueType
   CTOR(System.String, System.String)
   PROP System.String ContentHash {get;}
   PROP System.String Key {get;}
-TYPE Heddle.Precompiled.PrecompiledInitBody
-  CTOR()
-  PROP System.Boolean AssumesChainedType {get;set;}
-  PROP System.Boolean NeedsLocals {get;set;}
-  PROP System.Boolean TypeAgnostic {get;set;}
-  PROP System.String RawText {get;set;}
-  PROP System.String ShapedText {get;set;}
-  PROP System.Type AssumedChainedType {get;set;}
-  PROP System.Type AssumedDataType {get;set;}
-TYPE Heddle.Precompiled.PrecompiledInitFault
-  PROP Heddle.Precompiled.PrecompiledInitFaultScope Scope {get;}
-  PROP System.Collections.Generic.IReadOnlyList<Heddle.Data.HeddleCompileError> Errors {get;}
-  PROP System.Exception Exception {get;}
-  PROP System.Nullable<Heddle.Precompiled.PrecompiledFallbackReason> Reason {get;}
-  PROP System.String Detail {get;}
-TYPE Heddle.Precompiled.PrecompiledInitFaultScope : System.Enum
-  FIELD Heddle.Precompiled.PrecompiledInitFaultScope CallSite
-  FIELD Heddle.Precompiled.PrecompiledInitFaultScope Template
-  FIELD System.Int32 value__
-TYPE Heddle.Precompiled.PrecompiledInitSite
-  CTOR()
-  PROP Heddle.Data.ExpressionMode ExpressionMode {get;set;}
-  PROP Heddle.Data.OutputProfile OutputProfile {get;set;}
-  PROP Heddle.Precompiled.PrecompiledCallShape CallShape {get;set;}
-  PROP Heddle.Precompiled.PrecompiledInitBody Body {get;set;}
-  PROP Heddle.Precompiled.PrecompiledInitBody DefinitionBody {get;set;}
-  PROP Heddle.Precompiled.PrecompiledInitFault Fault {get;set;}
-  PROP Heddle.Precompiled.PrecompiledInitSite ChainProducer {get;set;}
-  PROP Heddle.Precompiled.PrecompiledInitSite[] Dependents {get;set;}
-  PROP Heddle.Precompiled.PrecompiledLateAccessor[] BodyAccessors {get;set;}
-  PROP System.Boolean HasProducerToRight {get;set;}
-  PROP System.Boolean HasPropArguments {get;set;}
-  PROP System.Boolean HostsChildTemplate {get;set;}
-  PROP System.Boolean InsideDefinition {get;set;}
-  PROP System.Boolean IsChainedConsumer {get;set;}
-  PROP System.Boolean RootReference {get;set;}
-  PROP System.Boolean TrimDirectiveLines {get;set;}
-  PROP System.Int32 DefinitionPositionLength {get;set;}
-  PROP System.Int32 DefinitionPositionStart {get;set;}
-  PROP System.Int32 MaxRecursionCount {get;set;}
-  PROP System.Int32 PositionLength {get;set;}
-  PROP System.Int32 PositionStart {get;set;}
-  PROP System.String ExtensionName {get;set;}
-  PROP System.String SourceText {get;set;}
-  PROP System.String[] DataTypePath {get;set;}
-  PROP System.String[] Namespaces {get;set;}
-  PROP System.Type ChainedType {get;set;}
-  PROP System.Type DataType {get;set;}
-  PROP System.Type DefinitionSlotType {get;set;}
-  PROP System.Type ModelType {get;set;}
-  PROP System.Type ParentType {get;set;}
-  PROP System.Type ResolvedBodyChainedType {get;set;}
-  PROP System.Type ResolvedBodyDataType {get;set;}
-  PROP System.Type RootModelType {get;set;}
-  PROP System.Type SlotType {get;set;}
-TYPE Heddle.Precompiled.PrecompiledLateAccessor
-  CTOR(System.String[], System.Boolean)
-  METHOD System.Object Read(System.Object, System.Object, System.Object)
-  PROP System.Boolean IsBound {get;}
-  PROP System.Boolean RootReference {get;}
-  PROP System.String[] Segments {get;}
-TYPE Heddle.Precompiled.PrecompiledLinePathForm : System.Enum
-  FIELD Heddle.Precompiled.PrecompiledLinePathForm RootRelative
-  FIELD Heddle.Precompiled.PrecompiledLinePathForm TemplatePath
-  FIELD Heddle.Precompiled.PrecompiledLinePathForm Unspecified
-  FIELD System.Int32 value__
 TYPE Heddle.Precompiled.PrecompiledMismatchException : System.Exception
   CTOR(System.String, Heddle.Precompiled.PrecompiledFallbackReason, System.String)
   PROP Heddle.Precompiled.PrecompiledFallbackReason Reason {get;}
@@ -948,95 +1132,60 @@ TYPE Heddle.Precompiled.PrecompiledOptionsFingerprint : System.ValueType
   PROP Heddle.Data.ExpressionMode ExpressionMode {get;}
   PROP Heddle.Data.OutputProfile Profile {get;}
   PROP System.Boolean TrimDirectiveLines {get;}
-TYPE Heddle.Precompiled.PrecompiledPartialName
-  METHOD System.String Get()
-TYPE Heddle.Precompiled.PrecompiledPropEvaluator : System.MulticastDelegate
-  CTOR(System.Object, System.IntPtr)
-  METHOD System.IAsyncResult BeginInvoke(ref Heddle.Data.Scope, System.AsyncCallback, System.Object)
-  METHOD System.Object EndInvoke(ref Heddle.Data.Scope, System.IAsyncResult)
-  METHOD System.Object Invoke(ref Heddle.Data.Scope)
-TYPE Heddle.Precompiled.PrecompiledPropSetter : System.ValueType
-  CTOR(System.Int32, Heddle.Precompiled.PrecompiledPropEvaluator)
-  PROP Heddle.Precompiled.PrecompiledPropEvaluator Evaluate {get;}
-  PROP System.Int32 Index {get;}
+TYPE Heddle.Precompiled.PrecompiledRefusalClass : System.Enum
+  FIELD Heddle.Precompiled.PrecompiledRefusalClass ReflectionOrderValue
+  FIELD Heddle.Precompiled.PrecompiledRefusalClass UnbindableCallTyping
+  FIELD Heddle.Precompiled.PrecompiledRefusalClass UnsupportedExtension
+  FIELD System.Int32 value__
+TYPE Heddle.Precompiled.PrecompiledRefusalSite : System.ValueType
+  CTOR(System.Int32, Heddle.Precompiled.PrecompiledRefusalClass, System.String, System.Int32, System.Int32)
+  PROP Heddle.Precompiled.PrecompiledRefusalClass Class {get;}
+  PROP System.Int32 PositionLength {get;}
+  PROP System.Int32 PositionStart {get;}
+  PROP System.Int32 SiteOrdinal {get;}
+  PROP System.String Detail {get;}
 TYPE Heddle.Precompiled.PrecompiledRegistrationException : System.Exception
+  CTOR(System.String, System.Int32)
   CTOR(System.String, System.String, System.String)
+  PROP System.Int32 SchemaVersion {get;}
   PROP System.String ExistingAssemblyName {get;}
   PROP System.String Key {get;}
   PROP System.String NewAssemblyName {get;}
-TYPE Heddle.Precompiled.PrecompiledRuntime
-  METHOD Heddle.Core.AbstractExtension BindDefinition(Heddle.Runtime.IProcessStrategy, Heddle.Runtime.IProcessStrategy, System.Object[], Heddle.Precompiled.PrecompiledPropSetter[], Heddle.Data.RenderType, System.Boolean, System.Boolean, System.Boolean, System.Int32, System.Int32, System.Int32)
-  METHOD Heddle.Core.AbstractExtension BindDefinition(Heddle.Runtime.IProcessStrategy, Heddle.Runtime.IProcessStrategy, System.Object[], Heddle.Precompiled.PrecompiledPropSetter[], Heddle.Data.RenderType, System.Boolean, System.Boolean, System.Int32, System.Int32, System.Int32)
-  METHOD Heddle.Core.AbstractExtension BindDefinition(Heddle.Runtime.IProcessStrategy, Heddle.Runtime.IProcessStrategy, System.Object[], Heddle.Precompiled.PrecompiledPropSetter[], Heddle.Data.RenderType, System.Boolean, System.Int32, System.Int32, System.Int32)
-  METHOD Heddle.Core.AbstractExtension BindExtension(TExtension, System.Object[], Heddle.Precompiled.PrecompiledPropSetter[], System.String[], Heddle.Data.RenderType, System.Boolean, System.Int32, System.Int32)
-  METHOD Heddle.Core.AbstractExtension Init(System.Func<Heddle.Core.AbstractExtension>, Heddle.Precompiled.PrecompiledInitSite, Heddle.Runtime.IProcessStrategy)
-  METHOD Heddle.Core.AbstractExtension InitDefinition(Heddle.Precompiled.PrecompiledInitSite, Heddle.Runtime.IProcessStrategy, Heddle.Runtime.IProcessStrategy, System.Object[], Heddle.Precompiled.PrecompiledPropSetter[])
-  METHOD Heddle.Core.AbstractExtension InitExtension(System.Func<Heddle.Core.AbstractExtension>, Heddle.Precompiled.PrecompiledInitSite, Heddle.Runtime.IProcessStrategy, System.Object[], Heddle.Precompiled.PrecompiledPropSetter[], System.String[])
-  METHOD Heddle.Core.AbstractExtension SiteFallback(Heddle.Precompiled.PrecompiledInitSite, System.String)
-  METHOD Heddle.Extensions.OutExtension BindOut(Heddle.Extensions.OutExtension, System.Boolean, System.Int32, System.Int32)
-  METHOD Heddle.Precompiled.PrecompiledPartialName EvaluatePartialName(Heddle.Runtime.IProcessStrategy, System.Int32, System.Int32)
-  METHOD Heddle.Runtime.IProcessStrategy ResolvePartial(System.String)
-  METHOD Heddle.Runtime.IProcessStrategy ResolvePartial(System.String, Heddle.Data.TemplateOptions)
-  METHOD Heddle.Runtime.IProcessStrategy ResolvePartial(System.String, System.Type)
-  METHOD Heddle.Runtime.IProcessStrategy WithLocalsFrame(Heddle.Runtime.IProcessStrategy)
-  METHOD System.Func<System.Object, System.Object, System.Object, System.Object> NativeAccessor(System.Type, System.String[], System.Boolean)
-  METHOD System.Func<System.Object, System.Object> MemberAccessor(System.Type, System.String[])
-  METHOD System.Object DynamicMember(System.Object, System.String)
-  METHOD System.Object Prop(ref Heddle.Data.Scope, System.Int32)
-  METHOD System.Object RootModel(ref Heddle.Data.Scope)
-  METHOD System.String CarrierValue(System.Object)
-  METHOD System.String GenerateString(Heddle.Runtime.IProcessStrategy, System.Object, System.Object, System.Object)
-  METHOD System.String GenerateString(Heddle.Runtime.IProcessStrategy, System.Object, System.Object, System.Object, Heddle.Data.TemplateOptions)
-  METHOD System.Void GenerateToWriter(Heddle.Runtime.IProcessStrategy, System.Object, System.Object, System.Object, System.IO.TextWriter)
-  METHOD System.Void GenerateUtf8(Heddle.Runtime.IProcessStrategy, System.Object, System.Object, System.Object, System.Buffers.IBufferWriter<System.Byte>)
-  METHOD System.Void WritePiece(ref Heddle.Data.Scope, System.String, System.ReadOnlySpan<System.Byte>)
-  METHOD TExtension Bind(TExtension, Heddle.Runtime.IProcessStrategy, Heddle.Data.RenderType, System.Boolean, System.Int32, System.Int32)
 TYPE Heddle.Precompiled.PrecompiledSchema
-  FIELD System.Int32 AmbientModelTypeSchemaVersion
+  FIELD System.Int32 CompiledFormSchemaVersion
   FIELD System.Int32 CurrentSchemaVersion
-  FIELD System.Int32 DynamicMemberRoutingSchemaVersion
-  FIELD System.Int32 LateBoundFunctionMaxArity
-  FIELD System.Int32 LateBoundFunctionSchemaVersion
-  FIELD System.Int32 LinePathFormSchemaVersion
   FIELD System.Int32 MaxSupportedSchemaVersion
   FIELD System.Int32 MinSupportedSchemaVersion
-  FIELD System.Int32 PerCarrierLocalsSchemaVersion
-  FIELD System.Int32 PropLayoutFingerprintSchemaVersion
-  FIELD System.Int32 RegisteredNameSchemaVersion
   METHOD System.Boolean IsEngineCompatible(System.Version, System.Version)
   METHOD System.Boolean IsSupported(System.Int32)
   METHOD System.String FormatEngineVersion(System.Version)
-  PROP System.Boolean EmitsDynamicMemberRouting {get;}
-  PROP System.Boolean EmitsLateBoundFunctions {get;}
-  PROP System.Boolean EmitsPerCarrierLocals {get;}
+TYPE Heddle.Precompiled.PrecompiledStrictLoadException : System.InvalidOperationException
+  CTOR(System.String, System.Int32, System.String)
+  PROP System.Int32 SiteOrdinal {get;}
+  PROP System.String SiteKind {get;}
+  PROP System.String TemplateKey {get;}
 TYPE Heddle.Precompiled.PrecompiledTemplateInfo
-  CTOR(System.String, System.Type, System.Type, System.Boolean, System.String, System.Collections.Generic.IReadOnlyList<Heddle.Precompiled.PrecompiledImport>, Heddle.Precompiled.PrecompiledOptionsFingerprint, System.Collections.Generic.IReadOnlyList<Heddle.Precompiled.PrecompiledExtensionBinding>, System.Collections.Generic.IReadOnlyList<Heddle.Precompiled.PrecompiledFunctionBinding>, Heddle.Precompiled.PrecompiledCapabilities, Heddle.Runtime.IProcessStrategy)
-  CTOR(System.String, System.Type, System.Type, System.Boolean, System.String, System.Collections.Generic.IReadOnlyList<Heddle.Precompiled.PrecompiledImport>, Heddle.Precompiled.PrecompiledOptionsFingerprint, System.Collections.Generic.IReadOnlyList<Heddle.Precompiled.PrecompiledExtensionBinding>, System.Collections.Generic.IReadOnlyList<Heddle.Precompiled.PrecompiledFunctionBinding>, Heddle.Precompiled.PrecompiledCapabilities, Heddle.Runtime.IProcessStrategy, System.String, Heddle.Precompiled.PrecompiledLinePathForm)
-  CTOR(System.String, System.Type, System.Type, System.Boolean, System.String, System.Collections.Generic.IReadOnlyList<Heddle.Precompiled.PrecompiledImport>, Heddle.Precompiled.PrecompiledOptionsFingerprint, System.Collections.Generic.IReadOnlyList<Heddle.Precompiled.PrecompiledExtensionBinding>, System.Collections.Generic.IReadOnlyList<Heddle.Precompiled.PrecompiledFunctionBinding>, Heddle.Precompiled.PrecompiledCapabilities, Heddle.Runtime.IProcessStrategy, System.String, Heddle.Precompiled.PrecompiledLinePathForm, System.Boolean)
-  CTOR(System.String, System.Type, System.Type, System.Boolean, System.String, System.Collections.Generic.IReadOnlyList<Heddle.Precompiled.PrecompiledImport>, Heddle.Precompiled.PrecompiledOptionsFingerprint, System.Collections.Generic.IReadOnlyList<Heddle.Precompiled.PrecompiledExtensionBinding>, System.Collections.Generic.IReadOnlyList<Heddle.Precompiled.PrecompiledFunctionBinding>, Heddle.Precompiled.PrecompiledCapabilities, Heddle.Runtime.IProcessStrategy, System.String, Heddle.Precompiled.PrecompiledLinePathForm, System.Boolean, System.Collections.Generic.IReadOnlyList<Heddle.Precompiled.PrecompiledInitSite>)
-  PROP Heddle.Precompiled.PrecompiledCapabilities Capabilities {get;}
-  PROP Heddle.Precompiled.PrecompiledLinePathForm LinePathForm {get;}
   PROP Heddle.Precompiled.PrecompiledOptionsFingerprint OptionsFingerprint {get;}
-  PROP Heddle.Runtime.IProcessStrategy Strategy {get;}
   PROP System.Boolean IsDynamic {get;}
-  PROP System.Boolean IsPrecompiled {get;}
   PROP System.Boolean ModelTypeIsAmbient {get;}
   PROP System.Collections.Generic.IReadOnlyList<Heddle.Precompiled.PrecompiledExtensionBinding> ExtensionBindings {get;}
   PROP System.Collections.Generic.IReadOnlyList<Heddle.Precompiled.PrecompiledFunctionBinding> FunctionBindings {get;}
   PROP System.Collections.Generic.IReadOnlyList<Heddle.Precompiled.PrecompiledImport> Imports {get;}
-  PROP System.Collections.Generic.IReadOnlyList<Heddle.Precompiled.PrecompiledInitSite> InitSites {get;}
+  PROP System.Collections.Generic.IReadOnlyList<Heddle.Precompiled.PrecompiledRefusalSite> RefusalSites {get;}
   PROP System.String ContentHash {get;}
   PROP System.String Key {get;}
   PROP System.String RegisteredName {get;}
   PROP System.Type EntryPointType {get;}
   PROP System.Type ModelType {get;}
 TYPE Heddle.Precompiled.PrecompiledTemplates
+  METHOD Heddle.HeddleTemplate BindTyped(System.Reflection.Assembly, System.String, System.Type)
   METHOD Heddle.Precompiled.PrecompiledValidationReport ValidateAll(Heddle.Data.TemplateOptions)
   METHOD System.Boolean TryGet(System.String, out Heddle.Precompiled.PrecompiledTemplateInfo)
   METHOD System.Boolean TryResolve(System.String, Heddle.Data.TemplateOptions, System.Type, out Heddle.Precompiled.PrecompiledTemplateInfo)
   METHOD System.Boolean TryResolve(System.String, Heddle.Data.TemplateOptions, out Heddle.Precompiled.PrecompiledTemplateInfo)
   METHOD System.Nullable<Heddle.Precompiled.PrecompiledFallbackEvent> Validate(Heddle.Precompiled.PrecompiledTemplateInfo, Heddle.Data.TemplateOptions)
   METHOD System.Void Register(System.Reflection.Assembly)
+  PROP Heddle.Data.TemplateOptions DefaultOptions {get;set;}
   PROP System.Action<Heddle.Precompiled.PrecompiledFallbackEvent> OnFallback {get;set;}
   PROP System.Collections.Generic.IReadOnlyCollection<Heddle.Precompiled.PrecompiledTemplateInfo> Entries {get;}
   PROP System.Func<Heddle.Precompiled.PrecompiledExtensionBinding, System.Type, System.Boolean> BindingResolver {get;set;}
@@ -1048,23 +1197,6 @@ TYPE Heddle.Precompiled.PrecompiledValidationReport
   PROP System.Boolean ValidatedStaleness {get;}
   PROP System.Collections.Generic.IReadOnlyList<Heddle.Precompiled.PrecompiledFallbackEvent> Failures {get;}
   PROP System.Int32 EntriesChecked {get;}
-TYPE Heddle.Precompiled.RuntimeOperators
-  METHOD System.Boolean Equal(TLeft, TRight)
-  METHOD System.Boolean GreaterOrEqual(TLeft, TRight)
-  METHOD System.Boolean GreaterThan(TLeft, TRight)
-  METHOD System.Boolean LessOrEqual(TLeft, TRight)
-  METHOD System.Boolean LessThan(TLeft, TRight)
-  METHOD System.Boolean NotEqual(TLeft, TRight)
-  METHOD T Add(T, T)
-  METHOD T Divide(T, T)
-  METHOD T Modulo(T, T)
-  METHOD T Multiply(T, T)
-  METHOD T Subtract(T, T)
-  METHOD TResult Add(TLeft, TRight)
-  METHOD TResult Divide(TLeft, TRight)
-  METHOD TResult Modulo(TLeft, TRight)
-  METHOD TResult Multiply(TLeft, TRight)
-  METHOD TResult Subtract(TLeft, TRight)
 TYPE Heddle.Precompiled.TemplateKey
   FIELD System.String TemplateExtension
   METHOD System.Boolean HasTemplateExtension(System.String)
