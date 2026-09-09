@@ -49,6 +49,8 @@ namespace Heddle.LanguageServices.Tests
                 "render-cache invalidation for the runtime's file watcher; the editor owns document versioning itself.",
             [nameof(TemplateOptions.PrecompiledMismatchPolicy)] =
                 "selects run-tier fallback vs throw when a precompiled entry fails the gauntlet; the analyzer never consults the precompiled registry.",
+            [nameof(TemplateOptions.PrecompiledStrictLoad)] =
+                "fails materialization instead of compiling a site at load; analysis compiles, never materializes precompiled entries.",
             [nameof(TemplateOptions.RenderBudget)] =
                 "per-render resource limits, object-valued; no lint depends on them.",
             [nameof(TemplateOptions.ValidateModelType)] =

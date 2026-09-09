@@ -164,9 +164,8 @@ table says so rather than leaving the reader to infer coverage that is not there
 | --- | --- | --- |
 | `src/Heddle.Tests` | [`dotnet.yml`](../../../.github/workflows/dotnet.yml), its own named leg, Linux **and** Windows | [`lsp.yml`](../../../.github/workflows/lsp.yml), Windows only |
 | `src/Heddle.LanguageServices.Tests` | same | [`lsp.yml`](../../../.github/workflows/lsp.yml), Windows only |
-| `src/Heddle.Generator.Tests` | same | [`dotnet.yml`](../../../.github/workflows/dotnet.yml), Linux **and** Windows |
-| `src/Heddle.Generator.IntegrationTests` | same | [`dotnet.yml`](../../../.github/workflows/dotnet.yml), Linux **and** Windows |
 | `src/Heddle.Tool.Tests` | same | **not covered** — a known gap, recorded rather than implied away |
+| `src/Heddle.Build.Tests` | same | **not covered** — a known gap, recorded rather than implied away |
 
 A test whose expectation genuinely differs by configuration writes **both** arms behind `#if DEBUG` /
 `#if !DEBUG`, so each configuration's behaviour is pinned and neither is left to whichever build the
@@ -207,25 +206,24 @@ review, never through the test.
 ## Precompiled-tier posture
 
 > Added by amendment E8 (generator ↔ engine
-> code-sharing program, phase 0). Normative for every spec whose work touches the source
-> generator, the precompiled registry, or the resolver.
+> code-sharing program, phase 0). Normative for every spec whose work touches the build tier,
+> the precompiled registry, or the resolver.
 
 The precompiled tier and the dynamic engine render byte-identical output *by design*, so a
 precompiled→dynamic fallback is invisible in output. A test that does not pin the tier is
 therefore not evidence about the tier it claims to test — two shipped drifts (the content-hash
 input mismatch and the nested/generic AQN mismatch) reached release precisely that way. The rule:
 
-- **End-to-end precompiled tests pin the precompiled tier.** A test that renders real generator
-  output through registration → resolver → gauntlet runs under
+- **End-to-end precompiled tests pin the precompiled tier.** A test that renders a real artifact
+  through registration → resolver → gauntlet runs under
   `TemplateOptions.PrecompiledMismatchPolicy = Strict` **and** a fallback sentinel hooked onto
-  `PrecompiledTemplates.OnFallback`; any fallback raised during the test fails it. In the
-  generator integration suite the two guards are packaged as `FallbackGuard` /
-  `DifferentialHarness.RenderViaResolver`.
+  `PrecompiledTemplates.OnFallback`; any fallback raised during the test fails it. In
+  `Heddle.Tests` the sentinel is packaged as `FallbackGuard`.
 - **Fallback is tested only where fallback is the subject, and the expectation is declared.**
-  A build-time degrade is declared with `DifferentialHarness.ExpectDegrade(gen, key)`; a
+  A build-time decline is declared on the corpus row; a
   run-time fallback with `FallbackGuard.Expect(key, reason)`. Nothing else may fall back —
-  the complete set of tests that expect a fallback must stay enumerable by grepping those two
-  APIs.
+  the complete set of tests that expect a fallback must stay enumerable by grepping those
+  declarations.
 - **New feature areas contribute their templates to the gauntlet-crossing corpus** rather than
   re-plumbing their own suites. Feature suites keep direct-invoke isolation (a red test points
   at the emitter, not at five layers of plumbing); the corpus sweep carries the tier posture

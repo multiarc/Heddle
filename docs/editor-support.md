@@ -75,7 +75,7 @@ The editor follows the same configuration surface the engine permits: every comp
 affects analysis has a key here, and its name is the option's own name camel‑cased, with the same
 default the engine and the build tier use.
 
-The options with **no** key are exactly these eleven, each for a stated reason — the list is gated
+The options with **no** key are exactly these twelve, each for a stated reason — the list is gated
 against the parity test's own exclusion set, so it cannot quietly fall out of date:
 
 | Option | Why it has no key |
@@ -88,6 +88,7 @@ against the parity test's own exclusion set, so it cannot quietly fall out of da
 | `RenderBudget` | Per‑render resource limits, object‑valued; no lint depends on them. |
 | `ValidateModelType` | Retained for source compatibility but no longer read — the render‑time model‑type check is always on; analysis has no data anyway. |
 | `PrecompiledMismatchPolicy` | Selects run‑tier fallback vs throw; the analyzer never consults the precompiled registry. |
+| `PrecompiledStrictLoad` | Fails materialization instead of compiling a site at load; analysis compiles, never materializes precompiled entries. |
 | `EnableFileChangeCheck` | The runtime's file watcher; the editor owns document versioning itself. |
 | `ProvideLanguageFeatures` | Always on in the LSP — the analyzer's operating mode, not a workspace choice. |
 | `AllowCSharp` | Obsolete bridge over `ExpressionMode`; wiring both would let a config contradict itself. |
