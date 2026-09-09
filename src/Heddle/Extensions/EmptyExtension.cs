@@ -15,14 +15,11 @@ namespace Heddle.Extensions
                 return GetInnerResult(scope);
             }
 
-            if (scope.ModelData != null)
-            {
-                if (scope.ModelData is string s)
-                    return s;
-                return scope.ModelData.ToString();
-            }
-
-            return string.Empty;
+            // The data path carries the value typed: stringifying here collapsed every chained
+            // non-string value to String, tripping the Debug return-type guard on precisely typed
+            // inner items (function-call results) while rendering the same bytes. Rendering stays
+            // in RenderData, which stringifies at the sink.
+            return scope.ModelData ?? string.Empty;
         }
 
         public override void RenderData(in Scope scope)
