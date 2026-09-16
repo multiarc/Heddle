@@ -120,7 +120,7 @@ namespace Heddle.Tests
         {
             var retired = new[]
             {
-                "HED7005", "HED7006", "HED7008", "HED7015", "HED7016", "HED7017", "HED7019",
+                "HED7005", "HED7006", "HED7008", "HED7011", "HED7015", "HED7016", "HED7017", "HED7019",
                 "HED7022", "HED7023", "HED7024", "HED7025", "HED7030", "HED7034"
             };
             var constants = new HashSet<string>(typeof(HeddleDiagnosticIds)

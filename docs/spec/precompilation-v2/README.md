@@ -18,7 +18,10 @@
 The precompiled tier stops being a second compiler. The real engine compiles each template at build time, out of
 process, and serializes what it compiled — the shaped document, static pieces, the call graph, bound identities and
 native-expression syntax trees — into an artifact embedded in the consumer's assembly. At load the engine
-materializes the very objects its text path builds, so the render path is one code path and parity is structural.
+materializes the very objects its text path builds — by replaying the recorded source through its own parser and
+compiler, the form serving bodies and bound facts ([P1-R1 amendment,
+2026-09-17](phase-1-compiled-form.md#p1-r1--the-second-front-door-is-the-compiler-itself)) — so the render path is
+one code path and parity is structural.
 Generated code shrinks to what cannot be data: compiled delegates, printed from the engine's bound trees and keyed by
 stable site ids, with the data path complete underneath them.
 
@@ -64,6 +67,11 @@ fingerprint; nothing in the compiled form can open an execution path the request
 `RuntimeDocument` strategy and allocates exactly what the dynamic tier allocates, proved by allocation-equality
 benchmarks.
 **Rationale.** The render path is hot and the plan's render claim is measured, not asserted.
+
+> **Amendment (2026-09-17, ratified by the maintainer).** "Allocates exactly what the dynamic tier allocates" is
+> stated as measured: at or below the runtime tier per workload × sink (`CompiledFormAllocationTests` pins `<=`;
+> the published tables show 88–112 B per render less on the Utf8 and TextWriter sinks). See the
+> [P3-R8 amendment](phase-3-generated-sites.md#p3-r8--evidence).
 
 ### GI-4 — D11
 
@@ -154,6 +162,9 @@ The render path is the dynamic tier's; phase 1 proves allocation equality in-sui
 phase 2 guards it with `TechniquePrecompiledBenchmarks` versus `TechniqueRuntimeBenchmarks` (equal allocation, mean
 within error), and phase 3 adds `TechniquePrecompiledDataOnlyBenchmarks` and the cold-start row. Build-time cost is one
 host process per changed compiling project.
+
+> **Amendment (2026-09-17).** Read "equal allocation" as at or below the runtime tier and the cold-start row as
+> reported beside `CompileHeddle`, per the [P3-R8 amendment](phase-3-generated-sites.md#p3-r8--evidence).
 
 ## Standards compliance
 

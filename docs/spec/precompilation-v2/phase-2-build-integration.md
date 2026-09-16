@@ -233,6 +233,16 @@ report late-bound names.
 **Alternatives rejected.** Making `HED7031` a warning (late binding is designed behaviour, and strict mode is the AOT
 host's gate).
 
+> **Amendment (2026-09-17, ratified by the maintainer).** Two corrections to the lists above. `HED7007` leaves
+> the "does not raise" list: the host raises it itself, at the `@model` directive or `ModelType` item-metadata
+> spelling that resolves to no type (`CompileCommand`, `images.ResolveModelType`), and does not forward the fact
+> under `HED7012` — the registry's status (R4-HED7007, RR4-4: retired as a generator-issued diagnostic,
+> host-raised). `HED7011` leaves the live list: it is retired in place — the host resolves an `@<<` spelling the way
+> the engine's `ImportMap` does (an item's key first, else the file read from disk under the template root), so an
+> import outside the item set is read, not refused, and the fact never fires; an unreadable spelling draws the
+> engine's own `HED4009`, forwarded under its id. Constant, catalog row, registry row and published row stay
+> (R4-HED7011).
+
 ### P2-R9 — Registry and gauntlet carry over
 
 **Decision.** `Register`, `TryGet`, `TryResolve` (both overloads), `Validate`, `ValidateAll`, `Entries`,

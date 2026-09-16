@@ -242,8 +242,9 @@ golden commit and reviewed against the P4-R2 list line by line.
 | `HED7037` | Warning | new (claimed in the registry with this spec) | `{property} is retired and ignored; remove it from the project.` One per set property, project file `(1,1)` |
 | `HED7005` | — | retired in place | nothing — the form carries strings as UTF-16, so an unpaired surrogate round-trips |
 | `HED7006` | — | retired in place | `HED0002` |
-| `HED7007` | — | retired in place | the engine's unresolved-type error, id-less, reported under `HED7012` with the engine's sentence |
+| `HED7007` | Error | retired as a generator-issued diagnostic; host-raised (corrected 2026-09-17) | raised by the host at the `@model`/`ModelType` spelling that resolves to no type, not forwarded under `HED7012` — as the registry says (R4-HED7007, RR4-4) |
 | `HED7008` | — | retired in place | `HED0001` |
+| `HED7011` | — | retired in place (2026-09-17) | nothing — the host reads an import outside the item set from disk, mirroring the engine's `ImportMap`, so the fact never fires; an unreadable spelling is the engine's own `HED4009` |
 | `HED7016` | — | retired in place | `HED3005` |
 | `HED7017` | — | retired in place | `HED5007`, `HED5008`, `HED5009`, `HED5010`, `HED5015` |
 | `HED7019` | — | retired in place | nothing — the host is the engine; the pairing fact is `HED7035` |
@@ -254,10 +255,14 @@ golden commit and reviewed against the P4-R2 list line by line.
 | `HED7030` | — | retired in place | nothing — an unnameable member is a site rebuilt from data, listed in `HED7031` |
 | `HED7034` | — | retired in place | nothing — no observation exists |
 | `HED7015` | — | retired | unchanged |
-| `HED7001`–`HED7004`, `HED7009`–`HED7014`, `HED7018`, `HED7020`, `HED7021`, `HED7028`, `HED7031` (Info), `HED7032`, `HED7033`, `HED7035`–`HED7037`, `HED7101`–`HED7104` | — | live | — |
+| `HED7001`–`HED7004`, `HED7009`, `HED7010`, `HED7012`–`HED7014`, `HED7018`, `HED7020`, `HED7021`, `HED7028`, `HED7031` (Info), `HED7032`, `HED7033`, `HED7035`–`HED7037`, `HED7101`–`HED7104` | — | live | — |
 
 The registry's `HED7xxx` block description becomes "Build host (`HED70xx`) and precompiled runtime (`HED71xx`)".
 `HED9001` unchanged.
+
+> **Note (2026-09-17, ratified by the maintainer).** The `HED7007` row above is corrected to agree with the registry
+> (R4-HED7007, RR4-4): the host raises the fact itself and does not forward it under `HED7012`. `HED7011` is added as
+> retired in place and removed from the live range (R4-HED7011).
 
 ## Testing plan
 

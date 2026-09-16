@@ -12,7 +12,7 @@ namespace Heddle.Tests
     /// <summary>Materialization and render allocation (P1-R10, GI-3): one request shape materializes once
     /// no matter how often its strategy is read, and a loaded strategy renders every corpus <c>Compiles</c>
     /// row on all three sinks allocating no more bytes per render than the dynamic tier renders the same
-    /// text and model. The spec says "equal"; the compiled form allocates less on every row measured so
+    /// text and model. The spec says "at or below" (GI-3 / P3-R8 amendment, 2026-09-17); the compiled form allocates less on every row measured so
     /// far, so the pin is <c>&lt;=</c> with the pair printed — a row that allocates MORE is a real finding,
     /// never a budget to widen. Serialized — the registry is process-global static state.</summary>
     [Collection("PrecompiledRegistrySerial")]

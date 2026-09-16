@@ -100,6 +100,23 @@ structural, and a body typed differently at load than at build would render memb
 
 **Alternatives rejected.** Reconstructing hook outcomes from data (re-implements the extensions).
 
+> **Amendment (2026-09-17, ratified by the maintainer).** The materialization entry (`HeddleCompiler.Materialize`,
+> `src/Heddle/Runtime/HeddleCompiler.Form.cs`) does not construct the graph element by element from the recorded
+> lists; it *replays*. The recorded text of the root document — `rawText`
+> ([AC-7 amendment](artifact-contract.md#ac-7--documents)), the pre-shaping source the build parsed; the shaped text
+> only where no raw text was recorded — goes through the engine's own `DocumentParser.Parse` and
+> `HeddleCompiler.Compile` under the request's `CompileScope`, with the form cursor armed so that every body compile
+> a hook requests, every refusal fragment and every named child is served from the form (the recorded text of the
+> served body, its consumed types checked) instead of re-derived. The recorded element lists, member records and
+> expression records are not consumed by the replay itself: they feed the gauntlet (P1-R5) and, in phase 3, the
+> site table by position (P3-R1). Accepted because it keeps one code path — strategy selection, `NeedsLocals`,
+> UTF-8 pre-encoding, hook execution and `ExtensionInitTypingMismatch` are the text path's code with nothing
+> reimplemented — and parity is proven structurally rather than argued: the corpus harness (`CompiledFormHarness`)
+> renders every `Compiles` row byte-identically on all three sinks through the in-memory, file-backed and staged
+> artifacts, with the site table on and off. Amends the "constructs, per element" sentence of the decision above;
+> the rest of P1-R1 (hooks run for real, bodies served from the form, a typing mismatch as a template-scope fault)
+> stands as written.
+
 ### P1-R2 — Serialization walks the compiled graph, never the text
 
 **Decision.** The writer (internal, `src/Heddle/Precompiled/CompiledForm/`) is fed a compiled `HeddleTemplate` and
@@ -114,6 +131,14 @@ Recording is off on every ordinary compile and allocates nothing then. The write
 **Rationale.** Nothing may be re-derived from text; the form must be exactly what the engine decided.
 
 **Alternatives rejected.** Reflecting over private fields of runtime objects (the delegates hold no data).
+
+> **Amendment (2026-09-17, ratified by the maintainer).** "Nothing may be re-derived from text" is narrowed to what
+> the loader replays: the writer records, per document, the raw pre-shaping text beside the shaped text
+> ([AC-7 amendment](artifact-contract.md#ac-7--documents)), and materialization re-parses that raw text with the
+> engine's own parser ([P1-R1 amendment](#p1-r1--the-second-front-door-is-the-compiler-itself)). What the replay
+> must not re-derive — hook outcomes, body post-states, consumed types, bound identities, expression trees, site
+> ids — stays recorded and is served or checked from the form. The writer still walks the compiled graph under
+> `RecordForm`; the raw text is one more recorded fact, not a second source of truth.
 
 ### P1-R3 — Registration reads compiled forms only; rows materialize lazily
 

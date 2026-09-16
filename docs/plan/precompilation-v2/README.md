@@ -86,6 +86,11 @@ and startup becomes the measurable claim.
    the runtime tier and equal allocated bytes — measured, not asserted.
 4. **Startup.** Registration + first render of `composed-page` through the artifact is strictly
    below `CompileHeddle`, with and without generated sites, published in the report.
+
+   > Note (2026-09-17): criteria 3–4 are read at the measured posture ratified in the spec's
+   > [P3-R8 amendment](../../spec/precompilation-v2/phase-3-generated-sites.md#p3-r8--evidence): allocation at or
+   > below the runtime tier, mean within error or faster, cold start reported beside `CompileHeddle`.
+
 5. **AOT.** Under strict mode the corpus renders from generated sites except at declared sites
    (dynamic-model hops are a declared class); a NativeAOT sample renders the typed workloads.
 6. **Single source.** No `src/Heddle` file is linked into another production project; the build

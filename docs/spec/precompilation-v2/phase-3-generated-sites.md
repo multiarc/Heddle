@@ -201,6 +201,21 @@ these tables labelled per [metrics-protocol.md](../../../benchmarks/docs/metrics
 **Alternatives rejected.** Measuring registration in-process with a registry reset (needs a non-public reset, and
 warm-JIT numbers are not startup).
 
+> **Amendment (2026-09-17, ratified by the maintainer) — the measured posture.** The evidence
+> ([docs/benchmarks/2026-09-16](../../benchmarks/2026-09-16/index.md)) is read against three restated claims.
+> *Allocation:* at or below the runtime tier per workload × sink, not "equal" — the compiled form allocates
+> 88–112 B per render less on the Utf8 and TextWriter sinks and within ±100 B on String. *Mean:* within
+> BenchmarkDotNet's reported error or faster — every cell outside error with the table on is faster; the one slower
+> cell (`composed-page`/String, data-only, +5.5% at the baseline budget) is an open finding
+> ([F-202](../common/findings-register.md#open--do-not-re-report-do-re-measure)), not a pass. *Cold start:*
+> `RegisterAndRenderCompiledForm` (registration + first render) is reported beside `CompileHeddle` in the same
+> cold-start table and is not claimed as strictly below it: both are dominated by the engine's one-time
+> initialization (`TemplateFactory`'s static constructor, extension discovery, `Heddle.Language` type loading, JIT
+> of the entry paths — 115–180 ms of a ~280 ms process), so the two come out even within noise, and the artifact
+> path's win is memory (936 KB against 19.9 MB). Amends "allocated bytes equal" and "must be strictly below
+> `CompileHeddle`" above; the measurement design (8 workloads × 3 sinks, `ColdStart` 20 × 1 × 1, the `gate`
+> trailer) stands.
+
 ### P3-R9 — NativeAOT posture and sample
 
 **Decision.** `Heddle.csproj` sets `IsTrimmable=true` and `IsAotCompatible=true` and the build carries zero trim/AOT
@@ -324,6 +339,10 @@ materialization. Strict mode costs one bool read per site at materialization and
 allocated bytes must not increase. Guarded by `TechniquePrecompiledBenchmarks` / `TechniquePrecompiledDataOnlyBenchmarks`
 (equal allocation, mean within error), `StartupBenchmarks` (strictly below `CompileHeddle`), and
 `GeneratedAccessorAllocationTests`.
+
+> **Amendment (2026-09-17).** Guard posture per the [P3-R8 amendment](#p3-r8--evidence): allocation at or below
+> the runtime tier, mean within error or faster, cold start reported beside `CompileHeddle` rather than strictly
+> below it.
 
 ## Standards compliance
 

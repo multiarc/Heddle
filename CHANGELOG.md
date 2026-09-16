@@ -216,6 +216,8 @@ window's ratification remain in
   properties retire silently. Output is byte-identical either way — delete the element.
 - **Retired build ids stay claimed.** Every `HED70xx` id whose fact no longer exists is retired in
   place: the constant, the catalog row and the published mention stay, so the id is never reused.
+  `HED7011` (import not included) joins them: the host reads an import outside the item set from disk,
+  mirroring the engine's `ImportMap`, so it never fires.
   See the [generator-removal migration note](docs/precompilation.md#generator-removal-migration-note)
   for the twin → engine-id re-keying.
 - **`Precompile="false"` items are validated and advised.** An opted-out item's `Key`/`Name` now raise the

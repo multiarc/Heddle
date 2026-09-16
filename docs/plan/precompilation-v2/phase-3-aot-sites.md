@@ -50,6 +50,10 @@ with benchmarks.
 5. No generated accessor allocates per call beyond the box the engine's accessor produces for a
    value-type result.
 
+> Note (2026-09-17): criterion 3 (both halves) is read at the measured posture ratified in the spec's
+> [P3-R8 amendment](../../spec/precompilation-v2/phase-3-generated-sites.md#p3-r8--evidence): allocation at or
+> below the runtime tier, mean within error or faster, cold start reported beside `CompileHeddle`.
+
 ## Validation scenarios
 
 - `@(price * 1.2m + fee)` with mixed numeric kinds: the printed method applies the engine's

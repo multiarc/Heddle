@@ -169,6 +169,16 @@ document and slot-mode flag.
 > **As implemented (2026-09-16).** The "late-bound call (expression ref)" parameter kind is not produced: a
 > deferred call is a native-expression parameter whose tree carries `ContainsDeferredCall` (see the AC-6 note).
 
+> **Amendment (2026-09-17, ratified by the maintainer).** The document tuple is
+> `(rawText, shapedText, needsLocals, parseFacts, elements[])`. `rawText` is the pre-shaping source the build parsed
+> (empty for a synthesized fragment document, which the loader never parses), and it is what the loader replays
+> through the engine's own parser at materialization
+> ([P1-R1 amendment](phase-1-compiled-form.md#p1-r1--the-second-front-door-is-the-compiler-itself)); a body
+> records its raw text for the same reason. The shaped text is not reparseable (collapsed `@@` escapes, removed
+> definitions, trimmed lines) and stays the render-time text of the `RuntimeDocument`. No byte of schema 4 changes:
+> `rawText` is already written and read at this position (`CompiledFormWriter`/`CompiledFormReader`, `Documents`
+> section); this amendment documents it.
+
 ### AC-7a — Parse facts
 
 Per document, the facts of the `ParseContext` the text path handed to `TemplateFactory.Create`, `InitStart`,
@@ -178,6 +188,13 @@ refs into `Definitions`); and, per item, the `ParameterTemplate` text. The loade
 from these so `DefenitionExists`/`GetDefenition` (which select `HED1001` versus `HED1002` and drive
 `DefinitionBaseExtension`), `OutExtension`'s slot derivation and `PartialExtension`'s child scheduling behave as on
 the text path.
+
+> **Amendment (2026-09-17, ratified by the maintainer).** Carried, reserved. Under replay materialization the
+> `ParseContext` is produced by the engine's own parser over the raw text
+> ([P1-R1 amendment](phase-1-compiled-form.md#p1-r1--the-second-front-door-is-the-compiler-itself)), so the loader
+> has no consumer of this section today: the reader validates its refs and the merger rebases them, nothing else
+> reads them. The facts stay in the artifact unchanged — for the byte stability of schema 4 and as the recorded
+> evidence of what the build's parse saw — and a loader consumer is a later, additive decision. Bytes do not change.
 
 ## AC-8 — Template rows
 
