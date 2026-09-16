@@ -113,6 +113,36 @@ namespace Heddle.Build.Tasks
 
         private string _responseFile;
 
+        // The host's last lines, kept so a non-zero exit that produced no canonical diagnostic still
+        // says why at default verbosity (a muxer error, a crash before the diagnostic writer runs).
+        private readonly Queue<string> _outputTail = new Queue<string>();
+        private const int OutputTailLines = 20;
+
+        protected override void LogEventsFromTextOutput(string singleLine, MessageImportance messageImportance)
+        {
+            if (singleLine != null)
+            {
+                if (_outputTail.Count == OutputTailLines)
+                    _outputTail.Dequeue();
+                _outputTail.Enqueue(singleLine);
+            }
+            base.LogEventsFromTextOutput(singleLine, messageImportance);
+        }
+
+        protected override bool HandleTaskExecutionErrors()
+        {
+            if (!Log.HasLoggedErrors)
+            {
+                string tail = _outputTail.Count == 0
+                    ? "(no output)"
+                    : string.Join(Environment.NewLine, _outputTail.ToArray());
+                Log.LogError("heddle compile exited with code {0} without reporting a diagnostic. Its output:{1}{2}",
+                    ExitCode, Environment.NewLine, tail);
+                return false;
+            }
+            return base.HandleTaskExecutionErrors();
+        }
+
         public override bool Execute()
         {
             try
@@ -120,6 +150,13 @@ namespace Heddle.Build.Tasks
                 if (string.IsNullOrEmpty(ToolPath))
                 {
                     Log.LogError("HeddleToolPath is not set; it must point at the built Heddle.Tool.dll.");
+                    return false;
+                }
+                if (!File.Exists(ToolPath))
+                {
+                    Log.LogError("HeddleToolPath '{0}' does not exist; it must point at the built Heddle.Tool.dll " +
+                        "(a project that sequences the build-time precompile references Heddle.Tool, or the " +
+                        "Heddle.Build package carries it).", ToolPath);
                     return false;
                 }
 

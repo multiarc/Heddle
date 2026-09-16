@@ -29,9 +29,12 @@
     <!-- The host is an executable, which a self-contained (AOT) publish cannot reference
          (NETSDK1150). It is still needed to sequence the build-time precompile, so it stays for
          build/run and drops out of publish: publish therefore requires a prior build, when the
-         precompile stamp is already up to date. See README.md for the two-step publish. -->
+         precompile stamp is already up to date. See README.md for the two-step publish.
+         The switch is _IsPublishing (set by `dotnet publish`), not PublishDir: the SDK defines
+         PublishDir for every build, so a condition on it dropped the reference always and the
+         sample only built where the Tool had been built by something else. -->
     <ProjectReference Include="..\..\src\Heddle.Tool\Heddle.Tool.csproj" ReferenceOutputAssembly="false"
-                      Condition="'$(PublishDir)' == ''" />
+                      Condition="'$(_IsPublishing)' != 'true'" />
   </ItemGroup>
 
   <!-- Rooted: a relative path here would resolve against the imported targets file. -->

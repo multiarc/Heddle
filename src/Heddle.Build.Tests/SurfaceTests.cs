@@ -274,5 +274,26 @@ namespace Heddle.Build.Tests
         }
 
 
+        /// <summary>A HeddleToolPath that names no file is an error naming the path — the CI failure shape
+        /// where the sample never built the Tool and MSBuild reported only "dotnet exited with code 1".</summary>
+        [Fact]
+        public void MissingToolPathIsNamedAsAnError()
+        {
+            using (var fixture = new MsBuildFixture())
+            {
+                fixture.Write("templates/hello.heddle", "Hello, @(Name)!\n");
+                string project = fixture.Write("app.csproj",
+                    MsBuildFixture.ProjectXml("net10.0", string.Empty,
+                        "<HeddleTemplate Include=\"templates/hello.heddle\" />\n"));
+                string missing = Path.Combine(fixture.Root, "nowhere", "Heddle.Tool.dll");
+                var result = fixture.Build(project, "-v:m", "/p:HeddleToolPath=\"" + missing + "\"");
+                Assert.NotEqual(0, result.Exit);
+                Assert.Contains("HeddleToolPath", result.Output);
+                Assert.Contains("does not exist", result.Output);
+                Assert.Contains("nowhere", result.Output);
+                Assert.DoesNotContain("MSB6006", result.Output);
+            }
+        }
+
     }
 }
