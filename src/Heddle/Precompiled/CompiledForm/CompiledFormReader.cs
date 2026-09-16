@@ -921,16 +921,16 @@ namespace Heddle.Precompiled.CompiledForm
                         Malformed("A site kind is out of range.");
                     site.Kind = (CompiledSiteKind)kind;
                     site.PayloadRef = ReadSized();
-                    if (site.PayloadRef >= SitePayloadLimit(site.Kind, artifact))
+                    if (site.PayloadRef >= SitePayloadLimit(site, artifact))
                         Malformed("A site payload ref is out of range.");
                     artifact.Sites.Add(site);
                 }
                 ExpectEnd();
             }
 
-            private static int SitePayloadLimit(CompiledSiteKind kind, CompiledArtifact artifact)
+            private static int SitePayloadLimit(CompiledSiteRow site, CompiledArtifact artifact)
             {
-                switch (kind)
+                switch (site.Kind)
                 {
                     case CompiledSiteKind.MemberAccessor:
                         return artifact.Members.Count;
@@ -939,6 +939,9 @@ namespace Heddle.Precompiled.CompiledForm
                         return artifact.Expressions.Count;
                     case CompiledSiteKind.EmbeddedCSharp:
                         return artifact.CSharpSites.Count;
+                    case CompiledSiteKind.Refusal:
+                        // Templates precede Sites, so the owning row's RefusalSites list is already read.
+                        return artifact.Templates[site.TemplateIndex].RefusalSites.Count;
                     default:
                         return artifact.Documents.Count;
                 }

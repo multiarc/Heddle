@@ -28,6 +28,7 @@ namespace Heddle.Tests
                 ["expr-flagship.heddle"] = typeof(NativeExpressionGoldenTests.FlagshipModel),
                 ["expr-functions.heddle"] = typeof(NativeExpressionGoldenTests.FunctionsModel),
                 ["context-lint-corpus.heddle"] = typeof(HtmlContextLintTests.LintModel),
+                ["def-default-body-accessor.heddle"] = typeof(HtmlContextLintTests.LintModel),
                 ["recursion.heddle"] = null,
                 ["dynamic-recursion.heddle"] = null,
             };

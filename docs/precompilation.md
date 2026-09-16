@@ -35,6 +35,8 @@ Add the build package (MSBuild targets driving the out‑of‑process `heddle co
 </ItemGroup>
 ```
 
+## Templates and metadata
+
 By default every `**/*.heddle` file in the project (excluding `bin`/`obj`) is picked up as a
 template. Opt individual files out, or add extra ones, with the `HeddleTemplate` item. Five item
 metadata are read:
@@ -183,7 +185,8 @@ only caller was generated 2.x code. Each deletion maps to one class:
 - **(b) Delete one property.** A project that sets a retired 2.x MSBuild option
   (`HeddleObserveEngine`, `HeddleNodeFallback`, `HeddleEmitUtf8Pieces`,
   `HeddleObserveIntermediatePath`, `HeddleObserveImplementationPath`) deletes the element. The build
-  warns `HED7037` naming it until you do; output is byte-identical either way.
+  warns `HED7037` naming the first three until you do; the two observe-path properties are ignored
+  silently. Output is byte-identical either way.
 - **(c) Delete the one remedy the template relied on.** Two sub-cases. A `Precompile="false"` item
   metadata kept only because a 2.x defect declined the template can go — v3 precompiles bodied calls,
   hook-overriding extensions and unnameable members that 2.x declined, so re-enable the template and
@@ -408,10 +411,11 @@ A host that renders under more than one shape — two output profiles, or a requ
 `FunctionRegistry` — calls the pass once per shape. There is no parameterless overload, deliberately: a
 verdict with no options to scope it could only be misread.
 
-A `UnsupportedFunction` failure is reported like any other. It arises two ways, and both are worth
-hearing: a marker entry (`HED7014` — a call the build refused on purpose, which will never render
-precompiled), and a **late‑bound** entry whose recorded function name the live registry does not know,
-which is a real configuration gap between the build and the deployment.
+An `UnsupportedFunction` failure is reported like any other. It has one cause in v3: a **late‑bound**
+entry whose recorded function name the live registry does not know — a real configuration gap between
+the build and the deployment (register the function before serving). A call the build refused on purpose
+is not a gauntlet failure at all: it is a refusal site, named by `HED7014`/`HED7033` at build and by
+`HED7031`, and it renders through the dynamic path while the rest of the template stays precompiled.
 
 ### The staleness identity
 
@@ -443,7 +447,7 @@ saw hides a packaging bug behind identical output. The classification:
 | --- | --- | --- |
 | `StaleContent` | legitimate fallback | The template changed on disk after the build — dynamic recompile is the correct semantics, and `EnableFileChangeCheck` exists to ask for exactly this tracking. |
 | `StaleImport` | legitimate fallback | The same, one hop out: an import changed under an unchanged root template. |
-| `UnsupportedFunction` | legitimate fallback *(marker)* / **must surface** *(late‑bound)* | Two causes under one reason. A marker entry is not a run‑time discovery at all — the build refused *on purpose* and warned `HED7014`. A **late‑bound** entry naming a function the live registry does not hold is the opposite: the build did its work and the deployment did not register what the template calls, so the fallback is hiding a configuration gap. The detail string separates them (`manifest=<late-bound> live=<unregistered>`). |
+| `UnsupportedFunction` | **must surface** | One cause in v3: a **late‑bound** entry names a function the live registry does not know. That is a configuration gap between build and deployment — register the function before serving — never a designed miss. (A call the build refused on purpose is a refusal site, reported at build by `HED7014`/`HED7033`, not a gauntlet reason.) |
 | `OptionsMismatch` | legitimate fallback | Options are per‑request degrees of freedom a host legitimately exercises; the same template served `Text` for mail and `Html` precompiled is a designed miss of the fingerprinted point, not a defect. |
 | `ModelTypeMismatch` | legitimate fallback | The host typed its `CompileContext` differently from the build's assumption for a template that names no model of its own. Both types are legitimate — one is the deployment's, one is the build's — and only the dynamic tier can honour the deployment's. Precompiling for that host is a *build configuration* opportunity (`ModelType` item metadata), not a run‑time defect. |
 | `ExtensionBindingMismatch` | **must surface** *(provisional)* | A residual mismatch means the deployed binding set genuinely differs from the one the build declared — rendering dynamically with *different bindings than the build recorded* is the hazard, not the cure. |
@@ -684,7 +688,7 @@ guessing (see `HookBehavior` below).
 Falling back is never a correctness question, at either size. Both tiers are parity‑checked to the
 byte, so a fallen‑back template — or a fallen‑back call — renders exactly what a precompiled one
 would; what it costs is the build‑time work. `HED7031` is how you hear about the template‑sized one,
-and `<WarningsAsErrors>HED7031</WarningsAsErrors>` is how you make it matter.
+and `TemplateOptions.PrecompiledStrictLoad` is how you make it matter at load (`HED7031` itself is an Info notice, not a warning).
 
 ### Recovered — these precompile now
 
@@ -763,6 +767,39 @@ retired in place rather than deleted, exactly as a diagnostic id is.
 
 ---
 
+## Generated sites and strict mode
+
+Beside the stored compiled form, the build prints one **generated site** per member accessor,
+native expression and embedded C# expression it bound — a typed C# method keyed by the site's id
+(template content hash, row index, walk ordinal) — into the assembly's generated source, and the
+artifact class implements `IPrecompiledSiteTable` over them. At materialization the loader asks the
+table for each site before rebuilding it from its serialized form, and consults a table only when its
+recorded artifact digest matches the artifact it loaded, so a table can never serve a site of a
+different compilation.
+
+- **`"Heddle.Precompiled.UseGeneratedSites"`** (`AppContext` switch, default `true`) — set it to
+  `false` to make the loader ignore the table and rebuild every site from data: the "without" arm the
+  evidence runs compare against, and a diagnostic aid when a generated site is suspected.
+- **`TemplateOptions.PrecompiledStrictLoad`** (seeded from the **`"Heddle.Precompiled.StrictLoad"`**
+  `AppContext` switch, default `false`) — under strict load a site the table does not serve
+  **throws** `PrecompiledStrictLoadException` at materialization, naming the template key, the site
+  ordinal and the site kind (`MemberAccessor`, `NativeExpression`, `CSharp`, `LateBound` or
+  `RefusalSite`), instead of compiling it at load. A trimmed or NativeAOT host sets it so that
+  nothing is ever compiled at run time.
+- **Declared classes.** A strict host that hits `LateBound` has a call the build could not bind:
+  export the function with `[ExportFunctions]` on a container the build can see (a referenced
+  assembly, or the project's own intermediate compile — the `samples/precompiled-aot` project
+  exports its own `SampleFunctions` this way), and the site is bound at build. A `RefusalSite` is a
+  class (a)/(b)/(c) refusal named by `HED7031`/`HED7033`/`HED7014` at build; the remedy is the one
+  those ids name. A `CSharp` site is served only when the build printed it (an `@using`-resolvable
+  expression); otherwise it is data and strict load refuses it.
+- **Extensions in a trimmed host** are declared in the typed form — `[assembly: ExportExtensions(typeof(MyExtension))]`
+  — whose constructor parameter roots each extension type through trimming; the parameterless scan-all
+  form enumerates the assembly's types at registration, which trimming empties, and carries
+  `[RequiresUnreferencedCode]` so a trimmed build says so instead of silently losing extensions.
+
+---
+
 ## Build‑time diagnostics
 
 Each build‑time condition reports with an `HED7xxx` id. Template‑content conditions report at
@@ -788,7 +825,7 @@ their `.heddle` position; file/key/option‑level conditions report without a so
 | `HED7017` | **Retired in place — no build raises it; the id stays claimed. See [Retired build ids](#retired-build-ids).** An extension declares a malformed `[Prop]` parameter — the build‑tier twin of the dynamic tier's declaration diagnostics. |
 | `HED7018` | A template is outside `HeddleTemplateRoot` and has no explicit `Key`, so its directory is dropped and it registers under a flattened filename key (warning). Only `Key` suppresses it: a `Name` is additive and leaves the flattened key in place, so the warning is still about something real. |
 | `HED7019` | **Retired in place — no build raises it; the id stays claimed. See [Retired build ids](#retired-build-ids).** The `Heddle` engine assembly is not visible among the compilation's references, so the manifest records the generator's own version as `engineVersion` (warning). |
-| `HED7020` | The build host faulted on a template — a host defect, not a template error. That one template emits nothing; the rest of the pass and the artifact are unaffected. |
+| `HED7020` | The build host faulted (error). Compiling one template: a host defect, not a template error — that template emits nothing, the rest of the pass and the artifact are unaffected. Writing the outputs after every template compiled: nothing is written and the build fails (exit 1). |
 | `HED7021` | An `[assembly: ExportFunctions(...)]` container is not a public static class. The runtime throws when the host assembly is registered, so the build errors rather than skipping the container silently. |
 | `HED7022` | **Retired in place — no build raises it; the id stays claimed. See [Retired build ids](#retired-build-ids).** An `@profile(){{…}}` value is neither `text` nor `html`. The runtime rejects the template with `HED2001`, so the build reports it rather than pre-compiling output the dynamic tier would never produce. |
 | `HED7023` | **Retired in place — no build raises it; the id stays claimed. See [Retired build ids](#retired-build-ids).** A model/prop/slot type name is ambiguous — several types answer to it and the `@using` imports do not settle it. The runtime raises the same ambiguity, so the build errors rather than binding one candidate. |
@@ -796,7 +833,7 @@ their `.heddle` position; file/key/option‑level conditions report without a so
 | `HED7025` | **Retired in place — no build raises it; the id stays claimed. See [Retired build ids](#retired-build-ids).** A function call the shared overload ranker proved illegal — ambiguous under Heddle's flat Pareto rank (`HED1013`), or no applicable overload (`HED1012`). Fires only when every argument estimate is typed: an argument the generator cannot describe proves nothing about the runtime and still degrades silently. |
 | `HED7028` | An `@<<` import names a template by its registration key while the template also carries a `Name`. Both spellings resolve — `Name` adds an import name, it never replaces the key — so this is a warning recommending the name-first spelling for a named template. |
 | `HED7030` | **Retired in place — no build raises it; the id stays claimed. See [Retired build ids](#retired-build-ids).** A type — a model, a member's type, or a bound host **extension** — that generated code may not name: an `internal` type or `internal` member declared in a *referenced* assembly, or one marked `[Obsolete(…, error: true)]`. The engine binds it by reflection — which ignores both assembly boundaries and `[Obsolete]` — and renders normally, while generated code naming it would not compile (`CS0122`, `CS0619`), so the template degrades to the dynamic tier under a warning. Make it public or grant the consuming assembly `[InternalsVisibleTo]`, or drop the error-level `[Obsolete]`, to precompile it. A warning-level `[Obsolete]` changes nothing: the template still precompiles, and the generated file suppresses the warning. An extension is discovered by reflection over the exporting assembly and created with `Activator.CreateInstance`, neither of which asks either question, so a non-public or error-obsolete extension registers and renders while the `new` the generated field is initialised with does not compile. An extension whose declared `[Prop]` *type* is unnameable is unaffected: nothing on the parameter path ever spells a prop type. |
-| `HED7031` | The emitter declined to precompile this template for a reason with no more specific channel — embedded C# outside `FullCSharp` expression mode, or a prop prototype the build cannot freeze — so it renders through the dynamic path. The message carries the emitter's own reason, and the diagnostic carries the reason's **class** beside it as the `HeddleRefusalCategory` property: see [Why a template declines](#why-a-template-declines-the-refusal-categories). Output is unaffected: the two tiers are parity-checked and produce identical bytes, so this costs build-time work rather than correctness. It is the catch-all for a decline that was previously **silent**: the 2.x emitter computed a reason, the generator's `if (Emitted) … else if (IsMarker)` had no final `else`, and the template produced no source, no manifest row and no diagnostic — leaving a project no way to learn that a template it believed precompiled was rendering dynamically on every request. Where precompilation is a requirement rather than an optimisation, promote it with `<WarningsAsErrors>HED7031</WarningsAsErrors>`. |
+| `HED7031` | Info, once per template that is not fully precompiled, naming every site that rebuilds at load or renders through the dynamic path: refusal sites (with their class and reason — see `HED7014`/`HED7033`), late‑bound functions, C# sites carried as data, printer declines. The output is identical either way; a strict host (`PrecompiledStrictLoad`) refuses such a template at load instead. |
 | `HED7032` | A template carries **both** an in‑file `@model` directive and `ModelType` item metadata, and the two spellings resolve to **different types**. The runtime reads only the directive, so the build refuses to pick one rather than typing the same template differently on the two tiers. Equal spellings, or different spellings resolving to the same type, agree and raise nothing. Reported at the file's start — item metadata has no in‑file position. |
 | `HED7033` | A bound extension declares `[PrecompileUnsupported]` — its author's own statement that load‑time execution cannot reproduce its compile‑time behaviour (warning). The declared reason is quoted **verbatim**. Cost is **one call site**: that call binds dynamically (it renders by compiling its own source text at first render) while the rest of the template stays precompiled. Read on both sides — the build reads the declaration off the bound type, the loader reads it off the live type — so an extension package that adds the declaration *after* your assembly was built still falls back rather than binding through a seam its author has disowned. |
 | `HED7034` | **Retired in place — no build raises it; the id stays claimed. See [Retired build ids](#retired-build-ids).** The build could not observe a real engine compile of your templates, so a body whose model type only an extension's hook can supply is emitted type‑agnostically rather than with a direct cast. A **note** under `HeddleObserveEngine=Auto` and an **error** under `Strict`; reported once per compilation, and not at all under `Auto` when no observe directory was configured — nor in either mode when no template ever needed observing. A project‑to‑project reference to the engine or to an extension assembly is handled — MSBuild declares the implementation behind each reference assembly in `HeddleObserveImplementationPath`, and observation loads that — so what is left is a reference with no implementation on record, a host that does not import `Heddle.Generator.targets`, an observe directory that could not be written, or an engine image the process could not load. The template still precompiles and renders identical output either way — this is a typing optimisation, not a tier. |
@@ -849,7 +886,7 @@ retired, and no new fact ever reuses the number:
 name), `HED7024` (private region fill), `HED7025` (unbindable function call), `HED7030`
 (inaccessible model symbol), `HED7034` (unobserved engine). `HED7007` (unresolvable model spelling)
 is retired only as a generator-issued diagnostic: the build host raises the same fact. The register
-is [program record — precompilation v2](../spec/common/cross-cutting-decisions.md#program-record--precompilation-v2-closed).
+is [program record — precompilation v2](../docs/spec/common/cross-cutting-decisions.md#program-record--precompilation-v2-closed).
 
 ## What no longer exists
 
@@ -859,7 +896,7 @@ is [program record — precompilation v2](../spec/common/cross-cutting-decisions
   (init sites and bodies, late accessors, prop setters/evaluators, partial-name and function-site
   types, `RuntimeOperators`, capabilities, line-path form, call shapes, observe mode, hand-written
   manifests). The full list is the phase-4 removal record in the
-  [program record](../spec/common/cross-cutting-decisions.md#program-record--precompilation-v2-closed).
+  [program record](../docs/spec/common/cross-cutting-decisions.md#program-record--precompilation-v2-closed).
 - `PrecompiledTemplateInfo`'s public constructors, `Capabilities`, `LinePathForm`, `InitSites` and
   `IsPrecompiled` — a row's presence in `Entries` is the fact.
 - The v3-era schema gates (`DynamicMemberRouting`, `PerCarrierLocals`, `RegisteredName`,
@@ -890,12 +927,16 @@ heddle render <template> [--model-json <file>] [--out <file>] [--root <dir>]
 
 ---
 
-*Verified against the v3 sources.* Claims marked ✓ are gated by a test:
-the `HED70xx`/`HED71xx` tables ✓ (descriptor ⇄ registry ⇄ this page, both directions); the
-fallback-reason taxonomy ✓ (an exhaustive classifier that throws on an unmapped reason); the
-gauntlet's five steps ✓ (`PrecompiledGauntletTests`); the schema support window ✓
-(`OldSchemaManifestRejectionTests`, over both released schemas); the refusal categories ✓
-(`RefusalCategory`, pinned per category through `DifferentialHarness.ExpectDegrade`). The MSBuild
+*Verified against the v3 sources (2026-09-16).* Claims marked ✓ are gated by a test:
+the `HED70xx`/`HED71xx` tables ✓ (`DiagnosticIdTests`: descriptor ⇄ registry ⇄ this page, both
+directions); the gauntlet's steps ✓ (`PrecompiledGauntletTests`); the compiled form's parity with
+the dynamic tier on three sinks, three passes (in-memory, file-backed, staged with the staleness
+step) under `PrecompiledMismatchPolicy.Strict` and a fallback sentinel ✓ (`CompiledFormParityTests`,
+`FallbackGuard`); allocation no higher than the dynamic tier on every corpus row and sink ✓
+(`CompiledFormAllocationTests`); the stored `compiled-form-v4.bin` fixture registering and rendering
+byte-identically ✓ (`CompiledFormFixtureTests`); a host-built assembly registering and rendering ✓
+(`HostBuiltArtifactTests`); the refusal classes ✓ (declared per corpus row in `CorpusIntent`, asserted
+by set equality, `CompiledFormHarness.ExpectRefusal` for a declared extra). The MSBuild
 option table, the startup-order guidance and the coverage/boundary tables are dated-verified, not
 gated — the coverage tables were written against the shared corpus's declared intent rows
 (`src/TestCorpus/CorpusIntent.cs`), which *are* set-equality gated, but nothing checks the prose

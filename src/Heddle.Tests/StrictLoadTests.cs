@@ -56,12 +56,6 @@ namespace Heddle.Tests
                 .OrderBy(n => n, StringComparer.Ordinal)
                 .ToList();
 
-        private static void RequireStrictMode(string fact)
-        {
-            if (!CompiledFormHarness.StrictModeSupported)
-                Assert.Skip(fact + " needs the P3-A engine slice (PrecompiledStrictLoadException + TemplateOptions.PrecompiledStrictLoad).");
-        }
-
         private static bool IsStrictException(Exception ex) =>
             ex != null && string.Equals(ex.GetType().FullName, StrictExceptionName, StringComparison.Ordinal);
 
@@ -150,7 +144,6 @@ namespace Heddle.Tests
         [Fact]
         public void StrictSetEqualsDeclaredSet()
         {
-            RequireStrictMode(nameof(StrictSetEqualsDeclaredSet));
             var expected = new SortedSet<string>(ExpectedStrictRows(), StringComparer.Ordinal);
             var observed = new SortedSet<string>(StringComparer.Ordinal);
             var kinds = new Dictionary<string, string>(StringComparer.Ordinal);
@@ -173,18 +166,22 @@ namespace Heddle.Tests
         [Fact]
         public void RefusalSiteThrowsNamingOrdinalAndKind()
         {
-            RequireStrictMode(nameof(RefusalSiteThrowsNamingOrdinalAndKind));
             var row = Find("ext-site-fallback.heddle");
             Assert.True(TryStrictMaterialize(row, out var kind, out var ordinal),
                 "The refusal row should throw under strict load.");
             Assert.Equal("RefusalSite", kind);
-            Assert.True(ordinal >= 0, "The strict exception should name the refusal site ordinal.");
+            // The ordinal named is the refusal site's walk ordinal in the artifact the row builds to.
+            string text = CompiledFormHarness.CorpusText(row.Name);
+            var buildOptions = CompiledFormHarness.RowOptions(row.Name, row, TestCorpusIndex.CorpusDir);
+            var modelEx = CompiledFormHarness.ModelExFor(row, out _, out _);
+            CompiledFormHarness.BuildRecording(text, buildOptions, modelEx, out var context);
+            var artifact = CompiledFormHarness.ToArtifact(context, row.Name, text, modelEx, buildOptions, row);
+            Assert.Equal(artifact.Templates[0].RefusalSites[0].SiteOrdinal, ordinal);
         }
 
         [Fact]
         public void LateBoundFunctionThrowsLateBoundKind()
         {
-            RequireStrictMode(nameof(LateBoundFunctionThrowsLateBoundKind));
             foreach (var name in new[] { "fn-standalone-late-bound.heddle", "fn-typed-consumer-late-bound.heddle" })
             {
                 var row = Find(name);
@@ -199,7 +196,6 @@ namespace Heddle.Tests
         {
             // Declared classes, permitted under strict mode: DLR call-site creation for a DynamicHop
             // (:: dynamic and model-less templates) is not compilation, so these render.
-            RequireStrictMode(nameof(DynamicAndModelLessTemplatesRenderUnderStrict));
             foreach (var name in new[] { "at-escape.heddle", "branching-out-projection.heddle" })
             {
                 var row = Find(name);
@@ -244,7 +240,6 @@ namespace Heddle.Tests
         [Fact]
         public void TypedWrapperThrowsFromBindTypedUnderStrict()
         {
-            RequireStrictMode(nameof(TypedWrapperThrowsFromBindTypedUnderStrict));
             var row = Find("ext-site-fallback.heddle");
             PrecompiledTemplates.ResetForTests();
             string text = CompiledFormHarness.CorpusText(row.Name);

@@ -32,7 +32,13 @@ namespace Heddle.Tests
             "   X   =   System.Linq   ",
             "@X = System.Linq",
             "X = global::System.Linq",
+#if !NETFRAMEWORK
+            // An alias to a predefined type is legal only from C# 12. The net48 leg resolves the older
+            // Microsoft.CodeAnalysis the netstandard2.0 engine pins, which rejects it outright, so there the
+            // oracle would describe the compiler's age rather than the classifier: the row exists only on
+            // the legs whose oracle can arbitrate it.
             "X = int",
+#endif
             "static System.Math",
             "static  global::System.Math",
             "static\tSystem.Math",
@@ -61,16 +67,12 @@ namespace Heddle.Tests
                                      directive.StaticKeyword.IsKind(SyntaxKind.StaticKeyword);
             var compilerAliasName = compilerSaysStatic ? null : directive?.Alias?.Name.Identifier.ValueText;
 
-            // The oracle is whatever Roslyn this target framework resolves, and that is not the same
-            // compiler on every leg. `using X = int;` -- an alias to a predefined type -- is legal
-            // only from C# 12; the net48 leg resolves an older Microsoft.CodeAnalysis that rejects
-            // it outright. On that leg the oracle's answer describes the compiler's age, not our
-            // classifier, so it cannot arbitrate the row. Skipping is narrow by construction: it
-            // fires only where the compiler rejects a body our classifier accepts, which no
-            // malformed row in this set does (they are rejected by both).
+            // The oracle is whatever Roslyn this target framework resolves, and that is not the same compiler
+            // on every leg. A body the classifier accepts and the compiler rejects is a row the oracle cannot
+            // arbitrate; the one such row (`using X = int;` on net48) is left out of Bodies() at compile time,
+            // so reaching this point is a genuine disagreement, not a compiler-age artefact.
             if (directive == null && UsingDirectives.TryReadAlias(body, out _, out _))
-                Assert.Skip($"the Roslyn resolved for this target rejects `using {body};`, " +
-                            "so it cannot serve as the oracle for this row");
+                Assert.Fail($"the Roslyn resolved for this target rejects `using {body};`, which the classifier accepts");
 
             Assert.Equal(compilerSaysStatic, UsingDirectives.TryReadStaticTarget(body, out var staticTarget));
             if (compilerSaysStatic)

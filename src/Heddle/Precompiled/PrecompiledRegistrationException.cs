@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 
 namespace Heddle.Precompiled
 {
@@ -24,6 +25,15 @@ namespace Heddle.Precompiled
             SchemaVersion = schemaVersion;
         }
 
+        /// <summary>AC-3: the artifact the marker names is malformed (bad magic, unreadable schema, a required
+        /// section missing, sections overlapping or duplicated, a value past the end). The reader's
+        /// <see cref="InvalidDataException"/> is the inner exception; the assembly is named here.</summary>
+        public PrecompiledRegistrationException(string assemblyName, InvalidDataException malformed)
+            : base(BuildMessage(assemblyName, malformed), malformed)
+        {
+            NewAssemblyName = assemblyName;
+        }
+
         /// <summary>The colliding, normalized key.</summary>
         public string Key { get; }
 
@@ -44,6 +54,13 @@ namespace Heddle.Precompiled
                 "an explicit replacement marker (a future `Replace` flag on the manifest entry, mirroring " +
                 "`[ExtensionReplace]`) is not yet available. Rename one template, give it an explicit `Key` " +
                 "metadata, or exclude it from pre-compilation with `<HeddleTemplate Remove=\"…\" />`.";
+        }
+
+        private static string BuildMessage(string assemblyName, InvalidDataException malformed)
+        {
+            return
+                $"Assembly '{assemblyName}' carries a malformed compiled-form artifact: " +
+                (malformed != null ? malformed.Message : "no detail") + " Rebuild the assembly with the Heddle.Build package.";
         }
 
         private static string BuildMessage(string assemblyName, int schemaVersion)

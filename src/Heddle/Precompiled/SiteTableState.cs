@@ -222,7 +222,8 @@ namespace Heddle.Precompiled
                 return live == null;
             if (live == null)
                 return false;
-            return string.Equals(recorded.Nominal(), NominalOf(live), StringComparison.Ordinal);
+            // AC-4: framework refs match by full name alone; everything else by full name and assembly.
+            return PrecompiledGauntlet.TypeRefMatches(recorded, live);
         }
 
         internal static string NominalOf(Type live)
@@ -329,7 +330,10 @@ namespace Heddle.Precompiled
         /// table there is no site id to name, and unmatched text rebuilds from data.</summary>
         public void ThrowIfStrictUnserved(string kind, int ordinal)
         {
-            if (Strict && Active && ordinal >= 0)
+            // Under strict load with a table present, a site the table did not serve is a refusal whether it
+            // matched a record (ordinal >= 0) or no record exists for it at all (ordinal -1): both would
+            // compile at load, which is what strict load forbids.
+            if (Strict && Active)
                 throw new PrecompiledStrictLoadException(Key, ordinal, kind);
         }
     }

@@ -110,12 +110,62 @@ namespace Heddle.Tests
                 Precompiled.CompiledForm.CompiledFormWriter.Write(artifact),
                 "HeddleTestAsm_DeferredDefault");
             var requestOptions = CompiledFormHarness.RequestOptions(row, TestCorpusIndex.CorpusDir);
+            // The request shape registers toUpper, so it resolves and materializes; the parameterless
+            // default shape cannot bind the name and faults instead of rendering empty, memoized.
             PrecompiledTemplateInfo entry;
             Assert.True(PrecompiledTemplates.TryResolve(row.Name, requestOptions, out entry) && entry != null,
                 "TryResolve refused the late-bound row.");
             Assert.Null(entry.Strategy);
             Assert.Equal(PrecompiledFallbackReason.ExtensionInitCompileError,
                 entry.MaterializationFaultReason);
+        }
+
+        /// <summary>A materialization fault on the registry route: OnFallback fires with the recorded reason,
+        /// Fallback policy resolves false, Strict throws PrecompiledMismatchException naming it — the same
+        /// shape a gauntlet failure has, so no policy sees a null strategy.</summary>
+        [Fact]
+        public void MaterializationFaultRaisesOnFallbackAndHonoursThePolicy()
+        {
+            PrecompiledTemplates.ResetForTests();
+            var row = Find("fn-standalone-late-bound.heddle");
+            string text = CompiledFormHarness.CorpusText(row.Name);
+            var buildOptions = CompiledFormHarness.RowOptions(row.Name, row, TestCorpusIndex.CorpusDir);
+            var modelEx = CompiledFormHarness.ModelExFor(row, out _, out _);
+            var template = CompiledFormHarness.BuildRecording(text, buildOptions, modelEx, out var context);
+            Assert.True(template.CompileResult.Success && context.CompileErrors.Count == 0,
+                "Build failed: " + CompiledFormHarness.Summarize(context) + ".");
+            var artifact = CompiledFormHarness.ToArtifact(context, row.Name, text, modelEx, buildOptions, row);
+            CompiledFormHarness.RegisterImage(
+                Precompiled.CompiledForm.CompiledFormWriter.Write(artifact),
+                "HeddleTestAsm_DeferredPolicy");
+            var events = new System.Collections.Generic.List<PrecompiledFallbackEvent>();
+            var saved = PrecompiledTemplates.OnFallback;
+            PrecompiledTemplates.OnFallback = e => events.Add(e);
+            try
+            {
+                // The registry knows the name (so the gauntlet's function step passes) but offers no
+                // signature the call can bind, so the fault is materialization's, not the gauntlet's.
+                var wrongSignature = new Heddle.Runtime.Expressions.FunctionRegistry();
+                wrongSignature.Register("toUpper", (Func<int, int, string>)((a, b) => (a + b).ToString()));
+                var fallback = CompiledFormHarness.RowOptions(row.Name, row, TestCorpusIndex.CorpusDir);
+                fallback.Functions = wrongSignature;
+                fallback.PrecompiledMismatchPolicy = PrecompiledMismatchPolicy.Fallback;
+                Assert.False(PrecompiledTemplates.TryResolve(row.Name, fallback, out _));
+                Assert.Equal(PrecompiledFallbackReason.ExtensionInitCompileError, Assert.Single(events).Reason);
+
+                var strict = CompiledFormHarness.RowOptions(row.Name, row, TestCorpusIndex.CorpusDir);
+                strict.Functions = wrongSignature;
+                strict.PrecompiledMismatchPolicy = PrecompiledMismatchPolicy.Strict;
+                var thrown = Assert.Throws<PrecompiledMismatchException>(
+                    () => { PrecompiledTemplates.TryResolve(row.Name, strict, out _); });
+                Assert.Equal(PrecompiledFallbackReason.ExtensionInitCompileError, thrown.Reason);
+                Assert.Equal(row.Name, thrown.Key);
+                Assert.Equal(2, events.Count);
+            }
+            finally
+            {
+                PrecompiledTemplates.OnFallback = saved;
+            }
         }
 
         private static CorpusIntentRow Find(string name)

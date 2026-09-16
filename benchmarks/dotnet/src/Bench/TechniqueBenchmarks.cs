@@ -102,6 +102,7 @@ namespace Heddle.Benchmarks.Dotnet.Bench
         public string Workload { get; set; }
 
         private object _model;
+        private HeddleTemplate _bound;
         private BenchSinks.BenchBufferWriter _buffer;
         private BenchSinks.BenchTextWriter _writer;
 
@@ -114,12 +115,16 @@ namespace Heddle.Benchmarks.Dotnet.Bench
             _model = HeddleEngine.ModelFor(Workload);
             var output = Engines.Precompiled.Render("controlled", Workload, HeddleEngine.Sink.String);
             Controlled.AssertCell("Heddle (precompiled/string)", Workload, output);
+            // The timed call is one Generate on the bound template, the same shape as the data-only
+            // suite: routing every render through the backend per-workload lookup cost 24 B per render
+            // that belonged to the harness, not the engine, and read as a difference between the arms.
+            _bound = Engines.Precompiled.BoundFor(Workload);
 
             _buffer = new BenchSinks.BenchBufferWriter(output.Length * 4 + 4096);
             _writer = new BenchSinks.BenchTextWriter(output.Length + 1024);
             TechniqueSetup.AssertSinks(output, _buffer, _writer,
-                b => Engines.Precompiled.RenderToBuffer(Workload, b, _model),
-                w => Engines.Precompiled.RenderToWriter(Workload, w, _model),
+                b => _bound.Generate(_model, b),
+                w => _bound.Generate(_model, w),
                 Workload, "precompiled");
         }
 
@@ -127,7 +132,7 @@ namespace Heddle.Benchmarks.Dotnet.Bench
         public int Utf8()
         {
             _buffer.Reset();
-            Engines.Precompiled.RenderToBuffer(Workload, _buffer, _model);
+            _bound.Generate(_model, _buffer);
             return _buffer.WrittenCount;
         }
 
@@ -135,12 +140,12 @@ namespace Heddle.Benchmarks.Dotnet.Bench
         public int TextWriter()
         {
             _writer.Reset();
-            Engines.Precompiled.RenderToWriter(Workload, _writer, _model);
+            _bound.Generate(_model, _writer);
             return _writer.Length;
         }
 
         [Benchmark]
-        public int String() => Engines.Precompiled.RenderToString(Workload, _model).Length;
+        public int String() => _bound.Generate(_model).Length;
     }
 
     /// <summary>

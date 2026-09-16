@@ -37,8 +37,9 @@ window's ratification remain in
   adapters, the schema-gate constants, the observe mode; the full list is the phase-4 removal record
   in the program record). Precompilation is now a build step — the `Heddle.Build` package compiles
   templates through the real engine out of process and embeds the stored compiled form — not a
-  source generator. The `Microsoft.CodeAnalysis` dependency the engine carried only for the
-  generator goes with it.
+  source generator. The engine keeps its `Microsoft.CodeAnalysis.CSharp` reference — it is the C#
+  expression tier, trimmed out of a publish behind the `Heddle.CSharpTierEnabled` feature switch —
+  and only `Microsoft.Extensions.DependencyModel` went (see the assembly-loading item below).
   **What to do:** remove the `Heddle.Generator` package reference and add `Heddle.Build`; no template
   text changes are needed. A template the build cannot precompile is left out with an `HED7031`
   warning naming it and renders through the byte-identical dynamic path. Hand-written manifests and
@@ -84,6 +85,61 @@ window's ratification remain in
   path-derived class name must be renamed. `Name` moves nothing (see *Added*). If you set
   `Precompile="false"`, that file now really stops precompiling (it remains available to `@<<` imports)
   and renders through the dynamic path.
+
+- **Retired 2.x MSBuild properties.** Setting `HeddleObserveEngine`, `HeddleNodeFallback` or
+  `HeddleEmitUtf8Pieces` warns `HED7037` naming the property; `HeddleObserveIntermediatePath` and
+  `HeddleObserveImplementationPath` are ignored silently. Output is byte-identical either way.
+  **What to do:** delete the element.
+
+- **Typed entry points read their options from `PrecompiledTemplates.DefaultOptions`.** A generated
+  `Heddle.Generated.{Name}.Generate(...)` binds through `PrecompiledTemplates.BindTyped(assembly, key,
+  modelType)` under `DefaultOptions` — there is no per-call options parameter — and renders the
+  **output profile the build baked** into the row. A gauntlet failure at that bind **throws**
+  `PrecompiledMismatchException` rather than degrading, whatever `PrecompiledMismatchPolicy` says:
+  a typed entry has no dynamic twin to fall back to.
+  **What to do:** set `DefaultOptions` once at startup to the shape your host renders with, and read
+  `ValidateAll`'s report before serving.
+
+- **Functions must be bodiless and build-visible to precompile.** A called function the build cannot
+  bind stays a late-bound site (resolved once at first render; reported by `HED7031`); a bodied or
+  chained consumer over such a call — `@if(fn(x)){{…}}` with an argument the build cannot type — is a
+  class (c) refusal (`HED7014`), and that one site renders through the dynamic path.
+  **What to do:** export the function with `[ExportFunctions]` on a public static container the build
+  can see (a referenced assembly, or the project's own intermediate compile), or give the argument a
+  type the build can see.
+
+- **The build host runs on .NET 10, and the host is not the target.** Building requires the .NET 10
+  SDK. A BCL member the build bound that is absent on the target framework is a load-time gate
+  fallback (`MemberBindingMismatch`), not a build error — run `ValidateAll` on the target.
+
+- **`MemberBindingMismatch` is a new must-surface fallback reason.** A member the build bound that
+  resolves differently at load (a renamed member, a changed type, `List<A>` → `List<B>`) fails the
+  gauntlet under that reason; a host's `OnFallback` handler must surface it, never swallow it.
+
+- **Build-diagnostic ids were re-keyed onto engine ids** for every fact the engine diagnoses. The
+  twin → engine-id table is in the
+  [generator-removal migration note](docs/precompilation.md#generator-removal-migration-note) (e).
+
+- **Removed public members** (the phase-4 removal record, listed so the diff is readable without the
+  spec). Types removed whole: `Heddle.Precompiled.PrecompiledRuntime` (every member: `Bind`,
+  `BindDefinition` ×3, `BindExtension`, `BindOut`, `Init`, `InitDefinition`, `InitExtension`,
+  `SiteFallback`, `EvaluatePartialName`, `ResolvePartial` ×3, `WithLocalsFrame`, `MemberAccessor`,
+  `NativeAccessor`, `DynamicMember`, `Prop`, `RootModel`, `CarrierValue`, `GenerateString` ×2,
+  `GenerateToWriter`, `GenerateUtf8`, `WritePiece`), `PrecompiledInitSite`, `PrecompiledInitBody`,
+  `PrecompiledInitFault`, `PrecompiledInitFaultScope`, `PrecompiledLateAccessor`, `PrecompiledPropSetter`,
+  `PrecompiledPropEvaluator`, `PrecompiledPartialName`, `PrecompiledFunctionSite`, `PrecompiledFunctions`,
+  `RuntimeOperators`, `PrecompiledCapabilities`, `PrecompiledLinePathForm`, `PrecompiledCallShape`,
+  `ObserveMode`, `IHeddleTemplateManifest`. Members removed: `PrecompiledTemplateInfo` — all four public
+  constructors, `Capabilities`, `LinePathForm`, `InitSites`, `IsPrecompiled` (a row's presence in `Entries`
+  is the fact), and `Strategy` becomes internal (`EntryPointType`, `RefusalSites` stay);
+  `PrecompiledSchema` — `AmbientModelTypeSchemaVersion`, `DynamicMemberRoutingSchemaVersion`,
+  `LateBoundFunctionMaxArity`, `LateBoundFunctionSchemaVersion`, `LinePathFormSchemaVersion`,
+  `PerCarrierLocalsSchemaVersion`, `PropLayoutFingerprintSchemaVersion`, `RegisteredNameSchemaVersion`,
+  `EmitsDynamicMemberRouting`, `EmitsLateBoundFunctions`, `EmitsPerCarrierLocals`; `HeddleBuildOptions` —
+  `BuildPropertyPrefix`, `DefaultEmitUtf8Pieces`, `DefaultNodeFallback`, `DefaultObserveMode`,
+  `DefaultObserveImplementationPath`, `DefaultObserveIntermediatePath`, `EmitUtf8PiecesProperty`,
+  `NodeFallbackProperty`, `ObserveEngineProperty`, `ObserveImplementationPathProperty`,
+  `ObserveIntermediatePathProperty`. `PublicApiSurfaceTests` pins the surface that remains.
 
 ### Added
 
@@ -202,8 +258,10 @@ window's ratification remain in
 
 ### Build and packaging
 
-- **The `Heddle.Build` package replaces `Heddle.Generator`.** The last 2.x `Heddle.Generator` is
-  deprecated on NuGet naming `Heddle.Build`. The new package carries no Roslyn and no analyzer: an
+- **The `Heddle.Build` package replaces `Heddle.Generator`.** Once the `v3.0.0` tag is pushed and
+  the packages publish, the last 2.x `Heddle.Generator` is to be deprecated on NuGet naming
+  `Heddle.Build` as its replacement — a post-tag step, not something this release's build does. The
+  new package carries no Roslyn and no analyzer: an
   MSBuild task plus targets drive the out-of-process `heddle compile` host, which compiles templates
   through the real engine and embeds the stored compiled form. The multi-Roslyn build variants and the
   .NET Framework legs are gone with the generator they served.

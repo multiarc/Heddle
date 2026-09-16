@@ -122,5 +122,36 @@ namespace Heddle.Tests
                     return row;
             throw new InvalidOperationException("No intent row names '" + name + "'.");
         }
+        /// <summary>A refusal-bearing part merges like any other: its refusal rows keep their per-row payload
+        /// index (never rebased), their walk ordinals, and the merged artifact round-trips byte-exactly.</summary>
+        [Fact]
+        public void MergedRefusalBearingPartKeepsItsRefusalRows()
+        {
+            PrecompiledTemplates.ResetForTests();
+            string rootPath = TestCorpusIndex.CorpusDir;
+            var merged = MergeSingles(new[] { Find("at-escape.heddle"), Find("ext-site-fallback-twice.heddle") },
+                rootPath);
+            byte[] image = CompiledFormWriter.Write(merged);
+            var back = CompiledFormReader.Read(image);
+            Assert.Equal(image, CompiledFormWriter.Write(back));
+            int refusalTemplate = -1;
+            for (int i = 0; i < back.Templates.Count; i++)
+                if (back.Templates[i].RefusalSites.Count == 2)
+                    refusalTemplate = i;
+            Assert.True(refusalTemplate >= 0, "The merged artifact should carry the two-refusal row.");
+            var row = back.Templates[refusalTemplate];
+            var refusalRows = new System.Collections.Generic.List<CompiledSiteRow>();
+            foreach (var site in back.Sites)
+                if (site.Kind == CompiledSiteKind.Refusal)
+                    refusalRows.Add(site);
+            Assert.Equal(2, refusalRows.Count);
+            foreach (var site in refusalRows)
+            {
+                Assert.Equal(refusalTemplate, site.TemplateIndex);
+                Assert.InRange(site.PayloadRef, 0, row.RefusalSites.Count - 1);
+                Assert.Equal(site.SiteOrdinal, row.RefusalSites[site.PayloadRef].SiteOrdinal);
+            }
+        }
+
     }
 }

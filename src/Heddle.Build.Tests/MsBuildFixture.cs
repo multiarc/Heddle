@@ -112,6 +112,34 @@ namespace Heddle.Build.Tests
             return Dotnet(args, Path.GetDirectoryName(projectPath));
         }
 
+        /// <summary>Builds like <see cref="Build"/> and also writes an MSBuild binary log at
+        /// <paramref name="binlogPath"/> (P2-R11: the incrementality facts are asserted on the binary
+        /// log, replayed through <see cref="ReplayBinlog"/>, not only on console text).</summary>
+        public BuildResult BuildWithBinlog(string projectPath, string binlogPath, params string[] extraArgs)
+        {
+            var args = new string[extraArgs.Length + 1];
+            extraArgs.CopyTo(args, 0);
+            args[extraArgs.Length] = "-bl:\"" + binlogPath + "\"";
+            return Build(projectPath, args);
+        }
+
+        /// <summary>Replays a binary log through MSBuild's console logger at detailed verbosity (the
+        /// level at which a replay surfaces target-skip messages) and returns the text, so the
+        /// incrementality facts are asserted on what the log recorded.</summary>
+        public BuildResult ReplayBinlog(string binlogPath)
+        {
+            return Dotnet("msbuild \"" + binlogPath + "\" -v:d -nologo", Path.GetDirectoryName(binlogPath));
+        }
+
+        /// <summary>The fixture's built assembly for <paramref name="assemblyName"/> under
+        /// <paramref name="dir"/>: the one <c>bin/**/*.dll</c> with that name.</summary>
+        public static string BuiltAssembly(string dir, string assemblyName)
+        {
+            string[] found = Directory.GetFiles(Path.Combine(dir, "bin"), assemblyName + ".dll", SearchOption.AllDirectories);
+            Assert.True(found.Length == 1, "Expected one built " + assemblyName + ".dll under " + dir + "/bin, found " + found.Length + ".");
+            return found[0];
+        }
+
         /// <summary>The single <c>Heddle.CompiledForm.bin</c> under <paramref name="dir"/>.</summary>
         public static string Artifact(string dir)
         {

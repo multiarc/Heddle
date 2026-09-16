@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Heddle.Precompiled
 {
@@ -10,13 +11,18 @@ namespace Heddle.Precompiled
     [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = false, Inherited = false)]
     public sealed class HeddleCompiledTemplatesAttribute : Attribute
     {
-        public HeddleCompiledTemplatesAttribute(Type manifestType, int schemaVersion, string engineVersion)
+        public HeddleCompiledTemplatesAttribute(
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)] Type manifestType,
+            int schemaVersion, string engineVersion)
         {
             ManifestType = manifestType;
             SchemaVersion = schemaVersion;
             EngineVersion = engineVersion;
         }
 
+        // P3-R9: the loader instantiates the manifest with Activator.CreateInstance, so the typeof in the
+        // generated marker must keep the parameterless constructor through a trimmed publish.
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)]
         public Type ManifestType { get; }
 
         public int SchemaVersion { get; }

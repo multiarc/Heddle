@@ -34,6 +34,9 @@ calls, `@using` text. Sinks are `CodeWriter.Line`/`Raw`, `_fieldDecls`, `_method
 builder — all in `Emit/TemplateEmitter.cs` and `Emit/PieceWriter.cs`. The last open gap — the export
 argument cast — closed when `TryComputeCasts` grew the classifier check, pinned by
 `ExportArgumentTypingTests.AParameterTypeGeneratedCodeMayNotNameDegradesRatherThanBreakingTheConsumersBuild`.
+*Disposition 2026-09-16:* those files and that test went with the 2.x generator; in v3 the rule lives
+in the site printer (`src/Heddle.Tool/Compile/Sites/TypeNamePrinter.cs`, which declines a name it
+cannot spell and the loader rebuilds that site from data), gated by `PrinterCoverageTests`.
 
 **D. A rule implemented only for the case in front of the author.** Sibling sites keep the bug.
 Either enumerate every site, or read the authority (the attribute, the declared type, the adapter)
@@ -72,8 +75,9 @@ shapes:
   means "nothing else moved" or "the subject was measured" — they are different claims.
 - Run regression checks serially. Two concurrent `dotnet test` runs over this solution can fail
   every row of an unrelated suite.
-- Baselines were Debug-only for ~25 cycles. Run the generator suites in Release too (F-201 is the
-  standing example of what Debug hides).
+- Baselines were Debug-only for ~25 cycles. Run the four suites (`Heddle.Tests`,
+  `Heddle.LanguageServices.Tests`, `Heddle.Tool.Tests`, `Heddle.Build.Tests`) in Release too (F-201 is
+  the standing example of what Debug hides).
 - Never pass `-f net8.0` to `src/Heddle.LanguageServices.Tests` or `src/Heddle.Tool.Tests`
   (net10.0-only; it exits `NETSDK1005` with zero tests run).
 
@@ -117,15 +121,20 @@ finding. Six former known-opens died exactly that way.
 | F-027 | runs of thousands of prefix operators exhaust ANTLR's own lookahead | 3 | upstream (antlr/antlr4#744); unreachable by any bound of ours |
 | F-079 | `Path.Combine` rejects characters on .NET Framework that .NET Core accepts | 3 | degrade pinned on the net48 CI leg: `NetFrameworkDegradePathTests.AnImportPathWithCharactersTheFrameworkRejectsStillParses` asserts the framework's throw and the parse surviving it |
 | F-080 | on `netstandard2.0` an assembly with no file yields no metadata reference | 3 | no API exists there to fix it; pinned both ways by `NetFrameworkDegradePathTests.AnAssemblyWithNoFileYieldsAReferenceOnlyWhereTheRuntimeExposesItsMetadata` — empty on net48, served on modern TFMs |
-| F-140 | two type-kind verdict rows cannot be honestly pinned (`Structure`, `Extension`) | 6 | `grep -n 'Microsoft.CodeAnalysis.CSharp' src/Heddle.Generator/Heddle.Generator.csproj` — re-test if the version moves past 4.x |
-| F-198 | embedded C# binds inside the consumer's compilation — the emitted fragment's own binding — so a consumer-`internal` member resolves where the engine's separate generated assembly raises `RuntimeBinderException`. The generator is *more permissive* on that corner, never less | 3 | measured; `ConsumerParseOptionsTests` is the one test that observes the constraint. Model-path member reads are exempt by construction (`PrecompiledRuntime.DynamicMember` pins its binder context to Heddle's assembly) |
+| F-140 | two type-kind verdict rows cannot be honestly pinned (`Structure`, `Extension`) | 6 | **Closed 2026-09-16:** the generator and its verdict rows are gone with v3 (`src/Heddle.Generator` no longer exists); the compiled form records identities, not verdicts, and `CompiledFormBindingTests` pins the binding gate instead |
+| F-198 | embedded C# binds inside the consumer's compilation — the emitted fragment's own binding — so a consumer-`internal` member resolves where the engine's separate generated assembly raises `RuntimeBinderException`. The generator is *more permissive* on that corner, never less | 3 | measured; `ConsumerParseOptionsTests` is the one test that observes the constraint. Model-path member reads are exempt by construction (`PrecompiledRuntime.DynamicMember` pins its binder context to Heddle's assembly). **Closed 2026-09-16:** v3 has no generated fragment binding in the consumer's compilation — embedded C# sites are printed by the build and otherwise carried as data, compiled by the engine's own Roslyn tier at load — so the corner no longer exists; `PrecompiledRuntime` is removed |
 | Q8.8 | the `ToString("R")` drift fix is formally unclosable without a Windows `net48` run — the 23 green cases are a revert-detector, not proof of sufficiency | 3 | needs a Windows `net48` leg; nothing on a Linux box can close it |
 | Q8.13 | the value-path coercion rail (a boxed non-string drops to empty on the value path, stringifies on the render path) is pinned only as emitted shape — ruled "implement a byte-level fixture on both tiers", not implemented | 6 | build the host extension whose `ProcessData` consumes its body's `Execute` result and returns a non-string; today's tripwire is `StrategyShapeDifferentialTests`' `strategy-nonstring-value` |
 | Q8.15 | intermittent full-solution failures reproduced only in a shared working tree (a concurrent MSBuild `IncrementalClean` rewriting `bin/**` under running test hosts), never in isolation — the two originally named tests never reproduced | 6 | before blaming a test, re-run 25× from a `git archive HEAD` copy; a retry attribute is not an acceptable resolution |
 
 Also open, without their own ids:
 
-- **Engine observation cannot run against a project-to-project reference.** The compiler is handed
+- **Engine observation cannot run against a project-to-project reference.** *Closed 2026-09-16:
+  engine observation is retired with the 2.x generator (`HED7034` retired in place); the v3 build
+  host compiles through the real engine out of process over the implementation images
+  (`@(ReferencePath)` project outputs, package runtime images, declared assemblies) and the
+  project's own intermediate compile, so a project-to-project reference is observed like any other —
+  `IntermediateCompileTests` and `ClassLibraryImageTests` pin it.* The compiler is handed
   the referencing project's *reference assembly* — metadata with the method bodies removed — so
   there is no `InitStart` to execute and `HED7034` reports it. A package reference names the
   implementation and is observed normally. MSBuild knows both paths (`@(ReferencePath)` is the

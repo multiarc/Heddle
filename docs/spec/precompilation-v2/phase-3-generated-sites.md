@@ -149,6 +149,10 @@ spell are declined by P3-R2's rule, using the same reflection view the engine bi
 **Rationale.** [PD5](../../plan/precompilation-v2/decisions.md#pd5--embedded-c-before-generated-sites) completes
 here; the enclosing namespace keeps name lookup identical to the engine's generated assembly.
 
+> **As implemented (2026-09-16).** The printed class is `CSE_T<i>S<n>` (template index, site ordinal) and the
+> method `ProcessData_S<n>`, rather than a sanitized template name and an extension-name suffix: the site id is
+> what keys the table, and two templates with the same sanitized name cannot collide.
+
 ### P3-R6 — Strict no-load-time-compilation mode
 
 **Decision.** ([PD10](../../plan/precompilation-v2/decisions.md#pd10--strict-no-load-time-compilation-mode))

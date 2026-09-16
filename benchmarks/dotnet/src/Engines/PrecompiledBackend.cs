@@ -81,6 +81,11 @@ namespace Heddle.Benchmarks.Dotnet.Engines
         /// <summary>The bound typed entry for one workload, bound once. Sets
         /// <see cref="PrecompiledTemplates.DefaultOptions"/> to the cell's options before binding,
         /// exactly as a generated wrapper's host does.</summary>
+        /// <summary>The bound template for a workload, for a caller that renders it many times: the
+        /// technique suite holds it across its iterations so a timed render is one <c>Generate</c> call,
+        /// not a lookup plus one.</summary>
+        internal static HeddleTemplate BoundFor(string workload) => Bound(workload);
+
         private static HeddleTemplate Bound(string workload)
         {
             if (_bound.TryGetValue(workload, out var cached)) return cached;

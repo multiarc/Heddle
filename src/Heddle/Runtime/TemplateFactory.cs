@@ -51,6 +51,36 @@ namespace System.Diagnostics.CodeAnalysis
         }
     }
 
+    [AttributeUsage(AttributeTargets.Method | AttributeTargets.Constructor | AttributeTargets.Class,
+        Inherited = false)]
+    internal sealed class RequiresUnreferencedCodeAttribute : Attribute
+    {
+        public RequiresUnreferencedCodeAttribute(string message)
+        {
+            Message = message;
+        }
+
+        public string Message { get; }
+        public string Url { get; set; }
+    }
+
+    [AttributeUsage(AttributeTargets.All, Inherited = false, AllowMultiple = true)]
+    internal sealed class UnconditionalSuppressMessageAttribute : Attribute
+    {
+        public UnconditionalSuppressMessageAttribute(string category, string checkId)
+        {
+            Category = category;
+            CheckId = checkId;
+        }
+
+        public string Category { get; }
+        public string CheckId { get; }
+        public string Scope { get; set; }
+        public string Target { get; set; }
+        public string MessageId { get; set; }
+        public string Justification { get; set; }
+    }
+
     [Flags]
     internal enum DynamicallyAccessedMemberTypes
     {
@@ -216,6 +246,7 @@ namespace Heddle.Runtime {
         /// <param name="absoluteTextPosition">Usage position in the source text</param>
         /// <param name="context">Parser context for definition resolution</param>
         /// <returns>An <see cref="IExtension"/> instance, or null on error</returns>
+        [UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "P3-R9: the registry is fed by LoadExtensions, whose types the DynamicDependency roots on LoadBaseExtensions and the [ExportExtensions(typeof(...))] parameter annotation preserve.")]
         public static IExtension Create(string templateName, BlockPosition absoluteTextPosition, ParseContext context, CompileContext compileContext)
         {
             if (templateName == null)
@@ -223,9 +254,7 @@ namespace Heddle.Runtime {
             try
             {
                 var extensionType = Volatile.Read(ref _registry)[templateName];
-#pragma warning disable IL2072 // P3-R9: the registry is fed by LoadExtensions, whose types the DynamicDependency roots preserve.
                 var resultExtension = CreateExtension(extensionType);
-#pragma warning restore IL2072
                 resultExtension.Position = absoluteTextPosition;
                 return resultExtension;
             }
@@ -321,14 +350,13 @@ namespace Heddle.Runtime {
         /// unresolvable reference — a plugin built against a version the host does not have — would otherwise throw
         /// <see cref="ReflectionTypeLoadException"/> out of the host's startup call.
         /// </summary>
+        [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "P3-R9: the enumeration is the discovery the DynamicDependency roots on LoadBaseExtensions preserve; a host assembly is enumerated only through [ExportExtensions] in its parameterless form, which a trimmed host does not use.")]
         internal static IEnumerable<ExtensionType> LoadExtensions (Assembly assembly)
         {
             Type[] types;
             try
             {
-#pragma warning disable IL2026 // P3-R9: the enumeration is the discovery the DynamicDependency roots on LoadBaseExtensions preserve.
                 types = assembly.GetTypes();
-#pragma warning restore IL2026
             }
             catch (ReflectionTypeLoadException e)
             {

@@ -1,0 +1,14 @@
+PRECOMPILED-STRICT: requiring 8/8 workloads to be precompiled.
+SITE-TABLE: off
+  parity: 8 workloads x 3 sinks agree byte-for-byte with the runtime tier.
+PRECOMPILED-ARTIFACT: 107186 bytes (embedded Heddle.CompiledForm image)
+MATERIALISATION: composed-page: 0.7 ms, 47460 chars (register+bind+first render)
+MATERIALISATION: trivial-substitution: 0.3 ms, 339 chars (register+bind+first render)
+MATERIALISATION: large-loop: 1.1 ms, 192781 chars (register+bind+first render)
+MATERIALISATION: mixed-page: 0.3 ms, 9741 chars (register+bind+first render)
+MATERIALISATION: conditional-heavy: 0.4 ms, 15550 chars (register+bind+first render)
+MATERIALISATION: fragment-heavy: 0.3 ms, 6058 chars (register+bind+first render)
+MATERIALISATION: fortunes-encoded: 0.3 ms, 1125 chars (register+bind+first render)
+MATERIALISATION: encoded-loop: 3.7 ms, 781686 chars (register+bind+first render)
+
+gate-precompiled: 8/8 workloads precompiled, 0 failure(s).

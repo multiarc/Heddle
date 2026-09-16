@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Collections.Generic;
 using Heddle.Data;
 using Heddle.Helpers;
@@ -47,6 +48,7 @@ namespace Heddle.Runtime.Expressions
         /// Shadowing: emits HED5011 (warning) when a prop hit also names a readable, visible property of the
         /// current scope type. The prop still wins; the member is reachable via <c>this.&lt;name&gt;</c>.
         /// </summary>
+        [UnconditionalSuppressMessage("Trimming", "IL2075", Justification = "P3-R9: reflection over a model type; model types reach the engine through [HeddleModelAssembly]/typeof parameters annotated DynamicallyAccessedMemberTypes.All, which keeps their members through a trimmed publish.")]
         internal static void WarnIfShadowsMember(CompileScope compileScope, ExType scopeType, string name,
             BlockPosition position)
         {

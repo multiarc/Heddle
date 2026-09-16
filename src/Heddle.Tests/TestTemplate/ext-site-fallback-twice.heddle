@@ -1,0 +1,6 @@
+<section>
+  <h2>Contents</h2>
+  @scanner()
+  <h2>Again</h2>
+  @scanner()
+</section>

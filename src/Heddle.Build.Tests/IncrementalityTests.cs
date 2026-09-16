@@ -25,9 +25,15 @@ namespace Heddle.Build.Tests
 
                 System.Threading.Thread.Sleep(1100);
                 File.SetLastWriteTimeUtc(Path.Combine(fixture.Root, "Dummy.cs"), System.DateTime.UtcNow);
-                var rebuild = fixture.Build(project);
+                string binlog = Path.Combine(fixture.Root, "rebuild.binlog");
+                var rebuild = fixture.BuildWithBinlog(project, binlog);
                 rebuild.AssertSuccess("rebuild");
                 Assert.Contains("Skipping target \"_HeddleCompile\" because all output files are up-to-date", rebuild.Output);
+                // P2-R11: the same fact asserted on the binary log, replayed rather than read off the console.
+                Assert.True(File.Exists(binlog), "the rebuild wrote no binary log at " + binlog);
+                var replay = fixture.ReplayBinlog(binlog);
+                replay.AssertSuccess("binlog replay");
+                Assert.Contains("Skipping target \"_HeddleCompile\" because all output files are up-to-date", replay.Output);
                 Assert.Equal(before, MsBuildFixture.Sha256File(MsBuildFixture.Artifact(fixture.Root)));
             }
         }

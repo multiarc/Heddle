@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Heddle.Attributes
 {
@@ -18,7 +19,10 @@ namespace Heddle.Attributes
         private readonly Type[] _containers;
 
         /// <summary>Exports one container class.</summary>
-        public ExportFunctionsAttribute(Type container)
+        // P3-R9: the typeof here roots the container through a trimmed publish; RegisterContainer reads its
+        // public static methods by reflection, so the annotation keeps them.
+        public ExportFunctionsAttribute(
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicMethods)] Type container)
         {
             _containers = new[] { container };
         }

@@ -1145,6 +1145,7 @@ TYPE Heddle.Precompiled.PrecompiledRefusalSite : System.ValueType
   PROP System.Int32 SiteOrdinal {get;}
   PROP System.String Detail {get;}
 TYPE Heddle.Precompiled.PrecompiledRegistrationException : System.Exception
+  CTOR(System.String, System.IO.InvalidDataException)
   CTOR(System.String, System.Int32)
   CTOR(System.String, System.String, System.String)
   PROP System.Int32 SchemaVersion {get;}

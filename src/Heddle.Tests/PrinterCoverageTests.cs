@@ -32,13 +32,21 @@ namespace Heddle.Tests
         {
         }
 
+        // The site printer ships in Heddle.Tool, which is net10-only, so this gate has a subject on that leg alone.
+        // On the other legs it is explicit (reported as not run) rather than skipped: the CI wrapper runs with
+        // --fail-skips on, which would fail the leg for a subject that does not exist there, and the class must
+        // still declare a fact on every leg for the test-classes.txt inventory to hold.
+#if NET10_0_OR_GREATER
         [Fact]
+#else
+        [Fact(Explicit = true)]
+#endif
         public void NoUndeclaredRowDeclinesSites()
         {
 #if NET10_0_OR_GREATER
             RunGate();
 #else
-            Assert.Skip("The site printer ships in Heddle.Tool (net10-only).");
+            Assert.Fail("The site printer ships in Heddle.Tool (net10-only); this gate has no subject on this target.");
 #endif
         }
 

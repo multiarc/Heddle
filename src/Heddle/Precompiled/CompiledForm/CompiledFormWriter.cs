@@ -986,6 +986,11 @@ namespace Heddle.Precompiled.CompiledForm
                     case CompiledSiteKind.EmbeddedCSharp:
                         limit = artifact.CSharpSites.Count;
                         break;
+                    case CompiledSiteKind.Refusal:
+                        // The payload indexes the owning row's RefusalSites list (AC-6).
+                        RequireIndex(site.TemplateIndex, artifact.Templates.Count, "Site template index");
+                        limit = artifact.Templates[site.TemplateIndex].RefusalSites.Count;
+                        break;
                     default:
                         limit = artifact.Documents.Count;
                         break;

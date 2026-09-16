@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+<meta charset='utf-8' />
+<title>Heddle.Benchmarks.Dotnet.Bench.TechniqueRuntimeBenchmarks-20260916-121320</title>
+
+<style type="text/css">
+	table { border-collapse: collapse; display: block; width: 100%; overflow: auto; }
+	td, th { padding: 6px 13px; border: 1px solid #ddd; text-align: right; }
+	tr { background-color: #fff; border-top: 1px solid #ccc; }
+	tr:nth-child(even) { background: #f8f8f8; }
+</style>
+</head>
+<body>
+<pre><code>
+BenchmarkDotNet v0.15.8, Windows 11 (10.0.26200.9457/25H2/2025Update/HudsonValley2)
+AMD Ryzen 9 9950X 4.30GHz, 1 CPU, 32 logical and 16 physical cores
+.NET SDK 10.0.401
+  [Host]   : .NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+  ShortRun : .NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+</code></pre>
+<pre><code>Job=ShortRun  IterationCount=5  LaunchCount=10  
+WarmupCount=3  
+</code></pre>
+
+<table>
+<thead><tr><th>Method</th><th>Workload</th><th>Mean</th><th>Error</th><th>StdDev</th><th>Median</th><th>Gen0</th><th>Gen1</th><th>Gen2</th><th>Allocated</th>
+</tr>
+</thead><tbody><tr><td>String</td><td>composed-page</td><td>30.13 &mu;s</td><td>0.364 &mu;s</td><td>0.727 &mu;s</td><td>30.48 &mu;s</td><td>14.9536</td><td>13.9771</td><td>13.9771</td><td>211.01 KB</td>
+</tr><tr><td>TextWriter</td><td>large-loop</td><td>145.99 &mu;s</td><td>0.572 &mu;s</td><td>1.088 &mu;s</td><td>145.82 &mu;s</td><td>39.3066</td><td>-</td><td>-</td><td>645.47 KB</td>
+</tr></tbody></table>
+</body>
+</html>

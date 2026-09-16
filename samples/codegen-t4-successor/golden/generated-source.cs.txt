@@ -22,9 +22,9 @@ namespace Heddle.Generated
         }
 
         public string ArtifactDigest => "<digest>";
-        private static readonly Func<object, object> S_0_0 = M_0_0;
-        private static readonly Func<object, object> S_0_1 = M_0_1;
-        private static readonly Func<object, object> S_0_2 = M_0_2;
+        private static readonly Func<object, object> S_1_0 = M_1_0;
+        private static readonly Func<object, object> S_1_1 = M_1_1;
+        private static readonly Func<object, object> S_1_2 = M_1_2;
 
         public bool TryGetSite(string templateContentHash, int templateIndex, int siteOrdinal, out Delegate site)
         {
@@ -33,9 +33,6 @@ namespace Heddle.Generated
             {
                 switch (siteOrdinal)
                 {
-                    case 0: site = S_0_0; return true;
-                    case 1: site = S_0_1; return true;
-                    case 2: site = S_0_2; return true;
                     default: site = null; return false;
                 }
             }
@@ -43,25 +40,28 @@ namespace Heddle.Generated
             {
                 switch (siteOrdinal)
                 {
+                    case 0: site = S_1_0; return true;
+                    case 1: site = S_1_1; return true;
+                    case 2: site = S_1_2; return true;
                     default: site = null; return false;
                 }
             }
             return false;
         }
 
-        private static object M_0_0(object model)
+        private static object M_1_0(object model)
         {
             var v0 = (global::Heddle.Samples.Codegen.BuildInfo)model;
             return v0 == null ? null : (object)v0.Project;
         }
 
-        private static object M_0_1(object model)
+        private static object M_1_1(object model)
         {
             var v0 = (global::Heddle.Samples.Codegen.BuildInfo)model;
             return v0 == null ? null : (object)v0.Version;
         }
 
-        private static object M_0_2(object model)
+        private static object M_1_2(object model)
         {
             var v0 = (global::Heddle.Samples.Codegen.BuildInfo)model;
             return v0 == null ? null : (object)v0.Commit;

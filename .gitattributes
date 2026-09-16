@@ -67,3 +67,6 @@ benchmarks/python/templates/** text eol=lf
 *.PDF	 diff=astextplain
 *.rtf	 diff=astextplain
 *.RTF	 diff=astextplain
+
+# The stored compiled-form fixture is bytes, not text: never normalised (P4-R3).
+src/Heddle.Tests/TestTemplate/*.bin  binary

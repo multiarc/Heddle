@@ -322,12 +322,11 @@ namespace Heddle.Data
                 "so there is nothing to select an overload against. Export it with [ExportFunctions] on a public " +
                 "static container, or give the argument a type the build can see; otherwise this template renders " +
                 "through the dynamic path at run time.");
-            Add(HeddleDiagnosticIds.BuildTemplateNotPrecompiled, "Template could not be precompiled", warning,
-                "This template could not be precompiled ({0}), so it renders through the dynamic path at run " +
-                "time. The output is identical either way — the two tiers are parity-checked — but the " +
-                "build-time work is not being done for this template. Where precompilation is a requirement " +
-                "rather than an optimisation, make this fatal with " +
-                "<WarningsAsErrors>HED7031</WarningsAsErrors>.");
+            Add(HeddleDiagnosticIds.BuildTemplateNotPrecompiled, "Template not fully precompiled", info,
+                "This template is not fully precompiled: {0}. The sites named rebuild at load or render through " +
+                "the dynamic path; the output is identical either way — the two tiers are parity-checked. A " +
+                "strict host (PrecompiledStrictLoad) refuses such a template at load; " +
+                "see the ids beside this one for the remedy each site kind names.");
             // Retired in place: no build raises this id; the row stays so the id is never reused.
             Add(HeddleDiagnosticIds.BuildExtensionOverridesHook, "Extension overrides a compile-time hook", warning,
                 "Extension <{0}> ({1}) overrides {2}, compile-time logic this build has not read; precompiled " +
@@ -427,10 +426,12 @@ namespace Heddle.Data
                 "compiled; fix the reference or exclude the templates with Precompile=\"false\".");
             Add(HeddleDiagnosticIds.BuildRetiredPropertySet, "Retired MSBuild property is set", warning,
                 "The MSBuild property '{0}' is retired and ignored; delete it from the project.");
-            Add(HeddleDiagnosticIds.BuildEmitterFault, "Heddle template emitter fault", error,
-                "The Heddle template emitter failed on '{0}': {1}: {2}. This is a build defect rather than a " +
-                "template error — please report it; setting Precompile=\"false\" on the item unblocks the build " +
-                "in the meantime (the template then renders through the dynamic path).");
+            Add(HeddleDiagnosticIds.BuildEmitterFault, "Heddle build host fault", error,
+                "The Heddle build host failed on '{0}': {1}: {2}. Compiling one template, this is a host defect " +
+                "rather than a template error — that template emits nothing and the pass continues; please " +
+                "report it, and set Precompile=\"false\" on the item to unblock the build meanwhile (the " +
+                "template then renders through the dynamic path). Writing the outputs after every template " +
+                "compiled, no artifact is written and the build fails.");
 
             // Carried on PrecompiledFallbackEvent rather than formatted, so title + severity only.
             Add(HeddleDiagnosticIds.PrecompiledGauntletFallback, "Precompiled template fell back to the dynamic tier",

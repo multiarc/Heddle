@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Collections.Generic;
 using System.Reflection;
 using Heddle.Language.Binding;
@@ -103,6 +104,7 @@ namespace Heddle.Runtime.Expressions
         /// an invalid export (non-public/non-static container, or an ineligible method — named in the message).
         /// Idempotent per assembly; not thread-safe pre-freeze (same rule as <see cref="Register(string, MethodInfo)"/>).</para>
         /// </summary>
+        [UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "P3-R9: containers come from [ExportFunctions(typeof(...))], whose constructor parameter is annotated PublicMethods; the Containers collection hop loses the annotation, the rooting does not.")]
         public void RegisterFrom(Assembly assembly)
         {
             if (assembly == null)
@@ -117,7 +119,8 @@ namespace Heddle.Runtime.Expressions
             }
         }
 
-        internal void RegisterContainer(Type container)
+        internal void RegisterContainer(
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicMethods)] Type container)
         {
             if (container == null)
                 throw new ArgumentException("An [ExportFunctions] container type is null.");

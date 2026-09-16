@@ -1,0 +1,15 @@
+  Determining projects to restore...
+E:\Work\Heddle\src\Heddle.Build\Heddle.Build.csproj : warning NU1903: Package 'Microsoft.Build.Utilities.Core' 17.8.3 has a known high severity vulnerability, https://github.com/advisories/GHSA-w3q9-fxm7-j8fq [E:\Work\Heddle\samples\precompiled-aot\PrecompiledAot.csproj]
+  Restored E:\Work\Heddle\src\Heddle.Language\Heddle.Language.csproj (in 154 ms).
+  Restored E:\Work\Heddle\samples\precompiled-aot\PrecompiledAot.csproj (in 154 ms).
+  Restored E:\Work\Heddle\src\Heddle.Build\Heddle.Build.csproj (in 155 ms).
+  Restored E:\Work\Heddle\src\Heddle\Heddle.csproj (in 164 ms).
+  Heddle.Language -> E:\Work\Heddle\src\Heddle.Language\bin\Release\net10.0\Heddle.Language.dll
+  Heddle -> E:\Work\Heddle\src\Heddle\bin\Release\net10.0\Heddle.dll
+E:\Work\Heddle\src\Heddle.Build\Heddle.Build.csproj : warning NU1903: Package 'Microsoft.Build.Utilities.Core' 17.8.3 has a known high severity vulnerability, https://github.com/advisories/GHSA-w3q9-fxm7-j8fq
+  Heddle.Build -> E:\Work\Heddle\src\Heddle.Build\bin\Release\netstandard2.0\Heddle.Build.Tasks.dll
+  PrecompiledAot -> E:\Work\Heddle\samples\precompiled-aot\bin\Release\net10.0\win-x64\PrecompiledAot.dll
+  Generating native code
+C:\Users\Aliaksandr\.nuget\packages\microsoft.netcore.app.runtime.nativeaot.win-x64\10.0.12\runtimes\win-x64\lib\net10.0\Microsoft.CSharp.dll : warning IL3053: Assembly 'Microsoft.CSharp' produced AOT analysis warnings. [E:\Work\Heddle\samples\precompiled-aot\PrecompiledAot.csproj]
+C:\Users\Aliaksandr\.nuget\packages\microsoft.netcore.app.runtime.nativeaot.win-x64\10.0.12\runtimes\win-x64\lib\net10.0\System.Linq.Expressions.dll : warning IL3053: Assembly 'System.Linq.Expressions' produced AOT analysis warnings. [E:\Work\Heddle\samples\precompiled-aot\PrecompiledAot.csproj]
+  PrecompiledAot -> E:\Work\Heddle\samples\precompiled-aot\bin\Release\net10.0\win-x64\publish\

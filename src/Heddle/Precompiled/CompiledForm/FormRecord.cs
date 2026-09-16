@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Runtime.InteropServices;
@@ -503,6 +504,10 @@ namespace Heddle.Precompiled.CompiledForm
         private readonly Dictionary<OutputItem, List<OutputItem>> _itemChildren =
             new Dictionary<OutputItem, List<OutputItem>>();
         private readonly List<FormRefusalData> _refusals = new List<FormRefusalData>();
+        // AC-6: the converted refusal parameters, so the site walk can give each refusal its walk ordinal.
+        private readonly Dictionary<CompiledParameter, int> _refusalParameters =
+            new Dictionary<CompiledParameter, int>();
+        private readonly Dictionary<int, int> _refusalOrdinals = new Dictionary<int, int>();
         private readonly List<FormExtension> _extensions = new List<FormExtension>();
         private readonly List<FormFunction> _functions = new List<FormFunction>();
         private readonly List<FormMemberRow> _members = new List<FormMemberRow>();
@@ -1204,11 +1209,20 @@ namespace Heddle.Precompiled.CompiledForm
             return new NamedTypeRef(type.FullName, assemblyName, IsFramework(type, assemblyName));
         }
 
+        /// <summary>The simple names of the implementation images the build host was given (AC-4): a type
+        /// from one of them is never a framework type, wherever its assembly lives. Set by the host for the
+        /// duration of a compile; null (every other caller) excludes nothing.</summary>
+        internal static ISet<string> HostImplementationImages { get; set; }
+
+        [UnconditionalSuppressMessage("SingleFile", "IL3000", Justification = "P3-R9: an empty Location (single-file/AOT) reads as not-framework below, which only widens the recorded identity.")]
         private static bool IsFramework(Type type, string assemblyName)
         {
             if (assemblyName == "Heddle" || assemblyName == "Heddle.Language" ||
                 assemblyName == "Antlr4.Runtime.Standard" ||
                 assemblyName.StartsWith("Microsoft.CodeAnalysis", StringComparison.Ordinal))
+                return false;
+            var images = HostImplementationImages;
+            if (images != null && images.Contains(assemblyName))
                 return false;
             string location;
             try
@@ -1832,7 +1846,7 @@ namespace Heddle.Precompiled.CompiledForm
                 if (data.SourceText == null)
                     throw Refuse("a class-(c) refusal at " + form.Position +
                         " was never resolved against its document");
-                return new CompiledParameter
+                var refusalParameter = new CompiledParameter
                 {
                     Kind = CompiledParameterKind.RefusalSite,
                     Refusal = new CompiledRefusalSource
@@ -1846,6 +1860,8 @@ namespace Heddle.Precompiled.CompiledForm
                         Class = data.Class
                     }
                 };
+                _refusalParameters[refusalParameter] = refusal.RefusalIndex;
+                return refusalParameter;
             }
 
             throw Refuse("a chain item parameter at " + form.Position + " has no stored form");
@@ -1959,16 +1975,42 @@ namespace Heddle.Precompiled.CompiledForm
             }
 
             artifact.Templates.Add(row);
+            _refusalOrdinals.Clear();
             WalkSites(artifact, row);
             row.SiteCount = artifact.Sites.Count;
+            // AC-6: a refusal-class site is a row in Sites at its walk ordinal, and the row's refusal
+            // list carries that ordinal (not its own index), which is what strict load names.
+            foreach (var pair in _refusalOrdinals)
+            {
+                var site = row.RefusalSites[pair.Key];
+                row.RefusalSites[pair.Key] = new PrecompiledRefusalSite(pair.Value, site.Class, site.Detail,
+                    site.PositionStart, site.PositionLength);
+            }
         }
+
+        /// <summary>The build's refusal records, for the host's per-site diagnostics (HED7014/HED7033):
+        /// the item each refusal sits on and the reason, in the order the row's RefusalSites list keeps.</summary>
+        internal IReadOnlyList<FormRefusalData> Refusals => _refusals;
 
         private void WalkSites(CompiledArtifact artifact, CompiledTemplateRow row)
         {
             // First-visit order (AC-6): a self-recursive definition's caller-content document is one of its
             // own ancestors, so the document graph is cyclic and an unguarded walk never terminates. Each
             // document's sites are enumerated once, at first visit.
-            WalkDocument(artifact, row.RootDocumentRef, new HashSet<int>());
+            var walked = new HashSet<int>();
+            WalkDocument(artifact, row.RootDocumentRef, walked);
+            // Region fills of the row's definitions are documents the loader serves too.
+            foreach (int definitionRef in row.DefinitionRefs)
+            {
+                if (definitionRef < 0 || definitionRef >= artifact.Definitions.Count)
+                    continue;
+                var definition = artifact.Definitions[definitionRef];
+                if (definition == null || definition.Fills == null)
+                    continue;
+                foreach (var fill in definition.Fills)
+                    if (fill != null)
+                        WalkDocument(artifact, fill.DocumentRef, walked);
+            }
         }
 
         private void WalkDocument(CompiledArtifact artifact, int documentRef, HashSet<int> walked)
@@ -1983,13 +2025,25 @@ namespace Heddle.Precompiled.CompiledForm
                 foreach (var item in element.Chain.Items)
                     WalkItem(artifact, item, walked);
             }
+            // Removed-element orphans serve at load exactly like kept items, so their sites are rows too.
+            if (document.RemovedItems != null)
+                foreach (var removed in document.RemovedItems)
+                    WalkItem(artifact, removed, walked);
         }
 
         private void WalkItem(CompiledArtifact artifact, CompiledItem item, HashSet<int> walked)
         {
+            if (item == null)
+                return;
             WalkParameter(artifact, item.Parameter, walked);
             if (item.Body != null && item.Body.CompiledDocumentRef.HasValue)
                 WalkDocument(artifact, item.Body.CompiledDocumentRef.Value, walked);
+            // Alternate bodies (a definition's default body under the definition's template, a step-back
+            // encoder's re-typed body) serve at load like the primary one: walked after it, in list order.
+            if (item.AltBodies != null)
+                foreach (var alt in item.AltBodies)
+                    if (alt != null && alt.Body != null && alt.Body.CompiledDocumentRef.HasValue)
+                        WalkDocument(artifact, alt.Body.CompiledDocumentRef.Value, walked);
             if (item.Parameter != null && item.Parameter.Kind == CompiledParameterKind.DefinitionCall)
                 WalkDocument(artifact, item.Parameter.CallerContentRef, walked);
         }
@@ -2010,6 +2064,17 @@ namespace Heddle.Precompiled.CompiledForm
                 case CompiledParameterKind.CSharpExpression:
                     parameter.SiteRef = AddSite(artifact, CompiledSiteKind.EmbeddedCSharp, parameter.SiteRef);
                     break;
+                case CompiledParameterKind.RefusalSite:
+                {
+                    // The payload is the refusal's index in its own template row's RefusalSites list,
+                    // which the merge never rebases (the list is per row).
+                    int refusalIndex;
+                    if (!_refusalParameters.TryGetValue(parameter, out refusalIndex))
+                        throw Refuse("a refusal-class site reached the site walk without a refusal record");
+                    int ordinal = AddSite(artifact, CompiledSiteKind.Refusal, refusalIndex);
+                    _refusalOrdinals[refusalIndex] = ordinal;
+                    break;
+                }
                 case CompiledParameterKind.Chain:
                     if (parameter.NestedChain != null)
                         foreach (var nested in parameter.NestedChain.Items)

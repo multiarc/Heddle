@@ -109,6 +109,42 @@ namespace Heddle.Tool.Compile
             }
         }
 
+        /// <summary>Every <c>@using(){{Namespace}}</c> directive spelling in the text, in order — the imports
+        /// the engine resolves a bare <c>@model</c> spelling against (HED7032 needs the same answer).</summary>
+        internal static System.Collections.Generic.List<string> ScanUsingDirectives(string text)
+        {
+            var usings = new System.Collections.Generic.List<string>();
+            if (string.IsNullOrEmpty(text))
+                return usings;
+            int at = 0;
+            while (true)
+            {
+                at = text.IndexOf("@using", at, System.StringComparison.Ordinal);
+                if (at < 0)
+                    return usings;
+                int i = SkipWhitespace(text, at + "@using".Length);
+                if (i < text.Length && text[i] == '(')
+                {
+                    int close = MatchBalanced(text, i, '(', ')');
+                    if (close > i)
+                    {
+                        int j = SkipWhitespace(text, close + 1);
+                        if (j + 1 < text.Length && text[j] == '{' && text[j + 1] == '{')
+                        {
+                            int end = text.IndexOf("}}", j + 2, System.StringComparison.Ordinal);
+                            if (end > j)
+                            {
+                                string spelling = text.Substring(j + 2, end - j - 2).Trim();
+                                if (spelling.Length != 0)
+                                    usings.Add(spelling);
+                            }
+                        }
+                    }
+                }
+                at += "@using".Length;
+            }
+        }
+
         private static int SkipWhitespace(string text, int i)
         {
             while (i < text.Length && char.IsWhiteSpace(text[i]))

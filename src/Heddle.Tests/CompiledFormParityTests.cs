@@ -68,14 +68,21 @@ namespace Heddle.Tests
                     AssertSymmetricRefusal(row);
                     return;
                 }
-                using (var guard = new FallbackGuard())
+                // P1-R9: three passes — in-memory, file-backed (written under TestOutput/ and loaded
+                // from bytes) and staged (the entry's real encoding on disk, staleness step on) — each
+                // rendered under PrecompiledMismatchPolicy.Strict with the fallback sentinel armed.
+                using (var guard = FallbackGuard.Install())
                 {
-                    var result = CompiledFormHarness.RegisterRowWithSites(
-                        row, TestCorpusIndex.CorpusDir, useGeneratedSites);
-                    if (row.Render != CorpusRender.ResolveOnly)
-                        CompiledFormHarness.AssertThreeSinkParity(row, result.Strategy, TestCorpusIndex.CorpusDir);
-                    guard.AssertQuiet();
+                    foreach (var result in CompiledFormHarness.RegisterRowPasses(
+                        row, TestCorpusIndex.CorpusDir, useGeneratedSites))
+                    {
+                        if (row.Render != CorpusRender.ResolveOnly)
+                            CompiledFormHarness.AssertThreeSinkParity(row, result.Strategy,
+                                TestCorpusIndex.CorpusDir, result.Pass);
+                    }
+                    guard.Verify();
                 }
+                CompiledFormHarness.AssertNoPendingRefusals();
                 PrecompiledTemplates.ResetForTests();
             }
         }

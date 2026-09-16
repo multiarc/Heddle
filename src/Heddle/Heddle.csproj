@@ -12,6 +12,10 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <IsTrimmable>true</IsTrimmable>
     <IsAotCompatible>true</IsAotCompatible>
+    <!-- P3-R9: the trim/AOT analyzers report nothing on this assembly, and that is asserted here rather than in a
+         CI flag so a local build and the CI leg fail the same way. Every site that must stay is annotated or carries
+         a per-site [UnconditionalSuppressMessage] naming its rooting story; a new warning is a new site to decide on. -->
+    <WarningsAsErrors>$(WarningsAsErrors);IL2026;IL2055;IL2057;IL2067;IL2070;IL2072;IL2075;IL2080;IL3000;IL3050</WarningsAsErrors>
   </PropertyGroup>
 
   <ItemGroup Condition=" '$(TargetFramework)' == 'netstandard2.0' ">

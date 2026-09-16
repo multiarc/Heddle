@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Collections.Generic;
 using System.Reflection;
 using Heddle.Attributes;
@@ -69,6 +70,7 @@ namespace Heddle.Runtime.Expressions
 
         public bool IsDynamic(Type type) => false;   // dynamic-ness is an ExType fact, decided before the walk
 
+        [UnconditionalSuppressMessage("Trimming", "IL2070", Justification = "P3-R9: reflection over a model type; model types reach the engine through [HeddleModelAssembly]/typeof parameters annotated DynamicallyAccessedMemberTypes.All, which keeps their members through a trimmed publish.")]
         public IEnumerable<PropertyInfo> DeclaredProperties(Type type, string name)
         {
             foreach (var property in type.GetProperties(MemberPathResolver.DeclaredBindingFlags))
@@ -135,6 +137,8 @@ namespace Heddle.Runtime.Expressions
         /// <see cref="TryResolve"/> applies (feeds LSP member completion). Returns nothing for a null
         /// type. Distinct by name (a hidden/derived duplicate collapses to the most-derived accessible one).
         /// </summary>
+        [UnconditionalSuppressMessage("Trimming", "IL2070", Justification = "P3-R9: reflection over a model type; model types reach the engine through [HeddleModelAssembly]/typeof parameters annotated DynamicallyAccessedMemberTypes.All, which keeps their members through a trimmed publish.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2075", Justification = "P3-R9: reflection over a model type; model types reach the engine through [HeddleModelAssembly]/typeof parameters annotated DynamicallyAccessedMemberTypes.All, which keeps their members through a trimmed publish.")]
         internal static IEnumerable<PropertyInfo> GetVisibleProperties(Type type)
         {
             if (type == null)

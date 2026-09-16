@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Linq;
 using Heddle;
@@ -68,6 +69,9 @@ namespace Heddle.Samples.PrecompiledAot
         {
             public string Key;
             public string File;
+            // The typeof assigned here is what roots each model through the trimmed publish: the registry's
+            // gauntlet walks the model's members by reflection, so they must survive trimming.
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
             public Type ModelType;
             public Func<object> NewModel;
             public Func<object, string> TypedRender;
@@ -212,13 +216,24 @@ namespace Heddle.Samples.PrecompiledAot
                 throw new InvalidOperationException(
                     "AOT CLAIM FAILED: rendering loaded " + string.Join(", ", roslyn) + ".");
 
+            // The captured list leaves out the BCL facades (System.*, Microsoft.Win32.*, netstandard, mscorlib):
+            // which of those a run loads depends on the OS, the runtime and what the JIT happened to compile,
+            // and pinning them made the golden a statement about the machine rather than about the host.
+            // The assertion above still runs over the full list.
+            var captured = assemblies
+                .Where(n => !n.StartsWith("System.", StringComparison.Ordinal) &&
+                            !n.StartsWith("Microsoft.Win32.", StringComparison.Ordinal) &&
+                            !string.Equals(n, "netstandard", StringComparison.Ordinal) &&
+                            !string.Equals(n, "mscorlib", StringComparison.Ordinal))
+                .ToList();
+
             var capture = Heddle.Samples.SampleCapture.Resolve(args);
             if (capture != null)
             {
                 foreach (var pair in outputs.OrderBy(p => p.Key, StringComparer.Ordinal))
                     Heddle.Samples.SampleCapture.Write(capture, pair.Key, pair.Value);
                 Heddle.Samples.SampleCapture.Write(capture, "assemblies.txt",
-                    string.Join("\n", assemblies) + "\n");
+                    string.Join("\n", captured) + "\n");
                 Console.WriteLine("captured " + outputs.Count + " workload outputs + assemblies.txt " +
                     "(all three tiers held byte-identical; no Microsoft.CodeAnalysis loaded)");
                 return 0;

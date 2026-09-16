@@ -15,8 +15,12 @@ namespace Heddle.Benchmarks.Dotnet.Bench
 {
     /// <summary>
     /// The cold-start row (P3-R8): what a fresh process pays before its first render. Per-process facts
-    /// are measured per process — <see cref="RunStrategy.ColdStart"/> with 20 launches, one invocation
-    /// per launch — so warm JIT numbers never stand in for startup.
+    /// are measured per process — <see cref="RunStrategy.ColdStart"/> with 20 launches, one iteration of
+    /// one invocation per launch — so warm JIT numbers never stand in for startup. The proof of bytes is
+    /// deferred to <see cref="Cleanup"/>: a render in <c>[GlobalSetup]</c> would warm the runtime tier
+    /// (parser, expression compiler) before <see cref="CompileHeddle"/> is timed while leaving the
+    /// artifact loader cold, and the two rows would then not be measuring the same thing. The job is
+    /// intrinsic to the class rather than supplied by <c>BenchRunner</c>, which adds no job to this verb.
     ///
     /// <para><b>Not comparable across machines, runs, or with warm figures.</b> These numbers get their
     /// own table labelled per <c>benchmarks/docs/metrics-protocol.md</c>, never a column beside warm
@@ -24,7 +28,7 @@ namespace Heddle.Benchmarks.Dotnet.Bench
     /// same run, and must sit strictly below it.</para>
     /// </summary>
     [MemoryDiagnoser]
-    [SimpleJob(RunStrategy.ColdStart, launchCount: 20, invocationCount: 1)]
+    [SimpleJob(RunStrategy.ColdStart, launchCount: 20, warmupCount: 0, iterationCount: 1, invocationCount: 1)]
     public class StartupBenchmarks
     {
         // composed-page is the cold subject: the only workload composing two sources (a layout and the
@@ -32,14 +36,27 @@ namespace Heddle.Benchmarks.Dotnet.Bench
         private const string Workload = "composed-page";
 
         private string _heddleRoot;
+        private object _model;
+        private string _lastOutput;
 
         [GlobalSetup]
         public void Setup()
         {
             _heddleRoot = System.IO.Path.Combine(Templates.Root(), "controlled", "heddle");
-            // Gate before timing: the string sink is asserted against the corpus once per process.
-            var output = HeddleEngine.Render("controlled", Workload, HeddleEngine.Sink.String);
-            Controlled.AssertCell(HeddleEngine.Name, Workload, output);
+            // The model is harness work (corpus fixtures, JSON), built once outside the timed region as the
+            // protocol requires; it touches no engine code, so it warms neither tier.
+            _model = HeddleEngine.ModelFor(Workload);
+        }
+
+        /// <summary>The per-process proof, after timing rather than before it: the output the measured
+        /// invocation produced is asserted against the corpus, so nothing renders in this process before
+        /// the one cold invocation the row reports.</summary>
+        [GlobalCleanup]
+        public void Cleanup()
+        {
+            if (_lastOutput == null)
+                throw new InvalidOperationException("no measured render to prove in this process.");
+            Controlled.AssertCell(HeddleEngine.Name, Workload, _lastOutput);
         }
 
         /// <summary>The whole first-use cost a Heddle caller actually pays: parse, bind and build the
@@ -56,7 +73,8 @@ namespace Heddle.Benchmarks.Dotnet.Bench
                 ProvideLanguageFeatures = false,
             };
             var template = new HeddleTemplate(new CompileContext(options));
-            return template.Generate(HeddleEngine.ModelFor(Workload)).Length;
+            _lastOutput = template.Generate(_model);
+            return _lastOutput.Length;
         }
 
         /// <summary>The artifact path, table on: register, bind the typed entry, first render.</summary>
@@ -64,7 +82,8 @@ namespace Heddle.Benchmarks.Dotnet.Bench
         public int RegisterAndRenderCompiledForm()
         {
             AppContext.SetSwitch(TechniqueSetup.UseGeneratedSitesSwitch, true);
-            return RegisterAndRender().Length;
+            _lastOutput = RegisterAndRender(_model);
+            return _lastOutput.Length;
         }
 
         /// <summary>The artifact path with the site table off: the data-only twin.</summary>
@@ -74,7 +93,8 @@ namespace Heddle.Benchmarks.Dotnet.Bench
             AppContext.SetSwitch(TechniqueSetup.UseGeneratedSitesSwitch, false);
             try
             {
-                return RegisterAndRender().Length;
+                _lastOutput = RegisterAndRender(_model);
+                return _lastOutput.Length;
             }
             finally
             {
@@ -131,7 +151,7 @@ namespace Heddle.Benchmarks.Dotnet.Bench
             }
         }
 
-        private static string RegisterAndRender()
+        private static string RegisterAndRender(object model)
         {
             var assembly = typeof(Engines.Precompiled).Assembly;
             PrecompiledTemplates.Register(assembly);
@@ -148,7 +168,7 @@ namespace Heddle.Benchmarks.Dotnet.Bench
                 ExpressionMode = entry.OptionsFingerprint.ExpressionMode,
             };
             var bound = PrecompiledTemplates.BindTyped(assembly, Workload + ".heddle", entry.ModelType);
-            return bound.Generate(HeddleEngine.ModelFor(Workload));
+            return bound.Generate(model);
         }
     }
 }

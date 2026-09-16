@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -920,6 +921,8 @@ namespace Heddle.Runtime
             return new List<ExprNode> { new PathNode(callParameter.RootReference, segments, null, position) };
         }
 
+        [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "P3-R9: the dynamic tier is outside the AOT claim (spec, deferred: AOT of the dynamic tier); reached only for dynamic scopes, which the printer declines and strict load refuses.")]
+        [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "P3-R9: the dynamic tier is outside the AOT claim (spec, deferred: AOT of the dynamic tier); reached only for dynamic scopes, which the printer declines and strict load refuses.")]
         private static CallSite<Func<CallSite, object, object>> CreateBinder(string model,
             CSharpArgumentInfo[] csharpArgumentInfoArray)
         {

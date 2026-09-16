@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -85,7 +86,8 @@ namespace Heddle.Precompiled
         /// materializes, and returns a precompiled-adapter template rendering the item's baked profile.
         /// Throws PrecompiledMismatchException on a gauntlet failure and InvalidOperationException when the
         /// assembly's artifact has no such key. Thread-safe.</summary>
-        public static HeddleTemplate BindTyped(Assembly assembly, string key, Type modelType)
+        public static HeddleTemplate BindTyped(Assembly assembly, string key,
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type modelType)
         {
             if (assembly == null)
                 throw new ArgumentNullException(nameof(assembly));
@@ -175,7 +177,18 @@ namespace Heddle.Precompiled
                 IReadOnlyList<PrecompiledTemplateInfo> templates;
                 var manifestType = attribute.ManifestType;
                 if (manifestType != null && typeof(IHeddleCompiledArtifact).IsAssignableFrom(manifestType))
-                    templates = LoadCompiledRows(assembly, manifestType);
+                {
+                    try
+                    {
+                        templates = LoadCompiledRows(assembly, manifestType);
+                    }
+                    catch (InvalidDataException malformed)
+                    {
+                        // AC-3: a malformed container is a registration fault naming the assembly, never a
+                        // reader exception escaping the registry.
+                        throw new PrecompiledRegistrationException(assemblyName, malformed);
+                    }
+                }
                 else
                     throw new PrecompiledRegistrationException(assemblyName, attribute.SchemaVersion);
 
@@ -280,10 +293,10 @@ namespace Heddle.Precompiled
         /// loader-constructed <see cref="PrecompiledTemplateInfo"/> per template row, and keeps the artifact
         /// bytes on each row for materialization. Rows carry no strategy yet: <see cref="Entries"/> reports
         /// them before any render, and <see cref="PrecompiledTemplateInfo.Strategy"/> materializes on first
-        /// read. A structurally defective image reports as <see cref="InvalidDataException"/> here; mapping
-        /// it to a registry fault lands with the round-trip tests.</summary>
+        /// read. A structurally defective image surfaces from <see cref="Register"/> as
+        /// <see cref="PrecompiledRegistrationException"/> naming the assembly (AC-3).</summary>
         private static IReadOnlyList<PrecompiledTemplateInfo> LoadCompiledRows(Assembly assembly,
-            Type artifactType)
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)] Type artifactType)
         {
             var artifactInstance = (IHeddleCompiledArtifact)Activator.CreateInstance(artifactType);
             byte[] image;
@@ -413,10 +426,12 @@ namespace Heddle.Precompiled
         }
 
         /// <summary>Resolves a precompiled entry for a request: normalized lookup, then the
-        /// per-request gauntlet under the request's <see cref="TemplateOptions"/>. On a gauntlet pass returns true
-        /// with the entry; on a registry miss returns false (the dynamic path proceeds untouched). On a gauntlet
-        /// failure the <see cref="OnFallback"/> callback fires; under <see cref="PrecompiledMismatchPolicy.Strict"/>
-        /// it then throws <see cref="PrecompiledMismatchException"/>, under <c>Fallback</c> it returns false.</summary>
+        /// per-request gauntlet under the request's <see cref="TemplateOptions"/>, then materialization. On a
+        /// pass returns true with the entry, its strategy materialized; on a registry miss returns false (the
+        /// dynamic path proceeds untouched). On a gauntlet failure or a materialization fault the
+        /// <see cref="OnFallback"/> callback fires with the recorded reason; under
+        /// <see cref="PrecompiledMismatchPolicy.Strict"/> it then throws <see cref="PrecompiledMismatchException"/>,
+        /// under <c>Fallback</c> it returns false.</summary>
         public static bool TryResolve(string key, TemplateOptions options, out PrecompiledTemplateInfo entry) =>
             TryResolve(key, options, null, out entry);
 
@@ -439,6 +454,24 @@ namespace Heddle.Precompiled
             var failure = PrecompiledGauntlet.Validate(found, options, BindingResolver, requestModelType);
             if (failure == null)
             {
+                // A gauntlet pass is not a render: materialize now, so a memoized materialization fault
+                // reports through the same channel and policy as a gauntlet failure instead of surfacing as
+                // a null strategy at the adapter.
+                if (found.GetStrategy(options) == null)
+                {
+                    PrecompiledFallbackReason reason;
+                    string detail;
+                    if (!found.TryGetRequestFault(options, out reason, out detail))
+                    {
+                        reason = PrecompiledFallbackReason.ExtensionInitCompileError;
+                        detail = "Template '" + found.Key + "' materialized no strategy and recorded no fault.";
+                    }
+                    RaiseFallback(PrecompiledFallbackEvent.ForTemplate(found.Key, reason, detail,
+                        PrecompiledGauntlet.Hed7101));
+                    if (options.PrecompiledMismatchPolicy == PrecompiledMismatchPolicy.Strict)
+                        throw new PrecompiledMismatchException(found.Key, reason, detail);
+                    return false;
+                }
                 entry = found;
                 return true;
             }

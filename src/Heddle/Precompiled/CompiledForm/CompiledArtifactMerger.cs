@@ -18,8 +18,12 @@ namespace Heddle.Precompiled.CompiledForm
                 throw new ArgumentException("At least one artifact is required.", nameof(parts));
             if (parts.Count == 1)
                 return parts[0];
-            var merged = new CompiledArtifact { Header = parts[0].Header };
-            foreach (var part in parts)
+            // AC-9: rows in ordinal key order, whatever order the parts arrived in, so item or
+            // response-file order cannot change the artifact's bytes or digest.
+            var ordered = new List<CompiledArtifact>(parts);
+            ordered.Sort((a, b) => string.CompareOrdinal(FirstKey(a), FirstKey(b)));
+            var merged = new CompiledArtifact { Header = ordered[0].Header };
+            foreach (var part in ordered)
             {
                 if (part == null)
                     throw new ArgumentException("Artifact parts must not be null.", nameof(parts));
@@ -72,6 +76,13 @@ namespace Heddle.Precompiled.CompiledForm
             return merged;
         }
 
+        private static string FirstKey(CompiledArtifact part)
+        {
+            if (part == null || part.Templates == null || part.Templates.Count == 0 || part.Templates[0] == null)
+                return string.Empty;
+            return part.Templates[0].Key ?? string.Empty;
+        }
+
         private static int PayloadBase(CompiledSiteKind kind, int members, int expressions, int csharp,
             int documents)
         {
@@ -85,7 +96,9 @@ namespace Heddle.Precompiled.CompiledForm
                 case CompiledSiteKind.EmbeddedCSharp:
                     return csharp;
                 case CompiledSiteKind.Refusal:
-                    return documents;
+                    // A refusal row's payload indexes its own template row's RefusalSites list (AC-6),
+                    // which is per row and never rebased.
+                    return 0;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(kind), "Unknown site kind '" + kind + "'.");
             }

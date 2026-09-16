@@ -1,4 +1,7 @@
 using System;
+using System.Text;
+using System.Collections.Generic;
+using Heddle.Precompiled.CompiledForm;
 using Heddle.Data;
 using Heddle.Precompiled;
 using Heddle.Runtime;
@@ -127,5 +130,38 @@ namespace Heddle.Tests
                 return result;
             }
         }
+        /// <summary>AC-4: a framework ref resolves by full name alone — its assembly name is advisory —
+        /// so an artifact written on .NET 10 (System.Private.CoreLib) resolves on net48 (mscorlib) and the
+        /// other way round; a non-framework ref keeps its authoritative assembly name.</summary>
+        [Fact]
+        public void FrameworkTypeRefResolvesByFullNameOnEveryTfm()
+        {
+            Assert.Same(typeof(StringBuilder), PrecompiledTemplateInfo.FindLoadedType(
+                new NamedTypeRef("System.Text.StringBuilder", "System.Private.CoreLib", true)));
+            Assert.Same(typeof(StringBuilder), PrecompiledTemplateInfo.FindLoadedType(
+                new NamedTypeRef("System.Text.StringBuilder", "mscorlib", true)));
+            Assert.Same(typeof(List<int>), PrecompiledTemplateInfo.FindLoadedType(
+                new GenericTypeRef(new NamedTypeRef("System.Collections.Generic.List`1", "System.Private.CoreLib", true),
+                    new List<CompiledTypeRef> { new NamedTypeRef("System.Int32", "System.Private.CoreLib", true) })));
+            // Non-framework: the assembly name is authoritative, so a wrong one is a miss, not a guess.
+            Assert.Null(PrecompiledTemplateInfo.FindLoadedType(
+                new NamedTypeRef(typeof(CompiledFormBindingTests).FullName, "NoSuchAssembly", false)));
+            Assert.Same(typeof(CompiledFormBindingTests), PrecompiledTemplateInfo.FindLoadedType(
+                CompiledFormHarness.TypeRef(typeof(CompiledFormBindingTests))));
+        }
+
+        /// <summary>AC-4 round trip: a row whose model type is a framework ref naming
+        /// System.Private.CoreLib loads with its model type resolved on this TFM.</summary>
+        [Fact]
+        public void FrameworkModelTypeRefNamingCoreLibLoadsResolvedOnThisTfm()
+        {
+            var artifact = CompiledFormHarness.MinimalArtifact();
+            artifact.Templates.Add(CompiledFormHarness.TemplateRow("framework-model.heddle",
+                modelType: new NamedTypeRef("System.Text.StringBuilder", "System.Private.CoreLib", true)));
+            var entry = CompiledFormHarness.LoaderRow(artifact);
+            Assert.False(entry.ModelTypeUnresolved, "A framework model ref must resolve by full name on every TFM.");
+            Assert.Same(typeof(StringBuilder), entry.ModelType);
+        }
+
     }
 }

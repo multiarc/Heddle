@@ -26,6 +26,9 @@ namespace Heddle.Tests
     {
         internal sealed class RowResult
         {
+            /// <summary>Which of the three P1-R9 passes produced this result: <see cref="InMemoryPass"/>,
+            /// <see cref="FileBackedPass"/> or <see cref="StagedPass"/>.</summary>
+            internal string Pass;
             internal CompiledArtifact Artifact;
             internal byte[] Image;
             internal PrecompiledTemplateInfo Entry;
@@ -131,10 +134,42 @@ namespace Heddle.Tests
                 options.TrimDirectiveLines);
         }
 
+        /// <summary>The three passes of P1-R9: the artifact loaded from memory; written under
+        /// <c>TestOutput/</c> and loaded from the file's bytes; and the entry staged on disk in its real
+        /// encoding with the gauntlet's staleness step switched on.</summary>
+        internal const string InMemoryPass = "in-memory";
+        internal const string FileBackedPass = "file-backed";
+        internal const string StagedPass = "staged";
+        internal static readonly string[] Passes = { InMemoryPass, FileBackedPass, StagedPass };
+
+        private static readonly List<KeyValuePair<string, PrecompiledRefusalClass>> ExpectedRefusals =
+            new List<KeyValuePair<string, PrecompiledRefusalClass>>();
+
+        /// <summary>Declares that the artifact for <paramref name="key"/> carries one refusal site of
+        /// <paramref name="refusalClass"/> beyond what its intent row declares. <see cref="AssertRefusalsMatch"/>
+        /// fails if the site is not there; the registration pass consumes the declaration, and one left
+        /// unconsumed is a test defect, reported by <see cref="AssertNoPendingRefusals"/>.</summary>
+        internal static void ExpectRefusal(string key, PrecompiledRefusalClass refusalClass)
+        {
+            ExpectedRefusals.Add(new KeyValuePair<string, PrecompiledRefusalClass>(key, refusalClass));
+        }
+
+        internal static void AssertNoPendingRefusals()
+        {
+            if (ExpectedRefusals.Count == 0)
+                return;
+            var pending = string.Join(", ", ExpectedRefusals.Select(p => p.Key + " " + p.Value));
+            ExpectedRefusals.Clear();
+            Assert.Fail("Declared refusals never matched an artifact: " + pending + ".");
+        }
+
         internal static void AssertRefusalsMatch(CorpusIntentRow row, CompiledArtifact artifact)
         {
             var declared = new SortedSet<string>(
                 row.Refusals.Select(r => r.ToString()), StringComparer.Ordinal);
+            foreach (var expected in ExpectedRefusals)
+                if (string.Equals(expected.Key, row.Name, StringComparison.Ordinal))
+                    declared.Add(expected.Value.ToString());
             var observed = new SortedSet<string>(StringComparer.Ordinal);
             foreach (var template in artifact.Templates)
                 foreach (var site in template.RefusalSites)
@@ -250,20 +285,6 @@ namespace Heddle.Tests
         /// "without" arm exercises the data path exactly as a host would.</summary>
         internal const string UseGeneratedSitesSwitch = "Heddle.Precompiled.UseGeneratedSites";
 
-        /// <summary>True once the P3-A engine slice lands: the strict-load exception type and the
-        /// <c>PrecompiledStrictLoad</c> option exist. The P3-R7 strict facts skip until then, so this
-        /// slice stays green on the data path alone.</summary>
-        internal static bool StrictModeSupported
-        {
-            get
-            {
-                var assembly = typeof(PrecompiledTemplates).Assembly;
-                if (assembly.GetType("Heddle.Precompiled.PrecompiledStrictLoadException") == null)
-                    return false;
-                return typeof(TemplateOptions).GetProperty("PrecompiledStrictLoad") != null;
-            }
-        }
-
         /// <summary>Per-row pipeline with the site-table preference pinned to one position (P3-R7: every
         /// corpus row runs twice, switch on and off). Restores the default-<c>true</c> position after.</summary>
         internal static RowResult RegisterRowWithSites(CorpusIntentRow row, string rootPath, bool useGeneratedSites)
@@ -279,8 +300,73 @@ namespace Heddle.Tests
             }
         }
 
-        /// <summary>Full per-row pipeline through registration. Asserts at the first divergent step.</summary>
-        internal static RowResult RegisterRow(CorpusIntentRow row, string rootPath)
+        /// <summary>Every P1-R9 pass for one row, each in a fresh registry: in-memory, file-backed and
+        /// staged, with the site-table preference pinned as <paramref name="useGeneratedSites"/> says.</summary>
+        internal static List<RowResult> RegisterRowPasses(CorpusIntentRow row, string rootPath,
+            bool useGeneratedSites)
+        {
+            var results = new List<RowResult>(Passes.Length);
+            foreach (var pass in Passes)
+            {
+                PrecompiledTemplates.ResetForTests();
+                AppContext.SetSwitch(UseGeneratedSitesSwitch, useGeneratedSites);
+                try
+                {
+                    results.Add(RegisterRow(row, rootPath, pass));
+                }
+                finally
+                {
+                    AppContext.SetSwitch(UseGeneratedSitesSwitch, true);
+                }
+            }
+            return results;
+        }
+
+        /// <summary>Full per-row pipeline through registration, in-memory pass. Asserts at the first
+        /// divergent step.</summary>
+        internal static RowResult RegisterRow(CorpusIntentRow row, string rootPath) =>
+            RegisterRow(row, rootPath, InMemoryPass);
+
+        private static string SafeName(string name) =>
+            name.Replace('.', '_').Replace('/', '_').Replace('\\', '_');
+
+        private static readonly object StagingGate = new object();
+        private static string _stagedRoot;
+
+        /// <summary>The corpus staged once per process under <c>TestOutput/staged-corpus/</c>, every file
+        /// in its real on-disk encoding (a lone-row artifact carries no import rows, so materialization
+        /// reads imports off the request root exactly as a deployed host with template files beside its
+        /// assembly does). The staged pass points its request root here and turns the staleness step on,
+        /// so the gauntlet hashes the entry and its recorded imports from disk.</summary>
+        private static string StageEntry(CorpusIntentRow row, CompiledArtifact artifact)
+        {
+            lock (StagingGate)
+            {
+                if (_stagedRoot == null)
+                {
+                    string root = Path.Combine(AppContext.BaseDirectory, TestCorpusIndex.WrittenArtifactFolder,
+                        "staged-corpus");
+                    if (Directory.Exists(root))
+                        Directory.Delete(root, true);
+                    foreach (var source in Directory.GetFiles(TestCorpusIndex.CorpusDir, "*", SearchOption.AllDirectories))
+                    {
+                        string relative = source.Substring(TestCorpusIndex.CorpusDir.Length).TrimStart('/', '\\');
+                        string target = Path.Combine(root, relative);
+                        Directory.CreateDirectory(Path.GetDirectoryName(target));
+                        File.WriteAllBytes(target, File.ReadAllBytes(source));
+                    }
+                    _stagedRoot = root;
+                }
+            }
+            Assert.True(File.Exists(TemplateKey.ToPath(artifact.Templates[0].Key, _stagedRoot)),
+                "Staging " + row.Name + ": the staged corpus has no file for its key.");
+            return _stagedRoot;
+        }
+
+        /// <summary>One P1-R9 pass. The request options render under
+        /// <see cref="PrecompiledMismatchPolicy.Strict"/> (<see cref="FallbackGuard.GuardedOptions"/>), so a
+        /// gauntlet refusal throws rather than recompiling; the staged pass also turns the staleness step on.</summary>
+        internal static RowResult RegisterRow(CorpusIntentRow row, string rootPath, string pass)
         {
             string text = CorpusText(row.Name);
             var buildOptions = RowOptions(row.Name, row, rootPath);
@@ -296,8 +382,20 @@ namespace Heddle.Tests
             var image = CompiledFormWriter.Write(artifact);
             var back = CompiledFormReader.Read(image);
             AssertRefusalsMatch(row, back);
-            RegisterImage(image, "HeddleTestAsm_Parity" + row.Name.Replace(".", "_"));
-            var requestOptions = RequestOptions(row, rootPath);
+            ExpectedRefusals.RemoveAll(p => string.Equals(p.Key, row.Name, StringComparison.Ordinal));
+            byte[] loaded = image;
+            string requestRoot = rootPath;
+            if (pass == FileBackedPass || pass == StagedPass)
+            {
+                string path = TestCorpusIndex.WrittenArtifactPath("compiled-form-" + SafeName(row.Name) + ".bin");
+                File.WriteAllBytes(path, image);
+                loaded = File.ReadAllBytes(path);
+            }
+            RegisterImage(loaded, "HeddleTestAsm_Parity" + row.Name.Replace(".", "_"));
+            if (pass == StagedPass)
+                requestRoot = StageEntry(row, back);
+            var requestOptions = FallbackGuard.GuardedOptions(RequestOptions(row, requestRoot));
+            requestOptions.EnableFileChangeCheck = pass == StagedPass;
             var report = PrecompiledTemplates.ValidateAll(requestOptions);
             Assert.True(report.Failures.Count == 0, "Gate refused " + row.Name + ": " +
                 GateDetail(report) + ".");
@@ -313,7 +411,7 @@ namespace Heddle.Tests
                     reason + ": " + detail : "<no fault recorded>";
                 Assert.True(false, "Materialization fault for " + row.Name + ": " + fault + ".");
             }
-            return new RowResult { Artifact = back, Image = image, Entry = entry, Strategy = strategy };
+            return new RowResult { Pass = pass, Artifact = back, Image = loaded, Entry = entry, Strategy = strategy };
         }
 
         /// <summary>Formats the first gate failure without indexing an empty list: the
@@ -351,7 +449,10 @@ namespace Heddle.Tests
         /// <summary>Renders both tiers through all three sinks and asserts byte identity, returning the
         /// shared output. The dynamic reference compiles without recording or deferral.</summary>
         internal static string AssertThreeSinkParity(CorpusIntentRow row, IProcessStrategy strategy,
-            string rootPath)
+            string rootPath) => AssertThreeSinkParity(row, strategy, rootPath, InMemoryPass);
+
+        internal static string AssertThreeSinkParity(CorpusIntentRow row, IProcessStrategy strategy,
+            string rootPath, string pass)
         {
             Type modelType;
             object model;
@@ -365,7 +466,7 @@ namespace Heddle.Tests
                 RenderStrategy(strategy, model, writer);
                 s2 = writer.ToString();
             }
-            var seq = new ArrayBufferWriter<byte>();
+            var seq = new Streaming.TestBufferWriter();   // ArrayBufferWriter<byte> is unavailable on net48 (see SinkTestWriters.cs).
             RenderStrategy(strategy, model, seq);
             string s3 = Encoding.UTF8.GetString(seq.WrittenSpan.ToArray());
 
@@ -379,12 +480,12 @@ namespace Heddle.Tests
                 dynamic.Generate(model, writer);
                 d2 = writer.ToString();
             }
-            var dseq = new ArrayBufferWriter<byte>();
+            var dseq = new Streaming.TestBufferWriter();
             dynamic.Generate(model, dseq);
             string d3 = Encoding.UTF8.GetString(dseq.WrittenSpan.ToArray());
 
             Assert.True(s1 == d1 && s2 == d2 && s3 == d3,
-                "Byte divergence for " + row.Name + ": string=" + (s1 == d1) +
+                "Byte divergence for " + row.Name + " (" + pass + " pass): string=" + (s1 == d1) +
                 " writer=" + (s2 == d2) + " utf8=" + (s3 == d3) + ".");
             return s1;
         }

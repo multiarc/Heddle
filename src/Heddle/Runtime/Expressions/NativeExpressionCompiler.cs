@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -393,6 +394,7 @@ namespace Heddle.Runtime.Expressions
                     Expression.Default(resultType), access(receiver)));
         }
 
+        [UnconditionalSuppressMessage("Trimming", "IL2070", Justification = "P3-R9: reflection over a model type; model types reach the engine through [HeddleModelAssembly]/typeof parameters annotated DynamicallyAccessedMemberTypes.All, which keeps their members through a trimmed publish.")]
         private static PropertyInfo FindIndexer(Type type, Expression[] args)
         {
             foreach (var property in type.GetProperties(MemberPathResolver.MemberBindingFlags))
@@ -574,6 +576,7 @@ namespace Heddle.Runtime.Expressions
             return ConversionRank(arg, parameterType) >= 0;
         }
 
+        [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "P3-R9: the params element type comes from an exported function's signature, an array type the host's own code declares.")]
         internal static Expression[] BuildCallArguments(FunctionEntry entry, Expression[] args, bool expanded)
         {
             if (!expanded)
@@ -657,6 +660,7 @@ namespace Heddle.Runtime.Expressions
             return max;
         }
 
+        [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "P3-R9: Nullable<T> over the numeric primitives NumericPromotion returns, a closed set; a lifted site a trimmed publish cannot instantiate is a data-path rebuild, which strict load refuses before it runs.")]
         private Expression VisitUnary(UnaryNode node)
         {
             var operand = Visit(node.Operand);
@@ -764,6 +768,7 @@ namespace Heddle.Runtime.Expressions
             return null;
         }
 
+        [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "P3-R9: Nullable<T> over the numeric primitives NumericPromotion returns, a closed set; a lifted site a trimmed publish cannot instantiate is a data-path rebuild, which strict load refuses before it runs.")]
         private Expression VisitArithmetic(BinaryNode node, Expression left, Expression right)
         {
             if (node.Operator == ExprOperator.Add &&
@@ -838,6 +843,7 @@ namespace Heddle.Runtime.Expressions
         /// <see cref="Compile"/> evaluates constants — by executing it — and asks whether it is the promoted
         /// type's zero. Only reached for side-effect-free constant subtrees; anything that goes wrong answers
         /// "not zero" and leaves the fault to render time, which was the behaviour before this check existed.</summary>
+        [UnconditionalSuppressMessage("Trimming", "IL2067", Justification = "P3-R9: promoted is one of the numeric primitives NumericPromotion returns; every primitive keeps its parameterless constructor.")]
         private static bool DivisorIsZero(Expression divisor, Type promoted)
         {
             try
@@ -873,6 +879,7 @@ namespace Heddle.Runtime.Expressions
             }
         }
 
+        [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "P3-R9: Nullable<T> over the numeric primitives NumericPromotion returns, a closed set; a lifted site a trimmed publish cannot instantiate is a data-path rebuild, which strict load refuses before it runs.")]
         private Expression VisitShift(BinaryNode node, Expression left, Expression right)
         {
             var leftU = Nullable.GetUnderlyingType(left.Type) ?? left.Type;
@@ -895,6 +902,7 @@ namespace Heddle.Runtime.Expressions
             return node.Operator == ExprOperator.LeftShift ? Expression.LeftShift(l, r) : Expression.RightShift(l, r);
         }
 
+        [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "P3-R9: Nullable<T> over the numeric primitives NumericPromotion returns, a closed set; a lifted site a trimmed publish cannot instantiate is a data-path rebuild, which strict load refuses before it runs.")]
         private Expression VisitRelational(BinaryNode node, Expression left, Expression right)
         {
             if (IsNullLiteral(left) || IsNullLiteral(right))
@@ -933,6 +941,7 @@ namespace Heddle.Runtime.Expressions
             }
         }
 
+        [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "P3-R9: Nullable<T> over the numeric primitives NumericPromotion returns, a closed set; a lifted site a trimmed publish cannot instantiate is a data-path rebuild, which strict load refuses before it runs.")]
         private Expression VisitEquality(BinaryNode node, Expression left, Expression right)
         {
             bool op = node.Operator == ExprOperator.Equal;
@@ -985,6 +994,7 @@ namespace Heddle.Runtime.Expressions
             }
         }
 
+        [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "P3-R9: Nullable<T> over the numeric primitives NumericPromotion returns, a closed set; a lifted site a trimmed publish cannot instantiate is a data-path rebuild, which strict load refuses before it runs.")]
         private Expression VisitBitwise(BinaryNode node, Expression left, Expression right)
         {
             var leftU = Nullable.GetUnderlyingType(left.Type) ?? left.Type;
@@ -1058,6 +1068,7 @@ namespace Heddle.Runtime.Expressions
                 $"Operator '{op}' requires bool operands, but the operand type is {FriendlyName(type)}.");
         }
 
+        [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "P3-R9: Nullable<T> over the numeric primitives NumericPromotion returns, a closed set; a lifted site a trimmed publish cannot instantiate is a data-path rebuild, which strict load refuses before it runs.")]
         private Expression VisitCoalesce(BinaryNode node)
         {
             var left = Visit(node.Left);
@@ -1120,6 +1131,7 @@ namespace Heddle.Runtime.Expressions
             return Expression.Condition(condition, whenTrue, whenFalse);
         }
 
+        [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "P3-R9: Nullable<T> over the numeric primitives NumericPromotion returns, a closed set; a lifted site a trimmed publish cannot instantiate is a data-path rebuild, which strict load refuses before it runs.")]
         private bool TryUnify(ref Expression whenTrue, ref Expression whenFalse)
         {
             bool tNull = IsNullLiteral(whenTrue);

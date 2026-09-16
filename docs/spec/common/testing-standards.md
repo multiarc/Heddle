@@ -164,8 +164,8 @@ table says so rather than leaving the reader to infer coverage that is not there
 | --- | --- | --- |
 | `src/Heddle.Tests` | [`dotnet.yml`](../../../.github/workflows/dotnet.yml), its own named leg, Linux **and** Windows | [`lsp.yml`](../../../.github/workflows/lsp.yml), Windows only |
 | `src/Heddle.LanguageServices.Tests` | same | [`lsp.yml`](../../../.github/workflows/lsp.yml), Windows only |
-| `src/Heddle.Tool.Tests` | same | **not covered** — a known gap, recorded rather than implied away |
-| `src/Heddle.Build.Tests` | same | **not covered** — a known gap, recorded rather than implied away |
+| `src/Heddle.Tool.Tests` | same | [`lsp.yml`](../../../.github/workflows/lsp.yml), Windows only |
+| `src/Heddle.Build.Tests` | same | [`lsp.yml`](../../../.github/workflows/lsp.yml), Windows only |
 
 A test whose expectation genuinely differs by configuration writes **both** arms behind `#if DEBUG` /
 `#if !DEBUG`, so each configuration's behaviour is pinned and neither is left to whichever build the
@@ -218,9 +218,12 @@ input mismatch and the nested/generic AQN mismatch) reached release precisely th
   through registration → resolver → gauntlet runs under
   `TemplateOptions.PrecompiledMismatchPolicy = Strict` **and** a fallback sentinel hooked onto
   `PrecompiledTemplates.OnFallback`; any fallback raised during the test fails it. In
-  `Heddle.Tests` the sentinel is packaged as `FallbackGuard`.
+  `Heddle.Tests` the sentinel is packaged as `FallbackGuard` (`Install()` arms it,
+  `GuardedOptions(options)` is the strict copy of the request options, `Expect(key, reason)`
+  declares, `Verify()` asserts the captured events are exactly the declared ones).
 - **Fallback is tested only where fallback is the subject, and the expectation is declared.**
-  A build-time decline is declared on the corpus row; a
+  A build-time decline is declared on the corpus row, or for one row with
+  `CompiledFormHarness.ExpectRefusal(key, class)`; a
   run-time fallback with `FallbackGuard.Expect(key, reason)`. Nothing else may fall back —
   the complete set of tests that expect a fallback must stay enumerable by grepping those
   declarations.

@@ -287,6 +287,16 @@ powershell -ExecutionPolicy Bypass -File benchmarks\run-all.ps1
 Full analysis, every workload and track, the per-ecosystem tables, allocation sidebars and the
 complete caveat register: **[docs/benchmarks/2026-08-08](docs/benchmarks/2026-08-08/index.md)**.
 
+### Precompilation v3 evidence — 2026-09-16
+
+An intra-.NET run on the same machine measuring the compiled-form tier against the runtime
+tier over the eight workloads and three sinks (generated site table on and off), the cold-start
+row (`StartupBenchmarks`), the `gate-precompiled` materialisation trailer and the NativeAOT
+sample's publish: **[docs/benchmarks/2026-09-16](docs/benchmarks/2026-09-16/index.md)**. In short:
+the compiled form renders at runtime-tier speed with slightly lower allocation, and in a fresh
+process its first render costs the same as a runtime compile, because both pay the engine's
+one-time initialisation; the report says where the criteria hold and where they do not.
+
 ## Building
 
 ```bash

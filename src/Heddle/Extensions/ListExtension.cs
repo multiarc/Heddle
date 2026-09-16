@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -22,6 +23,7 @@ namespace Heddle.Extensions
     {
         private ICountReader _collectionCountReader;
 
+        [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "P3-R9: CountReader<T> is instantiated only over reference-type elements, which share one canonical instantiation in an AOT publish; value-type elements take the non-generic count path.")]
         public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType, ExType parent)
         {
             if (dataType == null)
@@ -49,9 +51,7 @@ namespace Heddle.Extensions
                 {
                     // P3-R9: reference-type instantiations share codegen, so this MakeGenericType is
                     // AOT-safe; value-type elements never reach it.
-#pragma warning disable IL3050
                     _collectionCountReader = (ICountReader) Activator.CreateInstance(typeof(CountReader<>).MakeGenericType(elementType));
-#pragma warning restore IL3050
                 }
             }
 
@@ -155,6 +155,7 @@ namespace Heddle.Extensions
         /// <summary>Detects the reflection-order hazard: the element type the engine would pick is the
         /// first of several <c>IEnumerable&lt;T&gt;</c> implementations in reflection enumeration order,
         /// so no static answer exists. The build records a class-(b) refusal instead of blessing one.</summary>
+        [UnconditionalSuppressMessage("Trimming", "IL2070", Justification = "P3-R9: reflection over a model type; model types reach the engine through [HeddleModelAssembly]/typeof parameters annotated DynamicallyAccessedMemberTypes.All, which keeps their members through a trimmed publish.")]
         private static bool HasAmbiguousElementType(Type type, out string detail)
         {
             detail = null;

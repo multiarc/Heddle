@@ -37,6 +37,12 @@ jobs:
         run: .github/scripts/dotnet-test-guarded.sh src/Heddle.Tests/Heddle.Tests.csproj -c Release --no-build
       - name: Test language services
         run: .github/scripts/dotnet-test-guarded.sh src/Heddle.LanguageServices.Tests/Heddle.LanguageServices.Tests.csproj -c Release --no-build
+      # The Release legs of the tool and build suites (phase-4 testing plan): the same wrapper, so
+      # every suite has both configurations on the record.
+      - name: Test tool suite
+        run: .github/scripts/dotnet-test-guarded.sh src/Heddle.Tool.Tests/Heddle.Tool.Tests.csproj -c Release --no-build
+      - name: Test build suite
+        run: .github/scripts/dotnet-test-guarded.sh src/Heddle.Build.Tests/Heddle.Build.Tests.csproj -c Release --no-build
       - uses: actions/setup-node@v7
         with:
           node-version: 24

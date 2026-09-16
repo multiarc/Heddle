@@ -132,6 +132,10 @@ namespace Heddle.Tool.Compile
             if (!DeriveKeys(request, templates, diagnostics))
                 return 1;
 
+            // AC-9: the artifact's rows, the stubs and the stamp all follow ordinal key order, so
+            // item or response-file order cannot change a byte or the digest.
+            templates.Sort((a, b) => string.CompareOrdinal(a.Key ?? string.Empty, b.Key ?? string.Empty));
+
             // The stubs pass writes wrapper stubs with no engine compile, no image load, no artifact,
             // source or stamp — so a following real build finds its outputs out of date.
             if (request.StubsOnly != null)
@@ -227,8 +231,21 @@ namespace Heddle.Tool.Compile
                     BuildVersion = buildVersion,
                     Functions = functions
                 };
-                var outcome = CompileAll(request, templates, images, options, diagnostics,
-                    FormatVersion(hostEngine));
+                // The implementation images are never framework types, wherever they live (AC-4).
+                var imageNames = new HashSet<string>(StringComparer.Ordinal);
+                foreach (var image in images.Images)
+                    imageNames.Add(image.GetName().Name ?? string.Empty);
+                CompileOutcome outcome;
+                FormRecord.HostImplementationImages = imageNames;
+                try
+                {
+                    outcome = CompileAll(request, templates, images, options, diagnostics,
+                        FormatVersion(hostEngine));
+                }
+                finally
+                {
+                    FormRecord.HostImplementationImages = null;
+                }
                 if (outcome == null)
                     return 1;
                 try
@@ -237,8 +254,11 @@ namespace Heddle.Tool.Compile
                 }
                 catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
                 {
-                    stderr.WriteLine("heddle: outputs could not be written: " + ex.Message + ".");
-                    return 3;
+                    // Every template compiled, so this is a reported error (exit 1), not the exit-3
+                    // host fault reserved for failures before any template compiled (P2-R4).
+                    diagnostics.Error(request.Project, HeddleDiagnosticIds.BuildEmitterFault,
+                        "outputs could not be written: " + ex.Message + ".");
+                    return 1;
                 }
 
                 Stamp.Write(request.Stamp, digest);
@@ -505,19 +525,46 @@ namespace Heddle.Tool.Compile
         }
 
         private static Func<string, string> ImportReaderFor(CompileRequest request,
-            List<TemplateInput> templates)
+            List<TemplateInput> templates, ImportPair pair, DiagnosticWriter diagnostics)
         {
             var contents = ImportContents(request, templates);
+            var namesByKey = NamesByKey(templates);
+            var advised = new HashSet<string>(StringComparer.Ordinal);
             return spelling =>
             {
                 // Spellings normalize before the map lookup (Banner meets Banner.heddle); the
                 // disk fallback reads the raw spelling. Mirrors the engine's ImportMap.
                 if (spelling != null && TemplateKey.TryNormalize(spelling, out string key) &&
                     contents.TryGetValue(key, out string content))
+                {
+                    // HED7028: the spelling is a template's key while that template also carries a
+                    // registered Name; both resolve, the name is the advised spelling.
+                    string name;
+                    if (namesByKey.TryGetValue(key, out name) && advised.Add((pair.Current ?? string.Empty) + "|" + key))
+                        diagnostics.Warning(pair.Current ?? request.Project,
+                            HeddleDiagnosticIds.BuildNamedTemplateImportedByKey,
+                            Format(HeddleDiagnosticIds.BuildNamedTemplateImportedByKey, spelling, name));
                     return content;
+                }
                 using (var file = File.OpenText(Path.Combine(request.Root ?? string.Empty, spelling)))
                     return file.ReadToEnd();
             };
+        }
+
+        /// <summary>Every template key whose item also carries a validated registered name, for HED7028.</summary>
+        private static Dictionary<string, string> NamesByKey(List<TemplateInput> templates)
+        {
+            var names = new Dictionary<string, string>(StringComparer.Ordinal);
+            foreach (var template in templates)
+            {
+                if (template.Key == null || string.IsNullOrEmpty(template.Item.Name))
+                    continue;
+                string alias;
+                if (TemplateKey.TryNormalize(template.Item.Name, out alias) && alias != template.Key &&
+                    !names.ContainsKey(template.Key))
+                    names.Add(template.Key, template.Item.Name);
+            }
+            return names;
         }
 
         private static Func<string, string> ImportIdentifierFor(CompileRequest request,
@@ -555,12 +602,13 @@ namespace Heddle.Tool.Compile
             var outcome = new CompileOutcome();
             var parts = new List<CompiledArtifact>();
             bool failed = false;
-            var imports = new ImportPair(ImportReaderFor(request, templates),
-                ImportIdentifierFor(request, templates));
+            var imports = new ImportPair(ImportIdentifierFor(request, templates));
+            imports.Reader = ImportReaderFor(request, templates, imports, diagnostics);
             foreach (var template in templates)
             {
                 if (template.Key == null)
                     continue;
+                imports.Current = template.FullPath;
                 var single = CompileOne(request, template, imports, images, options, diagnostics,
                     engineVersion, outcome);
                 if (single == null)
@@ -581,15 +629,17 @@ namespace Heddle.Tool.Compile
 
         private sealed class ImportPair
         {
-            internal ImportPair(Func<string, string> reader, Func<string, string> identifier)
+            internal ImportPair(Func<string, string> identifier)
             {
-                Reader = reader;
                 Identifier = identifier;
             }
 
-            internal Func<string, string> Reader { get; }
+            internal Func<string, string> Reader { get; set; }
 
             internal Func<string, string> Identifier { get; }
+
+            /// <summary>The template being compiled, so an import advisory is filed against the importer.</summary>
+            internal string Current { get; set; }
         }
 
         private static CompiledArtifact CompileOne(CompileRequest request, TemplateInput template,
@@ -610,9 +660,10 @@ namespace Heddle.Tool.Compile
             }
 
             Type modelType = null;
+            string directive = Probe.ScanModelDirective(template.Text);
             string spelling = !string.IsNullOrEmpty(template.Item.ModelType)
                 ? template.Item.ModelType
-                : Probe.ScanModelDirective(template.Text);
+                : directive;
             if (!string.IsNullOrEmpty(spelling))
             {
                 modelType = images.ResolveModelType(spelling);
@@ -622,6 +673,32 @@ namespace Heddle.Tool.Compile
                         HeddleDiagnosticIds.BuildUnresolvableModelType,
                         Format(HeddleDiagnosticIds.BuildUnresolvableModelType, spelling));
                     return null;
+                }
+                // HED7032: the item's ModelType and the in-file @model directive both speak, and they
+                // resolve to different types. The runtime reads only the directive.
+                if (!string.IsNullOrEmpty(template.Item.ModelType) && !string.IsNullOrEmpty(directive) &&
+                    !string.Equals(directive, template.Item.ModelType, StringComparison.Ordinal))
+                {
+                    // Resolved the way the engine resolves the directive: the template's own @using
+                    // imports over the registered model assemblies (D11).
+                    Type directiveType = null;
+                    try
+                    {
+                        directiveType = Heddle.Helpers.ReflectionHelper.ResolveType(directive,
+                            Probe.ScanUsingDirectives(template.Text));
+                    }
+                    catch (Exception)
+                    {
+                        // Unresolvable or ambiguous: the engine reports that itself during the compile.
+                    }
+                    if (directiveType != null && directiveType != modelType)
+                    {
+                        diagnostics.Error(template.FullPath,
+                            HeddleDiagnosticIds.BuildConflictingModelTypeDeclarations,
+                            Format(HeddleDiagnosticIds.BuildConflictingModelTypeDeclarations,
+                                template.Item.ModelType, directive, modelType.FullName, directiveType.FullName));
+                        return null;
+                    }
                 }
             }
 
@@ -808,11 +885,15 @@ namespace Heddle.Tool.Compile
             var row = artifact.Templates[part.TemplateIndex];
             var template = part.Template;
             var refusalParts = new List<string>();
-            foreach (var site in row.RefusalSites)
+            var refusals = part.Record != null ? part.Record.Refusals : null;
+            for (int i = 0; i < row.RefusalSites.Count; i++)
             {
+                var site = row.RefusalSites[i];
                 ToOneBased(template.Text, site.PositionStart, out int line, out int column);
                 refusalParts.Add("refusal site at (" + line + "," + column + ") " + site.Class +
                     " '" + site.Detail + "'");
+                ReportRefusalSite(template, site, refusals != null && i < refusals.Count ? refusals[i] : null,
+                    artifact, diagnostics);
             }
 
             var lateBound = new List<string>();
@@ -861,6 +942,38 @@ namespace Heddle.Tool.Compile
 
             diagnostics.Info(template.FullPath, HeddleDiagnosticIds.BuildTemplateNotPrecompiled,
                 "not fully precompiled: " + string.Join("; ", parts));
+        }
+
+        /// <summary>P2-R8: class (c) is HED7014 (warning, at the call, naming the function); class (a) is
+        /// HED7033 (warning, at the call, carrying the extension's declared reason verbatim). Class (b)
+        /// has no id of its own and rides on HED7031.</summary>
+        private static void ReportRefusalSite(TemplateInput template, PrecompiledRefusalSite site,
+            FormRefusalData refusal, CompiledArtifact artifact, DiagnosticWriter diagnostics)
+        {
+            switch (site.Class)
+            {
+                case PrecompiledRefusalClass.UnbindableCallTyping:
+                    diagnostics.Warning(template.FullPath, template.Text, site.PositionStart,
+                        site.PositionLength, HeddleDiagnosticIds.BuildUnresolvableFunction,
+                        Format(HeddleDiagnosticIds.BuildUnresolvableFunction, site.Detail));
+                    break;
+                case PrecompiledRefusalClass.UnsupportedExtension:
+                {
+                    string name = refusal != null && refusal.Item != null ? refusal.Item.ExtensionName : "?";
+                    string typeName = "?";
+                    if (artifact.Extensions != null)
+                        foreach (var extension in artifact.Extensions)
+                            if (extension != null && string.Equals(extension.RegistryName, name, StringComparison.Ordinal))
+                            {
+                                typeName = extension.Type != null ? extension.Type.Nominal() : "?";
+                                break;
+                            }
+                    diagnostics.Warning(template.FullPath, template.Text, site.PositionStart,
+                        site.PositionLength, HeddleDiagnosticIds.BuildExtensionPrecompileUnsupported,
+                        Format(HeddleDiagnosticIds.BuildExtensionPrecompileUnsupported, name, typeName, site.Detail));
+                    break;
+                }
+            }
         }
 
         private static void ToOneBased(string text, int offset, out int line, out int column)

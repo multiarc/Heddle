@@ -1,0 +1,1405 @@
+// Validating benchmarks:
+// ***** BenchmarkRunner: Start   *****
+// ***** Found 3 benchmark(s) in total *****
+// ***** Building 1 exe(s) in Parallel: Start   *****
+// start dotnet  restore --nodeReuse:false /p:UseSharedCompilation=false /p:Deterministic=true /p:Optimize=true /p:ArtifactsPath="E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1/" /p:OutDir="E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\bin\Release\net10.0/" /p:OutputPath="E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\bin\Release\net10.0/" /p:PublishDir="E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\publish/" in E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1
+// command took 1.09 sec and exited with 0
+// start dotnet  build -c Release --no-restore --nodeReuse:false /p:UseSharedCompilation=false /p:Deterministic=true /p:Optimize=true /p:ArtifactsPath="E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1/" /p:OutDir="E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\bin\Release\net10.0/" /p:OutputPath="E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\bin\Release\net10.0/" /p:PublishDir="E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\publish/" --output "E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\bin\Release\net10.0/" in E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1
+// command took 14.66 sec and exited with 0
+// ***** Done, took 00:00:15 (15.94 sec)   *****
+// Found 3 benchmarks:
+//   StartupBenchmarks.CompileHeddle: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+//   StartupBenchmarks.RegisterAndRenderCompiledForm: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+//   StartupBenchmarks.RegisterAndRenderCompiledFormDataOnly: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+
+Setup power plan (GUID: 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c FriendlyName: High performance)
+// **************************
+// Benchmark: StartupBenchmarks.CompileHeddle: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+// *** Execute ***
+// Launch: 1 / 20
+// Execute: dotnet Heddle.Benchmarks.Dotnet-1.dll --anonymousPipes 2588 2340 --benchmarkName Heddle.Benchmarks.Dotnet.Bench.StartupBenchmarks.CompileHeddle --job "InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0" --benchmarkId 0 in E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.8
+// Runtime=.NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX512 BITALG+VBMI2+VNNI+VPOPCNTDQ,AVX512 IFMA+VBMI,AVX512 F+BW+CD+DQ+VL,AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni VectorSize=256
+// Job: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+
+// BeforeActualRun
+WorkloadActual   1: 1 op, 578937300.00 ns, 578.9373 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 1 op, 578937300.00 ns, 578.9373 ms/op
+// GC:  1 0 0 20363872 1
+// Threading:  0 0 1
+
+// AfterAll
+// Benchmark Process 25516 has exited with code 0.
+// Launch: 2 / 20
+// Execute: dotnet Heddle.Benchmarks.Dotnet-1.dll --anonymousPipes 10696 1456 --benchmarkName Heddle.Benchmarks.Dotnet.Bench.StartupBenchmarks.CompileHeddle --job "InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0" --benchmarkId 0 in E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.8
+// Runtime=.NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX512 BITALG+VBMI2+VNNI+VPOPCNTDQ,AVX512 IFMA+VBMI,AVX512 F+BW+CD+DQ+VL,AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni VectorSize=256
+// Job: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+
+// BeforeActualRun
+WorkloadActual   1: 1 op, 278075100.00 ns, 278.0751 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 1 op, 278075100.00 ns, 278.0751 ms/op
+// GC:  1 0 0 20365968 1
+// Threading:  0 0 1
+
+// AfterAll
+// Benchmark Process 28304 has exited with code 0.
+// Launch: 3 / 20
+// Execute: dotnet Heddle.Benchmarks.Dotnet-1.dll --anonymousPipes 9248 9172 --benchmarkName Heddle.Benchmarks.Dotnet.Bench.StartupBenchmarks.CompileHeddle --job "InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0" --benchmarkId 0 in E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.8
+// Runtime=.NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX512 BITALG+VBMI2+VNNI+VPOPCNTDQ,AVX512 IFMA+VBMI,AVX512 F+BW+CD+DQ+VL,AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni VectorSize=256
+// Job: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+
+// BeforeActualRun
+WorkloadActual   1: 1 op, 280637000.00 ns, 280.6370 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 1 op, 280637000.00 ns, 280.6370 ms/op
+// GC:  1 0 0 20363912 1
+// Threading:  0 0 1
+
+// AfterAll
+// Benchmark Process 2504 has exited with code 0.
+// Launch: 4 / 20
+// Execute: dotnet Heddle.Benchmarks.Dotnet-1.dll --anonymousPipes 9212 9188 --benchmarkName Heddle.Benchmarks.Dotnet.Bench.StartupBenchmarks.CompileHeddle --job "InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0" --benchmarkId 0 in E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.8
+// Runtime=.NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX512 BITALG+VBMI2+VNNI+VPOPCNTDQ,AVX512 IFMA+VBMI,AVX512 F+BW+CD+DQ+VL,AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni VectorSize=256
+// Job: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+
+// BeforeActualRun
+WorkloadActual   1: 1 op, 282351100.00 ns, 282.3511 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 1 op, 282351100.00 ns, 282.3511 ms/op
+// GC:  1 0 0 20363792 1
+// Threading:  0 0 1
+
+// AfterAll
+// Benchmark Process 18880 has exited with code 0.
+// Launch: 5 / 20
+// Execute: dotnet Heddle.Benchmarks.Dotnet-1.dll --anonymousPipes 2056 5180 --benchmarkName Heddle.Benchmarks.Dotnet.Bench.StartupBenchmarks.CompileHeddle --job "InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0" --benchmarkId 0 in E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.8
+// Runtime=.NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX512 BITALG+VBMI2+VNNI+VPOPCNTDQ,AVX512 IFMA+VBMI,AVX512 F+BW+CD+DQ+VL,AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni VectorSize=256
+// Job: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+
+// BeforeActualRun
+WorkloadActual   1: 1 op, 284998700.00 ns, 284.9987 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 1 op, 284998700.00 ns, 284.9987 ms/op
+// GC:  1 0 0 20367728 1
+// Threading:  0 0 1
+
+// AfterAll
+// Benchmark Process 16820 has exited with code 0.
+// Launch: 6 / 20
+// Execute: dotnet Heddle.Benchmarks.Dotnet-1.dll --anonymousPipes 2060 3740 --benchmarkName Heddle.Benchmarks.Dotnet.Bench.StartupBenchmarks.CompileHeddle --job "InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0" --benchmarkId 0 in E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.8
+// Runtime=.NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX512 BITALG+VBMI2+VNNI+VPOPCNTDQ,AVX512 IFMA+VBMI,AVX512 F+BW+CD+DQ+VL,AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni VectorSize=256
+// Job: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+
+// BeforeActualRun
+WorkloadActual   1: 1 op, 280849200.00 ns, 280.8492 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 1 op, 280849200.00 ns, 280.8492 ms/op
+// GC:  1 0 0 20365888 1
+// Threading:  0 0 1
+
+// AfterAll
+// Benchmark Process 24272 has exited with code 0.
+// Launch: 7 / 20
+// Execute: dotnet Heddle.Benchmarks.Dotnet-1.dll --anonymousPipes 2588 2288 --benchmarkName Heddle.Benchmarks.Dotnet.Bench.StartupBenchmarks.CompileHeddle --job "InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0" --benchmarkId 0 in E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.8
+// Runtime=.NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX512 BITALG+VBMI2+VNNI+VPOPCNTDQ,AVX512 IFMA+VBMI,AVX512 F+BW+CD+DQ+VL,AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni VectorSize=256
+// Job: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+
+// BeforeActualRun
+WorkloadActual   1: 1 op, 281644900.00 ns, 281.6449 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 1 op, 281644900.00 ns, 281.6449 ms/op
+// GC:  1 0 0 20365800 1
+// Threading:  0 0 1
+
+// AfterAll
+// Benchmark Process 29400 has exited with code 0.
+// Launch: 8 / 20
+// Execute: dotnet Heddle.Benchmarks.Dotnet-1.dll --anonymousPipes 1588 9392 --benchmarkName Heddle.Benchmarks.Dotnet.Bench.StartupBenchmarks.CompileHeddle --job "InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0" --benchmarkId 0 in E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.8
+// Runtime=.NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX512 BITALG+VBMI2+VNNI+VPOPCNTDQ,AVX512 IFMA+VBMI,AVX512 F+BW+CD+DQ+VL,AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni VectorSize=256
+// Job: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+
+// BeforeActualRun
+WorkloadActual   1: 1 op, 280631900.00 ns, 280.6319 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 1 op, 280631900.00 ns, 280.6319 ms/op
+// GC:  1 0 0 20365808 1
+// Threading:  0 0 1
+
+// AfterAll
+// Benchmark Process 21492 has exited with code 0.
+// Launch: 9 / 20
+// Execute: dotnet Heddle.Benchmarks.Dotnet-1.dll --anonymousPipes 3080 9168 --benchmarkName Heddle.Benchmarks.Dotnet.Bench.StartupBenchmarks.CompileHeddle --job "InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0" --benchmarkId 0 in E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.8
+// Runtime=.NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX512 BITALG+VBMI2+VNNI+VPOPCNTDQ,AVX512 IFMA+VBMI,AVX512 F+BW+CD+DQ+VL,AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni VectorSize=256
+// Job: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+
+// BeforeActualRun
+WorkloadActual   1: 1 op, 295259300.00 ns, 295.2593 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 1 op, 295259300.00 ns, 295.2593 ms/op
+// GC:  1 0 0 20363952 1
+// Threading:  0 0 1
+
+// AfterAll
+// Benchmark Process 17452 has exited with code 0.
+// Launch: 10 / 20
+// Execute: dotnet Heddle.Benchmarks.Dotnet-1.dll --anonymousPipes 2352 9212 --benchmarkName Heddle.Benchmarks.Dotnet.Bench.StartupBenchmarks.CompileHeddle --job "InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0" --benchmarkId 0 in E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.8
+// Runtime=.NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX512 BITALG+VBMI2+VNNI+VPOPCNTDQ,AVX512 IFMA+VBMI,AVX512 F+BW+CD+DQ+VL,AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni VectorSize=256
+// Job: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+
+// BeforeActualRun
+WorkloadActual   1: 1 op, 286455500.00 ns, 286.4555 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 1 op, 286455500.00 ns, 286.4555 ms/op
+// GC:  1 0 0 20363904 1
+// Threading:  0 0 1
+
+// AfterAll
+// Benchmark Process 5056 has exited with code 0.
+// Launch: 11 / 20
+// Execute: dotnet Heddle.Benchmarks.Dotnet-1.dll --anonymousPipes 3748 2328 --benchmarkName Heddle.Benchmarks.Dotnet.Bench.StartupBenchmarks.CompileHeddle --job "InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0" --benchmarkId 0 in E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.8
+// Runtime=.NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX512 BITALG+VBMI2+VNNI+VPOPCNTDQ,AVX512 IFMA+VBMI,AVX512 F+BW+CD+DQ+VL,AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni VectorSize=256
+// Job: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+
+// BeforeActualRun
+WorkloadActual   1: 1 op, 280513600.00 ns, 280.5136 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 1 op, 280513600.00 ns, 280.5136 ms/op
+// GC:  1 0 0 20363952 1
+// Threading:  0 0 1
+
+// AfterAll
+// Benchmark Process 5676 has exited with code 0.
+// Launch: 12 / 20
+// Execute: dotnet Heddle.Benchmarks.Dotnet-1.dll --anonymousPipes 3436 3552 --benchmarkName Heddle.Benchmarks.Dotnet.Bench.StartupBenchmarks.CompileHeddle --job "InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0" --benchmarkId 0 in E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.8
+// Runtime=.NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX512 BITALG+VBMI2+VNNI+VPOPCNTDQ,AVX512 IFMA+VBMI,AVX512 F+BW+CD+DQ+VL,AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni VectorSize=256
+// Job: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+
+// BeforeActualRun
+WorkloadActual   1: 1 op, 282362600.00 ns, 282.3626 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 1 op, 282362600.00 ns, 282.3626 ms/op
+// GC:  1 0 0 20363952 1
+// Threading:  0 0 1
+
+// AfterAll
+// Benchmark Process 4008 has exited with code 0.
+// Launch: 13 / 20
+// Execute: dotnet Heddle.Benchmarks.Dotnet-1.dll --anonymousPipes 3504 2304 --benchmarkName Heddle.Benchmarks.Dotnet.Bench.StartupBenchmarks.CompileHeddle --job "InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0" --benchmarkId 0 in E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.8
+// Runtime=.NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX512 BITALG+VBMI2+VNNI+VPOPCNTDQ,AVX512 IFMA+VBMI,AVX512 F+BW+CD+DQ+VL,AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni VectorSize=256
+// Job: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+
+// BeforeActualRun
+WorkloadActual   1: 1 op, 281539400.00 ns, 281.5394 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 1 op, 281539400.00 ns, 281.5394 ms/op
+// GC:  1 0 0 20363872 1
+// Threading:  0 0 1
+
+// AfterAll
+// Benchmark Process 22040 has exited with code 0.
+// Launch: 14 / 20
+// Execute: dotnet Heddle.Benchmarks.Dotnet-1.dll --anonymousPipes 3156 9168 --benchmarkName Heddle.Benchmarks.Dotnet.Bench.StartupBenchmarks.CompileHeddle --job "InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0" --benchmarkId 0 in E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.8
+// Runtime=.NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX512 BITALG+VBMI2+VNNI+VPOPCNTDQ,AVX512 IFMA+VBMI,AVX512 F+BW+CD+DQ+VL,AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni VectorSize=256
+// Job: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+
+// BeforeActualRun
+WorkloadActual   1: 1 op, 281463600.00 ns, 281.4636 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 1 op, 281463600.00 ns, 281.4636 ms/op
+// GC:  1 0 0 20376720 1
+// Threading:  0 0 1
+
+// AfterAll
+// Benchmark Process 15192 has exited with code 0.
+// Launch: 15 / 20
+// Execute: dotnet Heddle.Benchmarks.Dotnet-1.dll --anonymousPipes 2292 2588 --benchmarkName Heddle.Benchmarks.Dotnet.Bench.StartupBenchmarks.CompileHeddle --job "InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0" --benchmarkId 0 in E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.8
+// Runtime=.NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX512 BITALG+VBMI2+VNNI+VPOPCNTDQ,AVX512 IFMA+VBMI,AVX512 F+BW+CD+DQ+VL,AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni VectorSize=256
+// Job: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+
+// BeforeActualRun
+WorkloadActual   1: 1 op, 278958500.00 ns, 278.9585 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 1 op, 278958500.00 ns, 278.9585 ms/op
+// GC:  1 0 0 20363984 1
+// Threading:  0 0 1
+
+// AfterAll
+// Benchmark Process 26684 has exited with code 0.
+// Launch: 16 / 20
+// Execute: dotnet Heddle.Benchmarks.Dotnet-1.dll --anonymousPipes 4396 9160 --benchmarkName Heddle.Benchmarks.Dotnet.Bench.StartupBenchmarks.CompileHeddle --job "InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0" --benchmarkId 0 in E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.8
+// Runtime=.NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX512 BITALG+VBMI2+VNNI+VPOPCNTDQ,AVX512 IFMA+VBMI,AVX512 F+BW+CD+DQ+VL,AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni VectorSize=256
+// Job: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+
+// BeforeActualRun
+WorkloadActual   1: 1 op, 281797200.00 ns, 281.7972 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 1 op, 281797200.00 ns, 281.7972 ms/op
+// GC:  1 0 0 20363872 1
+// Threading:  0 0 1
+
+// AfterAll
+// Benchmark Process 29212 has exited with code 0.
+// Launch: 17 / 20
+// Execute: dotnet Heddle.Benchmarks.Dotnet-1.dll --anonymousPipes 4580 2340 --benchmarkName Heddle.Benchmarks.Dotnet.Bench.StartupBenchmarks.CompileHeddle --job "InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0" --benchmarkId 0 in E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.8
+// Runtime=.NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX512 BITALG+VBMI2+VNNI+VPOPCNTDQ,AVX512 IFMA+VBMI,AVX512 F+BW+CD+DQ+VL,AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni VectorSize=256
+// Job: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+
+// BeforeActualRun
+WorkloadActual   1: 1 op, 282880800.00 ns, 282.8808 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 1 op, 282880800.00 ns, 282.8808 ms/op
+// GC:  1 0 0 20363872 1
+// Threading:  0 0 1
+
+// AfterAll
+// Benchmark Process 20408 has exited with code 0.
+// Launch: 18 / 20
+// Execute: dotnet Heddle.Benchmarks.Dotnet-1.dll --anonymousPipes 2692 3504 --benchmarkName Heddle.Benchmarks.Dotnet.Bench.StartupBenchmarks.CompileHeddle --job "InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0" --benchmarkId 0 in E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.8
+// Runtime=.NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX512 BITALG+VBMI2+VNNI+VPOPCNTDQ,AVX512 IFMA+VBMI,AVX512 F+BW+CD+DQ+VL,AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni VectorSize=256
+// Job: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+
+// BeforeActualRun
+WorkloadActual   1: 1 op, 274040900.00 ns, 274.0409 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 1 op, 274040900.00 ns, 274.0409 ms/op
+// GC:  1 0 0 20365920 1
+// Threading:  0 0 1
+
+// AfterAll
+// Benchmark Process 24012 has exited with code 0.
+// Launch: 19 / 20
+// Execute: dotnet Heddle.Benchmarks.Dotnet-1.dll --anonymousPipes 5180 2292 --benchmarkName Heddle.Benchmarks.Dotnet.Bench.StartupBenchmarks.CompileHeddle --job "InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0" --benchmarkId 0 in E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.8
+// Runtime=.NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX512 BITALG+VBMI2+VNNI+VPOPCNTDQ,AVX512 IFMA+VBMI,AVX512 F+BW+CD+DQ+VL,AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni VectorSize=256
+// Job: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+
+// BeforeActualRun
+WorkloadActual   1: 1 op, 282345800.00 ns, 282.3458 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 1 op, 282345800.00 ns, 282.3458 ms/op
+// GC:  1 0 0 20376832 1
+// Threading:  0 0 1
+
+// AfterAll
+// Benchmark Process 28412 has exited with code 0.
+// Launch: 20 / 20
+// Execute: dotnet Heddle.Benchmarks.Dotnet-1.dll --anonymousPipes 2588 3552 --benchmarkName Heddle.Benchmarks.Dotnet.Bench.StartupBenchmarks.CompileHeddle --job "InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0" --benchmarkId 0 in E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.8
+// Runtime=.NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX512 BITALG+VBMI2+VNNI+VPOPCNTDQ,AVX512 IFMA+VBMI,AVX512 F+BW+CD+DQ+VL,AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni VectorSize=256
+// Job: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+
+// BeforeActualRun
+WorkloadActual   1: 1 op, 281391100.00 ns, 281.3911 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 1 op, 281391100.00 ns, 281.3911 ms/op
+// GC:  1 0 0 20363872 1
+// Threading:  0 0 1
+
+// AfterAll
+// Benchmark Process 12056 has exited with code 0.
+
+Mean = 296.857 ms, StdErr = 14.873 ms (5.01%), N = 20, StdDev = 66.515 ms
+Min = 274.041 ms, Q1 = 280.636 ms, Median = 281.592 ms, Q3 = 282.492 ms, Max = 578.937 ms
+IQR = 1.856 ms, LowerFence = 277.851 ms, UpperFence = 285.277 ms
+ConfidenceInterval = [239.098 ms; 354.615 ms] (CI 99.9%), Margin = 57.758 ms (19.46% of Mean)
+Skewness = 3.8, Kurtosis = 16.18, MValue = 2
+
+// ** Remained 2 (66.7%) benchmark(s) to run. Estimated finish 2026-09-16 11:30 (0h 0m from now) **
+Setup power plan (GUID: 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c FriendlyName: High performance)
+// **************************
+// Benchmark: StartupBenchmarks.RegisterAndRenderCompiledForm: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+// *** Execute ***
+// Launch: 1 / 20
+// Execute: dotnet Heddle.Benchmarks.Dotnet-1.dll --anonymousPipes 9180 2304 --benchmarkName Heddle.Benchmarks.Dotnet.Bench.StartupBenchmarks.RegisterAndRenderCompiledForm --job "InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0" --benchmarkId 1 in E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.8
+// Runtime=.NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX512 BITALG+VBMI2+VNNI+VPOPCNTDQ,AVX512 IFMA+VBMI,AVX512 F+BW+CD+DQ+VL,AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni VectorSize=256
+// Job: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+
+// BeforeActualRun
+WorkloadActual   1: 1 op, 286260700.00 ns, 286.2607 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 1 op, 286260700.00 ns, 286.2607 ms/op
+// GC:  0 0 0 958080 1
+// Threading:  0 0 1
+
+// AfterAll
+// Benchmark Process 23904 has exited with code 0.
+// Launch: 2 / 20
+// Execute: dotnet Heddle.Benchmarks.Dotnet-1.dll --anonymousPipes 4024 2360 --benchmarkName Heddle.Benchmarks.Dotnet.Bench.StartupBenchmarks.RegisterAndRenderCompiledForm --job "InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0" --benchmarkId 1 in E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.8
+// Runtime=.NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX512 BITALG+VBMI2+VNNI+VPOPCNTDQ,AVX512 IFMA+VBMI,AVX512 F+BW+CD+DQ+VL,AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni VectorSize=256
+// Job: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+
+// BeforeActualRun
+WorkloadActual   1: 1 op, 280171500.00 ns, 280.1715 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 1 op, 280171500.00 ns, 280.1715 ms/op
+// GC:  0 0 0 958080 1
+// Threading:  0 0 1
+
+// AfterAll
+// Benchmark Process 4896 has exited with code 0.
+// Launch: 3 / 20
+// Execute: dotnet Heddle.Benchmarks.Dotnet-1.dll --anonymousPipes 3636 3772 --benchmarkName Heddle.Benchmarks.Dotnet.Bench.StartupBenchmarks.RegisterAndRenderCompiledForm --job "InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0" --benchmarkId 1 in E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.8
+// Runtime=.NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX512 BITALG+VBMI2+VNNI+VPOPCNTDQ,AVX512 IFMA+VBMI,AVX512 F+BW+CD+DQ+VL,AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni VectorSize=256
+// Job: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+
+// BeforeActualRun
+WorkloadActual   1: 1 op, 292568500.00 ns, 292.5685 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 1 op, 292568500.00 ns, 292.5685 ms/op
+// GC:  0 0 0 958080 1
+// Threading:  0 0 1
+
+// AfterAll
+// Benchmark Process 3876 has exited with code 0.
+// Launch: 4 / 20
+// Execute: dotnet Heddle.Benchmarks.Dotnet-1.dll --anonymousPipes 1456 3988 --benchmarkName Heddle.Benchmarks.Dotnet.Bench.StartupBenchmarks.RegisterAndRenderCompiledForm --job "InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0" --benchmarkId 1 in E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.8
+// Runtime=.NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX512 BITALG+VBMI2+VNNI+VPOPCNTDQ,AVX512 IFMA+VBMI,AVX512 F+BW+CD+DQ+VL,AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni VectorSize=256
+// Job: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+
+// BeforeActualRun
+WorkloadActual   1: 1 op, 279249300.00 ns, 279.2493 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 1 op, 279249300.00 ns, 279.2493 ms/op
+// GC:  0 0 0 958080 1
+// Threading:  0 0 1
+
+// AfterAll
+// Benchmark Process 25036 has exited with code 0.
+// Launch: 5 / 20
+// Execute: dotnet Heddle.Benchmarks.Dotnet-1.dll --anonymousPipes 9244 4572 --benchmarkName Heddle.Benchmarks.Dotnet.Bench.StartupBenchmarks.RegisterAndRenderCompiledForm --job "InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0" --benchmarkId 1 in E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.8
+// Runtime=.NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX512 BITALG+VBMI2+VNNI+VPOPCNTDQ,AVX512 IFMA+VBMI,AVX512 F+BW+CD+DQ+VL,AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni VectorSize=256
+// Job: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+
+// BeforeActualRun
+WorkloadActual   1: 1 op, 294618600.00 ns, 294.6186 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 1 op, 294618600.00 ns, 294.6186 ms/op
+// GC:  0 0 0 958080 1
+// Threading:  0 0 1
+
+// AfterAll
+// Benchmark Process 4164 has exited with code 0.
+// Launch: 6 / 20
+// Execute: dotnet Heddle.Benchmarks.Dotnet-1.dll --anonymousPipes 3708 4024 --benchmarkName Heddle.Benchmarks.Dotnet.Bench.StartupBenchmarks.RegisterAndRenderCompiledForm --job "InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0" --benchmarkId 1 in E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.8
+// Runtime=.NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX512 BITALG+VBMI2+VNNI+VPOPCNTDQ,AVX512 IFMA+VBMI,AVX512 F+BW+CD+DQ+VL,AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni VectorSize=256
+// Job: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+
+// BeforeActualRun
+WorkloadActual   1: 1 op, 280596700.00 ns, 280.5967 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 1 op, 280596700.00 ns, 280.5967 ms/op
+// GC:  0 0 0 958080 1
+// Threading:  0 0 1
+
+// AfterAll
+// Benchmark Process 5520 has exited with code 0.
+// Launch: 7 / 20
+// Execute: dotnet Heddle.Benchmarks.Dotnet-1.dll --anonymousPipes 3552 3592 --benchmarkName Heddle.Benchmarks.Dotnet.Bench.StartupBenchmarks.RegisterAndRenderCompiledForm --job "InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0" --benchmarkId 1 in E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.8
+// Runtime=.NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX512 BITALG+VBMI2+VNNI+VPOPCNTDQ,AVX512 IFMA+VBMI,AVX512 F+BW+CD+DQ+VL,AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni VectorSize=256
+// Job: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+
+// BeforeActualRun
+WorkloadActual   1: 1 op, 282557800.00 ns, 282.5578 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 1 op, 282557800.00 ns, 282.5578 ms/op
+// GC:  0 0 0 958080 1
+// Threading:  0 0 1
+
+// AfterAll
+// Benchmark Process 14620 has exited with code 0.
+// Launch: 8 / 20
+// Execute: dotnet Heddle.Benchmarks.Dotnet-1.dll --anonymousPipes 4308 4392 --benchmarkName Heddle.Benchmarks.Dotnet.Bench.StartupBenchmarks.RegisterAndRenderCompiledForm --job "InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0" --benchmarkId 1 in E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.8
+// Runtime=.NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX512 BITALG+VBMI2+VNNI+VPOPCNTDQ,AVX512 IFMA+VBMI,AVX512 F+BW+CD+DQ+VL,AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni VectorSize=256
+// Job: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+
+// BeforeActualRun
+WorkloadActual   1: 1 op, 290714800.00 ns, 290.7148 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 1 op, 290714800.00 ns, 290.7148 ms/op
+// GC:  0 0 0 958080 1
+// Threading:  0 0 1
+
+// AfterAll
+// Benchmark Process 30108 has exited with code 0.
+// Launch: 9 / 20
+// Execute: dotnet Heddle.Benchmarks.Dotnet-1.dll --anonymousPipes 9208 4384 --benchmarkName Heddle.Benchmarks.Dotnet.Bench.StartupBenchmarks.RegisterAndRenderCompiledForm --job "InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0" --benchmarkId 1 in E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.8
+// Runtime=.NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX512 BITALG+VBMI2+VNNI+VPOPCNTDQ,AVX512 IFMA+VBMI,AVX512 F+BW+CD+DQ+VL,AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni VectorSize=256
+// Job: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+
+// BeforeActualRun
+WorkloadActual   1: 1 op, 295741500.00 ns, 295.7415 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 1 op, 295741500.00 ns, 295.7415 ms/op
+// GC:  0 0 0 958080 1
+// Threading:  0 0 1
+
+// AfterAll
+// Benchmark Process 4188 has exited with code 0.
+// Launch: 10 / 20
+// Execute: dotnet Heddle.Benchmarks.Dotnet-1.dll --anonymousPipes 936 4024 --benchmarkName Heddle.Benchmarks.Dotnet.Bench.StartupBenchmarks.RegisterAndRenderCompiledForm --job "InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0" --benchmarkId 1 in E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.8
+// Runtime=.NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX512 BITALG+VBMI2+VNNI+VPOPCNTDQ,AVX512 IFMA+VBMI,AVX512 F+BW+CD+DQ+VL,AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni VectorSize=256
+// Job: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+
+// BeforeActualRun
+WorkloadActual   1: 1 op, 281780500.00 ns, 281.7805 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 1 op, 281780500.00 ns, 281.7805 ms/op
+// GC:  0 0 0 958080 1
+// Threading:  0 0 1
+
+// AfterAll
+// Benchmark Process 20248 has exited with code 0.
+// Launch: 11 / 20
+// Execute: dotnet Heddle.Benchmarks.Dotnet-1.dll --anonymousPipes 9236 2692 --benchmarkName Heddle.Benchmarks.Dotnet.Bench.StartupBenchmarks.RegisterAndRenderCompiledForm --job "InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0" --benchmarkId 1 in E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.8
+// Runtime=.NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX512 BITALG+VBMI2+VNNI+VPOPCNTDQ,AVX512 IFMA+VBMI,AVX512 F+BW+CD+DQ+VL,AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni VectorSize=256
+// Job: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+
+// BeforeActualRun
+WorkloadActual   1: 1 op, 293889000.00 ns, 293.8890 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 1 op, 293889000.00 ns, 293.8890 ms/op
+// GC:  0 0 0 958080 1
+// Threading:  0 0 1
+
+// AfterAll
+// Benchmark Process 30576 has exited with code 0.
+// Launch: 12 / 20
+// Execute: dotnet Heddle.Benchmarks.Dotnet-1.dll --anonymousPipes 4392 2340 --benchmarkName Heddle.Benchmarks.Dotnet.Bench.StartupBenchmarks.RegisterAndRenderCompiledForm --job "InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0" --benchmarkId 1 in E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.8
+// Runtime=.NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX512 BITALG+VBMI2+VNNI+VPOPCNTDQ,AVX512 IFMA+VBMI,AVX512 F+BW+CD+DQ+VL,AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni VectorSize=256
+// Job: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+
+// BeforeActualRun
+WorkloadActual   1: 1 op, 294514200.00 ns, 294.5142 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 1 op, 294514200.00 ns, 294.5142 ms/op
+// GC:  0 0 0 958080 1
+// Threading:  0 0 1
+
+// AfterAll
+// Benchmark Process 17512 has exited with code 0.
+// Launch: 13 / 20
+// Execute: dotnet Heddle.Benchmarks.Dotnet-1.dll --anonymousPipes 5200 4288 --benchmarkName Heddle.Benchmarks.Dotnet.Bench.StartupBenchmarks.RegisterAndRenderCompiledForm --job "InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0" --benchmarkId 1 in E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.8
+// Runtime=.NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX512 BITALG+VBMI2+VNNI+VPOPCNTDQ,AVX512 IFMA+VBMI,AVX512 F+BW+CD+DQ+VL,AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni VectorSize=256
+// Job: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+
+// BeforeActualRun
+WorkloadActual   1: 1 op, 284265200.00 ns, 284.2652 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 1 op, 284265200.00 ns, 284.2652 ms/op
+// GC:  0 0 0 958080 1
+// Threading:  0 0 1
+
+// AfterAll
+// Benchmark Process 26252 has exited with code 0.
+// Launch: 14 / 20
+// Execute: dotnet Heddle.Benchmarks.Dotnet-1.dll --anonymousPipes 9212 9236 --benchmarkName Heddle.Benchmarks.Dotnet.Bench.StartupBenchmarks.RegisterAndRenderCompiledForm --job "InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0" --benchmarkId 1 in E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.8
+// Runtime=.NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX512 BITALG+VBMI2+VNNI+VPOPCNTDQ,AVX512 IFMA+VBMI,AVX512 F+BW+CD+DQ+VL,AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni VectorSize=256
+// Job: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+
+// BeforeActualRun
+WorkloadActual   1: 1 op, 279704500.00 ns, 279.7045 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 1 op, 279704500.00 ns, 279.7045 ms/op
+// GC:  0 0 0 958080 1
+// Threading:  0 0 1
+
+// AfterAll
+// Benchmark Process 12880 has exited with code 0.
+// Launch: 15 / 20
+// Execute: dotnet Heddle.Benchmarks.Dotnet-1.dll --anonymousPipes 4872 2492 --benchmarkName Heddle.Benchmarks.Dotnet.Bench.StartupBenchmarks.RegisterAndRenderCompiledForm --job "InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0" --benchmarkId 1 in E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.8
+// Runtime=.NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX512 BITALG+VBMI2+VNNI+VPOPCNTDQ,AVX512 IFMA+VBMI,AVX512 F+BW+CD+DQ+VL,AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni VectorSize=256
+// Job: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+
+// BeforeActualRun
+WorkloadActual   1: 1 op, 282432000.00 ns, 282.4320 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 1 op, 282432000.00 ns, 282.4320 ms/op
+// GC:  0 0 0 958080 1
+// Threading:  0 0 1
+
+// AfterAll
+// Benchmark Process 3224 has exited with code 0.
+// Launch: 16 / 20
+// Execute: dotnet Heddle.Benchmarks.Dotnet-1.dll --anonymousPipes 10508 1808 --benchmarkName Heddle.Benchmarks.Dotnet.Bench.StartupBenchmarks.RegisterAndRenderCompiledForm --job "InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0" --benchmarkId 1 in E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.8
+// Runtime=.NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX512 BITALG+VBMI2+VNNI+VPOPCNTDQ,AVX512 IFMA+VBMI,AVX512 F+BW+CD+DQ+VL,AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni VectorSize=256
+// Job: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+
+// BeforeActualRun
+WorkloadActual   1: 1 op, 281750000.00 ns, 281.7500 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 1 op, 281750000.00 ns, 281.7500 ms/op
+// GC:  0 0 0 958080 1
+// Threading:  0 0 1
+
+// AfterAll
+// Benchmark Process 17124 has exited with code 0.
+// Launch: 17 / 20
+// Execute: dotnet Heddle.Benchmarks.Dotnet-1.dll --anonymousPipes 9960 9240 --benchmarkName Heddle.Benchmarks.Dotnet.Bench.StartupBenchmarks.RegisterAndRenderCompiledForm --job "InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0" --benchmarkId 1 in E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.8
+// Runtime=.NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX512 BITALG+VBMI2+VNNI+VPOPCNTDQ,AVX512 IFMA+VBMI,AVX512 F+BW+CD+DQ+VL,AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni VectorSize=256
+// Job: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+
+// BeforeActualRun
+WorkloadActual   1: 1 op, 294903700.00 ns, 294.9037 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 1 op, 294903700.00 ns, 294.9037 ms/op
+// GC:  0 0 0 958080 1
+// Threading:  0 0 1
+
+// AfterAll
+// Benchmark Process 28824 has exited with code 0.
+// Launch: 18 / 20
+// Execute: dotnet Heddle.Benchmarks.Dotnet-1.dll --anonymousPipes 4848 9208 --benchmarkName Heddle.Benchmarks.Dotnet.Bench.StartupBenchmarks.RegisterAndRenderCompiledForm --job "InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0" --benchmarkId 1 in E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.8
+// Runtime=.NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX512 BITALG+VBMI2+VNNI+VPOPCNTDQ,AVX512 IFMA+VBMI,AVX512 F+BW+CD+DQ+VL,AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni VectorSize=256
+// Job: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+
+// BeforeActualRun
+WorkloadActual   1: 1 op, 280485500.00 ns, 280.4855 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 1 op, 280485500.00 ns, 280.4855 ms/op
+// GC:  0 0 0 958080 1
+// Threading:  0 0 1
+
+// AfterAll
+// Benchmark Process 7092 has exited with code 0.
+// Launch: 19 / 20
+// Execute: dotnet Heddle.Benchmarks.Dotnet-1.dll --anonymousPipes 10100 5188 --benchmarkName Heddle.Benchmarks.Dotnet.Bench.StartupBenchmarks.RegisterAndRenderCompiledForm --job "InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0" --benchmarkId 1 in E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.8
+// Runtime=.NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX512 BITALG+VBMI2+VNNI+VPOPCNTDQ,AVX512 IFMA+VBMI,AVX512 F+BW+CD+DQ+VL,AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni VectorSize=256
+// Job: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+
+// BeforeActualRun
+WorkloadActual   1: 1 op, 279666200.00 ns, 279.6662 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 1 op, 279666200.00 ns, 279.6662 ms/op
+// GC:  0 0 0 958080 1
+// Threading:  0 0 1
+
+// AfterAll
+// Benchmark Process 30508 has exited with code 0.
+// Launch: 20 / 20
+// Execute: dotnet Heddle.Benchmarks.Dotnet-1.dll --anonymousPipes 3120 9556 --benchmarkName Heddle.Benchmarks.Dotnet.Bench.StartupBenchmarks.RegisterAndRenderCompiledForm --job "InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0" --benchmarkId 1 in E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.8
+// Runtime=.NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX512 BITALG+VBMI2+VNNI+VPOPCNTDQ,AVX512 IFMA+VBMI,AVX512 F+BW+CD+DQ+VL,AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni VectorSize=256
+// Job: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+
+// BeforeActualRun
+WorkloadActual   1: 1 op, 277489600.00 ns, 277.4896 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 1 op, 277489600.00 ns, 277.4896 ms/op
+// GC:  0 0 0 958080 1
+// Threading:  0 0 1
+
+// AfterAll
+// Benchmark Process 25284 has exited with code 0.
+
+Mean = 285.668 ms, StdErr = 1.452 ms (0.51%), N = 20, StdDev = 6.494 ms
+Min = 277.490 ms, Q1 = 280.407 ms, Median = 282.495 ms, Q3 = 292.899 ms, Max = 295.741 ms
+IQR = 12.492 ms, LowerFence = 261.670 ms, UpperFence = 311.636 ms
+ConfidenceInterval = [280.029 ms; 291.307 ms] (CI 99.9%), Margin = 5.639 ms (1.97% of Mean)
+Skewness = 0.43, Kurtosis = 1.39, MValue = 2
+
+// ** Remained 1 (33.3%) benchmark(s) to run. Estimated finish 2026-09-16 11:30 (0h 0m from now) **
+Setup power plan (GUID: 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c FriendlyName: High performance)
+// **************************
+// Benchmark: StartupBenchmarks.RegisterAndRenderCompiledFormDataOnly: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+// *** Execute ***
+// Launch: 1 / 20
+// Execute: dotnet Heddle.Benchmarks.Dotnet-1.dll --anonymousPipes 9532 9240 --benchmarkName Heddle.Benchmarks.Dotnet.Bench.StartupBenchmarks.RegisterAndRenderCompiledFormDataOnly --job "InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0" --benchmarkId 2 in E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.8
+// Runtime=.NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX512 BITALG+VBMI2+VNNI+VPOPCNTDQ,AVX512 IFMA+VBMI,AVX512 F+BW+CD+DQ+VL,AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni VectorSize=256
+// Job: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+
+// BeforeActualRun
+WorkloadActual   1: 1 op, 290830100.00 ns, 290.8301 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 1 op, 290830100.00 ns, 290.8301 ms/op
+// GC:  0 0 0 958080 1
+// Threading:  0 0 1
+
+// AfterAll
+// Benchmark Process 23888 has exited with code 0.
+// Launch: 2 / 20
+// Execute: dotnet Heddle.Benchmarks.Dotnet-1.dll --anonymousPipes 7440 9924 --benchmarkName Heddle.Benchmarks.Dotnet.Bench.StartupBenchmarks.RegisterAndRenderCompiledFormDataOnly --job "InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0" --benchmarkId 2 in E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.8
+// Runtime=.NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX512 BITALG+VBMI2+VNNI+VPOPCNTDQ,AVX512 IFMA+VBMI,AVX512 F+BW+CD+DQ+VL,AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni VectorSize=256
+// Job: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+
+// BeforeActualRun
+WorkloadActual   1: 1 op, 280826800.00 ns, 280.8268 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 1 op, 280826800.00 ns, 280.8268 ms/op
+// GC:  0 0 0 958080 1
+// Threading:  0 0 1
+
+// AfterAll
+// Benchmark Process 24988 has exited with code 0.
+// Launch: 3 / 20
+// Execute: dotnet Heddle.Benchmarks.Dotnet-1.dll --anonymousPipes 9600 1500 --benchmarkName Heddle.Benchmarks.Dotnet.Bench.StartupBenchmarks.RegisterAndRenderCompiledFormDataOnly --job "InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0" --benchmarkId 2 in E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.8
+// Runtime=.NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX512 BITALG+VBMI2+VNNI+VPOPCNTDQ,AVX512 IFMA+VBMI,AVX512 F+BW+CD+DQ+VL,AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni VectorSize=256
+// Job: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+
+// BeforeActualRun
+WorkloadActual   1: 1 op, 281008400.00 ns, 281.0084 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 1 op, 281008400.00 ns, 281.0084 ms/op
+// GC:  0 0 0 958080 1
+// Threading:  0 0 1
+
+// AfterAll
+// Benchmark Process 4728 has exited with code 0.
+// Launch: 4 / 20
+// Execute: dotnet Heddle.Benchmarks.Dotnet-1.dll --anonymousPipes 4864 9232 --benchmarkName Heddle.Benchmarks.Dotnet.Bench.StartupBenchmarks.RegisterAndRenderCompiledFormDataOnly --job "InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0" --benchmarkId 2 in E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.8
+// Runtime=.NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX512 BITALG+VBMI2+VNNI+VPOPCNTDQ,AVX512 IFMA+VBMI,AVX512 F+BW+CD+DQ+VL,AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni VectorSize=256
+// Job: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+
+// BeforeActualRun
+WorkloadActual   1: 1 op, 279506400.00 ns, 279.5064 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 1 op, 279506400.00 ns, 279.5064 ms/op
+// GC:  0 0 0 958080 1
+// Threading:  0 0 1
+
+// AfterAll
+// Benchmark Process 30356 has exited with code 0.
+// Launch: 5 / 20
+// Execute: dotnet Heddle.Benchmarks.Dotnet-1.dll --anonymousPipes 3048 9504 --benchmarkName Heddle.Benchmarks.Dotnet.Bench.StartupBenchmarks.RegisterAndRenderCompiledFormDataOnly --job "InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0" --benchmarkId 2 in E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.8
+// Runtime=.NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX512 BITALG+VBMI2+VNNI+VPOPCNTDQ,AVX512 IFMA+VBMI,AVX512 F+BW+CD+DQ+VL,AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni VectorSize=256
+// Job: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+
+// BeforeActualRun
+WorkloadActual   1: 1 op, 293760700.00 ns, 293.7607 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 1 op, 293760700.00 ns, 293.7607 ms/op
+// GC:  0 0 0 958080 1
+// Threading:  0 0 1
+
+// AfterAll
+// Benchmark Process 23264 has exited with code 0.
+// Launch: 6 / 20
+// Execute: dotnet Heddle.Benchmarks.Dotnet-1.dll --anonymousPipes 9904 9188 --benchmarkName Heddle.Benchmarks.Dotnet.Bench.StartupBenchmarks.RegisterAndRenderCompiledFormDataOnly --job "InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0" --benchmarkId 2 in E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.8
+// Runtime=.NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX512 BITALG+VBMI2+VNNI+VPOPCNTDQ,AVX512 IFMA+VBMI,AVX512 F+BW+CD+DQ+VL,AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni VectorSize=256
+// Job: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+
+// BeforeActualRun
+WorkloadActual   1: 1 op, 294346200.00 ns, 294.3462 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 1 op, 294346200.00 ns, 294.3462 ms/op
+// GC:  0 0 0 958080 1
+// Threading:  0 0 1
+
+// AfterAll
+// Benchmark Process 27104 has exited with code 0.
+// Launch: 7 / 20
+// Execute: dotnet Heddle.Benchmarks.Dotnet-1.dll --anonymousPipes 9664 2608 --benchmarkName Heddle.Benchmarks.Dotnet.Bench.StartupBenchmarks.RegisterAndRenderCompiledFormDataOnly --job "InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0" --benchmarkId 2 in E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.8
+// Runtime=.NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX512 BITALG+VBMI2+VNNI+VPOPCNTDQ,AVX512 IFMA+VBMI,AVX512 F+BW+CD+DQ+VL,AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni VectorSize=256
+// Job: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+
+// BeforeActualRun
+WorkloadActual   1: 1 op, 281861500.00 ns, 281.8615 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 1 op, 281861500.00 ns, 281.8615 ms/op
+// GC:  0 0 0 958080 1
+// Threading:  0 0 1
+
+// AfterAll
+// Benchmark Process 24656 has exited with code 0.
+// Launch: 8 / 20
+// Execute: dotnet Heddle.Benchmarks.Dotnet-1.dll --anonymousPipes 2576 9908 --benchmarkName Heddle.Benchmarks.Dotnet.Bench.StartupBenchmarks.RegisterAndRenderCompiledFormDataOnly --job "InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0" --benchmarkId 2 in E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.8
+// Runtime=.NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX512 BITALG+VBMI2+VNNI+VPOPCNTDQ,AVX512 IFMA+VBMI,AVX512 F+BW+CD+DQ+VL,AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni VectorSize=256
+// Job: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+
+// BeforeActualRun
+WorkloadActual   1: 1 op, 279607700.00 ns, 279.6077 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 1 op, 279607700.00 ns, 279.6077 ms/op
+// GC:  0 0 0 958080 1
+// Threading:  0 0 1
+
+// AfterAll
+// Benchmark Process 21236 has exited with code 0.
+// Launch: 9 / 20
+// Execute: dotnet Heddle.Benchmarks.Dotnet-1.dll --anonymousPipes 9624 9660 --benchmarkName Heddle.Benchmarks.Dotnet.Bench.StartupBenchmarks.RegisterAndRenderCompiledFormDataOnly --job "InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0" --benchmarkId 2 in E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.8
+// Runtime=.NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX512 BITALG+VBMI2+VNNI+VPOPCNTDQ,AVX512 IFMA+VBMI,AVX512 F+BW+CD+DQ+VL,AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni VectorSize=256
+// Job: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+
+// BeforeActualRun
+WorkloadActual   1: 1 op, 281636000.00 ns, 281.6360 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 1 op, 281636000.00 ns, 281.6360 ms/op
+// GC:  0 0 0 958080 1
+// Threading:  0 0 1
+
+// AfterAll
+// Benchmark Process 28384 has exited with code 0.
+// Launch: 10 / 20
+// Execute: dotnet Heddle.Benchmarks.Dotnet-1.dll --anonymousPipes 2944 9636 --benchmarkName Heddle.Benchmarks.Dotnet.Bench.StartupBenchmarks.RegisterAndRenderCompiledFormDataOnly --job "InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0" --benchmarkId 2 in E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.8
+// Runtime=.NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX512 BITALG+VBMI2+VNNI+VPOPCNTDQ,AVX512 IFMA+VBMI,AVX512 F+BW+CD+DQ+VL,AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni VectorSize=256
+// Job: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+
+// BeforeActualRun
+WorkloadActual   1: 1 op, 297331400.00 ns, 297.3314 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 1 op, 297331400.00 ns, 297.3314 ms/op
+// GC:  0 0 0 958080 1
+// Threading:  0 0 1
+
+// AfterAll
+// Benchmark Process 23960 has exited with code 0.
+// Launch: 11 / 20
+// Execute: dotnet Heddle.Benchmarks.Dotnet-1.dll --anonymousPipes 9652 9620 --benchmarkName Heddle.Benchmarks.Dotnet.Bench.StartupBenchmarks.RegisterAndRenderCompiledFormDataOnly --job "InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0" --benchmarkId 2 in E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.8
+// Runtime=.NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX512 BITALG+VBMI2+VNNI+VPOPCNTDQ,AVX512 IFMA+VBMI,AVX512 F+BW+CD+DQ+VL,AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni VectorSize=256
+// Job: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+
+// BeforeActualRun
+WorkloadActual   1: 1 op, 293912400.00 ns, 293.9124 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 1 op, 293912400.00 ns, 293.9124 ms/op
+// GC:  0 0 0 958080 1
+// Threading:  0 0 1
+
+// AfterAll
+// Benchmark Process 28260 has exited with code 0.
+// Launch: 12 / 20
+// Execute: dotnet Heddle.Benchmarks.Dotnet-1.dll --anonymousPipes 9692 9716 --benchmarkName Heddle.Benchmarks.Dotnet.Bench.StartupBenchmarks.RegisterAndRenderCompiledFormDataOnly --job "InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0" --benchmarkId 2 in E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.8
+// Runtime=.NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX512 BITALG+VBMI2+VNNI+VPOPCNTDQ,AVX512 IFMA+VBMI,AVX512 F+BW+CD+DQ+VL,AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni VectorSize=256
+// Job: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+
+// BeforeActualRun
+WorkloadActual   1: 1 op, 278106600.00 ns, 278.1066 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 1 op, 278106600.00 ns, 278.1066 ms/op
+// GC:  0 0 0 958080 1
+// Threading:  0 0 1
+
+// AfterAll
+// Benchmark Process 19380 has exited with code 0.
+// Launch: 13 / 20
+// Execute: dotnet Heddle.Benchmarks.Dotnet-1.dll --anonymousPipes 3528 9688 --benchmarkName Heddle.Benchmarks.Dotnet.Bench.StartupBenchmarks.RegisterAndRenderCompiledFormDataOnly --job "InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0" --benchmarkId 2 in E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.8
+// Runtime=.NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX512 BITALG+VBMI2+VNNI+VPOPCNTDQ,AVX512 IFMA+VBMI,AVX512 F+BW+CD+DQ+VL,AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni VectorSize=256
+// Job: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+
+// BeforeActualRun
+WorkloadActual   1: 1 op, 278979500.00 ns, 278.9795 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 1 op, 278979500.00 ns, 278.9795 ms/op
+// GC:  0 0 0 958080 1
+// Threading:  0 0 1
+
+// AfterAll
+// Benchmark Process 28548 has exited with code 0.
+// Launch: 14 / 20
+// Execute: dotnet Heddle.Benchmarks.Dotnet-1.dll --anonymousPipes 9676 9564 --benchmarkName Heddle.Benchmarks.Dotnet.Bench.StartupBenchmarks.RegisterAndRenderCompiledFormDataOnly --job "InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0" --benchmarkId 2 in E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.8
+// Runtime=.NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX512 BITALG+VBMI2+VNNI+VPOPCNTDQ,AVX512 IFMA+VBMI,AVX512 F+BW+CD+DQ+VL,AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni VectorSize=256
+// Job: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+
+// BeforeActualRun
+WorkloadActual   1: 1 op, 282073800.00 ns, 282.0738 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 1 op, 282073800.00 ns, 282.0738 ms/op
+// GC:  0 0 0 958080 1
+// Threading:  0 0 1
+
+// AfterAll
+// Benchmark Process 27196 has exited with code 0.
+// Launch: 15 / 20
+// Execute: dotnet Heddle.Benchmarks.Dotnet-1.dll --anonymousPipes 9756 9628 --benchmarkName Heddle.Benchmarks.Dotnet.Bench.StartupBenchmarks.RegisterAndRenderCompiledFormDataOnly --job "InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0" --benchmarkId 2 in E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.8
+// Runtime=.NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX512 BITALG+VBMI2+VNNI+VPOPCNTDQ,AVX512 IFMA+VBMI,AVX512 F+BW+CD+DQ+VL,AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni VectorSize=256
+// Job: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+
+// BeforeActualRun
+WorkloadActual   1: 1 op, 280546800.00 ns, 280.5468 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 1 op, 280546800.00 ns, 280.5468 ms/op
+// GC:  0 0 0 958080 1
+// Threading:  0 0 1
+
+// AfterAll
+// Benchmark Process 27340 has exited with code 0.
+// Launch: 16 / 20
+// Execute: dotnet Heddle.Benchmarks.Dotnet-1.dll --anonymousPipes 9740 1500 --benchmarkName Heddle.Benchmarks.Dotnet.Bench.StartupBenchmarks.RegisterAndRenderCompiledFormDataOnly --job "InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0" --benchmarkId 2 in E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.8
+// Runtime=.NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX512 BITALG+VBMI2+VNNI+VPOPCNTDQ,AVX512 IFMA+VBMI,AVX512 F+BW+CD+DQ+VL,AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni VectorSize=256
+// Job: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+
+// BeforeActualRun
+WorkloadActual   1: 1 op, 291931300.00 ns, 291.9313 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 1 op, 291931300.00 ns, 291.9313 ms/op
+// GC:  0 0 0 958080 1
+// Threading:  0 0 1
+
+// AfterAll
+// Benchmark Process 18796 has exited with code 0.
+// Launch: 17 / 20
+// Execute: dotnet Heddle.Benchmarks.Dotnet-1.dll --anonymousPipes 9728 9508 --benchmarkName Heddle.Benchmarks.Dotnet.Bench.StartupBenchmarks.RegisterAndRenderCompiledFormDataOnly --job "InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0" --benchmarkId 2 in E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.8
+// Runtime=.NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX512 BITALG+VBMI2+VNNI+VPOPCNTDQ,AVX512 IFMA+VBMI,AVX512 F+BW+CD+DQ+VL,AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni VectorSize=256
+// Job: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+
+// BeforeActualRun
+WorkloadActual   1: 1 op, 277845600.00 ns, 277.8456 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 1 op, 277845600.00 ns, 277.8456 ms/op
+// GC:  0 0 0 958080 1
+// Threading:  0 0 1
+
+// AfterAll
+// Benchmark Process 27360 has exited with code 0.
+// Launch: 18 / 20
+// Execute: dotnet Heddle.Benchmarks.Dotnet-1.dll --anonymousPipes 9660 9736 --benchmarkName Heddle.Benchmarks.Dotnet.Bench.StartupBenchmarks.RegisterAndRenderCompiledFormDataOnly --job "InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0" --benchmarkId 2 in E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.8
+// Runtime=.NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX512 BITALG+VBMI2+VNNI+VPOPCNTDQ,AVX512 IFMA+VBMI,AVX512 F+BW+CD+DQ+VL,AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni VectorSize=256
+// Job: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+
+// BeforeActualRun
+WorkloadActual   1: 1 op, 278647200.00 ns, 278.6472 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 1 op, 278647200.00 ns, 278.6472 ms/op
+// GC:  0 0 0 958080 1
+// Threading:  0 0 1
+
+// AfterAll
+// Benchmark Process 10820 has exited with code 0.
+// Launch: 19 / 20
+// Execute: dotnet Heddle.Benchmarks.Dotnet-1.dll --anonymousPipes 9704 9752 --benchmarkName Heddle.Benchmarks.Dotnet.Bench.StartupBenchmarks.RegisterAndRenderCompiledFormDataOnly --job "InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0" --benchmarkId 2 in E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.8
+// Runtime=.NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX512 BITALG+VBMI2+VNNI+VPOPCNTDQ,AVX512 IFMA+VBMI,AVX512 F+BW+CD+DQ+VL,AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni VectorSize=256
+// Job: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+
+// BeforeActualRun
+WorkloadActual   1: 1 op, 280035700.00 ns, 280.0357 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 1 op, 280035700.00 ns, 280.0357 ms/op
+// GC:  0 0 0 958080 1
+// Threading:  0 0 1
+
+// AfterAll
+// Benchmark Process 10372 has exited with code 0.
+// Launch: 20 / 20
+// Execute: dotnet Heddle.Benchmarks.Dotnet-1.dll --anonymousPipes 3116 2576 --benchmarkName Heddle.Benchmarks.Dotnet.Bench.StartupBenchmarks.RegisterAndRenderCompiledFormDataOnly --job "InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0" --benchmarkId 2 in E:\Work\Heddle\benchmarks\dotnet\bin\Release\net10.0\Heddle.Benchmarks.Dotnet-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.8
+// Runtime=.NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX512 BITALG+VBMI2+VNNI+VPOPCNTDQ,AVX512 IFMA+VBMI,AVX512 F+BW+CD+DQ+VL,AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni VectorSize=256
+// Job: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+
+// BeforeActualRun
+WorkloadActual   1: 1 op, 292350900.00 ns, 292.3509 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 1 op, 292350900.00 ns, 292.3509 ms/op
+// GC:  0 0 0 958080 1
+// Threading:  0 0 1
+
+// AfterAll
+// Benchmark Process 18184 has exited with code 0.
+
+Mean = 284.757 ms, StdErr = 1.515 ms (0.53%), N = 20, StdDev = 6.777 ms
+Min = 277.846 ms, Q1 = 279.582 ms, Median = 281.322 ms, Q3 = 292.036 ms, Max = 297.331 ms
+IQR = 12.454 ms, LowerFence = 260.902 ms, UpperFence = 310.717 ms
+ConfidenceInterval = [278.872 ms; 290.642 ms] (CI 99.9%), Margin = 5.885 ms (2.07% of Mean)
+Skewness = 0.6, Kurtosis = 1.52, MValue = 3.08
+
+// ** Remained 0 (0.0%) benchmark(s) to run. Estimated finish 2026-09-16 11:30 (0h 0m from now) **
+Successfully reverted power plan (GUID: 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c FriendlyName: High performance)
+// ***** BenchmarkRunner: Finish  *****
+
+// * Export *
+  BenchmarkDotNet.Artifacts\results\Heddle.Benchmarks.Dotnet.Bench.StartupBenchmarks-report.csv
+  BenchmarkDotNet.Artifacts\results\Heddle.Benchmarks.Dotnet.Bench.StartupBenchmarks-report-github.md
+  BenchmarkDotNet.Artifacts\results\Heddle.Benchmarks.Dotnet.Bench.StartupBenchmarks-report.html
+
+// * Detailed results *
+StartupBenchmarks.CompileHeddle: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+Runtime = .NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4; GC = Concurrent Workstation
+Mean = 296.857 ms, StdErr = 14.873 ms (5.01%), N = 20, StdDev = 66.515 ms
+Min = 274.041 ms, Q1 = 280.636 ms, Median = 281.592 ms, Q3 = 282.492 ms, Max = 578.937 ms
+IQR = 1.856 ms, LowerFence = 277.851 ms, UpperFence = 285.277 ms
+ConfidenceInterval = [239.098 ms; 354.615 ms] (CI 99.9%), Margin = 57.758 ms (19.46% of Mean)
+Skewness = 3.8, Kurtosis = 16.18, MValue = 2
+-------------------- Histogram --------------------
+[252.488 ms ; 316.812 ms) | @@@@@@@@@@@@@@@@@@@
+[316.812 ms ; 381.135 ms) | 
+[381.135 ms ; 445.459 ms) | 
+[445.459 ms ; 509.782 ms) | 
+[509.782 ms ; 546.776 ms) | 
+[546.776 ms ; 611.099 ms) | @
+---------------------------------------------------
+
+StartupBenchmarks.RegisterAndRenderCompiledForm: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+Runtime = .NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4; GC = Concurrent Workstation
+Mean = 285.668 ms, StdErr = 1.452 ms (0.51%), N = 20, StdDev = 6.494 ms
+Min = 277.490 ms, Q1 = 280.407 ms, Median = 282.495 ms, Q3 = 292.899 ms, Max = 295.741 ms
+IQR = 12.492 ms, LowerFence = 261.670 ms, UpperFence = 311.636 ms
+ConfidenceInterval = [280.029 ms; 291.307 ms] (CI 99.9%), Margin = 5.639 ms (1.97% of Mean)
+Skewness = 0.43, Kurtosis = 1.39, MValue = 2
+-------------------- Histogram --------------------
+[274.350 ms ; 284.897 ms) | @@@@@@@@@@@@
+[284.897 ms ; 296.368 ms) | @@@@@@@@
+---------------------------------------------------
+
+StartupBenchmarks.RegisterAndRenderCompiledFormDataOnly: Job-DKDFMQ(InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0)
+Runtime = .NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4; GC = Concurrent Workstation
+Mean = 284.757 ms, StdErr = 1.515 ms (0.53%), N = 20, StdDev = 6.777 ms
+Min = 277.846 ms, Q1 = 279.582 ms, Median = 281.322 ms, Q3 = 292.036 ms, Max = 297.331 ms
+IQR = 12.454 ms, LowerFence = 260.902 ms, UpperFence = 310.717 ms
+ConfidenceInterval = [278.872 ms; 290.642 ms] (CI 99.9%), Margin = 5.885 ms (2.07% of Mean)
+Skewness = 0.6, Kurtosis = 1.52, MValue = 3.08
+-------------------- Histogram --------------------
+[276.683 ms ; 283.237 ms) | @@@@@@@@@@@@@
+[283.237 ms ; 290.804 ms) | 
+[290.804 ms ; 297.358 ms) | @@@@@@@
+---------------------------------------------------
+
+// * Summary *
+
+BenchmarkDotNet v0.15.8, Windows 11 (10.0.26200.9457/25H2/2025Update/HudsonValley2)
+AMD Ryzen 9 9950X 4.30GHz, 1 CPU, 32 logical and 16 physical cores
+.NET SDK 10.0.401
+  [Host]     : .NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+  Job-DKDFMQ : .NET 10.0.12 (10.0.12, 10.0.1226.42308), X64 RyuJIT x86-64-v4
+
+InvocationCount=1  IterationCount=1  LaunchCount=20  
+RunStrategy=ColdStart  UnrollFactor=1  WarmupCount=0  
+
+| Method                                | Mean     | Error    | StdDev   | Ratio | RatioSD | Gen0      | Allocated   | Alloc Ratio |
+|-------------------------------------- |---------:|---------:|---------:|------:|--------:|----------:|------------:|------------:|
+| CompileHeddle                         | 296.9 ms | 57.76 ms | 66.51 ms |  1.03 |    0.26 | 1000.0000 | 19886.59 KB |        1.00 |
+| RegisterAndRenderCompiledForm         | 285.7 ms |  5.64 ms |  6.49 ms |  0.99 |    0.12 |         - |   935.63 KB |        0.05 |
+| RegisterAndRenderCompiledFormDataOnly | 284.8 ms |  5.88 ms |  6.78 ms |  0.98 |    0.12 |         - |   935.63 KB |        0.05 |
+
+// * Warnings *
+MultimodalDistribution
+  StartupBenchmarks.RegisterAndRenderCompiledFormDataOnly: InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0 -> It seems that the distribution can have several modes (mValue = 3.08)
+
+// * Hints *
+Outliers
+  StartupBenchmarks.CompileHeddle: InvocationCount=1, IterationCount=1, LaunchCount=20, RunStrategy=ColdStart, UnrollFactor=1, WarmupCount=0 -> 4 outliers were detected (274.04 ms, 286.46 ms..578.94 ms)
+
+// * Legends *
+  Mean        : Arithmetic mean of all measurements
+  Error       : Half of 99.9% confidence interval
+  StdDev      : Standard deviation of all measurements
+  Ratio       : Mean of the ratio distribution ([Current]/[Baseline])
+  RatioSD     : Standard deviation of the ratio distribution ([Current]/[Baseline])
+  Gen0        : GC Generation 0 collects per 1000 operations
+  Allocated   : Allocated memory per single operation (managed only, inclusive, 1KB = 1024B)
+  Alloc Ratio : Allocated memory ratio distribution ([Current]/[Baseline])
+  1 ms        : 1 Millisecond (0.001 sec)
+
+// * Diagnostic Output - MemoryDiagnoser *
+
+
+// ***** BenchmarkRunner: End *****
+Run time: 00:00:27 (27.15 sec), executed benchmarks: 3
+
+Global total time: 00:00:43 (43.4 sec), executed benchmarks: 3
+// * Artifacts cleanup *
+Artifacts cleanup is finished

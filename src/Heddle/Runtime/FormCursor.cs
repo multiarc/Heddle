@@ -384,6 +384,12 @@ namespace Heddle.Runtime
             string liveNominal = FormRecord.ToTypeRef(live)?.Nominal();
             if (string.Equals(recordedNominal, liveNominal, StringComparison.Ordinal))
                 return null;
+            // AC-4: a framework type compares by full name alone, so a body typed over System.Object
+            // recorded on .NET 10 (System.Private.CoreLib) is the same type on net48 (mscorlib).
+            var liveType = live != null ? live.Type : null;
+            if (liveType != null && !(recorded is DynamicTypeRef) &&
+                Heddle.Precompiled.PrecompiledGauntlet.TypeRefMatches(recorded, liveType))
+                return null;
             return "the " + side + " type (" + (liveNominal ?? "<untyped>") +
                 ") differs from the recorded consumed type (" + recordedNominal + ")";
         }

@@ -150,8 +150,9 @@ export default withMermaid(
           text: 'Benchmarks',
           collapsed: true,
           items: [
-            // docs/benchmarks keeps the latest run only, so this group always
-            // lists exactly one report: the index plus its two generated table pages.
+            // docs/benchmarks keeps the latest run of each kind: the cross-stack protocol run
+            // (index plus its two generated table pages) and the precompilation v3 evidence run.
+            { text: '2026-09-16 (precompilation v3 evidence)', link: '/benchmarks/2026-09-16/' },
             { text: '2026-08-08 (Windows protocol run)', link: '/benchmarks/2026-08-08/' },
             { text: '· consolidated tables', link: '/benchmarks/2026-08-08/consolidated-tables' },
             { text: '· summary tables', link: '/benchmarks/2026-08-08/summary-tables' }

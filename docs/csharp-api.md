@@ -493,8 +493,16 @@ unchanged and remain the semantic reference; the precompiled backend produces by
 output. The additions live in the `Heddle.Precompiled` namespace:
 
 - `PrecompiledTemplates` — the process‑wide registry: `Register(assembly)` (repeatable,
-  idempotent), `Entries` (host‑visible discovery), `TryGet(key, out …)`, the `OnFallback`
-  diagnostic callback, and the `BindingResolver` hook.
+  idempotent), `Entries` (host‑visible discovery), `TryGet(key, out …)`, `DefaultOptions` (the
+  options every typed entry point binds under), `BindTyped(assembly, key, modelType)` (the typed
+  bind a generated entry point performs — gauntlet, then materialization, throwing
+  `PrecompiledMismatchException` on a refusal), the `OnFallback` diagnostic callback, and the
+  `BindingResolver` hook. The artifact itself is produced by the `Heddle.Build` package.
+- Two `AppContext` switches govern the generated sites: `"Heddle.Precompiled.UseGeneratedSites"`
+  (default `true`; `false` rebuilds every site from its serialized form) and
+  `"Heddle.Precompiled.StrictLoad"` (default `false`; seeds `TemplateOptions.PrecompiledStrictLoad`,
+  under which a site the table does not serve throws `PrecompiledStrictLoadException` instead of
+  compiling at load).
 - `PrecompiledMismatchPolicy` on `TemplateOptions` — `Fallback` (default: recompile + warn) or
   `Strict` (throw when a precompiled entry exists but cannot be plugged).
 - Typed entry points — `Heddle.Generated.{Name}.Generate(model)` (the default namespace is

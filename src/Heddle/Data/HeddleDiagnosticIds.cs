@@ -278,7 +278,9 @@ namespace Heddle.Data
         /// records the generator's own version as <c>engineVersion</c>. Retired in place: no build raises it any more; the id stays claimed, never reused, never renumbered.</summary>
         public const string BuildEngineVersionUnresolved = "HED7019";
 
-        /// <summary>The template emitter threw — a build defect rather than a template error.</summary>
+        /// <summary>The build host faulted: compiling one template (a host defect, not a template error — that
+        /// template emits nothing and the pass continues) or writing the outputs after every template compiled
+        /// (an error, exit 1, no artifact).</summary>
         public const string BuildEmitterFault = "HED7020";
 
         /// <summary>An <c>[ExportFunctions]</c> container that is not a public static class (runtime throws <c>ArgumentException</c>).</summary>
@@ -308,10 +310,9 @@ namespace Heddle.Data
         /// instead. Retired in place: no build raises it any more; the id stays claimed, never reused, never renumbered.</summary>
         public const string BuildInaccessibleModelSymbol = "HED7030";
 
-        /// <summary>The emitter declined to precompile a template for a reason that has no more specific
-        /// channel, so it renders through the dynamic path. Before this id the decline was entirely silent:
-        /// the emitter computed a reason, the 2.x generator's <c>if (Emitted) … else if (IsMarker)</c> had no
-        /// final <c>else</c>, and the template simply produced no source and no manifest row.</summary>
+        /// <summary>Info, once per template whose row carries a refusal site, a late-bound site, a C# site
+        /// carried as data or a printer decline, naming each: the template is not fully precompiled and those
+        /// sites rebuild at load or render through the dynamic path.</summary>
         public const string BuildTemplateNotPrecompiled = "HED7031";
 
         /// <summary>A template carries both an <c>@model</c> directive and <c>ModelType</c> item metadata and the

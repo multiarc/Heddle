@@ -21,9 +21,11 @@ namespace Heddle.Tests
     public class GeneratedSiteTests : IDisposable
     {
         private readonly Action<PrecompiledFallbackEvent> _savedCallback;
+        private readonly ITestOutputHelper _output;
 
-        public GeneratedSiteTests()
+        public GeneratedSiteTests(ITestOutputHelper output)
         {
+            _output = output;
             _savedCallback = PrecompiledTemplates.OnFallback;
             PrecompiledTemplates.ResetForTests();
             CorpusExtensionFixtures.Register();
@@ -54,12 +56,48 @@ namespace Heddle.Tests
             throw new InvalidOperationException("No intent row names '" + name + "'.");
         }
 
+        /// <summary>Exit criterion 5, measured on the whole render rather than on one accessor: with the
+        /// site table serving a row, a render allocates no more than the same row rendered from its
+        /// serialized form (the data path). Both paths box a value-type result exactly once (the printed
+        /// site's <c>(object)</c> cast against the engine's <c>Expression.Convert</c>), so a table-served render
+        /// that allocates more than the data path has a generated site, or its dispatch, allocating beyond
+        /// the engine's box. Measured with <c>GC.GetAllocatedBytesForCurrentThread</c> over 200 string-sink
+        /// renders after a warm-up, per row, registry reset between the two arms.</summary>
+        [Theory]
+        [MemberData(nameof(TableCoveredRows))]
+        public void TableOnRenderAllocatesNoMoreThanDataPath(string name)
+        {
+            var row = Find(name);
+            if (row.Render == CorpusRender.ResolveOnly)
+                return;
+            long on = RenderAllocation(row, true);
+            long off = RenderAllocation(row, false);
+            _output.WriteLine($"{name}: table on {on} B/render, data path {off} B/render, delta {on - off:+#;-#;0} B");
+            Assert.True(on <= off,
+                $"{name}: a table-served render allocates {on} B, the data path {off} B (+{on - off} B per render).");
+        }
+
+        private static long RenderAllocation(CorpusIntentRow row, bool useGeneratedSites)
+        {
+            const int reads = 200;
+            PrecompiledTemplates.ResetForTests();
+            var result = CompiledFormHarness.RegisterRowWithSites(row, TestCorpusIndex.CorpusDir, useGeneratedSites);
+            CompiledFormHarness.ModelExFor(row, out _, out var model);
+            for (var i = 0; i < 50; i++)
+                CompiledFormHarness.RenderStrategy(result.Strategy, model);
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            GC.Collect();
+            var before = GC.GetAllocatedBytesForCurrentThread();
+            for (var i = 0; i < reads; i++)
+                CompiledFormHarness.RenderStrategy(result.Strategy, model);
+            return (GC.GetAllocatedBytesForCurrentThread() - before) / reads;
+        }
+
         [Theory]
         [MemberData(nameof(TableCoveredRows))]
         public void TableOnServesEverySite(string name)
         {
-            if (!CompiledFormHarness.StrictModeSupported)
-                Assert.Skip("The table-on probe needs the P3-A engine slice (site table + strict load).");
             var row = Find(name);
             PrecompiledTemplates.ResetForTests();
             using (var guard = new FallbackGuard())

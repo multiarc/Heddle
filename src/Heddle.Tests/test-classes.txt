@@ -27,6 +27,7 @@ Heddle.Tests.CompiledArtifactMergerTests
 Heddle.Tests.CompiledFormAllocationTests
 Heddle.Tests.CompiledFormBindingTests
 Heddle.Tests.CompiledFormDeferredBindingTests
+Heddle.Tests.CompiledFormFixtureTests
 Heddle.Tests.CompiledFormLinkedSourceTests
 Heddle.Tests.CompiledFormMarkerTests
 Heddle.Tests.CompiledFormNamedImportTests

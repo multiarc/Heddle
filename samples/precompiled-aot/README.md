@@ -39,8 +39,9 @@ dotnet run --project samples/precompiled-aot -c Release -- --capture out
 bash samples/tools/compare-golden.sh samples/precompiled-aot
 ```
 
-Writes one file per workload (`composed-page.txt`, …) plus `assemblies.txt` (loaded assembly names,
-sorted). The AOT claim is asserted *in capture* before anything is written: any loaded
+Writes one file per workload (`composed-page.txt`, …) plus `assemblies.txt` (the loaded assembly names, sorted,
+without the BCL facades: which `System.*` assemblies a run loads depends on the OS, runtime and JIT, so
+the golden pins the host, the engine and its dependencies rather than the machine). The AOT claim is asserted *in capture* before anything is written: any loaded
 `Microsoft.CodeAnalysis` assembly fails the run.
 
 ## AOT publish

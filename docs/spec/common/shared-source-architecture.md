@@ -6,6 +6,9 @@
 > below. Everything else collapsed into the
 > [program record — generator ↔ engine code-sharing (closed)](cross-cutting-decisions.md#program-record--generator--engine-code-sharing-closed)
 > and the [program record — precompilation v2 (closed)](cross-cutting-decisions.md#program-record--precompilation-v2-closed).
+>
+> No production project links `src/Heddle` source into its own compile: every consumer references
+> the `Heddle` assembly. `CompiledFormLinkedSourceTests` gates it.
 
 ## The language front end
 

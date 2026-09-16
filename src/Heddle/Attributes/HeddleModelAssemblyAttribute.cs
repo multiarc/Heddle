@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Heddle.Attributes
 {
@@ -36,7 +37,10 @@ namespace Heddle.Attributes
         private readonly Type[] _modelTypes;
 
         /// <summary>Declares the assembly one type comes from.</summary>
-        public HeddleModelAssemblyAttribute(Type modelType)
+        // P3-R9: the typeof here is what roots a model through a trimmed publish; the gauntlet and the loader
+        // walk its members by reflection, so the annotation keeps them.
+        public HeddleModelAssemblyAttribute(
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type modelType)
         {
             _modelTypes = new[] { modelType };
         }

@@ -54,7 +54,7 @@ any row is trusted). The run-time gauntlet (`PrecompiledGauntlet.Validate`) chec
 member bindings, content staleness — and any failure degrades that template to the dynamic tier with
 a `PrecompiledFallbackEvent`. Regeneration is byte-exact by construction: `CompiledFormWriter`
 stamps a content digest, and `CompiledFormFixtureTests` pins a stored real-build artifact
-(`src/Heddle.Tool.Tests/TestData/compiled-form-v4.bin`) byte-for-byte through read and re-encode.
+(`src/Heddle.Tests/TestTemplate/compiled-form-v4.bin`) byte-for-byte through read and re-encode, and registers and renders it against the text compile of the same fixture.
 
 ### What no longer exists
 
@@ -62,7 +62,7 @@ The 2.x Roslyn-analyzer generator tier (`Heddle.Generator`, its tests, its `anal
 layout), the `PrecompiledRuntime` helper surface, hand-written manifests, the public
 `PrecompiledTemplateInfo` constructors, the schema feature-gate constants, and the observe/emit
 MSBuild options. The full list is the phase-4 removal record in the
-[program record](spec/common/cross-cutting-decisions.md#program-record--precompilation-v2-closed).
+[program record](../docs/spec/common/cross-cutting-decisions.md#program-record--precompilation-v2-closed).
 
 ---
 

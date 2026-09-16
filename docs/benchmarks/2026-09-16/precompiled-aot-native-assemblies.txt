@@ -1,0 +1,7 @@
+Antlr4.Runtime.Standard
+Heddle
+Heddle.Language
+Microsoft.CSharp
+Microsoft.Extensions.FileProviders.Abstractions
+Microsoft.Extensions.FileProviders.Embedded
+PrecompiledAot

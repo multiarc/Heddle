@@ -182,7 +182,7 @@
   <Target Name="_HeddleResourceNames"
           BeforeTargets="AssignTargetPaths"
           DependsOnTargets="_HeddlePaths"
-          Condition="'$(DesignTimeBuild)' != 'true' and '@(HeddleTemplate)' != ''">
+          Condition="'$(DesignTimeBuild)' != 'true' and '$(BuildingProject)' == 'true' and '@(HeddleTemplate)' != ''">
     <ItemGroup>
       <EmbeddedResource Include="$(_HeddleArtifactPath)">
         <LogicalName>Heddle.CompiledForm</LogicalName>
@@ -190,23 +190,21 @@
     </ItemGroup>
   </Target>
 
-  <!-- The five retired 2.x properties warn (HED7037) rather than error: an old project file keeps
-       building byte-identical output, and only the warning says the option no longer exists. The observe-path
-       properties retire silently. Their own target, ahead of CoreCompile, so a stale option warns even on a
-       project whose templates are all import-only (where the compile itself has nothing to do). -->
+  <!-- Three retired 2.x properties warn (HED7037) rather than error: an old project file keeps
+       building byte-identical output, and only the warning says the option no longer exists. The two
+       observe-path properties (HeddleObserveIntermediatePath, HeddleObserveImplementationPath) retire
+       silently (P4-R5). Their own target, ahead of CoreCompile, so a stale option warns even on a
+       project whose templates are all import-only (where the compile itself has nothing to do). Skipped,
+       like every other heddle target, outside a real build (design-time or target-scoped invocations). -->
   <Target Name="_HeddleRetiredPropertyWarnings"
           BeforeTargets="CoreCompile"
-          Condition="'$(DesignTimeBuild)' != 'true'">
-    <Warning Code="HED7037" Text="HeddleObserveEngine is retired and ignored."
+          Condition="'$(DesignTimeBuild)' != 'true' and '$(BuildingProject)' == 'true'">
+    <Warning Code="HED7037" Text="HeddleObserveEngine is retired and ignored." File="$(MSBuildProjectFullPath)"
              Condition="'$(HeddleObserveEngine)' != ''" />
-    <Warning Code="HED7037" Text="HeddleNodeFallback is retired and ignored."
+    <Warning Code="HED7037" Text="HeddleNodeFallback is retired and ignored." File="$(MSBuildProjectFullPath)"
              Condition="'$(HeddleNodeFallback)' != ''" />
-    <Warning Code="HED7037" Text="HeddleEmitUtf8Pieces is retired and ignored."
+    <Warning Code="HED7037" Text="HeddleEmitUtf8Pieces is retired and ignored." File="$(MSBuildProjectFullPath)"
              Condition="'$(HeddleEmitUtf8Pieces)' != ''" />
-    <Warning Code="HED7037" Text="HeddleObserveIntermediatePath is retired and ignored."
-             Condition="'$(HeddleObserveIntermediatePath)' != ''" />
-    <Warning Code="HED7037" Text="HeddleObserveImplementationPath is retired and ignored."
-             Condition="'$(HeddleObserveImplementationPath)' != ''" />
   </Target>
 
   <!-- The compile: MSBuild-level incrementality on inputs, stamp-level inside the host. Outputs join
@@ -217,7 +215,7 @@
           Outputs="$(_HeddleArtifactPath);$(_HeddleSourcePath);$(_HeddleStampPath)"
           BeforeTargets="CoreCompile"
           DependsOnTargets="_HeddlePaths;_HeddleCollectImages;_HeddleEngineReference;_HeddleProbe;_HeddleIntermediateCompile"
-          Condition="'$(DesignTimeBuild)' != 'true' and '@(HeddleTemplate)' != ''">
+          Condition="'$(DesignTimeBuild)' != 'true' and '$(BuildingProject)' == 'true' and '@(HeddleTemplate)' != ''">
     <ItemGroup>
       <_HeddleCompileItem Include="@(HeddleTemplate)" Condition="'%(HeddleTemplate.Precompile)' != 'false'" />
       <_HeddleImportItem Include="@(HeddleTemplate)" Condition="'%(HeddleTemplate.Precompile)' == 'false'" />

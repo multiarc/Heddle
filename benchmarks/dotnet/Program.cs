@@ -159,6 +159,11 @@ namespace Heddle.Benchmarks.Dotnet
             var total = covered.Count + uncovered.Count;
 
             Console.WriteLine($"PRECOMPILED-STRICT: requiring {total}/{total} workloads to be precompiled.");
+            // Which arm this is, so the two evidence runs (P3-R8) are told apart in their own output.
+            Console.WriteLine("SITE-TABLE: " +
+                (AppContext.TryGetSwitch(TechniqueSetup.UseGeneratedSitesSwitch, out var generatedSites)
+                    ? (generatedSites ? "on" : "off")
+                    : "on (Heddle.Precompiled.UseGeneratedSites unset)"));
 
             var failures = 0;
 

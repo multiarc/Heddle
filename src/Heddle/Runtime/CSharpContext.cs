@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
@@ -225,6 +226,8 @@ namespace Heddle.Runtime
             }
         }
 
+        [UnconditionalSuppressMessage("Trimming", "IL2057", Justification = "P3-R9: the C# tier is outside the AOT claim; guarded by HeddleFeatures.CSharpTierEnabled, which ILLink.Substitutions.xml stubs to false in a trimmed publish, so this is dead code there.")]
+        [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "P3-R9: the C# tier is outside the AOT claim; guarded by HeddleFeatures.CSharpTierEnabled, which ILLink.Substitutions.xml stubs to false in a trimmed publish, so this is dead code there.")]
         private ExType ResolveTypeReference(CompileContext context,
             ExpressionOptions expressionOptions, ITypeSymbol type)
         {

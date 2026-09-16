@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Collections.Generic;
 using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
@@ -18,6 +19,8 @@ namespace Heddle.Runtime.Parameters
             _compiledAccessor = GetDynamicPropertyChainAccessor(names).Compile();
         }
 
+        [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "P3-R9: the dynamic tier is outside the AOT claim (spec, deferred: AOT of the dynamic tier); reached only for dynamic scopes, which the printer declines and strict load refuses.")]
+        [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "P3-R9: the dynamic tier is outside the AOT claim (spec, deferred: AOT of the dynamic tier); reached only for dynamic scopes, which the printer declines and strict load refuses.")]
         internal static Expression<Func<object, object>> GetDynamicPropertyChainAccessor(IEnumerable<string> names)
         {
             var inputParameter = Expression.Parameter(typeof(object));

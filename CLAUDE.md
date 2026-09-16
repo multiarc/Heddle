@@ -1,6 +1,6 @@
 # Heddle
 
-.NET templating engine: runtime compiler + render engine (`src/Heddle`), ANTLR grammar + generated parser (`src/Heddle.Language`), build-time source generator (`src/Heddle.Generator`), LSP (`src/Heddle.LanguageServer`), CLI (`src/Heddle.Tool`).
+.NET templating engine: runtime compiler + render engine (`src/Heddle`), ANTLR grammar + generated parser (`src/Heddle.Language`), build-time precompilation package — MSBuild task + targets driving the out-of-process `heddle compile` host (`src/Heddle.Build`), LSP (`src/Heddle.LanguageServer`), CLI (`src/Heddle.Tool`).
 
 Normative sources (read before non-trivial work): [docs/spec/README.md](docs/spec/README.md) → `docs/spec/common/` (coding-standards, testing-standards, cross-cutting-decisions D1–D11 + diagnostic registry, breaking-windows, shared-source-architecture, review-protocol, findings-register, spec-conventions). Rules below are the operational summary; the specs win on conflict.
 

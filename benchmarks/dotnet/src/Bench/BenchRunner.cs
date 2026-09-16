@@ -63,7 +63,7 @@ namespace Heddle.Benchmarks.Dotnet.Bench
             Console.WriteLine($"{verb}: {types.Length} suite(s) — {string.Join(", ", types.Select(t => t.Name))}");
             Console.WriteLine($"{verb}: BenchmarkDotNet args: {string.Join(" ", effective)}");
 
-            var summaries = BenchmarkSwitcher.FromTypes(types).Run(effective, Config(args)).ToList();
+            var summaries = BenchmarkSwitcher.FromTypes(types).Run(effective, Config(verb, args)).ToList();
             return Verdict(verb, summaries);
         }
 
@@ -94,9 +94,13 @@ namespace Heddle.Benchmarks.Dotnet.Bench
         /// is the opposite of a smoke pass. Supplying it here means a caller that names a job, or
         /// that overrides the counts (the <c>baseline</c> budget does), gets exactly that.</para>
         /// </summary>
-        private static IConfig Config(string[] args)
+        private static IConfig Config(string verb, string[] args)
         {
             if (Has(args, "--job")) return null;
+            // The cold-start verb's job is intrinsic (RunStrategy.ColdStart, one invocation per launch) and
+            // lives on StartupBenchmarks as an attribute; adding the short job here would run every startup
+            // method a second time warm, and BenchmarkDotNet adds configured jobs rather than replacing them.
+            if (string.Equals(verb, "bench-startup", StringComparison.OrdinalIgnoreCase)) return null;
             return ManualConfig.Create(DefaultConfig.Instance)
                 .AddJob(Job.ShortRun.WithLaunchCount(3).WithIterationCount(5));
         }

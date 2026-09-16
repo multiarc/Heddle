@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Collections.Generic;
 using System.Reflection;
 using Heddle.Data;
@@ -344,7 +345,7 @@ namespace Heddle.Precompiled
 
             if (request != null && request.PrecompiledStrictLoad && row.RefusalSites != null &&
                 row.RefusalSites.Count > 0)
-                throw new PrecompiledStrictLoadException(Key, 0, "RefusalSite");
+                throw new PrecompiledStrictLoadException(Key, row.RefusalSites[0].SiteOrdinal, "RefusalSite");
 
             var options = new TemplateOptions(row.Key);
             var fingerprint = ToFingerprint(row.Options);
@@ -564,6 +565,7 @@ namespace Heddle.Precompiled
 
         /// <summary>Resolves the row's wrapper type name on the registering assembly only. Null when the row
         /// names none or the name does not resolve there; never loads anything.</summary>
+        [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "P3-R9 (D11): resolves an identity the engine recorded itself over registered/loaded assemblies; a trimmed publish resolves only what it kept, and a miss reads as unresolved (a diagnostic or gauntlet mismatch), never a crash.")]
         private static Type ResolveEntryPoint(Assembly registeringAssembly, string typeName)
         {
             if (string.IsNullOrEmpty(typeName))
@@ -599,13 +601,15 @@ namespace Heddle.Precompiled
         /// <summary>Resolves a recorded type reference against assemblies already loaded into the default
         /// load context, or null when it resolves to nothing. Loads nothing; shared with the binding gate,
         /// which resolves each member row's start type by the same rule (GI-4/D11).</summary>
+        [UnconditionalSuppressMessage("Trimming", "IL2055", Justification = "P3-R9 (D11): resolves an identity the engine recorded itself over registered/loaded assemblies; a trimmed publish resolves only what it kept, and a miss reads as unresolved (a diagnostic or gauntlet mismatch), never a crash.")]
+        [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "P3-R9 (D11): resolves an identity the engine recorded itself over registered/loaded assemblies; a trimmed publish resolves only what it kept, and a miss reads as unresolved (a diagnostic or gauntlet mismatch), never a crash.")]
         internal static Type FindLoadedType(CompiledTypeRef typeRef)
         {
             try
             {
                 var named = typeRef as NamedTypeRef;
                 if (named != null)
-                    return FindLoadedNamedType(named.FullName, named.AssemblySimpleName);
+                    return FindLoadedNamedType(named.FullName, named.AssemblySimpleName, named.IsFramework);
                 var generic = typeRef as GenericTypeRef;
                 if (generic != null)
                 {
@@ -640,10 +644,27 @@ namespace Heddle.Precompiled
             return null;
         }
 
-        private static Type FindLoadedNamedType(string fullName, string assemblySimpleName)
+        [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "P3-R9 (D11): resolves an identity the engine recorded itself over registered/loaded assemblies; a trimmed publish resolves only what it kept, and a miss reads as unresolved (a diagnostic or gauntlet mismatch), never a crash.")]
+        private static Type FindLoadedNamedType(string fullName, string assemblySimpleName, bool isFramework)
         {
             if (string.IsNullOrEmpty(fullName))
                 return null;
+            // AC-4: a framework ref's assembly name is advisory (the writer saw System.Private.CoreLib
+            // where net48 has mscorlib), so it resolves by full name alone: the core library first, then
+            // every assembly in the default load context. A non-framework ref keeps its authoritative
+            // simple-name match below.
+            if (isFramework)
+            {
+                try
+                {
+                    var core = typeof(object).Assembly.GetType(fullName, throwOnError: false, ignoreCase: false);
+                    if (core != null)
+                        return core;
+                }
+                catch (Exception)
+                {
+                }
+            }
             Assembly[] loaded;
             try
             {
@@ -668,7 +689,7 @@ namespace Heddle.Precompiled
                     continue;
                 }
 
-                if (!string.Equals(name, assemblySimpleName, StringComparison.Ordinal))
+                if (!isFramework && !string.Equals(name, assemblySimpleName, StringComparison.Ordinal))
                     continue;
                 try
                 {

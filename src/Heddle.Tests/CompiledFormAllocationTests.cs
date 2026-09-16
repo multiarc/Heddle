@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.IO;
 using Heddle.Data;
 using Heddle.Precompiled;
 using Heddle.Runtime;
@@ -7,18 +9,23 @@ using Xunit;
 
 namespace Heddle.Tests
 {
-    /// <summary>Materialization and render allocation (P1-W9 exit criterion 5): one request shape
-    /// materializes once no matter how often its strategy is read, a second registry compiles its own
-    /// memoized strategy, and a precompiled render allocates within a small multiple of the dynamic
-    /// render — proving the loader runs once per shape, never once per render.
-    /// Serialized — the registry is process-global static state.</summary>
+    /// <summary>Materialization and render allocation (P1-R10, GI-3): one request shape materializes once
+    /// no matter how often its strategy is read, and a loaded strategy renders every corpus <c>Compiles</c>
+    /// row on all three sinks allocating no more bytes per render than the dynamic tier renders the same
+    /// text and model. The spec says "equal"; the compiled form allocates less on every row measured so
+    /// far, so the pin is <c>&lt;=</c> with the pair printed — a row that allocates MORE is a real finding,
+    /// never a budget to widen. Serialized — the registry is process-global static state.</summary>
     [Collection("PrecompiledRegistrySerial")]
     public class CompiledFormAllocationTests : IDisposable
     {
-        private readonly Action<PrecompiledFallbackEvent> _savedCallback;
+        private const int Renders = 200;
 
-        public CompiledFormAllocationTests()
+        private readonly Action<PrecompiledFallbackEvent> _savedCallback;
+        private readonly ITestOutputHelper _output;
+
+        public CompiledFormAllocationTests(ITestOutputHelper output)
         {
+            _output = output;
             _savedCallback = PrecompiledTemplates.OnFallback;
             PrecompiledTemplates.ResetForTests();
             CorpusExtensionFixtures.Register();
@@ -28,6 +35,14 @@ namespace Heddle.Tests
         {
             PrecompiledTemplates.OnFallback = _savedCallback;
             PrecompiledTemplates.ResetForTests();
+        }
+
+        public static IEnumerable<object[]> RenderableCompilesRows()
+        {
+            foreach (var row in CorpusIntent.Rows)
+                if (row.Tier == CorpusTier.Compiles && row.Bound && row.Render != CorpusRender.ResolveOnly &&
+                    !CompiledFormHarness.IsUnresolvableRow(row.Name))
+                    yield return new object[] { row.Name };
         }
 
         [Fact]
@@ -41,50 +56,83 @@ namespace Heddle.Tests
                 "Re-reading a materialized shape should return the memoized strategy.");
         }
 
-        [Fact]
-        public void PrecompiledRenderStaysWithinBudgetOfTheDynamicRender()
+        [Theory]
+        [MemberData(nameof(RenderableCompilesRows))]
+        public void LoadedStrategyAllocatesNoMoreThanTheDynamicTierOnEverySink(string name)
         {
             PrecompiledTemplates.ResetForTests();
-            var row = Find("ctx-encoding.heddle");
+            var row = Find(name);
             var result = CompiledFormHarness.RegisterRow(row, TestCorpusIndex.CorpusDir);
             Type modelType;
             object model;
-            CompiledFormHarness.ModelExFor(row, out modelType, out model);
+            var modelEx = CompiledFormHarness.ModelExFor(row, out modelType, out model);
             string text = CompiledFormHarness.CorpusText(row.Name);
             var renderOptions = CompiledFormHarness.RequestOptions(row, TestCorpusIndex.CorpusDir);
-            var dynamic = new HeddleTemplate(text,
-                new CompileContext(renderOptions, modelType == null ? ExType.Dynamic : new ExType(modelType)));
-            Assert.True(dynamic.CompileResult.Success, "Dynamic reference failed to compile.");
-            Assert.Equal(dynamic.Generate(model),
-                CompiledFormHarness.RenderStrategy(result.Strategy, model));
-            for (int i = 0; i < 5; i++)
+            var dynamic = new HeddleTemplate(text, new CompileContext(renderOptions, modelEx));
+            Assert.True(dynamic.CompileResult.Success, "Dynamic reference failed to compile for " + name + ".");
+            // One adapter over the loaded strategy, the way a host holds it: the wrapper is built once,
+            // and only Generate is inside the measured window on both tiers.
+            var loaded = new HeddleTemplate(result.Strategy);
+
+            var writer = new StringWriter();
+            var buffer = new Streaming.TestBufferWriter(64 * 1024);
+            var sinks = new[]
             {
-                dynamic.Generate(model);
-                CompiledFormHarness.RenderStrategy(result.Strategy, model);
+                new Sink("string",
+                    () => dynamic.Generate(model),
+                    () => loaded.Generate(model)),
+                new Sink("TextWriter",
+                    () => { writer.GetStringBuilder().Clear(); dynamic.Generate(model, writer); },
+                    () => { writer.GetStringBuilder().Clear(); loaded.Generate(model, writer); }),
+                new Sink("IBufferWriter<byte>",
+                    () => { buffer.Clear(); dynamic.Generate(model, buffer); },
+                    () => { buffer.Clear(); loaded.Generate(model, buffer); })
+            };
+
+            var over = new List<string>();
+            foreach (var sink in sinks)
+            {
+                // Warm both tiers past JIT tiering before the measured window.
+                for (int i = 0; i < 20; i++)
+                {
+                    sink.Dynamic();
+                    sink.Loaded();
+                }
+                long dynamicBytes = Measure(sink.Dynamic) / Renders;
+                long loadedBytes = Measure(sink.Loaded) / Renders;
+                _output.WriteLine(name + " / " + sink.Name + ": loaded " + loadedBytes + " B/render, dynamic " +
+                    dynamicBytes + " B/render");
+                if (loadedBytes > dynamicBytes)
+                    over.Add(sink.Name + ": loaded " + loadedBytes + " B > dynamic " + dynamicBytes + " B per render");
             }
-            const int renders = 200;
-            long dynamicAlloc = Measure(() =>
-            {
-                for (int i = 0; i < renders; i++)
-                    dynamic.Generate(model);
-            });
-            long precompiledAlloc = Measure(() =>
-            {
-                for (int i = 0; i < renders; i++)
-                    CompiledFormHarness.RenderStrategy(result.Strategy, model);
-            });
-            Assert.True(precompiledAlloc <= Math.Max(4096L, dynamicAlloc * 4),
-                "Precompiled renders allocated " + precompiledAlloc + " bytes vs dynamic " +
-                dynamicAlloc + " bytes over " + renders + " renders.");
+
+            Assert.True(over.Count == 0,
+                "The loaded strategy for " + name + " allocates more than the dynamic tier: " +
+                string.Join("; ", over) + ".");
         }
 
-        private static long Measure(Action action)
+        private sealed class Sink
+        {
+            internal Sink(string name, Action dynamic, Action loaded)
+            {
+                Name = name;
+                Dynamic = dynamic;
+                Loaded = loaded;
+            }
+
+            internal string Name { get; }
+            internal Action Dynamic { get; }
+            internal Action Loaded { get; }
+        }
+
+        private static long Measure(Action render)
         {
             GC.Collect();
             GC.WaitForPendingFinalizers();
             GC.Collect();
             long before = GC.GetAllocatedBytesForCurrentThread();
-            action();
+            for (int i = 0; i < Renders; i++)
+                render();
             return GC.GetAllocatedBytesForCurrentThread() - before;
         }
 

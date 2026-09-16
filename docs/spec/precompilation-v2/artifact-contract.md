@@ -92,6 +92,12 @@ host was given; and it is not one of the host's own assemblies (`Heddle`, `Heddl
 `Antlr4.Runtime.Standard`, `Microsoft.CodeAnalysis*`). Its `assemblySimpleName` is advisory. Every other type is
 non-framework and its assembly name is authoritative.
 
+> **As implemented (2026-09-16).** The writer's `framework` test is: not one of the host's own assemblies, not a
+> member of the implementation image set the host was given (`FormRecord.HostImplementationImages`, set by
+> `heddle compile` for the duration of a compile), and located under the runtime directory or listed in the
+> trusted-platform assemblies. Resolution and comparison follow the rule above on every TFM
+> (`CompiledFormBindingTests`, `CompiledFormFixtureTests` on net48).
+
 **Resolution versus comparison.** Two operations exist and the gate uses them in a fixed order:
 
 - *Resolve by name* produces a `Type`. A `framework` ref resolves by `fullName` in `typeof(object).Assembly`, then
@@ -134,6 +140,14 @@ content). A **site id** is the triple (template `ContentHash`, template row inde
 content hash ties an id to the text, the row index separates two items with identical text under different
 `ModelType` metadata or `OutputProfile`, and the ordinal is stable under the fixed walk.
 
+> **As implemented (2026-09-16).** A deferred call is emitted as a `NativeExpression` site whose expression tree
+> carries `ContainsDeferredCall`; no producer emits the `LateBoundCall` kind, which stays in the enum as the
+> reserved name the loader and the merger already handle. A refusal-class site's payload is its index in the
+> owning template row's `RefusalSites` list (per row, never rebased at merge), and that list carries the site's
+> walk ordinal. The walk visits, in order: each item's parameter, its body, its alternate bodies in list order,
+> a definition call's caller content; a document's removed items after its elements; and, after the root
+> document, each of the row's definitions' region fills.
+
 The `Header` carries the **artifact digest**: lowercase-hex SHA-256 of the artifact bytes with the digest field
 zeroed. Phase 3's generated site table records the digest of the artifact it was printed from; the loader consults a
 site table only when the digests match, so a table can never serve a site of a different compilation.
@@ -151,6 +165,9 @@ processors, a document ref — the three post-states of `AbstractExtension.InitS
 prototype (typed literals, `null` for a dynamic slot), and per dynamic slot the slot index, its expression ref and the
 conversion target type ref. Definition call sites reference their `Definitions` row and carry the caller-content
 document and slot-mode flag.
+
+> **As implemented (2026-09-16).** The "late-bound call (expression ref)" parameter kind is not produced: a
+> deferred call is a native-expression parameter whose tree carries `ContainsDeferredCall` (see the AC-6 note).
 
 ### AC-7a — Parse facts
 
