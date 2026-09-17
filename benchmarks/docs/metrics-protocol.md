@@ -113,7 +113,7 @@ Contents:
 1. **`index.md`** with, in order:
    - H1 `# Benchmark run — <yyyy-MM-dd>`;
    - intro paragraph naming the suites covered and the full reproduce command(s)
-     (`dotnet run -c Release --project src/Heddle.Performance -- --filter *<Suite>*` form for
+     (`dotnet run -c Release --project benchmarks/dotnet -- bench-crossstack --filter *<Suite>*` form for
      .NET; the ecosystem harness invocation for phases 2–6);
    - `## Environment` — the environment block defined above;
    - `## The workloads` — one bullet per workload measured: its id, dimension owned (from

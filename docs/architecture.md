@@ -225,16 +225,17 @@ other .NET template engines (Fluid, Scriban, DotLiquid, Handlebars.Net and ASP.N
 a component‑heavy composition workload, every one of them rendering byte‑identical parity‑checked
 output (`[MemoryDiagnoser]` enabled). Razor joined the parity assertion on 2026‑07‑25
 (benchmarks amendment E5); before that it rendered a larger,
-different page outside every gate. The published
-2026‑07‑25 cross‑stack run is the first to measure it under parity:
-**Heddle 30.52 μs vs Razor 41.66 μs**, with Heddle fastest of all six .NET engines on that
-workload. The 2026‑07‑11 figures below are the older intra‑.NET record, and their Razor pairing
-describes the pre‑parity workload. In the run of **2026‑07‑11** (commit `8341bb67`; AMD Ryzen 9 9950X,
+different page outside every gate. The current cross‑stack record is the published run of
+**2026‑08‑08** ([report](benchmarks/2026-08-08/index.md)), where Razor is a full member of all eight
+workloads and both tracks and Heddle leads it on seven of them (the numbers are in the
+[README Performance section](../README.md#performance)). The 2026‑07‑11 figures below are the older
+intra‑.NET record — its report directory was withdrawn from the tree and survives in git history —
+and their Razor pairing describes the pre‑parity workload. In the run of **2026‑07‑11** (commit `8341bb67`; AMD Ryzen 9 9950X,
 .NET 10.0.9, BenchmarkDotNet 0.15.8) Heddle rendered that page in **32.50 μs / 227.86 KB** — the
 fastest of the six and tied‑least on allocation (within 0.3 KB of Handlebars.Net); the next engine (Fluid) took 2.0× as long and
-Scriban 11.7× with 5.07× the allocation. The full render and compile‑cost tables, environment
-header, and raw artifacts live in the [README Performance section](../README.md#performance) and
-docs/benchmarks/2026-07-11. The reasons Heddle leads on the render path are
+Scriban 11.7× with 5.07× the allocation. The full render and compile‑cost tables and environment
+header are in the [README Performance section](../README.md#performance); the raw artifacts of that
+run were withdrawn from the tree with its report directory. The reasons Heddle leads on the render path are
 structural, not incidental:
 
 - **Execution‑ready document, not per‑call activation.** Each template becomes a

@@ -92,7 +92,15 @@ cd benchmarks/dotnet
 dotnet run -c Release -- gate            # every registered cell: byte gate, verifier, security floor
 dotnet run -c Release -- selftest        # the gate's own checks, incl. the six-technique differential
 dotnet run -c Release -- verify-corpus   # corpus freshness + verifier calibration
+dotnet run -c Release -- gate-precompiled # v3: every workload precompiled and byte-equal to the runtime tier
 ```
+
+`gate-precompiled` reports which arm it ran (`SITE-TABLE: on|off`): the generated site table is on by
+default and off when the `"Heddle.Precompiled.UseGeneratedSites"` `AppContext` switch is `false` in the
+`runtimeconfig.json` the harness is launched with: the file handed to `dotnet exec --runtimeconfig` **replaces** the built runtimeconfig wholesale, so it must be a copy of
+`benchmarks/dotnet/bin/Release/net10.0/Heddle.Benchmarks.Dotnet.runtimeconfig.json` — its `Microsoft.NETCore.App` and
+`Microsoft.AspNetCore.App` framework entries included — with `"Heddle.Precompiled.UseGeneratedSites": false` added under
+`configProperties`.
 
 Then measure. Remaining arguments pass straight through to BenchmarkDotNet, so a single workload or
 a shorter job is one flag away:
@@ -103,7 +111,13 @@ dotnet run -c Release -- bench-crossstack --filter *MixedPageBenchmarks*
 dotnet run -c Release -- bench-techniques   # Heddle's six render techniques against each other
 dotnet run -c Release -- bench-cold         # cold parse/compile, per engine
 dotnet run -c Release -- bench-internal     # props, branching, language-service metadata
+dotnet run -c Release -- bench-startup      # cold start: fresh-process compile vs register + bind + first render
 ```
+
+`bench-techniques` carries the v3 evidence classes side by side — `TechniqueRuntimeBenchmarks`,
+`TechniquePrecompiledBenchmarks` (site table on) and `TechniquePrecompiledDataOnlyBenchmarks` (table
+off) — and `bench-startup` is the cold-start row; both are what the
+[2026-09-16 precompilation-evidence report](benchmarks/2026-09-16/index.md) publishes.
 
 What the cross-stack suites measure, with `[MemoryDiagnoser]` enabled: one `[Benchmark]` per engine
 per workload, on the **controlled** track (every engine authored to produce byte-identical output)
@@ -123,12 +137,12 @@ templates are files under [`templates/`](../benchmarks/dotnet/templates), one di
 engine, so the idiomatic track is reviewable as templates instead of as escaped literals. No engine
 carries its own copy of the data, so no twin can drift from the engine it is compared against.
 
-In the published cross‑stack run of 2026‑07‑25 **Heddle rendered the composed page 1.37× faster
-than ASP.NET Core Razor (30.52 μs vs 41.66 μs) and allocated less memory**, on byte‑identical
-output under the same parity gate — and led all five other .NET engines on seven of the eight
-protocol workloads. For the numbers see the
+In the published cross‑stack run of 2026‑08‑08 (fifteen engines, six ecosystems, one session)
+**Heddle is the fastest of the six .NET engines on the five realistic‑size workloads** — by
+2.25×–3.64× over the next .NET engine — and leads ASP.NET Core Razor, a full member of every
+workload under the same byte‑identical parity gate, on seven of the eight. For the numbers see the
 [README Performance section](../README.md#performance) and the
-full report; for *why*, see
+[report](benchmarks/2026-08-08/index.md); for *why*, see
 [Architecture → Performance characteristics](architecture.md#performance-characteristics).
 
 > Benchmark numbers are hardware‑ and workload‑specific — run the suite on your target machine
@@ -177,8 +191,11 @@ CI runs on **GitHub Actions**. All publishing uses Trusted Publishing (OIDC, no 
 tokens) and is skipped on fork pull requests.
 
 - **[.NET build](../.github/workflows/dotnet.yml)** — on every push and pull request to `main`,
-  restores, builds, and runs the test suite on Linux and Windows. Internal pull requests also
-  publish a `-beta.<run>` prerelease to **nuget.org**.
+  restores, builds, and runs the four test suites (Debug, each its own guarded step) on Linux and
+  Windows. Internal pull requests also publish a `-beta.<run>` prerelease to **nuget.org**.
+- **[Language server and Release legs](../.github/workflows/lsp.yml)** — builds the solution in Release
+  on Windows, runs all four suites in Release through the same guarded wrapper, and packs and
+  publishes the `heddle-lsp` tool.
 - **[Ace npm package](../.github/workflows/npm.yml)** — builds the custom Ace highlighter bundle;
   internal pull requests **stage** a `@multiarc/ace_heddle` pre-release on **npmjs.org** for
   maintainer review (`npm stage publish`).
@@ -193,10 +210,10 @@ tokens) and is skipped on fork pull requests.
 
 ## The integration sample gallery
 
-The repo-root [`samples/`](../samples/README.md) folder holds ten small, complete, runnable projects —
+The repo-root [`samples/`](../samples/README.md) folder holds eleven small, complete, runnable projects —
 one per supported way to integrate Heddle (SSR, definition libraries, dynamic models, sandboxed user
-templates, safe output, custom extensions, component libraries, build-time codegen, precompilation, and
-streaming). They double as the engine's end-to-end test suite: each captures deterministic output that CI
+templates, safe output, custom extensions, component libraries, build-time codegen, precompilation, a
+NativeAOT publish under strict load, and streaming). They double as the engine's end-to-end test suite: each captures deterministic output that CI
 compares against a committed golden, so a broken sample *is* a failed integration test.
 
 Run one interactively, or in the CI capture mode:

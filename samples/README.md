@@ -27,11 +27,11 @@ bash samples/tools/compare-golden.sh samples/dynamic-models
 | 4 | [`sandboxed-user-templates`](sandboxed-user-templates) | [Native expressions](../docs/native-expressions.md) | `ExpressionMode.Native`, `FunctionRegistry` as the trust boundary, rejected constructs with positioned `HED1xxx` |
 | 5 | [`html-safe-output`](html-safe-output) | [HTML encoding](../docs/built-in-extensions.md#html-encoding) | `OutputProfile.Html`, `@raw`, encoder pluggability; runs under both defaults (the 2.0 rehearsal) |
 | 6 | [`custom-extensions`](custom-extensions) | [Branch sets](../docs/built-in-extensions.md#branch-sets) | The public `Scope.Publish`/`TryRead` channel + a branch-protocol participant |
-| 7 | [`component-props-slots`](component-props-slots) | [Props](../docs/language-reference.md#props-name-prop-type-default) | The card/layout/picker component library: typed props with defaults, parameterized slots |
+| 7 | [`component-props-slots`](component-props-slots) | [Props](../docs/language-reference.md#props-nameprop-type--default) | The card/layout/picker component library: typed props with defaults, parameterized slots |
 | 8 | [`codegen-t4-successor`](codegen-t4-successor) | [Pre-compilation](../docs/precompilation.md) | Build-time text/code generation, no runtime Heddle dependency (asserted structurally) |
 | 9 | [`precompiled-app`](precompiled-app) | [Pre-compilation](../docs/precompilation.md) | Pre-compilation + mixed mode + discovery enumeration; the differential rule (precompiled == dynamic twin) |
 | 10 | [`streaming-ssr`](streaming-ssr) | [Streaming](../docs/csharp-api.md#streaming-generate-into-a-sink) | `Generate(data, IBufferWriter<byte>)` into `Response.BodyWriter` + `FlushAsync`; string-parity asserted in capture |
-| 11 | [`precompiled-aot`](precompiled-aot) | [Phase 3 generated sites](../docs/spec/precompilation-v2/phase-3-generated-sites.md) | NativeAOT posture: trimmed publish, strict load, typed wrappers + registry + dynamic differential; Roslyn-free assembly list |
+| 11 | [`precompiled-aot`](precompiled-aot) | Phase 3 generated sites (spec retired; see the [program record](../docs/spec/common/cross-cutting-decisions.md#program-record--precompilation-v2-closed)) | NativeAOT posture: trimmed publish, strict load, typed wrappers + registry + dynamic differential; Roslyn-free assembly list |
 | — | `editors/vscode` walkthrough | [Editor support](../docs/editor-support.md) | LSP setup + typed completion tour — see [docs/editor-support.md](../docs/editor-support.md) and [editors/vscode](../editors/vscode). Documentation + the extension smoke test, not a runnable golden project. |
 
 ## Adding a sample

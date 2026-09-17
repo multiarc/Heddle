@@ -143,7 +143,8 @@ namespace Heddle.Language.Expressions
             // runtime's expression trees lift it (null in, null out), and a count outside C#'s int-only rule
             // is normalised by the writer with the truncating (int)/(int?) cast that reproduces the runtime's
             // Expression.Convert — see NativeExpressionWriter.ShiftCountSpelling. This used to degrade as
-            // runtime-owned; OperatorGuardDifferentialTests' shift rows pin the byte parity that closed it.
+            // runtime-owned; the 2.x-era differential sweep whose shift rows pinned the byte parity that closed
+            // it went with the generator, and no corpus row exercises a shift today.
             return OperatorVerdict.Supported;
         }
 

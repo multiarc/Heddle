@@ -23,10 +23,6 @@
     <TieredCompilation>true</TieredCompilation>
     <!-- The golden corpus lives beside this project and is read at runtime, never compiled. -->
     <EnableDefaultNoneItems>true</EnableDefaultNoneItems>
-    <!-- The Html-profile satellite directory stays on disk (removed in phase 4) but is no
-         longer a referenced project: without this exclude the default Compile glob sweeps its
-         obj/ and duplicates every assembly attribute. -->
-    <DefaultItemExcludes>$(DefaultItemExcludes);precompiled-html/**</DefaultItemExcludes>
   </PropertyGroup>
 
   <!-- Build-time precompilation through Heddle.Build (phase 2): the controlled-track entry

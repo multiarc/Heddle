@@ -10,8 +10,8 @@ Table ORDER is owned by this script, not by the report: workloads are emitted ti
 sizing) before tier 2 (edge-case sizing), ascending by rendered size within each tier. See the
 `sizing regimes` block below for how the tier is derived.
 
-    python benchmarks/report/consolidate.py docs/benchmarks/2026-07-25
-    python benchmarks/report/consolidate.py --check docs/benchmarks/2026-07-25
+    python benchmarks/report/consolidate.py docs/benchmarks/2026-08-08
+    python benchmarks/report/consolidate.py --check docs/benchmarks/2026-08-08
 
 Contract:
 

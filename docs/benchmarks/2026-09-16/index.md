@@ -1,7 +1,7 @@
 # Benchmark run — 2026-09-16
 
 This run is the **precompilation v3 evidence run** the phase 3 specification asks for
-([phase-3-generated-sites.md § P3-R8 / P3-R9](../../../docs/spec/precompilation-v2/phase-3-generated-sites.md)):
+(phase-3-generated-sites.md § P3-R8 / P3-R9 — spec retired 2026-09-18, `git show f8a9497c:docs/spec/precompilation-v2/phase-3-generated-sites.md`; the ratified posture is in the [program record](../../spec/common/cross-cutting-decisions.md#program-record--precompilation-v2-closed)):
 intra-.NET only, on the protocol machine, over the program's eight protocol workloads. It publishes
 three things — the technique tables (compiled-form tier with the generated site table on, the same
 tier with the table off, and the runtime tier, each over 8 workloads × 3 sinks), the cold-start
@@ -15,15 +15,18 @@ Reproduce (from the repository root, `-c Release`, `net10.0`):
 ```powershell
 dotnet run -c Release --project benchmarks/dotnet -- gate
 dotnet run -c Release --project benchmarks/dotnet -- gate-precompiled            # site table on (default)
-dotnet exec --runtimeconfig <runtimeconfig with "Heddle.Precompiled.UseGeneratedSites": false> `
+dotnet exec --runtimeconfig <copy of the built runtimeconfig + "Heddle.Precompiled.UseGeneratedSites": false> `
     benchmarks/dotnet/bin/Release/net10.0/Heddle.Benchmarks.Dotnet.dll gate-precompiled   # table off
 dotnet run -c Release --project benchmarks/dotnet -- bench-techniques
 dotnet run -c Release --project benchmarks/dotnet -- bench-startup
 dotnet publish samples/precompiled-aot -c Release -r win-x64                     # after a prior build
 ```
 
-The "table off" arm is the engine's own `Heddle.Precompiled.UseGeneratedSites` `AppContext` switch
-supplied through `runtimeconfig.json`; the harness prints which arm ran as `SITE-TABLE: on|off`
+The "table off" arm is the engine's own `"Heddle.Precompiled.UseGeneratedSites"` `AppContext` switch
+supplied through `runtimeconfig.json` — the file handed to `dotnet exec --runtimeconfig` **replaces** the built runtimeconfig wholesale, so it must be a copy of
+`benchmarks/dotnet/bin/Release/net10.0/Heddle.Benchmarks.Dotnet.runtimeconfig.json` — its `Microsoft.NETCore.App` and
+`Microsoft.AspNetCore.App` framework entries included — with `"Heddle.Precompiled.UseGeneratedSites": false` added under
+`configProperties` (recipe corrected 2026-09-18); the harness prints which arm ran as `SITE-TABLE: on|off`
 in its output (see [gate-precompiled-on.log](../../../docs/benchmarks/2026-09-16/dotnet/gate-precompiled-on.log) and
 [gate-precompiled-off.log](../../../docs/benchmarks/2026-09-16/dotnet/gate-precompiled-off.log)).
 

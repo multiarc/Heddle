@@ -234,8 +234,8 @@ Native expressions match C# except for a small, deliberate set of ergonomic choi
    The fallback requires **both** operands to be a reference type or `Nullable<T>`; a
    reference/value mix such as `@(Name == Count)` is a positioned `HED1008` on **both** tiers, which
    is what `NativeExpressionCompiler`'s `IsReferenceish(left) && IsReferenceish(right)` guard decides
-   and what `OperatorGuardDifferentialTests.MixedTypeEquality_CompilesTheConsumerProject_AndDegrades`
-   pins. **Do not widen the guard to match a looser reading of this rule:** doing so turns a compile
+   and what `NativeOperatorRulesTests.Deviation1_MixedEqualityEmitsThroughTheAdapterWhereTheEnginesChainIsTotal`
+   pins in the shared rule core. **Do not widen the guard to match a looser reading of this rule:** doing so turns a compile
    error into a silent `false`, which is a breaking change and window‑gated.
    On the precompiled tier this deviation prints from the engine's own tree, which already carries
    the fallback verdict — a user operator where the pair binds one, null‑safe `object.Equals`
@@ -262,9 +262,9 @@ Native expressions match C# except for a small, deliberate set of ergonomic choi
 
 Every diagnostic the native tier raises. All are **compile-time** and positioned at the offending
 construct, so none of them can reach render. The build tier raises the same id for the same input —
-that is the match requirement: wherever the generator can **prove** the refusal, `HED1003`, `HED1004`,
+that is the match requirement: wherever the build host can **prove** the refusal, `HED1003`, `HED1004`,
 `HED1005`, `HED1007`, `HED1008`, `HED1009`, `HED1010`, `HED1011` and `HED1018` also fire at **build**
-as errors forwarded from the generator, carrying the engine's own sentence at the `.heddle` position.
+as errors forwarded from the build host (`heddle compile`), carrying the engine's own sentence at the `.heddle` position.
 Where it cannot prove the refusal it degrades the call to the dynamic tier instead of guessing, and
 the template meets the engine's verdict at runtime.
 
@@ -287,7 +287,7 @@ the template meets the engine's verdict at runtime.
 | `HED1015` | error | A composite `format` literal references an argument index beyond the supplied count. |
 | `HED1016` | warning | A standalone `@name(...)` resolved to an extension that shadows a registered function of the same name. Write `@( name(...) )` to reach the function. |
 | `HED1017` | error | A standalone registry hit was given a chain or C#‑parameter shape rather than a single expression. |
-| `HED1018` | error | An integral or `decimal` `/` or `%` over **constant** operands whose divisor is zero — `@(1/0)`, `@(1%(1&0))`, `@(1.0m/0m)`. Rendering could only throw `DivideByZeroException`, so the expression fails the compile instead, **on both tiers**: the engine raises it and the generator forwards the same id as a build error. Scoped exactly as C# scopes `CS0020` — floating‑point stays legal (`@(1.0/0)` renders `∞`), and a runtime divisor that happens to be zero still throws at render. |
+| `HED1018` | error | An integral or `decimal` `/` or `%` over **constant** operands whose divisor is zero — `@(1/0)`, `@(1%(1&0))`, `@(1.0m/0m)`. Rendering could only throw `DivideByZeroException`, so the expression fails the compile instead, **on both tiers**: the engine raises it and the build host forwards it under the same id. Scoped exactly as C# scopes `CS0020` — floating‑point stays legal (`@(1.0/0)` renders `∞`), and a runtime divisor that happens to be zero still throws at render. |
 
 A member‑path segment that fails resolution is **`HED0001`**, not a `HED1xxx`: the member tier is
 shared with the C# tier and the dynamic path, so its diagnostic is shared too. It fires when a segment
@@ -320,10 +320,10 @@ budgets, and encoding contexts — see
 
 ---
 
-*Verified against source at `6639f6f` (2026-07-26).* Claims marked ✓ are gated by a test:
+*Verified against source at `f8a9497c` (2026-09-18).* Claims marked ✓ are gated by a test:
 the diagnostics table ✓ (`DiagnosticIdTests.EveryShippedIdIsNamedInAPublishedDocument` — every id
 here is a shipped constant and this page is its registry-designated home); deviation 1's guard ✓
-(`OperatorGuardDifferentialTests.MixedTypeEquality_CompilesTheConsumerProject_AndDegrades`); the
+(`NativeOperatorRulesTests.Deviation1_MixedEqualityEmitsThroughTheAdapterWhereTheEnginesChainIsTotal`); the
 operator legality table and the lifted-operand shapes ✓ (`NativeOperatorRulesTests`, which drives the
 shared rule core both tiers use); the overload-rank measurement ✓
 (`OverloadBetternessEvaluationTests`). Everything else on this page is dated-verified, not gated —

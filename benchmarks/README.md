@@ -19,7 +19,7 @@ The specs are the source of truth; nothing in this file overrides them:
 
 | Toolchain | Pin | Notes |
 |---|---|---|
-| .NET SDK | **TBD** — pinned to the SDK of the Windows protocol run, which is pending re-test. The published 2026-07-25 Linux run used SDK 10.0.110 / runtime .NET 10.0.10 | suites target `net10.0`, `-c Release` |
+| .NET SDK | **TBD** for a cross-stack protocol run — pinned to the SDK of the Windows protocol run, which is pending re-test (the published 2026-08-08 run used runtime .NET 10.0.10; the 2026-09-16 intra-.NET precompilation-evidence run used SDK 10.0.401 / runtime .NET 10.0.12) | suites target `net10.0`, `-c Release`; the harness also builds the engine's `Heddle.Build` precompile step, which needs a .NET 10 SDK |
 | Rust | rustc/cargo 1.97.1 | `rust-toolchain.toml` in `benchmarks/rust` |
 | JDK | Temurin 25 | `pom.xml` pins `maven.compiler.release=25`; on a JDK < 25 the runner passes `-Dmaven.compiler.release=23` |
 | Node.js | v24.x (major pin, amendment E18; was the exact v24.18.0) | `package.json` `engines: 24.x`; on a non-24 node the runner uses `npm ci --engine-strict=false` and records the delta |
@@ -124,7 +124,8 @@ aborting with instructions unless all of the following hold:
 `linux-crosscheck/run-all.sh`: a red gate is triaged before anything later runs):
 
 1. .NET: `gate` (every registered cell), `selftest` (the gate's own checks, including the
-   six-technique differential), `verify-corpus` (corpus freshness + verifier calibration)
+   six-technique differential), `verify-corpus` (corpus freshness + verifier calibration). The v3
+   precompiled gate, `gate-precompiled`, is not a runner step — see the v3 verbs below
 2. Rust: `cargo run --release --bin gate`
 3. JVM: `mvnw -q clean verify` (gates wired into `verify`)
 4. JS: `npm ci`, `npm run selftest`, `npm run gate`
@@ -144,6 +145,24 @@ overall exit at the end.
 | JS | `run.ps1` / `run.sh` per bench script (`--expose-gc --allow-natives-syntax`, priority posture per platform); the two render tracks run `-Repeat <passes>` and are aggregated by `bench/aggregate.mjs`, which emits the D13 `STABILITY:` verdict every run | the three scripts once via the launcher |
 | Python | five pyperf Runner scripts, `--affinity=<4 on Windows, isolated pair on Linux> -o <out>/python/<name>.json`, elevated shell / root (warned if not), then the separate `mem_tracemalloc.py` pass | pyperf `--debug-single-value`; memory `--reps 5` |
 | Go | `run-benchmarks.ps1` / `run-benchmarks.sh` (version asserts, templ freshness, vet, gates, prebuild, timed runs `-test.count=20 -test.benchtime=1s`, benchstat) | `-Count 1 -BenchTime 100ms` / `--count 1 --benchtime 100ms` |
+
+### The v3 precompiled-evidence verbs (run by hand, not by the runners)
+
+The runners' .NET leg is the cross-stack protocol above. The compiled-form tier's own evidence —
+what [docs/benchmarks/2026-09-16](../docs/benchmarks/2026-09-16/index.md) publishes — is three
+`benchmarks/dotnet` verbs run by hand from the repository root:
+
+| Verb | What it does | Notes |
+|---|---|---|
+| `gate-precompiled` | Requires every protocol workload to be precompiled and byte-equal to the runtime tier, then prints the materialisation trailer (artifact size, register + bind + first render per workload) | Prints the arm it ran as `SITE-TABLE: on` / `SITE-TABLE: off`. The generated site table is on by default; the off arm is the engine's `"Heddle.Precompiled.UseGeneratedSites"` `AppContext` switch set to `false` in a `runtimeconfig.json` passed to `dotnet exec --runtimeconfig <file> bin/Release/net10.0/Heddle.Benchmarks.Dotnet.dll gate-precompiled`. `dotnet exec` replaces the built runtimeconfig wholesale, so `<file>` is a copy of `bin/Release/net10.0/Heddle.Benchmarks.Dotnet.runtimeconfig.json` (its `Microsoft.NETCore.App` and `Microsoft.AspNetCore.App` framework entries included) with the switch added under `configProperties` |
+| `bench-techniques` | The technique tables: `TechniqueRuntimeBenchmarks` beside `TechniquePrecompiledBenchmarks` (table on) and `TechniquePrecompiledDataOnlyBenchmarks` (table off), 8 workloads × 3 sinks each | Both arms in one run; the runners also run this verb as a sidebar |
+| `bench-startup` | The cold-start row: `CompileHeddle` against `RegisterAndRenderCompiledForm` (table on) and its data-only twin, `ColdStart` 20 launches × 1 invocation | Carries its own job; `--job Dry` *adds* a job here rather than replacing it, so smoke it with `--filter` |
+
+```powershell
+dotnet run -c Release --project benchmarks/dotnet -- gate-precompiled
+dotnet run -c Release --project benchmarks/dotnet -- bench-techniques
+dotnet run -c Release --project benchmarks/dotnet -- bench-startup
+```
 
 ### Measurement budget — `--budget short` (default) / `baseline`
 
@@ -284,7 +303,7 @@ per platform, the Windows form is given first and the Linux twin second.
 
 | Ecosystem | Directory | Gate | Measurement |
 |---|---|---|---|
-| .NET | `benchmarks/dotnet` | `dotnet run -c Release -- gate`, then `… -- selftest`, then `… -- verify-corpus` | `dotnet run -c Release -- bench-crossstack --filter *<Suite>*` (8 suites), then `bench-techniques`, `bench-cold`, `bench-internal` (`export-corpus` rewrites the goldens — never run it casually) |
+| .NET | `benchmarks/dotnet` | `dotnet run -c Release -- gate`, then `… -- selftest`, then `… -- verify-corpus`; the v3 gate `… -- gate-precompiled` | `dotnet run -c Release -- bench-crossstack --filter *<Suite>*` (8 suites), then `bench-techniques`, `bench-cold`, `bench-internal`; the v3 cold-start row `bench-startup` (`export-corpus` rewrites the goldens — never run it casually) |
 | Rust | `benchmarks/rust` | `cargo run --release --bin gate` | `cargo bench --bench controlled --bench idiomatic --bench cold -- --noplot`; `cargo run --release --features alloc-count --bin alloc_report`; `cargo run --release --bin summarize` |
 | JVM | `benchmarks/jvm` | `.\mvnw.cmd -q clean verify` / `./mvnw -q clean verify` (add `-Dmaven.compiler.release=23` on a JDK < 25) | `java -jar target/benchmarks.jar -prof gc -rf json -rff jmh-result.json` |
 | JS | `benchmarks/js` | `npm ci` + `npm run selftest` + `npm run gate` | `./run.ps1 bench/controlled.mjs` / `./run.sh bench/controlled.mjs` (also `idiomatic.mjs`, `cold-compile.mjs`); stability: `-Repeat 5` / `--repeat 5` |
@@ -319,5 +338,7 @@ links the generated tables rather than restating their numbers. Note this keeps 
 runners-never-write-into-`docs/` invariant intact: `consolidate.py` is run by hand after a run,
 never by `run-all.ps1`/`run-all.sh`.
 
-Worked example: docs/benchmarks/2026-07-25 is the first
-six-ecosystem report published this way.
+Worked examples: [docs/benchmarks/2026-08-08](../docs/benchmarks/2026-08-08/index.md) is the
+six-ecosystem cross-stack report (the earlier 2026-07-25 report was withdrawn from the tree), and
+[docs/benchmarks/2026-09-16](../docs/benchmarks/2026-09-16/index.md) is the intra-.NET
+precompilation-evidence report for the v3 line.

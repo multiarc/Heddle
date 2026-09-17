@@ -334,8 +334,8 @@ idiomatic port is tempted to treat it as a linkable address).
 
 ### Twin templates
 
-Fluid and DotLiquid share one Liquid source (new file `Runners/MixedLiquidTemplates.cs`, the
-`LiquidTemplates.cs` pattern). The body mirrors the Heddle template with:
+Fluid and DotLiquid share one Liquid source (`templates/controlled/liquid/mixed-page.fluid.liquid` / `mixed-page.dotliquid.liquid`, loaded
+through `src/Engines/Templates.cs`). The body mirrors the Heddle template with:
 
 - `{{ page_title }}`, `{{ store_name }}`, … for scalars;
 - `{% if show_banner %}<div class="banner">{{ banner_text }}</div>{% endif %}`;
@@ -370,7 +370,7 @@ four-way branch chain (1–3 condition evaluations, depending on which branch fi
 independent toggles: **roughly 850 condition evaluations per render**, with a fixed
 taken/skipped mixture and deliberately small branch bodies so dispatch, not writing, dominates.
 
-### Model — `ConditionalContent` (new file `Runners/ConditionalContent.cs`)
+### Model — `ConditionalContent` (`src/Models/ConditionalContent.cs`)
 
 ```csharp
 public sealed class ConditionalModel { public List<ConditionalRow> Rows { get; set; } }
@@ -405,7 +405,7 @@ tier set, so no `HED3001` gap warning fires.)
 
 ### Twin templates
 
-- Liquid (Fluid + DotLiquid, shared source `Runners/ConditionalLiquidTemplates.cs`):
+- Liquid (Fluid + DotLiquid, `templates/controlled/liquid/conditional-heavy.fluid.liquid` / `conditional-heavy.dotliquid.liquid`):
   `{% for r in rows %}<li>{% if r.is_bronze %}<span class="t0">bronze</span>{% elsif r.is_silver %}<span class="t1">silver</span>{% elsif r.is_gold %}<span class="t2">gold</span>{% else %}<span class="t3">platinum</span>{% endif %}<em>{{ r.name }}</em>{% if r.has_note %}<small>note {{ r.seq }}</small>{% endif %}{% if r.is_active %}<b>active</b>{% endif %}</li>{% endfor %}`
   wrapped in the same `<ul class="matrix">…</ul>`.
 - Scriban: same structure with `{{ if r.is_bronze }} … {{ else if r.is_silver }} … {{ else }} …
@@ -530,7 +530,7 @@ includes the XSS payload and a Japanese UTF-8 string, rendered through each engi
 path. Untrusted data sits in **HTML text context only** (the classic Fortunes shape);
 attribute-context escaping is owned by workload 8.
 
-### Model — `FortunesContent` (new file `Runners/FortunesContent.cs`)
+### Model — `FortunesContent` (`src/Models/FortunesContent.cs`)
 
 ```csharp
 public sealed class FortuneModel { public List<FortuneRow> Rows { get; set; } }
@@ -606,7 +606,7 @@ does) is a no-op, so the un-filtered `{{ r.id }}` on the other twins cannot dive
 content in **every** cell, escape cost dominating; exercises both text and attribute-value
 contexts.
 
-### Model — `EncodedLoopContent` (new file `Runners/EncodedLoopContent.cs`)
+### Model — `EncodedLoopContent` (`src/Models/EncodedLoopContent.cs`)
 
 ```csharp
 public sealed class EncodedLoopModel { public List<EncodedLoopRow> Items { get; set; } }
@@ -644,7 +644,7 @@ intra-oracle inconsistency.
 | Engine | Row body |
 |---|---|
 | Fluid | `<tr><td data-tag="{{ item.tag \| escape }}">{{ item.name \| escape }}</td><td>{{ item.comment \| escape }}</td></tr>` |
-| DotLiquid | same as Fluid (shared Liquid source `Runners/EncodedLoopLiquidTemplates.cs`) |
+| DotLiquid | same as Fluid (shared Liquid source `templates/controlled/liquid/encoded-loop.liquid`) |
 | Scriban | `<tr><td data-tag="{{ item.tag \| html.escape }}">{{ item.name \| html.escape }}</td><td>{{ item.comment \| html.escape }}</td></tr>` |
 | Handlebars | `<tr><td data-tag="{{tag}}">{{name}}</td><td>{{comment}}</td></tr>` — double-mustache under `FiveEntityTextEncoder` |
 

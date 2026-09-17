@@ -82,10 +82,10 @@ people usually weigh it against.
 - **Compiled to an execution‑ready document.** A template becomes an in‑memory tree of
   extension calls wired to **compiled** accessors — member paths to expression‑tree delegates,
   embedded C# to Roslyn delegates — so nothing is reflected or re‑parsed per render. In the
-  cross‑stack run of 2026‑07‑25 it rendered [1.37× faster than ASP.NET Core Razor with fewer
-  allocations](#performance) on **byte‑identical output** — Razor is held to the same parity gate as
-  the four Liquid/Handlebars twins as of that run, so this is a like‑for‑like comparison rather than
-  the indicative pairing earlier reports had to disclaim.
+  cross‑stack run of 2026‑08‑08 it [leads ASP.NET Core Razor on seven of the eight protocol
+  workloads](#performance) on **byte‑identical output** — Razor is held to the same parity gate as
+  every other engine in that run, so this is a like‑for‑like comparison rather than the indicative
+  pairing earlier reports had to disclaim.
 
 **Best fit:** performance‑sensitive, first‑party .NET rendering by a team that values typed
 templates and component‑style composition. **Poor fit:** untrusted user‑supplied templates
@@ -165,18 +165,20 @@ compilation, and (for embedded C#) Roslyn, so at 264.99 μs it is ~70× the cold
 engines and allocates far more up front — a cost amortized across every subsequent cached render,
 where it leads. Handlebars.Net compiles slower still (8.29 ms, 31.3× Heddle).
 
-Raw BenchmarkDotNet artifacts (md/csv/html) for this run are committed under
-docs/benchmarks/2026-07-11. Numbers are hardware‑ and date‑specific;
+This run's report directory (`docs/benchmarks/2026-07-11`) was withdrawn from the tree and survives
+in git history; the tables above are kept as the intra‑.NET record. Numbers are hardware‑ and date‑specific;
 reproduce them yourself with:
 
 ```
 dotnet run -c Release --project benchmarks/dotnet -- bench-crossstack
 ```
 
-**Workload breadth.** The composition page above is one of three published workloads. A
+**Workload breadth.** The composition page above was one of three workloads in the withdrawn
+2026‑07‑11 / 2026‑07‑18 intra‑.NET runs (their report directories survive in git history); the
+2026‑08‑08 cross‑stack run and the 2026‑09‑16 technique tables cover all eight. A
 trivial-substitution and a large-loop workload bracket it — the
 former (scalar output, no composition) is the shape where Heddle's lead is workload-dependent
-rather than universal (in the 2026‑07‑18 run Heddle rendered it fastest but Handlebars.Net
+rather than universal (in the withdrawn 2026‑07‑18 run Heddle rendered it fastest but Handlebars.Net
 allocated less than half the memory), and the latter (one large iteration) is where the time race
 is tightest (Handlebars.Net within ~8%, again allocating less); both are parity-checked against
 the same four engines. No universal-superiority claim follows. Numbers are hardware- and

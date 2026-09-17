@@ -135,7 +135,8 @@ Also open, without their own ids:
   host compiles through the real engine out of process over the implementation images
   (`@(ReferencePath)` project outputs, package runtime images, declared assemblies) and the
   project's own intermediate compile, so a project-to-project reference is observed like any other —
-  `IntermediateCompileTests` and `ClassLibraryImageTests` pin it.* The compiler is handed
+  `IntermediateCompileTests` and `ClassLibraryImageTests` pin it. The original entry, kept for the record:*
+  The compiler is handed
   the referencing project's *reference assembly* — metadata with the method bodies removed — so
   there is no `InitStart` to execute and `HED7034` reports it. A package reference names the
   implementation and is observed normally. MSBuild knows both paths (`@(ReferencePath)` is the

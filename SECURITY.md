@@ -2,13 +2,13 @@
 
 ## Supported versions
 
-Security fixes are provided for the latest released `4.x` line. Please make sure you can
+Security fixes are provided for the latest released `3.x` line. Please make sure you can
 reproduce an issue against the most recent release before reporting.
 
 | Version | Supported |
 | --- | --- |
-| 4.x (latest) | ✅ |
-| < 4.0 | ❌ |
+| 3.x (latest) | ✅ |
+| < 3.0 | ❌ |
 
 ## Reporting a vulnerability
 

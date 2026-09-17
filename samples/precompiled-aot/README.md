@@ -2,7 +2,7 @@
 
 **Shows:** the NativeAOT posture — a trimmed, ahead-of-time-compiled app rendering precompiled
 templates under strict load. **Source of record:**
-[Phase 3 generated sites](../docs/spec/precompilation-v2/phase-3-generated-sites.md) (P3-R9).
+Phase 3 generated sites, P3-R9 (spec retired; the posture is in the [program record](../../docs/spec/common/cross-cutting-decisions.md#program-record--precompilation-v2-closed)).
 
 ## Run it
 

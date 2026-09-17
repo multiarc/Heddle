@@ -139,7 +139,7 @@ the same programs, unmodified:
 
 | Ecosystem | Commands (from the ecosystem's harness directory) | Pass condition |
 |---|---|---|
-| .NET | `dotnet run -c Release --project src/Heddle.Performance -f net10.0 -- parity` then `-- verify-corpus` | eight `[PASS]` blocks; exit 0 twice |
+| .NET | `dotnet run -c Release --project benchmarks/dotnet -- gate` then `-- verify-corpus` | `gate`: one `[PASS]` line per registered cell (152 in the committed 2026-09-16 gate log), exit 0; `verify-corpus`: the eight-workload corpus check, exit 0 |
 | Rust | `cargo run --release --bin gate` | 32 `[PASS]` cells, exit 0 |
 | JVM | `GateCli calibrate` then `GateCli gate` (via `./mvnw -q clean verify`) | exit 0; excluded cells print their recorded marker |
 | JS | `npm run selftest` then `npm run gate` | exit 0 twice |

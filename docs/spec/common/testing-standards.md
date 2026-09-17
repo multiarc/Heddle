@@ -30,8 +30,10 @@ must not weaken it.
 Test projects are xUnit v3 on Microsoft Testing Platform: each one is a stand-alone executable that
 hosts its own runner. Three consequences, all of which bite silently if ignored:
 
-- **`dotnet test` needs `--project` or `--solution`.** The directory form (`dotnet test src/Foo`) is
-  rejected outright, so it fails loudly rather than testing nothing.
+- **`dotnet test --project <csproj>` is the canonical form.** *Corrected 2026-09-18:* this section said the
+  directory form (`dotnet test src/Foo`) is rejected outright; on this tree the MTP runner pinned in
+  `global.json` accepts it and runs the project it finds. The canonical form stays because it names the
+  project explicitly; CI and the documented commands use it.
 - **Filters are MTP syntax** — `--filter-method`, `--filter-class`, `--filter-namespace`,
   `--filter-trait`, after a `--` separator. A VSTest-style `--filter FullyQualifiedName~X` is not
   understood. A filter that matches nothing exits **8**, so a stale filter can no longer pass by

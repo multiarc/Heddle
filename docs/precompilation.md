@@ -55,7 +55,7 @@ metadata are read:
   <HeddleTemplate Include="Templates/**/*.heddle" />
   <!-- an import-only file: no entry point, but every @<< that imports it still resolves -->
   <HeddleTemplate Update="Templates/_layout.heddle" Precompile="false" />
-  <!-- drop a file from the item set entirely (importers of it then draw HED7011) -->
+  <!-- drop a file from the item set entirely (an @<< importer then reads it from disk, as the engine does) -->
   <HeddleTemplate Remove="Templates/scratch.heddle" />
   <!-- override the key (this also renames the generated class to `Home`) -->
   <HeddleTemplate Update="Templates/Home.heddle" Key="home" />
@@ -104,7 +104,7 @@ source dependency, or a model assembly with no compile-time-nameable public type
 ```
 
 The targets append `@(HeddleModelAssembly)` and `@(HeddleExtensionAssembly)` to `@(ReferencePath)`, so the item's
-job is to reach the **compiler** — not the generator. An item carries an obligation the attribute discharges for
+job is to reach the **compiler** — not a source generator. An item carries an obligation the attribute discharges for
 you: **it configures the build only**, so the host still makes its own `HeddleTemplate.Register` call, and, not
 being an ordinary reference, the file is absent from the deps file and deployment still has to put it where the
 process can load it.
@@ -296,12 +296,12 @@ template is still reachable by its key.
 
 | Carrier | Populated for | Reasons |
 | --- | --- | --- |
-| `TemplateKey` | a per‑request event, which is about one resolved template | `UnsupportedFunction`, `OptionsMismatch`, `ModelTypeMismatch`, `ExtensionBindingMismatch`, `FunctionBindingMismatch`, `StaleContent`, `StaleImport`, `CaseMismatch` |
+| `TemplateKey` | a per‑request event, which is about one resolved template | `UnsupportedFunction`, `OptionsMismatch`, `ModelTypeMismatch`, `ExtensionBindingMismatch`, `FunctionBindingMismatch`, `MemberBindingMismatch`, `ExtensionInitCompileError`, `ExtensionInitTypingMismatch`, `StaleContent`, `StaleImport`, `CaseMismatch` |
 | `AssemblyName` | a registration‑time event, which is about an assembly and has no one template to name | `SchemaVersionUnsupported`, `EngineVersionIncompatible`, `RegisteredNameUnavailable` |
 
 Branch on the carrier, not on the reason. The 2.0 event had a single `Key` property holding either
 meaning, so a host had to re‑derive from `Reason` which of the two it had; that property is **removed in
-2.1** rather than narrowed, so the change surfaces as a compile error at the reading site instead of a
+3.0.0** rather than narrowed, so the change surfaces as a compile error at the reading site instead of a
 null at run time. Events are constructed through `PrecompiledFallbackEvent.ForTemplate` /
 `ForAssembly`, each of which refuses a reason belonging to the other carrier — the mapping above is
 enforced, not documented.
@@ -348,8 +348,16 @@ Before trusting a precompiled entry the resolver checks it is compatible with th
   `PrecompiledTemplates.BindingResolver`.
 - **Function bindings** — the functions the template called vs. the request's effective
   `FunctionRegistry` (below).
+- **Member bindings** — every type and member the compiled form bound (the row's model type, each member
+  path's start type and, per hop, the declaring and member types) must resolve to the same identity in this
+  process; anything else is `MemberBindingMismatch` naming the member and both identities.
 - **Staleness** — only under `EnableFileChangeCheck`: the root file's `ContentHash` and the
   transitive `@<<` import closure vs. disk.
+
+Two further reasons are raised at **materialization** rather than by the gauntlet, through the same channel: an
+extension's own `InitStart`/`CompleteInit`, run for real at load, reports compile errors for a call site
+(`ExtensionInitCompileError`), or hands its body a different model or chained type than the build recorded
+(`ExtensionInitTypingMismatch`).
 
 On any failure, behavior is controlled by `TemplateOptions.PrecompiledMismatchPolicy`:
 
@@ -452,6 +460,9 @@ saw hides a packaging bug behind identical output. The classification:
 | `ModelTypeMismatch` | legitimate fallback | The host typed its `CompileContext` differently from the build's assumption for a template that names no model of its own. Both types are legitimate — one is the deployment's, one is the build's — and only the dynamic tier can honour the deployment's. Precompiling for that host is a *build configuration* opportunity (`ModelType` item metadata), not a run‑time defect. |
 | `ExtensionBindingMismatch` | **must surface** *(provisional)* | A residual mismatch means the deployed binding set genuinely differs from the one the build declared — rendering dynamically with *different bindings than the build recorded* is the hazard, not the cure. |
 | `FunctionBindingMismatch` | **must surface** *(provisional)* | Declaring‑type/overload drift under the default registry signals assembly skew. A per‑request export registry (`options.Functions`) diverging by host choice is the one arguable sub‑case. |
+| `MemberBindingMismatch` | **must surface** | A type or member the form bound resolves to a different identity here — the deployed assemblies differ from what the build compiled against, which is assembly skew, never a designed miss. |
+| `ExtensionInitCompileError` | surfaces anyway | An extension's compile‑time hook, run at load, refused a call site. The dynamic tier runs the same hook and refuses the same template, so the fallback compile reports the engine's own errors rather than hiding anything. |
+| `ExtensionInitTypingMismatch` | **must surface** | The hook typed a body differently at load than at build, so the recorded bodies would bind members to the wrong type: a build/deployment skew in the extension itself, reported instead of rendered. |
 | `SchemaVersionUnsupported` | **must surface** | A manifest outside the engine's schema window means the deployable pairs build-host and engine packages out of contract — a packaging defect that today silently un‑precompiles an entire assembly. |
 | `EngineVersionIncompatible` | **must surface** | The same argument for engine skew; whole‑assembly silent rejection is the worst place to be quiet. |
 | `CaseMismatch` | informational | Never a gauntlet failure — a registry lookup miss is contractually never a failure; the `HED7103` event is a diagnostic aid. |
@@ -718,7 +729,7 @@ engine's own dynamic binder, pinned to Heddle's assembly so the two tiers bind a
 | Boundary | Why it is where it is |
 | --- | --- |
 | Embedded C# outside `FullCSharp` | The engine refuses the same template under the same options. The degrade reproduces a refusal rather than losing a capability. |
-| An `InitStart`/`CompleteInit` override **outside the engine assembly** | No longer a decline at all: the hook runs for real inside your assembly at static‑init, whichever way the extension reaches it — a package reference, a project reference, or a declaration in the compilation being built. What remains is narrower and per‑call‑site: a computed native expression or an embedded C# expression inside a body whose model type the hook chooses, and an extension that declares `[PrecompileUnsupported]` (`HED7033`). |
+| An `InitStart`/`CompleteInit` override **outside the engine assembly** | No longer a decline at all: the hook runs for real at materialization, whichever way the extension reaches it — a package reference, a project reference, or a declaration in the compilation being built. What remains is narrower and per‑call‑site: a computed native expression or an embedded C# expression inside a body whose model type the hook chooses, and an extension that declares `[PrecompileUnsupported]` (`HED7033`). |
 | A `ref struct` in a boxing sink — a model, an operand, a function argument, a slot value | `CS0029`/`CS1503`, and the engine refuses it too on modern TFMs (its expression trees reject by‑ref‑like types wholesale). Both tiers say no. |
 | A type generated code may not **name** — a referenced assembly's `internal` type, or `[Obsolete(…, error: true)]` | The engine binds by reflection, which asks neither question. The remedy is `[InternalsVisibleTo]` or dropping the error‑level `[Obsolete]`, not a Heddle setting. |
 | An open generic model type | Re‑grounded, not repaired: the dynamic tier accepts **no** model value for an open generic type and cannot build a member accessor for one, so precompiling it would render where the engine refuses. |
@@ -755,7 +766,7 @@ retired in place rather than deleted, exactly as a diagnostic id is.
 | `DefinitionProps` | A definition or extension prop prototype the emitter cannot freeze: unknown, duplicate, missing or unreproducible values, and dynamic arguments it cannot type. |
 | `EmbeddedCSharp` | An embedded C# expression the compiled‑fragment path cannot carry — no in‑file `@model` to pin the scope, an expression reading `root` where nothing pins the root type, a `@using` body naming no namespace, or text the engine's own compiler rejects. Inside a type‑agnostic body it costs the call site rather than the template: the fragment's model parameter would have to be *spelled*. |
 | `FunctionBinding` | A call no build‑time registration binds and no late‑bound site can serve. Its loud twin is `HED7014`. |
-| `HookBehavior` | The **substitute's own bound**, and nothing wider. A hook the build has not read is not a decline — it runs for real at static‑init — so what is left here is what a per‑call‑site substitute cannot be honest about: it compiles the call's own text as its own document, which sees no enclosing definition, no ambient region fill scope and no active prop layout. A body reaching for any of those sends the **template** to the dynamic tier rather than the call. `HED7015`, the loud twin the unread hook once had, is retired in place. |
+| `HookBehavior` | The **substitute's own bound**, and nothing wider. A hook the build has not read is not a decline — it runs for real at materialization — so what is left here is what a per‑call‑site substitute cannot be honest about: it compiles the call's own text as its own document, which sees no enclosing definition, no ambient region fill scope and no active prop layout. A body reaching for any of those sends the **template** to the dynamic tier rather than the call. `HED7015`, the loud twin the unread hook once had, is retired in place. |
 | `ExtensionBinding` | An extension the binder cannot bind at build time, or a binding‑surface fault: an unbindable type, an unbound name, a malformed `[Prop]` declaration. |
 | `HostSetup` | The consumer's build configuration forbids the emission — an expression‑mode gate, a missing `Microsoft.CSharp` reference, conflicting model declarations. The remedy is host setup, not template or emitter work. |
 | `MemberAccess` | A member path, prop read or receiver the emitter cannot resolve statically — and that the engine's accessor cannot serve either. |
@@ -820,7 +831,7 @@ their `.heddle` position; file/key/option‑level conditions report without a so
 | `HED7011` | **Retired in place (2026-09-17) — no build raises it; the id stays claimed. See [Retired build ids](#retired-build-ids).** An `@<<` import is not among the compilation's `.heddle` items. The spelling is matched against the item's key, so it is case-sensitive; it is first reduced the way the engine's own `Path.GetFullPath` reduces it — `.` segments and repeated separators drop out, a `..` cancels the segment before it, and a trailing separator survives (so `lib.heddle/.` names the file and `lib.heddle/` names a directory neither tier can read). Which characters separate segments is the platform's answer: a backslash separates on Windows and is an ordinary file-name character elsewhere, on both tiers. A `..` that reaches above the template root names nothing on either tier. An import path is **not** a template key, so the key idioms are refused rather than applied: a leading `/` is an absolute path to `Path.Combine`, a leading `~/` is a literal `~` directory, and an extension-less name is a file without an extension — the precompiler declines each of the three rather than renaming the file the engine reads. |
 | `HED7012`/`HED7013` | A forwarded front‑end error/warning carrying no id. |
 | `HED7014` | A called function no build‑time registration binds, in a call shape a late‑bound site cannot serve either (chiefly an argument whose static type has no build‑time answer) — the template falls back (warning). A delegate‑only registration alone no longer reaches this: see *Functions the build cannot see*. |
-| `HED7015` | **Retired in place — no build raises it any more, and the id stays claimed forever.** It reported that a bound extension outside the engine assembly overrode a compile‑time hook the build had not read, and that the template therefore fell back. The build no longer has to read a hook to bind one: the extension's own `InitStart`/`CompleteInit` runs inside your assembly at static‑init, so the fact this warning reported is no longer true of any build. The id is never reused and never renumbered; this row is its permanent home. |
+| `HED7015` | **Retired in place — no build raises it any more, and the id stays claimed forever.** It reported that a bound extension outside the engine assembly overrode a compile‑time hook the build had not read, and that the template therefore fell back. The build no longer has to read a hook to bind one: the extension's own `InitStart`/`CompleteInit` runs at materialization, so the fact this warning reported is no longer true of any build. The id is never reused and never renumbered; this row is its permanent home. |
 | `HED7016` | **Retired in place — no build raises it; the id stays claimed. See [Retired build ids](#retired-build-ids).** A branch continuation/terminal (`[BranchRole]`) omits `[ScopeChannel]`, so it can never read the branch state at run time (warning). |
 | `HED7017` | **Retired in place — no build raises it; the id stays claimed. See [Retired build ids](#retired-build-ids).** An extension declares a malformed `[Prop]` parameter — the build‑tier twin of the dynamic tier's declaration diagnostics. |
 | `HED7018` | A template is outside `HeddleTemplateRoot` and has no explicit `Key`, so its directory is dropped and it registers under a flattened filename key (warning). Only `Key` suppresses it: a `Name` is additive and leaves the flattened key in place, so the warning is still about something real. |
@@ -850,7 +861,7 @@ pair with no common type), `HED1008`/`HED1009` (a binary/unary operator not defi
 types), `HED1010` (no accessible indexer on a known target type), `HED1011` (a non‑`bool` ternary
 condition), and `HED1018` (constant division by zero). The template still degrades to the dynamic
 tier; the build now fails the way the engine's compile would, instead of hiding the error until the
-first runtime compile. A refusal the generator cannot prove — an operand it cannot type, a verdict
+first runtime compile. A refusal the build host cannot prove — an operand it cannot type, a verdict
 that depends on runtime binding, a template whose model type is simply undeclared — keeps degrading
 silently under `HED7031`.
 
@@ -929,7 +940,7 @@ heddle render <template> [--model-json <file>] [--out <file>] [--root <dir>]
 
 ---
 
-*Verified against the v3 sources (2026-09-16).* Claims marked ✓ are gated by a test:
+*Verified against source at `f8a9497c` (2026-09-18).* Claims marked ✓ are gated by a test:
 the `HED70xx`/`HED71xx` tables ✓ (`DiagnosticIdTests`: descriptor ⇄ registry ⇄ this page, both
 directions); the gauntlet's steps ✓ (`PrecompiledGauntletTests`); the compiled form's parity with
 the dynamic tier on three sinks, three passes (in-memory, file-backed, staged with the staleness

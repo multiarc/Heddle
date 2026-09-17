@@ -148,7 +148,7 @@ namespace Heddle.Benchmarks.Dotnet
         /// fail a build step, so precompilation coverage cannot regress unnoticed and cannot sit at
         /// partial indefinitely without someone deciding that is acceptable.</para>
         ///
-        /// <para>The build-time half of the same signal is <c>HED7031</c>: the generator now names each
+        /// <para>The build-time half of the same signal is <c>HED7031</c>: the build host names each
         /// template it declined and why, and a project can promote that to an error with
         /// <c>&lt;WarningsAsErrors&gt;HED7031&lt;/WarningsAsErrors&gt;</c>.</para>
         /// </summary>

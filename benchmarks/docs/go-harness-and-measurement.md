@@ -109,7 +109,7 @@ idiomatic verification; any failure prints the failure surface and `os.Exit(1)` 
 benchmark in the package can time until every gate passed in the same invocation**, satisfying
 the contract's before-any-timing rule. The same checks are additionally exposed as ordinary
 `Test…` functions so plain `go test ./suites` is the phase's parity command (the Go analogue of
-the .NET `-- parity` verb).
+the .NET `-- gate` verb).
 
 ## Idiomatic verifier
 

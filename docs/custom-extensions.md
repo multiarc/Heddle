@@ -320,7 +320,7 @@ There are three roles:
 **`[ScopeChannel]` goes on Continuation and Terminal, not on the Opener** (R11). Continuation and
 terminal extensions *read* the channel (`TryRead`), and locals‑frame provisioning keys off
 `[ScopeChannel]`; omit it and their read always misses at render time (the engine warns —
-**HED3005** at the call on both tiers, plus **HED7016** once per drifting type at build time — but
+**HED3005** at the call on both tiers — but
 cannot fix it for you). An opener publishes
 *opportunistically*: it carries no `[ScopeChannel]`, so a set with no continuation/terminal sibling
 provisions no frame and the publish is a harmless no‑op — this is exactly what keeps templates that
@@ -726,10 +726,10 @@ it does not need to be typed. Nothing about your extension has to be recognised 
 > made fixing it urgent rather than cosmetic. Both halves are pinned by differential tests that render the
 > same template on both tiers and compare bytes.
 
-An extension name that resolves to no `[ExtensionName]` type in any referenced assembly is a
-build error (`HED7006`) **when the call carries a `{{ … }}` body**; a bodiless unresolvable call falls back
-to the dynamic/function path silently (a delegate‑registered function could satisfy it at run time).
-Extensions that only ever run through the dynamic path are unaffected.
+An extension name that resolves to no `[ExtensionName]` type in any referenced assembly is the engine's own
+compile error (`HED0002`), reported at build by the host and by the dynamic tier alike, **when the call carries a
+`{{ … }}` body**; a bodiless unresolvable call is read as a function call (a delegate‑registered function could
+satisfy it at run time).
 
 ## Declaratively exporting functions
 

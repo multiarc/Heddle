@@ -996,8 +996,8 @@ Rules:
   passes, because all four resolve to `System.Object` and none of them says anything about the model.
   The one thing `dynamic` still changes is a call site that passes a member path: as everywhere else,
   that reaches the model accessor's dynamic exit and the body's reads bind at render.
-- **Both backends.** Region defaults **and** overridden fills precompile natively under the
-  source generator and render byte-identically to the dynamic engine.
+- **Both backends.** Region defaults **and** overridden fills precompile under the
+  `Heddle.Build` host and render byte-identically to the dynamic engine.
 
 The pre-existing [sibling-override idiom](patterns.md#components-with-multiple-content-regions)
 (document-scope sibling definitions the caller overrides) remains fully supported and unchanged;
@@ -1164,8 +1164,8 @@ a measurement of available memory, so a template behaves the same on every host.
   (**`HED4008`**) says so once. Ordinary composition is nowhere near it; reaching it means a library is
   being pulled in along many paths at once, and naming it in one place fixes the multiplication.
 
-The same bounds apply at build time in the source generator, where an unbounded parse would take down the
-compiler rather than fail the build.
+The same bounds apply at build time in the `heddle compile` host, where an unbounded parse would take down the
+host process rather than fail the build.
 
 **Why the limit is where it is.** Prefix operators (`!`, `-`, `+`, `~`) and the right-associative `?:`
 and `??` are parsed by recursive descent, so each one costs a stack frame — far more stack per level than

@@ -168,7 +168,7 @@ one `@else`. Only the winning branch's body renders.
 - **Isolation.** Each `@list`/`@for` iteration, each nested body, and each `@partial` gets its
   own set state — an inner set can never satisfy or clear an outer one.
 - **A custom continuation or terminal must declare `[ScopeChannel]`** to read the state an opener
-  publishes. One that does not draws `HED3005` (and `HED7016` at build time) and then misses every
+  publishes. One that does not draws `HED3005` and then misses every
   read at render, so it behaves as though no opener ran — see
   [building your own branch set](custom-extensions.md#building-your-own-branch-set).
 
