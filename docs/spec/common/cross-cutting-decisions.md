@@ -176,7 +176,8 @@ verification marker or is covered by a gate**. An unmarked, ungated claim is *ev
 not an authority*: a contradiction between it and both implementations agreeing is resolved by
 investigating and recording the outcome — never by editing code to match the sentence. Marked
 claims use the footer form *"Verified against source at `<commit>` (`<date>`); claims marked ✓ are
-gated by `<test>`."*
+gated by `<test>`."* *Corrected 2026-09-18:* public pages carry the commit and the gate names only —
+the date is omitted there and lives in git.
 
 **Non-retroactive.** Decisions already ratified against the unconditional convention stand as
 ratified; this narrowing applies to resolutions taken after it. Re-opening them would relitigate
@@ -560,7 +561,7 @@ documents are retired (2026-09-18) — full text: `git show f8a9497c:docs/spec/p
   and every `PrecompiledFallbackReason` stay as-is, `PrecompiledTemplateInfo.EntryPointType`/`RefusalSites`
   and the internal adapter constructor stay, and the whole `PrecompiledTemplates` /
   `PrecompiledValidationReport` / `PrecompiledFallbackEvent` surface stays. (P4-R3, P4-R5)
-- Migration is one entry: [precompilation.md](../../precompilation.md#generator-removal-migration-note).
+- Migration is one entry: [precompilation.md](../../precompilation.md#upgrading-from-2x).
   Class (a) is a no-op for consumers (nothing referenced the deleted names); class (b) deletes one
   attribute; class (c) deletes the one remedy its templates relied on. (P4-R8)
 

@@ -413,7 +413,7 @@ The full 2.1 table (2.0.0 state and as-implemented text per item) is in git hist
 
 | # | Item | Migration | Where it lands in 3.0.0 |
 | --- | --- | --- | --- |
-| 1 | `Heddle.Generator` removed; the last 2.x package deprecated on NuGet naming `Heddle.Build` | Reference `Heddle.Build`; keep items, metadata and option properties | CHANGELOG 3.0.0; [precompilation.md § migration note](../../precompilation.md#generator-removal-migration-note) |
+| 1 | `Heddle.Generator` removed; the last 2.x package deprecated on NuGet naming `Heddle.Build` | Reference `Heddle.Build`; keep items, metadata and option properties | CHANGELOG 3.0.0; [precompilation.md § migration note](../../precompilation.md#upgrading-from-2x) |
 | 2 | Everything in `Heddle.dll` that existed for generated 2.x code is removed, public and internal (adopts the register's `ResolvePartial` row) | Rebuild with `Heddle.Build` | CHANGELOG 3.0.0 § Removed; the phase-4 removal record in the [program record](cross-cutting-decisions.md#program-record--precompilation-v2-closed) |
 | 3 | 2.x-precompiled assemblies are not read: `Register` throws `PrecompiledRegistrationException`; the schema window restarts at 4 | Rebuild every precompiled assembly | CHANGELOG 3.0.0 § Changed (breaking) |
 | 4 | Retired properties `HeddleObserveEngine`, `HeddleNodeFallback`, `HeddleEmitUtf8Pieces` warn `HED7037` when set; the two observe-path properties retire silently | Delete the property | `Heddle.Build.targets`; `RetiredPropertyTests` |

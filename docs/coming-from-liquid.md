@@ -133,5 +133,5 @@ has no tag syntax at all: every construct is an extension call, whether a built-
 Liquid trims whitespace with in-delimiter dashes (`{%- -%}`, `{{- -}}`). Heddle has no in-delimiter
 form: use [`@\`](language-reference.md#whitespace-trimming-) to eat the following run of whitespace
 (here suppressing the declaration line's trailing newline), or set
-`TemplateOptions.TrimDirectiveLines` — on by default since 2.0 — so a whole-line directive swallows
+`TemplateOptions.TrimDirectiveLines` — on by default — so a whole-line directive swallows
 its own line without any marker.

@@ -25,8 +25,7 @@ native expression. No new sigil is introduced.
 | Arithmetic, comparisons, string building, a whitelisted function | **native expression** | this page |
 | Arbitrary C#, method calls, LINQ, `new` | the `@` C# tier `@( @expr )` | requires `ExpressionMode.FullCSharp`; see [csharp-api.md](csharp-api.md) |
 
-The native tier is on by default (`ExpressionMode.Native`). Because every native expression that
-newly compiles was previously a compile error, turning it on is backward‑compatible.
+The native tier is on by default (`ExpressionMode.Native`).
 
 ## Operators
 
@@ -190,8 +189,7 @@ var options = new TemplateOptions { Functions = functions };
   built‑in table, **0 of 480** argument combinations would change which overload wins under C#'s rule,
   **100** would become bindable that are ties today, and **38** stay ambiguous either way (`double`
   and `decimal` are mutually non‑convertible, so neither is closer). Adopting C#'s rule would *widen*
-  what compiles, which cannot be withdrawn later, so it is a **window‑gated** change rather than a fix
-  to make casually.
+  what compiles, which is a breaking change.
   Note that betterness is not what makes an integral argument bind to `floor`/`ceil`/`round`: with only
   a `double` and a `decimal` overload the two are mutually non‑convertible, so C# reports the tie too —
   `Math.Floor(3)` is `CS0121`. What binds `floor(3)` is that those three carry an `int` and a `long`
@@ -223,7 +221,7 @@ invoke the function inside an expression (`@( fn(x) )`) to disambiguate. Inside 
 
 `AllowCSharp` is a bridge over this enum: `AllowCSharp = true` selects `FullCSharp`; reading it
 returns whether the mode is `FullCSharp`. It is retained for compatibility and marked
-`[Obsolete]` since 2.x — reads and writes keep working; new code uses `ExpressionMode`.
+`[Obsolete]` — reads and writes keep working; new code uses `ExpressionMode`.
 
 ## Deviations from C#
 
@@ -236,7 +234,7 @@ Native expressions match C# except for a small, deliberate set of ergonomic choi
    is what `NativeExpressionCompiler`'s `IsReferenceish(left) && IsReferenceish(right)` guard decides
    and what `NativeOperatorRulesTests.Deviation1_MixedEqualityEmitsThroughTheAdapterWhereTheEnginesChainIsTotal`
    pins in the shared rule core. **Do not widen the guard to match a looser reading of this rule:** doing so turns a compile
-   error into a silent `false`, which is a breaking change and window‑gated.
+   error into a silent `false`, which is a breaking change.
    On the precompiled tier this deviation prints from the engine's own tree, which already carries
    the fallback verdict — a user operator where the pair binds one, null‑safe `object.Equals`
    otherwise — so the two tiers keep one verdict byte for byte instead of the template degrading.
@@ -253,7 +251,7 @@ Native expressions match C# except for a small, deliberate set of ergonomic choi
 7. `&&`/`||` reject `bool?` with a targeted error instead of C#'s wording.
 8. `<<`/`>>` accept **any** integral right operand and convert it to `int`, so `@(I << L)` compiles
    here and is `CS0019` in C#. **Do not narrow this to match C#:** it would break templates that
-   compile today, so it is window‑gated.
+   compile today, so it is a breaking change.
 9. Mixed nullability does not lift outside the numeric paths — see
    [Lifted (nullable) operands](#lifted-nullable-operands) for the two shapes and which of them is a
    deviation and which is a defect.
@@ -320,13 +318,13 @@ budgets, and encoding contexts — see
 
 ---
 
-*Verified against source at `f8a9497c` (2026-09-18).* Claims marked ✓ are gated by a test:
+*Verified against source at `f8a9497c`.* Claims marked ✓ are gated by a test:
 the diagnostics table ✓ (`DiagnosticIdTests.EveryShippedIdIsNamedInAPublishedDocument` — every id
 here is a shipped constant and this page is its registry-designated home); deviation 1's guard ✓
 (`NativeOperatorRulesTests.Deviation1_MixedEqualityEmitsThroughTheAdapterWhereTheEnginesChainIsTotal`); the
 operator legality table and the lifted-operand shapes ✓ (`NativeOperatorRulesTests`, which drives the
 shared rule core both tiers use); the overload-rank measurement ✓
-(`OverloadBetternessEvaluationTests`). Everything else on this page is dated-verified, not gated —
+(`OverloadBetternessEvaluationTests`). Everything else on this page is verified against source, not gated —
 which matters: an unmarked claim is **evidence of intent, not an authority**, so a contradiction
 between it and both tiers agreeing is investigated and recorded, never resolved by editing code to
 match the sentence.

@@ -30,7 +30,7 @@ public class Greeting { public string Name { get; set; } public int Count { get;
 | --- | --- |
 | `Heddle` | Core engine: parser host, compiler, runtime, built‑in extensions. |
 | `Heddle.Language` | ANTLR grammar + generated lexer/parser and editor assets. |
-| `Heddle.Build` | Build‑time host that pre‑compiles `.heddle` files into your assembly (MSBuild targets driving the out‑of‑process `heddle compile`). Replaces `Heddle.Generator` (2.x, deprecated). |
+| `Heddle.Build` | Build‑time host that pre‑compiles `.heddle` files into your assembly (MSBuild targets driving the out‑of‑process `heddle compile`). Replaces `Heddle.Generator` — see [Upgrading from 2.x](docs/precompilation.md#upgrading-from-2x). |
 | `Heddle.LanguageServices` | Editor language‑service facade (completion, diagnostics, hover, go‑to‑definition) you can host yourself. |
 | `Heddle.LanguageServer` | LSP server for editors, shipped as a `dotnet tool` (`heddle-lsp`). |
 | `Heddle.Tool` | The `heddle` CLI — a `dotnet tool` for rendering templates and build‑time code generation (the T4 successor). |
@@ -43,7 +43,7 @@ Full documentation lives in **[docs/](docs/README.md)**:
 - [Language Reference](docs/language-reference.md) — every Heddle construct and its nuances.
 - [Built‑in Extensions](docs/built-in-extensions.md) — `list`, `if`, `date`, `money`, and more.
 - [C# API Reference](docs/csharp-api.md) — `HeddleTemplate`, options, contexts, results.
-- [Build‑Time Pre‑compilation](docs/precompilation.md) — compiling `.heddle` files into the assembly with `Heddle.Build` (v3).
+- [Build‑Time Pre‑compilation](docs/precompilation.md) — compiling `.heddle` files into the assembly with `Heddle.Build`.
 - [Writing Custom Extensions](docs/custom-extensions.md) — add your own directives.
 - [Architecture](docs/architecture.md) — the lex → parse → compile → render pipeline.
 - [Building & Testing](docs/building.md) — SDK, scripts, tests, packaging, CI.
@@ -82,10 +82,9 @@ people usually weigh it against.
 - **Compiled to an execution‑ready document.** A template becomes an in‑memory tree of
   extension calls wired to **compiled** accessors — member paths to expression‑tree delegates,
   embedded C# to Roslyn delegates — so nothing is reflected or re‑parsed per render. In the
-  cross‑stack run of 2026‑08‑08 it [leads ASP.NET Core Razor on seven of the eight protocol
+  cross‑stack benchmark it [leads ASP.NET Core Razor on seven of the eight protocol
   workloads](#performance) on **byte‑identical output** — Razor is held to the same parity gate as
-  every other engine in that run, so this is a like‑for‑like comparison rather than the indicative
-  pairing earlier reports had to disclaim.
+  every other engine, so this is a like‑for‑like comparison.
 
 **Best fit:** performance‑sensitive, first‑party .NET rendering by a team that values typed
 templates and component‑style composition. **Poor fit:** untrusted user‑supplied templates
@@ -104,91 +103,22 @@ embedded C# to Roslyn delegates). Rendering walks that document, so it does not 
 or pay per‑call activation, section, or dependency‑injection overhead at run time.
 
 The repository includes a [BenchmarkDotNet](https://benchmarkdotnet.org/) suite
-([benchmarks/dotnet](benchmarks/dotnet)) that measures Heddle head‑to‑head against four
-other .NET template engines — **Fluid**, **Scriban**, **DotLiquid**, and **Handlebars.Net** — plus
-ASP.NET Core **Razor**. Every one of the four Liquid/Handlebars twins is held to **byte‑identical
-output** with Heddle by a parity assertion that runs before any timing, so the render and
-compile numbers below compare identical work (see
-[benchmarks/README.md](benchmarks/README.md)). Heddle is the ratio
-baseline (`[Benchmark(Baseline = true)]`, `[MemoryDiagnoser]` enabled).
-
-**The measured workload** *(as it stood for this 2026‑07‑11 run; the workload was redesigned
-on 2026‑08‑08 — see the cross‑stack section below)*. The parity‑checked page was the static
-composition of `home.heddle` + `layout.heddle`: the layout's reusable‑section defaults, ~a
-dozen component/extension calls, and a list loop over seven area‑menu fragments (≈55.5 KB raw
-output). Because `home.heddle` extended the layout via `@<<{{layout.heddle}}`, the engine
-emitted that **ordered fragment sequence** rather than the full HTML page skeleton; the four
-twins reproduced exactly those bytes. This kept the comparison honest — all five engines did
-the same work — at the cost of not exercising the literal page chrome. *(That cost is gone in
-the current suite: since the 2026‑08‑08 redesign, `composed-page` renders the **full HTML
-page** — layout with a live body slot, section defaults, literal chrome, and a structured nav
-through nested partials — in every engine.)* The `RenderRazor` row below rendered the full
-`Views/home.cshtml` page (larger, different output) and was **not** under the parity
-assertion, so treat it as indicative rather than apples‑to‑apples; the current suite's Razor
-twin is a full parity twin.
-
-### Results — 2026‑07‑11 (commit `8341bb67`)
-
-```
-BenchmarkDotNet v0.15.8 · Windows 11 (10.0.26200.8655/25H2)
-AMD Ryzen 9 9950X 4.30GHz, 16 physical / 32 logical cores
-.NET SDK 10.0.301 · .NET 10.0.9 runtime, X64 RyuJIT x86-64-v4
-```
-
-**Render** (cached‑template path; lower is better; ratio vs Heddle):
-
-| Engine | Mean | Ratio | Allocated | Alloc ratio |
-| --- | ---: | ---: | ---: | ---: |
-| **Heddle** (baseline) | **32.50 μs** | **1.00** | **227.86 KB** | **1.00** |
-| Fluid 2.31.0 | 64.88 μs | 2.02 | 231.98 KB | 1.02 |
-| Handlebars.Net 2.1.6 | 69.76 μs | 2.17 | 227.59 KB | 1.00 |
-| DotLiquid 2.3.197 | 178.21 μs | 5.55 | 404.69 KB | 1.78 |
-| Scriban 7.2.5 | 376.71 μs | 11.73 | 1,154.34 KB | 5.07 |
-| Razor (full page)† | 65.55 μs | 2.04 | 263.51 KB | 1.16 |
-
-On this workload Heddle rendered fastest of the six — 2.0× ahead of the next engine (Fluid, 64.88 μs)
-and 11.7× ahead of Scriban — while allocating the least or tied‑least memory (227.86 KB; Handlebars.Net
-is within 0.3 KB, Scriban allocates 5.07×). † Razor renders a different, larger page and is not parity‑checked.
-
-**Compile / parse** (cold, one‑time cost; lower is better; ratio vs Heddle):
-
-| Engine | Mean | Ratio | Allocated |
-| --- | ---: | ---: | ---: |
-| **Heddle** (baseline) | **264.99 μs** | **1.00** | **1,339.67 KB** |
-| Fluid 2.31.0 | 3.65 μs | 0.01 | 5.31 KB |
-| Scriban 7.2.5 | 4.68 μs | 0.02 | 22.95 KB |
-| DotLiquid 2.3.197 | 7.21 μs | 0.03 | 36.01 KB |
-| Handlebars.Net 2.1.6 | 8,287.09 μs | 31.27 | 260.65 KB |
-
-Heddle's model is **compile‑once, render‑many**: its first compile runs ANTLR, expression‑tree
-compilation, and (for embedded C#) Roslyn, so at 264.99 μs it is ~70× the cold cost of the Liquid
-engines and allocates far more up front — a cost amortized across every subsequent cached render,
-where it leads. Handlebars.Net compiles slower still (8.29 ms, 31.3× Heddle).
-
-This run's report directory (`docs/benchmarks/2026-07-11`) was withdrawn from the tree and survives
-in git history; the tables above are kept as the intra‑.NET record. Numbers are hardware‑ and date‑specific;
-reproduce them yourself with:
+([benchmarks/dotnet](benchmarks/dotnet)) that measures Heddle head‑to‑head against five other
+.NET template engines — **Fluid**, **Scriban**, **DotLiquid**, **Handlebars.Net** and ASP.NET Core
+**Razor** — as the .NET leg of a six‑ecosystem program (see
+[benchmarks/README.md](benchmarks/README.md)). Every engine on the controlled track is held to
+**byte‑identical output** by a parity assertion that runs before any timing, so the numbers compare
+identical work. Heddle is the ratio baseline (`[Benchmark(Baseline = true)]`, `[MemoryDiagnoser]`
+enabled). Numbers are hardware‑ and workload‑specific; reproduce them with:
 
 ```
 dotnet run -c Release --project benchmarks/dotnet -- bench-crossstack
 ```
 
-**Workload breadth.** The composition page above was one of three workloads in the withdrawn
-2026‑07‑11 / 2026‑07‑18 intra‑.NET runs (their report directories survive in git history); the
-2026‑08‑08 cross‑stack run and the 2026‑09‑16 technique tables cover all eight. A
-trivial-substitution and a large-loop workload bracket it — the
-former (scalar output, no composition) is the shape where Heddle's lead is workload-dependent
-rather than universal (in the withdrawn 2026‑07‑18 run Heddle rendered it fastest but Handlebars.Net
-allocated less than half the memory), and the latter (one large iteration) is where the time race
-is tightest (Handlebars.Net within ~8%, again allocating less); both are parity-checked against
-the same four engines. No universal-superiority claim follows. Numbers are hardware- and
-date-specific; reproduce with the command above filtered to `*SubstitutionRenderBenchmarks*` /
-`*LoopRenderBenchmarks*`.
+### Cross-stack (six ecosystems)
 
-### Cross-stack — 2026-08-08
-
-The two runs above compare Heddle only against other .NET engines. The
-cross-stack run widens that to **fifteen engines across six
+The cross-stack report ([docs/benchmarks/2026-08-08](docs/benchmarks/2026-08-08/index.md))
+covers **fifteen engines across six
 ecosystems** — .NET, Rust, the JVM, JS/Node, Python and Go — over **eight workloads** in two
 tracks, all on one machine in one session, every controlled cell held to byte-identical output
 against a shared golden corpus.
@@ -199,9 +129,8 @@ Windows 11 (10.0.26200.8894/25H2) · AMD Ryzen 9 9950X, 16 physical / 32 logical
 BenchmarkDotNet 0.15.8 · Criterion · JMH 1.37 · mitata 1.0.34 (38 passes per track) · pyperf 2.10.0 · benchstat
 ```
 
-This run executed on the program's **Windows protocol machine** — the box its metrics protocol
-pins for cross-compared runs — with **every toolchain on its pin, zero drift**, and it is
-unreplicated: no cross-check on a second platform is currently published. Windows has no captured
+The run is on the program's **Windows protocol machine** with every toolchain on its pin, and it is
+unreplicated: no cross-check on a second platform is published. Windows has no captured
 tuned state (the posture is procedural: quiet machine, AC power, High Performance plan), so
 absolute figures are not comparable with tuned boost-off runs on other platforms or clock states.
 The report states the full caveat set.
@@ -249,23 +178,18 @@ runtime.
 | encoded-loop | 831,685 B | 1.766 ms | **2 of 6 — Handlebars.Net 1.72 ms** | #7 of 16 |
 
 **Heddle loses `encoded-loop`** — Handlebars.Net leads at 0.97×, and Razor sits at 1.00×, inside
-overlapping dispersion. Handlebars.Net led this workload on the prior (since-removed) runs as
-well, across two rebuilds of the .NET harness, so the ordering is a reproduced result rather than
-noise. It is escaping throughput over an 852 KB output no page produces — a real signal about the
+overlapping dispersion. It is escaping throughput over an 852 KB output no page produces — a real signal about the
 encoder's bulk path, not a page render.
 
 **`composed-page`'s #11 of 16 is not a statement about composition machinery.** That workload is
 17 pre-existing string fragments concatenated — no loop body, no branch, no escaping — so every
 compiled engine reduces it to about 17 `memcpy` calls, and the row measures memory bandwidth and
-the allocator rather than template execution. The floor measurements behind that analysis (a
-hand-written .NET `string.Concat` of the same fragments sits within ~2× of Heddle's figure) were
-taken on an earlier run's box and are carried in the program's ledger as prior evidence; the
+the allocator rather than template execution. The
 report quantifies the LOH cliff (throughput falls 4.5× across the threshold) and the
 whitespace-normalization effect on the published `implied B/ns` column.
 
 **ASP.NET Core Razor is a full member of all eight workloads and both tracks**, under the same
-parity gate as every other engine — the earlier single-workload Razor comparison is superseded.
-Heddle leads it by 2.51×–37.07× at Tier 1 sizes and 1.90× on `composed-page`; on `encoded-loop`
+parity gate as every other engine. Heddle leads it by 2.51×–37.07× at Tier 1 sizes and 1.90× on `composed-page`; on `encoded-loop`
 Razor is marginally ahead (a 1.00× ratio in the tables, within overlapping dispersion).
 
 Read the cross-stack rows with their evidence class in mind: Rust, JVM and Go are compiled or
@@ -274,13 +198,12 @@ workload lands in those ecosystems, not a like-for-like engine contest.
 
 Every figure is materialised output. The JS leg ran **38 aggregated passes per render track**,
 each a separate node process asserting a materialisation check before writing its artifact, so
-the JS rows are real work rather than the V8 `ConsString` rope artifact earlier runs of this
-suite reported. Its cross-process stability verdict is `verified-with-disclosure` on the
+the JS rows are materialised work. Its cross-process stability verdict is `verified-with-disclosure` on the
 controlled track (one cell of sixteen at 5.11% cross-pass RSD; median 1.41%) and `verified` on
 the idiomatic track.
 
 There is **no aggregate score, geomean or overall winner** in the full report, and none should be
-inferred here. Numbers are hardware-, platform- and date-specific; reproduce them yourself with:
+inferred here. Numbers are hardware- and platform-specific; reproduce them yourself with:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File benchmarks\run-all.ps1
@@ -289,15 +212,16 @@ powershell -ExecutionPolicy Bypass -File benchmarks\run-all.ps1
 Full analysis, every workload and track, the per-ecosystem tables, allocation sidebars and the
 complete caveat register: **[docs/benchmarks/2026-08-08](docs/benchmarks/2026-08-08/index.md)**.
 
-### Precompilation v3 evidence — 2026-09-16
+### Precompiled tier
 
-An intra-.NET run on the same machine measuring the compiled-form tier against the runtime
+An intra-.NET report ([docs/benchmarks/2026-09-16](docs/benchmarks/2026-09-16/index.md)) on the
+same machine measuring the compiled-form tier against the runtime
 tier over the eight workloads and three sinks (generated site table on and off), the cold-start
 row (`StartupBenchmarks`), the `gate-precompiled` materialisation trailer and the NativeAOT
-sample's publish: **[docs/benchmarks/2026-09-16](docs/benchmarks/2026-09-16/index.md)**. In short:
+sample's publish. In short:
 the compiled form renders at runtime-tier speed with slightly lower allocation, and in a fresh
 process its first render costs the same as a runtime compile, because both pay the engine's
-one-time initialisation; the report says where the criteria hold and where they do not.
+one-time initialisation; the report states the caveats.
 
 ## Building
 

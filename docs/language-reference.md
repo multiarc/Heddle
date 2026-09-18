@@ -231,7 +231,7 @@ with a body it renders the body against its model; with no body it just stringif
 Whether the bare `@(value)` output HTML‑encodes is governed by the **output profile**, not by
 the syntax. There are two:
 
-- **`OutputProfile.Html`** — the default since 2.0. A bodiless `@(value)` HTML‑encodes by
+- **`OutputProfile.Html`** — the default. A bodiless `@(value)` HTML‑encodes by
   default, closing the XSS‑by‑default gap. `@raw(value)` opts a trusted value out; a bodied
   `@(value){{…}}` remains a raw rescoping container (its literal body markup is never encoded —
   only value leaves inside).
@@ -1096,9 +1096,8 @@ is bounded by `TemplateOptions.MaxRecursionCount` (default **100**); see the
 
 ## Imports `@<<{{ … }}`
 
-Heddle has one import spelling — `@<<{{ path }}`. The legacy `@import()` extension has been
-**removed**: any `@import` call site now fails to compile with a positioned **`HED4003`** error
-naming its replacements. For sharing definition libraries, use `@<<`; to embed another template's
+Heddle has one import spelling — `@<<{{ path }}`. `@import()` is not an import: any `@import` call
+site is a positioned **`HED4003`** error naming the replacements. For sharing definition libraries, use `@<<`; to embed another template's
 rendered output inline, use `@partial()`.
 
 ```
@@ -1178,14 +1177,11 @@ figures when the stack runs out — so a sufficiently long run terminates the pr
 This is upstream ([antlr/antlr4#744](https://github.com/antlr/antlr4/issues/744)) and no fixed count fixes
 it. If you compile untrusted templates, put a size limit in front of the compiler.
 
-**`@import(){{ path }}` — removed.** The old compile‑time include
-([ImportExtension.cs](../src/Heddle/Extensions/Archived/ImportExtension.cs)) merged nothing into the
-importing document and had surprising, offset-dependent isolation semantics. It no longer
-compiles: every `@import()` call site now produces a single positioned **`HED4003`** error at
+**`@import(){{ path }}`.** Every `@import()` call site produces a single positioned **`HED4003`** error at
 the call, naming both replacements — `@<<{{ path }}` to share definitions and layouts across
 files, or `@partial(){{ name }}` to embed another template's rendered output inline. The name
-`import` is kept registered only as a tombstone so the diagnostic is a targeted migration
-signpost, not a generic "unknown extension" error.
+`import` is kept registered only so the diagnostic is a targeted signpost, not a generic
+"unknown extension" error.
 
 > **Imports vs `@partial()`.** `@<<` pulls in *definitions* at compile time (no output of its
 > own beyond the imported chains). [`@partial()`](built-in-extensions.md#partial) compiles a
@@ -1293,7 +1289,7 @@ whole‑line comments. Blocks that *do* produce output (raw blocks, branch block
 — which stays in the document and renders nothing by itself), text that shares its line with
 other content, and author‑written blank lines are all left untouched.
 
-- **Default:** `true` since 2.0 — whole‑line directives swallow their line. Set it back to
+- **Default:** `true` — whole‑line directives swallow their line. Set it back to
   `false` to keep 1.x whitespace byte‑for‑byte (the 1.x default).
 - `@\` keeps working unchanged and is still the tool for **mid‑line** whitespace control; the
   option only removes the boilerplate `@\` at the end of whole‑line directives.
@@ -1346,8 +1342,7 @@ slightly between a definition header and a body. For the full picture see
 - **`::Member` reads the root model**; plain `Member` reads the current model.
 - **Definitions are invoked like extensions** (`@name()`), can be nested, typed, inherited,
   and fully overridden in document order.
-- **HTML encoding follows the output profile** — under `OutputProfile.Html` (the default since
-  2.0) a bodiless `@(value)` HTML‑encodes by default and `@raw(value)` opts out; under
+- **HTML encoding follows the output profile** — under `OutputProfile.Html` (the default) a bodiless `@(value)` HTML‑encodes by default and `@raw(value)` opts out; under
   `OutputProfile.Text` (the 1.x‑compatibility setting) the unnamed `@(...)` output is raw.
   `[EncodeOutput]` extensions
   (`@string`, `@html`, …) always encode under both profiles. Select the profile with

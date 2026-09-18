@@ -153,7 +153,7 @@ through — the engine buffers nothing. Treat the exception as "abort the respon
 don't flush the partial output as if it were complete.
 
 > **Source‑compatibility note.** A call written as the positional literal
-> `template.Generate(data, null)` is now **CS0121** (ambiguous between the `TextWriter` and
+> `template.Generate(data, null)` is **CS0121** (ambiguous between the `TextWriter` and
 > `IBufferWriter<byte>` overloads — `null` is equally convertible to both). This is a
 > compile‑time‑only, self‑announcing change; fix it with `Generate(data)` or
 > `Generate(data, chained: null)`. Binary compatibility is unaffected — existing assemblies keep
@@ -243,21 +243,19 @@ Controls where templates are read from and which features are enabled
 | `FileNamePostfix` | `""` | Suffix appended to the name, e.g. `".heddle"`. |
 | `ExpressionMode` | `Native` | Selects the expression tier: `MemberPathsOnly`, `Native` (sandbox‑safe operators/functions — see [Native Expressions](native-expressions.md)), or `FullCSharp` (adds the inner‑`@` Roslyn tier). |
 | `Functions` | `null` (= `FunctionRegistry.Default`) | Functions callable from native expressions; see [Native Expressions](native-expressions.md#registered-functions). |
-| `OutputProfile` | `Html` | Selects whether the unnamed `@(...)` output HTML‑encodes by default: `Html` (bodiless `@(value)` encodes; `@raw` opts out) — the default since 2.0 — or `Text` (raw output; the 1.x‑compatibility setting). Inherited by bodies/partials/imports; also settable per template with [`@profile()`](built-in-extensions.md#profile). See [Output profiles](language-reference.md#output-profiles). Participates in `Equals`/`GetHashCode`. |
-| `TrimDirectiveLines` | `true` | When `true` (the default since 2.0), a whole‑line directive that produces no output (`@using`, `@model`, `@profile(){{…}}`, `@% … %@` definitions, `@<<` imports, whole‑line comments, and any extension whose `InitStart` returns `null`) swallows its line — leading indentation, trailing spaces, and one line terminator. Inherited by child compiles. Set `false` to keep 1.x whitespace byte‑exact. Participates in `Equals`/`GetHashCode` (it changes rendered bytes, so it keys template caches). Compile‑time only. See [Whitespace trimming](language-reference.md#whitespace-trimming-). |
+| `OutputProfile` | `Html` | Selects whether the unnamed `@(...)` output HTML‑encodes by default: `Html` (bodiless `@(value)` encodes; `@raw` opts out) — the default — or `Text` (raw output; the 1.x‑compatibility setting). Inherited by bodies/partials/imports; also settable per template with [`@profile()`](built-in-extensions.md#profile). See [Output profiles](language-reference.md#output-profiles). Participates in `Equals`/`GetHashCode`. |
+| `TrimDirectiveLines` | `true` | When `true` (the default), a whole‑line directive that produces no output (`@using`, `@model`, `@profile(){{…}}`, `@% … %@` definitions, `@<<` imports, whole‑line comments, and any extension whose `InitStart` returns `null`) swallows its line — leading indentation, trailing spaces, and one line terminator. Inherited by child compiles. Set `false` to keep 1.x whitespace byte‑exact. Participates in `Equals`/`GetHashCode` (it changes rendered bytes, so it keys template caches). Compile‑time only. See [Whitespace trimming](language-reference.md#whitespace-trimming-). |
 | `Encoder` | `null` (legacy `WebUtility.HtmlEncode`) | The output encoder used at HTML‑encoding sites — bare `@(value)` under `OutputProfile.Html` and `[EncodeOutput]` extensions. A `System.Text.Encodings.Web.TextEncoder`; `null` (the default) keeps the built‑in legacy path (`WebUtility.HtmlEncode`, byte‑identical to 2.0.0). Set `HtmlEncoder.Create(UnicodeRanges.All)` for a modern Unicode‑aware encoder, or supply a `JavaScriptEncoder`/`UrlEncoder`/custom `TextEncoder`. Not applied to `@raw`, raw blocks, literal text, or `OutputProfile.Text`. Participates in `Equals`/`GetHashCode` **by reference** (a different encoder instance renders different bytes, so it keys template caches). See [encoding contexts](built-in-extensions.md#encoding-contexts). |
 | `AllowCSharp` | `false` | **Obsolete** bridge over `ExpressionMode` (use `ExpressionMode` directly): `true` == `FullCSharp`. Enables embedded C# (`@( @expr )`, `@new`, LINQ, typed `@model()`). Setting `false` leaves `MemberPathsOnly` untouched, otherwise selects `Native`. Reads and writes keep working; new code sets `ExpressionMode`. |
 | `MaxRecursionCount` | `100` | Upper bound on definition recursion depth. |
 | `RenderBudget` | `null` (unlimited) | Per‑render resource caps for untrusted templates: `RenderBudget.MaxOutputChars`, `MaxRenderOps`, and `MaxRenderTime` (each nullable — a null limit is unbounded). `null` (the default) is today's unlimited behavior with **zero render‑path cost** (no wrapper is created). A breach throws `TemplateRenderBudgetException`. Does **not** participate in `Equals`/`GetHashCode` (it changes no bytes of a successful render — same rule as `MaxRecursionCount`). See [Render budgets](#render-budgets). |
-| `ValidateModelType` | `false` | **No longer read.** It once opted renders into the model‑type check; that check is now always on — every top‑level `Generate` validates the model against the compiled model type and throws `TemplateProcessingException` on a mismatch, whatever this property says (see [Rendering](#rendering-generate)). The property is retained so existing code keeps compiling. Does not participate in `Equals`/`GetHashCode`. |
+| `ValidateModelType` | `false` | **Not read.** The model‑type check is always on — every top‑level `Generate` validates the model against the compiled model type and throws `TemplateProcessingException` on a mismatch, whatever this property says (see [Rendering](#rendering-generate)). The property is retained so existing code keeps compiling. Does not participate in `Equals`/`GetHashCode`. |
 | `EnableFileChangeCheck` | `false` | Install an armed `FileSystemWatcher` on the source file and recompile on change/create/rename‑onto‑target (see [File watching](#file-watching)). |
 | `ProvideLanguageFeatures` | `false` | Parse in a tooling mode that emits a token list for editors/highlighters (used by the IDE integrations). |
 | `Data` | `null` | Optional ambient data carried on the options. |
 
 The file actually read is `Path.Combine(RootPath, TemplateName + FileNamePostfix)`, and `FullPath`
-now composes exactly that — the same `Path.Combine`, so it **is** the resolved read path. It
-previously concatenated the three parts with no separator and was therefore not the path anything
-opened; both halves of that description were corrected when the property was fixed. A non‑empty
+composes exactly that — the same `Path.Combine`, so it **is** the resolved read path. A non‑empty
 `FileNamePostfix` is **required** for a file compile — `FileReader` throws if it is empty, so the
 `""` default cannot be used to compile from a file.
 
@@ -513,10 +511,7 @@ output. The additions live in the `Heddle.Precompiled` namespace:
   contract, same `Generate(model, null)` CS0121 corner).
 
 The public surface is pinned by `PublicApiSurfaceTests` against `src/Heddle.Tests/TestTemplate/public-api-heddle.txt`:
-any added or removed public type or member fails the build. v3 removed the 2.x generator-era surface
-(`PrecompiledRuntime` and its sibling helper types, hand-written manifests, public template-info
-constructors, schema feature gates, observe/emit options) and added nothing; the golden moves by
-exactly those lines.
+any added or removed public type or member fails the build.
 
 See [Build‑Time Pre‑compilation](precompilation.md) for the `Heddle.Build` package, the MSBuild
 options, the validation gauntlet, `[ExportFunctions]` binding, and the `heddle` codegen CLI.

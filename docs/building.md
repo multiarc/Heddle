@@ -92,7 +92,7 @@ cd benchmarks/dotnet
 dotnet run -c Release -- gate            # every registered cell: byte gate, verifier, security floor
 dotnet run -c Release -- selftest        # the gate's own checks, incl. the six-technique differential
 dotnet run -c Release -- verify-corpus   # corpus freshness + verifier calibration
-dotnet run -c Release -- gate-precompiled # v3: every workload precompiled and byte-equal to the runtime tier
+dotnet run -c Release -- gate-precompiled # every workload precompiled and byte-equal to the runtime tier
 ```
 
 `gate-precompiled` reports which arm it ran (`SITE-TABLE: on|off`): the generated site table is on by
@@ -114,10 +114,10 @@ dotnet run -c Release -- bench-internal     # props, branching, language-service
 dotnet run -c Release -- bench-startup      # cold start: fresh-process compile vs register + bind + first render
 ```
 
-`bench-techniques` carries the v3 evidence classes side by side — `TechniqueRuntimeBenchmarks`,
+`bench-techniques` measures the three technique classes side by side — `TechniqueRuntimeBenchmarks`,
 `TechniquePrecompiledBenchmarks` (site table on) and `TechniquePrecompiledDataOnlyBenchmarks` (table
-off) — and `bench-startup` is the cold-start row; both are what the
-[2026-09-16 precompilation-evidence report](benchmarks/2026-09-16/index.md) publishes.
+off) — and `bench-startup` is the cold-start row; both are published in the precompiled-tier report
+([docs/benchmarks/2026-09-16](benchmarks/2026-09-16/index.md)).
 
 What the cross-stack suites measure, with `[MemoryDiagnoser]` enabled: one `[Benchmark]` per engine
 per workload, on the **controlled** track (every engine authored to produce byte-identical output)
@@ -137,12 +137,11 @@ templates are files under [`templates/`](../benchmarks/dotnet/templates), one di
 engine, so the idiomatic track is reviewable as templates instead of as escaped literals. No engine
 carries its own copy of the data, so no twin can drift from the engine it is compared against.
 
-In the published cross‑stack run of 2026‑08‑08 (fifteen engines, six ecosystems, one session)
-**Heddle is the fastest of the six .NET engines on the five realistic‑size workloads** — by
+In the cross‑stack report ([docs/benchmarks/2026-08-08](benchmarks/2026-08-08/index.md); fifteen
+engines, six ecosystems, one session) **Heddle is the fastest of the six .NET engines on the five realistic‑size workloads** — by
 2.25×–3.64× over the next .NET engine — and leads ASP.NET Core Razor, a full member of every
 workload under the same byte‑identical parity gate, on seven of the eight. For the numbers see the
-[README Performance section](../README.md#performance) and the
-[report](benchmarks/2026-08-08/index.md); for *why*, see
+[README Performance section](../README.md#performance); for *why*, see
 [Architecture → Performance characteristics](architecture.md#performance-characteristics).
 
 > Benchmark numbers are hardware‑ and workload‑specific — run the suite on your target machine
@@ -166,9 +165,9 @@ Custom MSBuild items extend the reach without changing the shape: `HeddleModelAs
 `HeddleExtensionAssembly` append assemblies to `@(ReferencePath)` so the host can bind over their
 implementations (see [Build‑Time Pre‑compilation](precompilation.md#assemblies-the-build-must-see)).
 
-Retired 2.x knobs (`HeddleObserveEngine`, `HeddleNodeFallback`, `HeddleEmitUtf8Pieces` and the
-two observe-path properties) are not read. Each of the first three draws one `HED7037` warning when
-set; delete the element. Output is byte-identical either way.
+The properties `HeddleObserveEngine`, `HeddleNodeFallback`, `HeddleEmitUtf8Pieces`,
+`HeddleObserveIntermediatePath` and `HeddleObserveImplementationPath` are not read; each of the first
+three draws one `HED7037` warning when set — delete the element.
 
 ## Packaging
 

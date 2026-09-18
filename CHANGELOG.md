@@ -45,7 +45,7 @@ window's ratification remain in
   warning naming it and renders through the byte-identical dynamic path. Hand-written manifests and
   generator-constructed rows have no upgrade path: the loader binds only rows the 3.0 build wrote.
   Migration details, including the per-member disposition of the deleted API, are in the
-  [generator-removal migration note](docs/precompilation.md#generator-removal-migration-note).
+  [Upgrading from 2.x](docs/precompilation.md#upgrading-from-2x).
 
 - **`PrecompiledFallbackEvent.Key` is removed**, replaced by `TemplateKey` and `AssemblyName` with
   exactly one populated. The single `Key` carried two different kinds of string — a template key for
@@ -118,7 +118,7 @@ window's ratification remain in
 
 - **Build-diagnostic ids were re-keyed onto engine ids** for every fact the engine diagnoses. The
   twin → engine-id table is in the
-  [generator-removal migration note](docs/precompilation.md#generator-removal-migration-note) (e).
+  [Upgrading from 2.x](docs/precompilation.md#upgrading-from-2x) (e).
 
 - **Removed public members** (the phase-4 removal record, listed so the diff is readable without the
   spec). Types removed whole: `Heddle.Precompiled.PrecompiledRuntime` (every member: `Bind`,
@@ -218,7 +218,7 @@ window's ratification remain in
   place: the constant, the catalog row and the published mention stay, so the id is never reused.
   `HED7011` (import not included) joins them: the host reads an import outside the item set from disk,
   mirroring the engine's `ImportMap`, so it never fires.
-  See the [generator-removal migration note](docs/precompilation.md#generator-removal-migration-note)
+  See the [Upgrading from 2.x](docs/precompilation.md#upgrading-from-2x)
   for the twin → engine-id re-keying.
 - **`Precompile="false"` items are validated and advised.** An opted-out item's `Key`/`Name` now raise the
   same `HED7004` faults an included item's would, instead of failing silently and surfacing as `HED7011`

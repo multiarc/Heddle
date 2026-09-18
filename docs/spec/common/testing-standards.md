@@ -317,7 +317,9 @@ working code.
   (`DocumentationLinkTests`). For everything else the list is a review obligation, and the rule's value
   is that it exists to be pointed at.
 - **What cannot be gated is dated.** A document whose claims have been verified against source carries
-  a footer naming the commit and the date, and marks the individual claims some gate covers. That
+  a footer naming the commit and the date, and marks the individual claims some gate covers.
+  *Corrected 2026-09-18:* on the public pages (`docs/*.md`) the footer names the commit and the gate
+  names only; the verification date lives in git, not in the published prose. That
   marker is what makes documentation authority conditional: a marked claim outranks the
   implementations, an unmarked one is evidence of intent, so a contradiction between it and both tiers
   agreeing is investigated and recorded rather than obeyed.

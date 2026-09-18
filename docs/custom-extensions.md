@@ -433,7 +433,7 @@ public class FinishExtension : AbstractExtension
 }
 ```
 
-`@begin(A){{a}}@between(B){{b}}@finish(){{c}}` now behaves exactly like
+`@begin(A){{a}}@between(B){{b}}@finish(){{c}}` behaves exactly like
 `@if(A){{a}}@elif(B){{b}}@else(){{c}}`. The role is `Inherited = true`: a subclass of `BeginExtension`
 with a new `[ExtensionName]` and no re‑attribution is still an Opener.
 
@@ -566,14 +566,12 @@ namespace MyApp.Extensions
 Usage in a template: `@upper(Name)`.
 
 > **Precompilation note.** This example overrides `InitStart` to type the body against the parent model,
-> and a precompiled template calling `@upper(...)` **precompiles anyway**: the generated static
-> initializer constructs `UpperExtension` in your own assembly and calls this very method, handing it the
-> already‑generated body instead of letting it compile one. The typing decision below is therefore made
-> by your code, not guessed at by the build — see [Precompiled mode](#precompiled-mode).
+> and a precompiled template calling `@upper(...)` **precompiles anyway**: the loader constructs
+> `UpperExtension` at materialization and calls this very method over the recorded body. The typing below
+> is therefore made by your code, not guessed at by the build — see [Precompiled mode](#precompiled-mode).
 >
 > The example also derives from `AbstractHtmlExtension`/`[EncodeOutput]`; that encoding **is** reproduced
-> by precompiled binding, on the bodiless and the bodied path alike, and it is now *derived from the live
-> type* rather than written into the generated file, so it cannot drift.
+> on the precompiled tier, on the bodiless and the bodied path alike, derived from the live type.
 
 Compare with the real [`StringExtension`](../src/Heddle/Extensions/StringExtension.cs) and
 [`DateExtension`](../src/Heddle/Extensions/DateExtension.cs), which follow the same shape.
@@ -678,20 +676,18 @@ constructor. If its compile‑time behaviour genuinely cannot be reproduced by l
 declares `[PrecompileUnsupported]` and the calls to it fall back **one call site at a time**, never
 taking the template with them. The rest of this section is those three sentences with their reasons:
 
-- **A parameterless constructor.** The loader constructs your extension inside your own assembly
-  at load, once per bound request (`new YourExtension()`); no `Activator`, no registry lookup at render.
+- **A parameterless constructor.** The loader constructs your extension at materialization, once per
+  bound request; no registry lookup at render.
 - **No reliance on runtime registry mutation.** The instance is built once and never mutated
   after binding; extensions that expect to be re‑registered or reconfigured per render are not
   supported.
 - **An `InitStart`/`CompleteInit` override is fine — it runs for real.** The loader constructs
-  your extension inside your own assembly at load and calls its actual hook, supplying the
-  deserialized body in place of a body compile. Everything the hook decides is decided by your
-  code: the typing it hands the body, the state it caches, the diagnostics it raises. A bodied call to
-  your extension precompiles too. Where your hook chooses a model type the build could not resolve, the
-  body is emitted with **no model cast** and its member reads bind to the engine's own accessor once
-  your hook has answered — three shapes inside such a body still cost that one call site its tier (a
-  computed native expression, an embedded C# expression, and a nested call whose typing needs the same
-  answer), and the rest of the template is unaffected.
+  your extension at materialization and calls its actual hook, serving the recorded body in place of a
+  body compile. Everything the hook decides is decided by your code: the typing it hands the body, the
+  state it caches, the diagnostics it raises. A bodied call to your extension precompiles too; a hook
+  that types its body differently at load than the build recorded degrades that template
+  (`ExtensionInitTypingMismatch`), and a hook that reports compile errors at load degrades it to the
+  dynamic tier, which reports the same errors (`ExtensionInitCompileError`).
   If your hook genuinely cannot survive this — the clear case being one that walks the enclosing
   document through `InitContext.ParseContext.Tokens`/`SubContexts`, which a single call site cannot
   carry — declare it and be taken at your word:
@@ -705,26 +701,14 @@ taking the template with them. The rest of this section is those three sentences
   Every call to it binds dynamically and reports `HED7033` quoting your sentence verbatim; the rest of
   the template still precompiles. The attribute is read at build time *and* off the live type at run
   time, so adding it in a package update protects consumers who have already built.
-- **A `[Prop]` default whose type generated code can name.** Defaults are frozen into the generated
-  source as the exact boxed value the runtime would build from the attribute, so a default of an `enum`
-  type — including on an `object`‑typed prop, where the box keeps the enum, not its underlying number —
-  is written by naming that enum. A default whose type is `internal` to your assembly cannot be named
-  there, so a template calling that extension quietly runs on the dynamic tier instead. Make the enum
-  `public` if such templates must precompile.
-
 **There is no list of supported body shapes, and no name on it.** What a `{{ … }}` body is typed against
-is your `InitStart`'s decision, so the build stopped keeping an answer of its own — a bodiless value
-transform and a bodied call bind by the same route, and a body the build cannot type is written so that
-it does not need to be typed. Nothing about your extension has to be recognised for this to work.
+is your `InitStart`'s decision — a bodiless value transform and a bodied call bind by the same route.
+Nothing about your extension has to be recognised for this to work.
 
-> **`[EncodeOutput]` / `AbstractHtmlExtension` encoding is reproduced on both tiers.** Precompiled binding
-> derives the render type from the extension's own `[EncodeOutput]`/`[NotEncode]` attributes — the same
-> two‑bool decision the dynamic tier evaluates over the live instance — for bodiless calls and, since the
-> body‑hosting bind stopped hard‑coding `RenderType.Raw`, for bodied ones too. This paragraph used to warn
-> that it did not, and that warning outlived the code it described; the hard‑coded value that was still
-> left had no reachable call site until an encoding extension could host a body, which is exactly what
-> made fixing it urgent rather than cosmetic. Both halves are pinned by differential tests that render the
-> same template on both tiers and compare bytes.
+> **`[EncodeOutput]` / `AbstractHtmlExtension` encoding is reproduced on both tiers.** The render type is
+> derived from the extension's own `[EncodeOutput]`/`[NotEncode]` attributes — the same two‑bool rule the
+> dynamic tier evaluates over the live instance — for bodiless and bodied calls alike, pinned by
+> differential tests that render the same template on both tiers and compare bytes.
 
 An extension name that resolves to no `[ExtensionName]` type in any referenced assembly is the engine's own
 compile error (`HED0002`), reported at build by the host and by the dynamic tier alike, **when the call carries a
