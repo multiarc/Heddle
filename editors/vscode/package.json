@@ -3,8 +3,24 @@
   "displayName": "Heddle Template Language",
   "description": "Language support for Heddle templates: completion, diagnostics, hover, and go-to-definition.",
   "version": "3.0.0",
-  "publisher": "heddle",
-  "license": "MIT",
+  "publisher": "multiarc",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/multiarc/Heddle.git",
+    "directory": "editors/vscode"
+  },
+  "homepage": "https://multiarc.github.io/Heddle/editor-support",
+  "bugs": {
+    "url": "https://github.com/multiarc/Heddle/issues"
+  },
+  "keywords": [
+    "heddle",
+    "template",
+    "templating",
+    "dotnet",
+    "language server"
+  ],
   "engines": {
     "vscode": "^1.91.0"
   },

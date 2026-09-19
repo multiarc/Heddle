@@ -14,10 +14,11 @@ package you can host yourself.
 
 ### VS Code
 
-Install the **Heddle Template Language** extension from its VSIX. CI builds a per‑target VSIX with
-the language server bundled in, so grab it from the release/CI artifacts and install it with
-*Extensions: Install from VSIX…* — no separate server install is needed. The extension keeps
-working (TextMate coloring) even when the server is unavailable.
+Install the **Heddle Template Language** extension (`multiarc.heddle`) from the Visual Studio
+Marketplace. Each release ships a per‑target VSIX with the language server bundled in, so no
+separate server install is needed; the same VSIXs are attached to the CI run of every release tag
+for *Extensions: Install from VSIX…*. The extension keeps working (TextMate coloring) even when the
+server is unavailable.
 
 ### The dotnet tool (any editor)
 

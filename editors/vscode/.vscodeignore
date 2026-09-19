@@ -1,0 +1,13 @@
+# Shipped: package.json, README.md, LICENSE, language-configuration.json, syntaxes/**, dist/extension.js
+# (plus its runtime dependencies) and server/** (the per-target language server CI publishes in).
+.vscode/**
+.vscode-test/**
+src/**
+build/**
+dist/test/**
+dist/**/*.map
+tsconfig.json
+package-lock.json
+.gitignore
+.vscodeignore
+**/*.ts

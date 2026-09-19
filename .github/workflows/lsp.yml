@@ -1,11 +1,18 @@
 # Builds and tests the Heddle language services (facade + LSP server), packs the version-pinned
 # per-RID dotnet tool, and packages the VS Code extension. Phase 6 (editor tooling / LSP).
+#
+# Marketplace publishing is TAG-DRIVEN, like the NuGet and npm workflows: a `vX.Y.Z` tag publishes
+# every per-target VSIX to the Visual Studio Marketplace under the `multiarc` publisher. There is no
+# Personal Access Token anywhere: the job signs in to Microsoft Entra ID with the GitHub OIDC token
+# (workload identity federation on a user-assigned managed identity that is a Contributor member of
+# the publisher) and vsce publishes with `--azure-credential`.
 
 name: Heddle LSP
 
 on:
   push:
     branches: [ "main" ]
+    tags: [ "v*.*.*" ]
   pull_request:
     branches: [ "main" ]
 
@@ -112,3 +119,44 @@ jobs:
         with:
           name: heddle-vsix-${{ matrix.target }}
           path: editors/vscode/*.vsix
+
+  # Production release of the extension: every per-target VSIX the matrix above built for this tag,
+  # published in one job that holds no long-lived credential. Packaging is separated from publishing
+  # exactly as in dotnet.yml: this job starts from artifacts that are already known to have built.
+  marketplace-publish:
+    needs: [ test, vsix ]
+    if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+    runs-on: ubuntu-latest
+    # The federated credential on the managed identity is scoped to this repository AND this
+    # environment name; a token minted for any other job or branch is refused by Entra.
+    environment: marketplace
+    permissions:
+      contents: read
+      id-token: write   # OIDC token for Entra workload identity federation
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - uses: actions/download-artifact@v7
+        with:
+          pattern: heddle-vsix-*
+          path: vsix
+          merge-multiple: true
+      - name: Entra ID login (GitHub OIDC -> user-assigned managed identity)
+        uses: azure/login@v3
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          allow-no-subscriptions: true   # the identity owns no Azure resources; Marketplace only
+      # Fail before any upload if the identity is not a member of the publisher.
+      - name: Verify publisher access
+        working-directory: editors/vscode
+        run: |
+          npm ci
+          npx @vscode/vsce verify-pat --azure-credential multiarc
+      # No --skip-duplicate: a release of an already-published version must fail loudly (dotnet.yml).
+      # The seven VSIXs share one version; the Marketplace lists them as one extension.
+      - name: Publish to the Visual Studio Marketplace
+        working-directory: editors/vscode
+        run: npx @vscode/vsce publish --azure-credential --packagePath ../vsix/*.vsix
