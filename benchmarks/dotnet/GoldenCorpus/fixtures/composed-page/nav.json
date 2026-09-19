@@ -106,7 +106,7 @@
                     { "label": "High DHA Brain Care Therapy", "href": "/product/high-dha-brain-care-vitamin-d3" },
                     { "label": "Daily Dose Packs", "href": "/products/daily-supplement-packs" },
                     { "label": "Omega-3 Krill Oil", "href": "/products/omega-3-krill-oil" },
-                    { "label": "Vital Omega-3/6 Test Kit", "href": "/products/vital-omega-3-6-hufa-test" },
+                    { "label": "Omega-3/6 Test Kit", "href": "/products/omega-3-6-test" },
                     { "label": "Curcumin in Wild Salmon Oil", "href": "/product/curcumin-in-wild-alaskan-salmon-oil-250mg-120-ct" },
                     { "label": "See All", "href": "/products/omega-3s-herbs-tests-vitamin-d-and-astaxanthin" }
                   ]
@@ -130,7 +130,7 @@
                   "href": "",
                   "title_linked": false,
                   "links": [
-                    { "label": "Gift Certificates", "href": "/product/vital-choice-gift-certificate?cat=278" },
+                    { "label": "Gift Certificates", "href": "/product/gift-certificate?cat=278" },
                     { "label": "Cooks Tools and Books", "href": "/products/cookbooks-and-cooking-accessories" },
                     { "label": "Grilling Accessories", "href": "/products/grilling-accessories" }
                   ]
@@ -147,7 +147,7 @@
                 },
                 {
                   "title": "NEW PRODUCTS",
-                  "href": "/products/new-at-vital-choice",
+                  "href": "/products/new-products",
                   "title_linked": true,
                   "links": []
                 },
@@ -248,7 +248,7 @@
                     { "label": "High DHA Brain Care Therapy", "href": "/product/high-dha-prenatal-therapy-vitamin-d3-180-softgels" },
                     { "label": "Daily Dose Packs", "href": "/products/daily-supplement-packs" },
                     { "label": "Omega-3 Krill Oil", "href": "/products/omega-3-krill-oil" },
-                    { "label": "Vital Omega-3/6 Test Kit", "href": "/products/vital-omega-3-6-hufa-test" },
+                    { "label": "Omega-3/6 Test Kit", "href": "/products/omega-3-6-test" },
                     { "label": "Curcumin in Wild Salmon Oil", "href": "/product/curcumin-in-wild-alaskan-salmon-oil-250mg-120-ct" },
                     { "label": "See All", "href": "/products/omega-3s-herbs-tests-vitamin-d-and-astaxanthin" }
                   ]
@@ -258,9 +258,9 @@
           ]
         },
         {
-          "label": "About Vital Choice",
+          "label": "About Us",
           "href": "#",
-          "css": "about-vital-choice",
+          "css": "about-us",
           "has_dropdown": true,
           "dropdown_css": "dropdown_2columns",
           "columns": [
@@ -271,9 +271,9 @@
                   "href": "",
                   "title_linked": false,
                   "links": [
-                    { "label": "About Vital Choice", "href": "/content/about-vital-choice" },
+                    { "label": "About Us", "href": "/content/about-us" },
                     { "label": "Our Mission", "href": "/content/our-mission" },
-                    { "label": "Customer and Expert Reviews", "href": "/content/what-are-people-saying-about-vital-choice" }
+                    { "label": "Customer and Expert Reviews", "href": "/content/customer-reviews" }
                   ]
                 }
               ]
@@ -286,7 +286,7 @@
                   "title_linked": false,
                   "links": [
                     { "label": "Purity Standards", "href": "/content/purity-story" },
-                    { "label": "Vital Green Eco Programs", "href": "/content/vital-green-environmental-stewardship-program" },
+                    { "label": "Green Stewardship Eco Programs", "href": "/content/green-stewardship-program" },
                     { "label": "Sustainable Seafood", "href": "/content/sustainability" }
                   ]
                 }
@@ -336,7 +336,7 @@
                   "href": "",
                   "title_linked": false,
                   "links": [
-                    { "label": "Take the Vital Omega-3/6 Test", "href": "/product/the-vital-omega-3-6-hufa-test-trade" },
+                    { "label": "Take the Omega-3/6 Test", "href": "/product/the-omega-3-6-test-trade" },
                     { "label": "Omega-3 Facts", "href": "/content/omega-3-facts-sources" },
                     { "label": "Seafood Benefits", "href": "/content/health-benefits-of-fish" },
                     { "label": "Omega 3/6 Balance", "href": "/content/omega-3-6-balance-scores-how-to-use-them" },
@@ -348,15 +348,15 @@
             {
               "sections": [
                 {
-                  "title": "ABOUT VITAL CHOICE PRODUCTS",
+                  "title": "ABOUT OUR PRODUCTS",
                   "href": "",
                   "title_linked": false,
                   "links": [
                     { "label": "How to Prepare Seafood", "href": "/content/cooking-tips" },
-                    { "label": "Kosher and Organic Certification", "href": "/content/about-vital-choice#Organic" },
-                    { "label": "The Flash-Frozen Advantage", "href": "/content/about-vital-choice#Flash-Frozen" },
+                    { "label": "Kosher and Organic Certification", "href": "/content/about-us#Organic" },
+                    { "label": "The Flash-Frozen Advantage", "href": "/content/about-us#Flash-Frozen" },
                     { "label": "Seafood Purity and Safety", "href": "/content/purity-story" },
-                    { "label": "Superior Salmon, Naturally", "href": "/content/about-vital-choice#Superior%20Salmon" }
+                    { "label": "Superior Salmon, Naturally", "href": "/content/about-us#Superior%20Salmon" }
                   ]
                 }
               ]
@@ -374,7 +374,7 @@
               "sections": [
                 {
                   "title": "COOKING VIDEOS",
-                  "href": "/recipe/vital-choice-seafood-cooking-videos",
+                  "href": "/recipe/seafood-cooking-videos",
                   "title_linked": true,
                   "links": []
                 },
@@ -543,7 +543,7 @@
                     { "label": "High DHA Brain Care Therapy", "href": "/product/high-dha-brain-care-vitamin-d3" },
                     { "label": "Daily Dose Packs", "href": "/products/daily-supplement-packs" },
                     { "label": "Omega-3 Krill Oil", "href": "/products/omega-3-krill-oil" },
-                    { "label": "Vital Omega-3/6 Test Kit", "href": "/products/vital-omega-3-6-hufa-test" },
+                    { "label": "Omega-3/6 Test Kit", "href": "/products/omega-3-6-test" },
                     { "label": "Curcumin in Wild Salmon Oil", "href": "/product/curcumin-in-wild-alaskan-salmon-oil-250mg-120-ct" },
                     { "label": "See All", "href": "/products/omega-3s-herbs-tests-vitamin-d-and-astaxanthin" }
                   ]
@@ -567,7 +567,7 @@
                   "href": "",
                   "title_linked": false,
                   "links": [
-                    { "label": "Gift Certificates", "href": "/product/vital-choice-gift-certificate?cat=278" },
+                    { "label": "Gift Certificates", "href": "/product/gift-certificate?cat=278" },
                     { "label": "Cooks Tools and Books", "href": "/products/cookbooks-and-cooking-accessories" },
                     { "label": "Grilling Accessories", "href": "/products/grilling-accessories" }
                   ]
@@ -584,7 +584,7 @@
                 },
                 {
                   "title": "NEW PRODUCTS",
-                  "href": "/products/new-at-vital-choice",
+                  "href": "/products/new-products",
                   "title_linked": true,
                   "links": []
                 },
@@ -691,7 +691,7 @@
                     { "label": "High DHA Brain Care Therapy", "href": "/product/high-dha-prenatal-therapy-vitamin-d3-180-softgels" },
                     { "label": "Daily Dose Packs", "href": "/products/daily-supplement-packs" },
                     { "label": "Omega-3 Krill Oil", "href": "/products/omega-3-krill-oil" },
-                    { "label": "Vital Omega-3/6 Test Kit", "href": "/products/vital-omega-3-6-hufa-test" },
+                    { "label": "Omega-3/6 Test Kit", "href": "/products/omega-3-6-test" },
                     { "label": "Curcumin in Wild Salmon Oil", "href": "/product/curcumin-in-wild-alaskan-salmon-oil-250mg-120-ct" },
                     { "label": "See All", "href": "/products/omega-3s-herbs-tests-vitamin-d-and-astaxanthin" }
                   ]
@@ -701,9 +701,9 @@
           ]
         },
         {
-          "label": "About Vital Choice",
+          "label": "About Us",
           "href": "#",
-          "css": "about-vital-choice",
+          "css": "about-us",
           "has_dropdown": true,
           "dropdown_css": "dropdown_2columns",
           "columns": [
@@ -714,9 +714,9 @@
                   "href": "",
                   "title_linked": false,
                   "links": [
-                    { "label": "About Vital Choice", "href": "/content/about-vital-choice" },
+                    { "label": "About Us", "href": "/content/about-us" },
                     { "label": "Our Mission", "href": "/content/our-mission" },
-                    { "label": "Customer and Expert Reviews", "href": "/content/what-are-people-saying-about-vital-choice" }
+                    { "label": "Customer and Expert Reviews", "href": "/content/customer-reviews" }
                   ]
                 }
               ]
@@ -729,7 +729,7 @@
                   "title_linked": false,
                   "links": [
                     { "label": "Purity Standards", "href": "/content/purity-story" },
-                    { "label": "Vital Green Eco Programs", "href": "/content/vital-green-environmental-stewardship-program" },
+                    { "label": "Green Stewardship Eco Programs", "href": "/content/green-stewardship-program" },
                     { "label": "Sustainable Seafood", "href": "/content/sustainability" }
                   ]
                 }
@@ -779,7 +779,7 @@
                   "href": "",
                   "title_linked": false,
                   "links": [
-                    { "label": "Take the Vital Omega-3/6 Test", "href": "/product/the-vital-omega-3-6-hufa-test-trade" },
+                    { "label": "Take the Omega-3/6 Test", "href": "/product/the-omega-3-6-test-trade" },
                     { "label": "Omega-3 Facts", "href": "/content/omega-3-facts-sources" },
                     { "label": "Seafood Benefits", "href": "/content/health-benefits-of-fish" },
                     { "label": "Omega 3/6 Balance", "href": "/content/omega-3-6-balance-scores-how-to-use-them" },
@@ -791,15 +791,15 @@
             {
               "sections": [
                 {
-                  "title": "ABOUT VITAL CHOICE PRODUCTS",
+                  "title": "ABOUT OUR PRODUCTS",
                   "href": "",
                   "title_linked": false,
                   "links": [
                     { "label": "How to Prepare Seafood", "href": "/content/cooking-tips" },
-                    { "label": "Kosher and Organic Certification", "href": "/content/about-vital-choice#Organic" },
-                    { "label": "The Flash-Frozen Advantage", "href": "/content/about-vital-choice#Flash-Frozen" },
+                    { "label": "Kosher and Organic Certification", "href": "/content/about-us#Organic" },
+                    { "label": "The Flash-Frozen Advantage", "href": "/content/about-us#Flash-Frozen" },
                     { "label": "Seafood Purity and Safety", "href": "/content/purity-story" },
-                    { "label": "Superior Salmon, Naturally", "href": "/content/about-vital-choice#Superior%20Salmon" }
+                    { "label": "Superior Salmon, Naturally", "href": "/content/about-us#Superior%20Salmon" }
                   ]
                 }
               ]
@@ -817,7 +817,7 @@
               "sections": [
                 {
                   "title": "COOKING VIDEOS",
-                  "href": "/recipe/vital-choice-seafood-cooking-videos",
+                  "href": "/recipe/seafood-cooking-videos",
                   "title_linked": true,
                   "links": []
                 },
@@ -891,8 +891,8 @@
           "links": [
             { "label": "Customer Service", "href": "/content/contact-customer-service" },
             { "label": "Request a Catalog", "href": "/content/request-catalog" },
-            { "label": "Customer Rewards", "href": "/content/HealthWise-Rewards-Program" },
-            { "label": "Returns and Exchanges", "href": "/content/the-vital-choice-guarantee" },
+            { "label": "Customer Rewards", "href": "/content/Customer-Rewards-Program" },
+            { "label": "Returns and Exchanges", "href": "/content/our-guarantee" },
             { "label": "Shipping Information", "href": "/content/shipping-information" }
           ]
         }
@@ -905,12 +905,12 @@
           "href": "",
           "title_linked": false,
           "links": [
-            { "label": "About Us", "href": "/content/About-Vital-Choice" },
-            { "label": "Guarantee", "href": "/content/the-vital-choice-guarantee" },
-            { "label": "Testimonials", "href": "/content/what-are-people-saying-about-vital-choice" },
+            { "label": "About Us", "href": "/content/About-Us" },
+            { "label": "Guarantee", "href": "/content/our-guarantee" },
+            { "label": "Testimonials", "href": "/content/customer-reviews" },
             { "label": "Purity Standards", "href": "/content/Purity-Story" },
             { "label": "Sustainability Policy", "href": "/content/Sustainability" },
-            { "label": "Vital Green", "href": "/content/Vital-Green-Environmental-Stewardship-Program" },
+            { "label": "Green Stewardship", "href": "/content/Green-Stewardship-Program" },
             { "label": "News Room", "href": "/content/News-Room" },
             { "label": "Giving Back", "href": "/content/Giving-Back-to-the-Community" },
             { "label": "Privacy Policy", "href": "/content/privacy-policy" },
@@ -927,7 +927,7 @@
           "title_linked": false,
           "links": [
             { "label": "Affiliate Accounts", "href": "/content/Web-Affiliate-Program" },
-            { "label": "Customer Rewards", "href": "/content/HealthWise-Rewards-Program" },
+            { "label": "Customer Rewards", "href": "/content/Customer-Rewards-Program" },
             { "label": "Wholesale Accounts", "href": "/content/wholesale-registration" }
           ]
         }
