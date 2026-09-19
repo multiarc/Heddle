@@ -56,14 +56,6 @@ a `PrecompiledFallbackEvent`. Regeneration is byte-exact by construction: `Compi
 stamps a content digest, and `CompiledFormFixtureTests` pins a stored real-build artifact
 (`src/Heddle.Tests/TestTemplate/compiled-form-v4.bin`) byte-for-byte through read and re-encode, and registers and renders it against the text compile of the same fixture.
 
-### What no longer exists
-
-The 2.x Roslyn-analyzer generator tier (`Heddle.Generator`, its tests, its `analyzers/` package
-layout), the `PrecompiledRuntime` helper surface, hand-written manifests, the public
-`PrecompiledTemplateInfo` constructors, the schema feature-gate constants, and the observe/emit
-MSBuild options. The full list is the phase-4 removal record in the
-[program record](../docs/spec/common/cross-cutting-decisions.md#program-record--precompilation-v2-closed).
-
 ---
 
 ## 1. Lexing
@@ -222,20 +214,10 @@ length‑based on net8+ and count‑based on older targets).
 
 The repository's [BenchmarkDotNet suite](../benchmarks/dotnet) measures Heddle against five
 other .NET template engines (Fluid, Scriban, DotLiquid, Handlebars.Net and ASP.NET Core Razor) over
-a component‑heavy composition workload, every one of them rendering byte‑identical parity‑checked
-output (`[MemoryDiagnoser]` enabled). Razor joined the parity assertion on 2026‑07‑25
-(benchmarks amendment E5); before that it rendered a larger,
-different page outside every gate. The published
-2026‑07‑25 cross‑stack run is the first to measure it under parity:
-**Heddle 30.52 μs vs Razor 41.66 μs**, with Heddle fastest of all six .NET engines on that
-workload. The 2026‑07‑11 figures below are the older intra‑.NET record, and their Razor pairing
-describes the pre‑parity workload. In the run of **2026‑07‑11** (commit `8341bb67`; AMD Ryzen 9 9950X,
-.NET 10.0.9, BenchmarkDotNet 0.15.8) Heddle rendered that page in **32.50 μs / 227.86 KB** — the
-fastest of the six and tied‑least on allocation (within 0.3 KB of Handlebars.Net); the next engine (Fluid) took 2.0× as long and
-Scriban 11.7× with 5.07× the allocation. The full render and compile‑cost tables, environment
-header, and raw artifacts live in the [README Performance section](../README.md#performance) and
-docs/benchmarks/2026-07-11. The reasons Heddle leads on the render path are
-structural, not incidental:
+eight workloads, every one of them rendering byte‑identical parity‑checked output
+(`[MemoryDiagnoser]` enabled); measurements are taken and kept outside the repository
+([benchmarks/README.md](../benchmarks/README.md)). The design of the render path is what the harness
+measures:
 
 - **Execution‑ready document, not per‑call activation.** Each template becomes a
   `RuntimeDocument` / `IProcessStrategy` with extension instances already resolved and typed,
@@ -261,13 +243,9 @@ structural, not incidental:
 
 The trade‑off is **up‑front compilation**: the first compile runs ANTLR (parse), expression‑tree
 compilation (member accessors), and Roslyn (embedded C#), so it is not cheap — the model is
-"compile once, render many." In the same 2026‑07‑11 run, cold‑compiling the layout + home
-templates took **264.99 μs / 1,339.67 KB** for Heddle versus single‑digit microseconds for the
-Liquid engines (Fluid 3.65 μs, Scriban 4.68 μs, DotLiquid 7.21 μs) — a cost amortized across every
-cached render. Compile cost is benchmarked by the harness's cold sidebar
+"compile once, render many" — a cost amortized across every cached render. Compile cost is benchmarked by the harness's cold sidebar
 (`dotnet run -c Release --project benchmarks/dotnet -- bench-cold`), which measures parse and
-compile as separate rows because they are separate steps; full table in the
-[README](../README.md#performance).
+compile as separate rows because they are separate steps.
 
 ---
 

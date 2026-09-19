@@ -230,7 +230,7 @@ On the protocol machine only (Windows 11 / Ryzen 9 9950X — Q1.6), Temurin 25 l
    `ns/op ≥ oracle byteLength / 10` and the size-ordering consistency across
    `trivial-substitution` < `large-loop` < `encoded-loop` per engine-track column; quarantine
    any violation (cell absent from the report with a stated reason) until audited.
-5. Copy `jmh-result.json` and `jmh-log.txt` into the new `docs/benchmarks/<yyyy-MM-dd>/`
+5. Copy `jmh-result.json` and `jmh-log.txt` into the new `<results>/<yyyy-MM-dd>/`
    directory and author `index.md`.
 
 ## Report assembly (D12)

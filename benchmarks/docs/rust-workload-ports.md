@@ -448,7 +448,7 @@ D9/WI10 for these rules.
   console; artifacts under `target/criterion`) →
   `cargo run --release --features alloc-count --bin alloc_report` (capture) →
   `cargo run --release --bin summarize` → author the date-stamped
-  `docs/benchmarks/<run-date>/index.md` in the protocol's section order with the label texts
+  `<results>/<run-date>/index.md` in the protocol's section order with the label texts
   and honest-reporting narrative, shipping the `estimates.json` copies,
   `criterion-console.txt`, `alloc-report.txt`, and `gate-report.txt`. The run's
   crate/toolchain versions in the environment block must match the pinned versions

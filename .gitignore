@@ -33,10 +33,6 @@ x64/
 *.tlh
 *.tmp
 *.log
-# A published benchmark report cites its harness and publish logs, which are evidence, not noise;
-# each report un-ignores its own directory (the wildcard form would sweep in every stray log
-# under older report directories that was never committed).
-!docs/benchmarks/2026-09-16/**/*.log
 *.vspscc
 *.vssscc
 .builds
@@ -151,7 +147,7 @@ docs/playwright-report/
 /docs/logs
 
 # Python benchmark harness: venv and raw measurement outputs are never committed; published copies go
-# to docs/benchmarks/<date>/
+# to <results>/<date>/, the results archive kept outside the repository
 benchmarks/python/.venv/
 benchmarks/python/results/
 __pycache__/

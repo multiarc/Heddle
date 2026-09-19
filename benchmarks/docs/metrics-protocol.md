@@ -67,7 +67,7 @@ reference row, also normalize to **nanoseconds per render** so the ratio column 
 
 1. **Heddle reference row.** Every per-ecosystem report (phases 2–6) carries a clearly-labeled,
    wall-time-only Heddle reference row per workload, sourced from **phase 1's protocol run**
-   (the published `docs/benchmarks/<date>/` numbers — an excerpt, never a re-measurement or
+   (the published `<results>/<date>/` numbers — an excerpt, never a re-measurement or
    second analysis). Row label format:
    `Heddle (reference — .NET 10, same machine, from <date> run)`. The row carries no
    allocation/GC cells (dashes).
@@ -91,8 +91,8 @@ reference row, also normalize to **nanoseconds per render** so the ratio column 
 
 All cross-compared runs for phases 1–7 execute on the one recorded machine:
 
-- **Box:** AMD Ryzen 9 9950X (16 physical / 32 logical cores), Windows 11 — the machine of the
-  published 2026-07-11/2026-07-18 runs (continuity is the point of Q1.6).
+- **Box:** AMD Ryzen 9 9950X (16 physical / 32 logical cores), Windows 11 — the one recorded
+  protocol machine (continuity is the point of Q1.6).
 - Every run's report includes an **environment block** (fenced code) recording: harness name +
   version, OS name + build, CPU model, runtime/toolchain versions used by that run (e.g.
   `.NET SDK` + runtime, or `rustc`/`cargo` + crate versions), and the repo commit
@@ -106,14 +106,15 @@ All cross-compared runs for phases 1–7 execute on the one recorded machine:
 
 ## Publication format
 
-Every run publishes as a new date-stamped directory `docs/benchmarks/<yyyy-MM-dd>/` (existing
-convention; published directories are immutable — corrections get a new date, never an edit).
+Every run publishes as a new date-stamped directory `<results>/<yyyy-MM-dd>/`, where `<results>`
+is the results archive kept **outside this repository** — the repository carries the harness and no
+measurement (published directories are immutable — corrections get a new date, never an edit).
 Contents:
 
 1. **`index.md`** with, in order:
    - H1 `# Benchmark run — <yyyy-MM-dd>`;
    - intro paragraph naming the suites covered and the full reproduce command(s)
-     (`dotnet run -c Release --project src/Heddle.Performance -- --filter *<Suite>*` form for
+     (`dotnet run -c Release --project benchmarks/dotnet -- bench-crossstack --filter *<Suite>*` form for
      .NET; the ecosystem harness invocation for phases 2–6);
    - `## Environment` — the environment block defined above;
    - `## The workloads` — one bullet per workload measured: its id, dimension owned (from
@@ -129,8 +130,7 @@ Contents:
 
 ## Honest-reporting rules
 
-Carried from the repo's established posture (the 2026-07-18 report is the model) and made
-protocol:
+Carried from the repo's established posture and made protocol:
 
 1. No universal-superiority claims, ever.
 2. Every workload where Heddle loses on **any** reported metric is reported in the results
@@ -152,10 +152,9 @@ Phase 1 closed by executing this protocol once, intra-.NET, over all eight workl
   (`MixedRenderBenchmarks`, `ConditionalRenderBenchmarks`, `FragmentRenderBenchmarks`,
   `FortunesRenderBenchmarks`, `EncodedLoopRenderBenchmarks`); `net10.0`, `-c Release`,
   BenchmarkDotNet 0.15.8, `[MemoryDiagnoser]` on, and `[ShortRunJob]`
-  (`LaunchCount 1, WarmupCount 3, IterationCount 3`) rather than the adaptive defaults — the
-  eight suites cost 21.5 min for 41 methods at defaults, and E6 gives every ecosystem the same
+  (`LaunchCount 1, WarmupCount 3, IterationCount 3`) rather than the adaptive defaults, so that E6 gives every ecosystem the same
   ~10 min budget. `[MemoryDiagnoser]` is unaffected, so the allocation column is unchanged.
-- Published under `docs/benchmarks/<run-date>/` in the format above. This publication is the
+- Published under `<results>/<run-date>/` in the format above. This publication is the
   **source of the Heddle reference rows** phases 2–6 excerpt (rule 1), which is why it must land
   before any ecosystem report.
 - Its `## The workloads` section names each workload's owned dimension — satisfying the plan's

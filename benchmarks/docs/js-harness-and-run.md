@@ -47,7 +47,7 @@ benchmarks/js/
       run-all.mjs              ← `npm run gate`: both gates, all 32 cells, [PASS]/[FAIL] lines
   test/
     gate-selftest.mjs          ← normalization fixtures + calibration re-run
-  artifacts/                   ← gitignored run outputs (copied into docs/benchmarks/<date>/)
+  artifacts/                   ← gitignored run outputs (copied into <results>/<date>/)
 ```
 
 The corpus is read from `benchmarks/dotnet/GoldenCorpus/` via a repo-relative path
@@ -268,7 +268,7 @@ evidence that stability was verified before publication).
 
 ## Report format
 
-One new directory `docs/benchmarks/<yyyy-MM-dd>/` in the protocol's publication format;
+One new directory `<results>/<yyyy-MM-dd>/` in the protocol's publication format;
 `index.md` sections in the protocol's order, with these phase bindings:
 
 1. **Intro** — suites covered (JS controlled, JS idiomatic, JS cold-compile) and the reproduce
@@ -329,8 +329,7 @@ One new directory `docs/benchmarks/<yyyy-MM-dd>/` in the protocol's publication 
      allocation cells. Both compile modes are runtime-compile (README D7) — stated under the
      table.
    - **Handlebars reach figure** wherever the pick is motivated: the current-week
-     `api.npmjs.org/downloads/point/last-week/handlebars` figure with its week range
-     (spec-verified baseline: 39,494,320 for 2026-07-13 → 2026-07-19).
+     `api.npmjs.org/downloads/point/last-week/handlebars` figure with its week range.
 5. **`## Files`** — links to `js-controlled.txt/.json`, `js-idiomatic.txt/.json`,
    `js-cold-compile.txt/.json`, `stability-summary.md` (+ the five stability captures).
 

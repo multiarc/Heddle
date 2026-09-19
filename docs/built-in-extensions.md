@@ -168,7 +168,7 @@ one `@else`. Only the winning branch's body renders.
 - **Isolation.** Each `@list`/`@for` iteration, each nested body, and each `@partial` gets its
   own set state — an inner set can never satisfy or clear an outer one.
 - **A custom continuation or terminal must declare `[ScopeChannel]`** to read the state an opener
-  publishes. One that does not draws `HED3005` (and `HED7016` at build time) and then misses every
+  publishes. One that does not draws `HED3005` and then misses every
   read at render, so it behaves as though no opener ran — see
   [building your own branch set](custom-extensions.md#building-your-own-branch-set).
 
@@ -511,7 +511,7 @@ renders the caller's body **once per execution** with `expr` (typed as the slot 
 (a bare `@out()` is **HED5013**) and is bodiless (**HED5018**).
 
 **`@out` with a value needs a slot.** Outside a slot‑declaring body, `@out` takes **no** argument —
-`@out(X)` (formerly accepted and silently ignored) is now the compile error **HED5012**. The fix is
+`@out(X)` is the compile error **HED5012**. The fix is
 to drop the argument (`@out()`) or to declare `out:: Type` and mean it.
 
 ### `swap`

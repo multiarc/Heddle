@@ -63,7 +63,7 @@ measurement runs, and the report itself.
    stop-on-red-gate; each launcher asserts the tuned state before timing.
 9. `python3 validate.py --windows-source windows-source.json --linux-results <part1 data>` —
    part 2 tables and verdicts.
-10. `sudo ./untune.sh`; reboot to the default entry; assemble the `docs/benchmarks/<date>/`
+10. `sudo ./untune.sh`; reboot to the default entry; assemble the `<results>/<date>/`
     report; run the D17 checklist.
 
 ## WSL functional posture (what this pass validated, SR-2)
@@ -90,7 +90,7 @@ measurement runs, and the report itself.
 | `common.sh` | shared helpers (WSL detection, tuned-state pre-flight, output paths) |
 
 Script outputs land under `benchmarks/linux-crosscheck/out/` (git-ignored via `out/.gitignore`;
-publication copies artifacts into `docs/benchmarks/<date>/` at WI8, never the other way).
+publication copies artifacts into `<results>/<date>/` at WI8, never the other way).
 
 ## Parameterizations recorded (SR-1/SR-2/SR-3)
 

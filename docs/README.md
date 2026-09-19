@@ -11,7 +11,7 @@ The engine is published as a set of NuGet packages:
 | --- | --- | --- |
 | `Heddle` | [src/Heddle](../src/Heddle) | Core engine: parser host, compiler, runtime, built‑in extensions. |
 | `Heddle.Language` | [src/Heddle.Language](../src/Heddle.Language) | ANTLR grammar + generated lexer/parser, plus editor (Ace) assets. |
-| `Heddle.Generator` | [src/Heddle.Generator](../src/Heddle.Generator) | Build‑time source generator that pre‑compiles `.heddle` files into your assembly. Reference with `PrivateAssets="all"` (an analyzer package). |
+| `Heddle.Build` | [src/Heddle.Build](../src/Heddle.Build) | Build‑time precompilation: MSBuild targets that drive the out‑of‑process `heddle compile` host (a .NET 10 SDK on the build machine; the target framework is unconstrained) and embed the compiled form into your assembly ([upgrading from `Heddle.Generator`](precompilation.md#upgrading-from-2x)). |
 | `Heddle.LanguageServices` | [src/Heddle.LanguageServices](../src/Heddle.LanguageServices) | Editor language‑service facade (completion, diagnostics, hover, go‑to‑definition) you can host yourself. |
 | `Heddle.LanguageServer` | [src/Heddle.LanguageServer](../src/Heddle.LanguageServer) | LSP server for editors, shipped as a `dotnet tool` (`heddle-lsp`). |
 | `Heddle.Tool` | [src/Heddle.Tool](../src/Heddle.Tool) | The `heddle` CLI — a `dotnet tool` for rendering templates and build‑time code generation (the T4 successor). |
@@ -30,11 +30,11 @@ tree is just a placeholder.
   embedded C# to Roslyn delegates). With a typed model, member access and embedded C# are checked
   at compile time rather than discovered at render time; declaring `@model(){{dynamic}}` instead
   opts into render‑time member binding.
-- **Fast.** In this repository's benchmark run of 2026‑07‑11, Heddle rendered faster than ASP.NET
-  Core Razor and allocated less memory (Razor's page is larger and not parity‑checked — the
-  like‑for‑like comparison is against the four parity‑checked Liquid/Handlebars engines, which
-  Heddle leads on render time and where it allocates the least or tied‑least memory —
-  Handlebars.Net is within ~0.3 KB). See [Architecture → Performance](architecture.md#performance-characteristics)
+- **Fast.** A template renders as a pre‑built document with every accessor already compiled, so a
+  render does no parsing, reflection or per‑call activation, and the precompiled tier is the same
+  render path loaded from the assembly. The repository carries a cross‑stack benchmark harness that
+  holds every engine to byte‑identical output before timing anything; measurements are taken and
+  kept outside the repository. See [Architecture → Performance](architecture.md#performance-characteristics)
   and the [benchmark harnesses](../benchmarks/README.md).
 - **Composable without coupling.** Reusable templates are declarative extension points, so a
   page can be split into independent pieces recombined by a layout — at no runtime cost — and
@@ -75,7 +75,7 @@ directives and register them via assembly attributes.
 
 ### I want to *understand or modify the engine* (contributors)
 Read the **[Architecture](architecture.md)** (lex → parse → compile → render pipeline,
-Roslyn code generation, lexer modes) and **[Building & Testing](building.md)**.
+the build host and compiled form, lexer modes) and **[Building & Testing](building.md)**.
 
 ---
 

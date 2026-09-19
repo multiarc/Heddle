@@ -176,7 +176,8 @@ verification marker or is covered by a gate**. An unmarked, ungated claim is *ev
 not an authority*: a contradiction between it and both implementations agreeing is resolved by
 investigating and recording the outcome — never by editing code to match the sentence. Marked
 claims use the footer form *"Verified against source at `<commit>` (`<date>`); claims marked ✓ are
-gated by `<test>`."*
+gated by `<test>`."* *Corrected 2026-09-18:* public pages carry the commit and the gate names only —
+the date is omitted there and lives in git.
 
 **Non-retroactive.** Decisions already ratified against the unconditional convention stand as
 ratified; this narrowing applies to resolutions taken after it. Re-opening them would relitigate
@@ -245,17 +246,18 @@ degradation to the dynamic tier and no degradation occurs.
 
 `AssemblyHelper` declares no static constructor and calls no `Assembly.Load`; the removal of the walk
 that did both is recorded as
-[2.1 window item 10](breaking-windows.md#current-window--21-open-as-implemented-pending-release).
-`PrecompiledTemplates.Register` has the same shape. The engine ships no module initializer — one exists in
-`src/`, in the generator integration suite, where it is a **test host** registering itself, which is the
-pattern this decision prescribes rather than an exception to it.
+[3.0 window record, 2.1 item 10](breaking-windows.md#30-window--pending-tag-21-retired-without-a-release).
+`PrecompiledTemplates.Register` has the same shape. The engine ships no module initializer, and since the
+2.x generator suites left the tree none exists anywhere under `src/` (the one that did was a **test host**
+registering itself — the pattern this decision prescribes, not an exception to it).
 
 ## Release records — as shipped
 
 Condensed from the retired append-only historical record (full text:
-`git show c4691266:docs/spec/records.md`). The open **2.1** window's running record lives in
-[breaking-windows.md § Current window](breaking-windows.md#current-window--21-open-as-implemented-pending-release)
-until reconciled at release; only closed windows are condensed here.
+`git show c4691266:docs/spec/records.md`). The **3.0** window's record — as implemented, pending the `v3.0.0` tag; it absorbs the 2.1 window,
+which was retired without a release — lives in
+[breaking-windows.md § 3.0 window](breaking-windows.md#30-window--pending-tag-21-retired-without-a-release)
+until reconciled at the tag; only closed windows are condensed here.
 
 **The 2.0 breaking window** — closed; `v2.0.0` released 2026-07-19, reconciled against the
 shipped source per breaking-windows policy rule 5; migration note shipped as the release's
@@ -326,7 +328,7 @@ process legacy in [review-protocol.md](review-protocol.md) and
 - If a diagnostic can surface early it must, on both tiers: forwarded warnings carry their real front-end id (the wrapper id is only for id-less ones), severity comes from the catalog row and is never escalated or downgraded, and the `Fix` text rides the build message. (generator phase 6 D2/D3, Q6.1)
 - Nothing forwarded at build time may be wider than what the run tier raises for the same bytes (gated by `NothingIsForwardedThatTheRunTierWouldNotRaise`); the orphan-`@else` **error** is deliberately still run-tier-only, pinned by the skipped red `CompileChannelDrainTests.ATemplateTheEngineRefusesIsNotSilentlyPrecompiled`. (generator program-level gap, closed)
 - `HED7006` fires only when a name resolves to nothing under the runtime's own discovery rule; a name that resolves but is not bindable by the generator degrades with a recorded reason instead. (generator phase 3)
-- `Name` is additive and never an override: the template keeps its key and gains the name, keys resolve before names, and a name whose spelling is taken is dropped and reported while the key is unaffected — a broken addition costs the addition and nothing more. (Q8.25; landing recorded in the 2.1 window record)
+- `Name` is additive and never an override: the template keeps its key and gains the name, keys resolve before names, and a name whose spelling is taken is dropped and reported while the key is unaffected — a broken addition costs the addition and nothing more. (Q8.25; landing recorded as 2.1 item 6 of the [3.0 window record](breaking-windows.md#30-window--pending-tag-21-retired-without-a-release))
 
 **Test inputs, corpus, and documentation currency**
 
@@ -343,7 +345,7 @@ process legacy in [review-protocol.md](review-protocol.md) and
 ## Program record — cross-stack benchmarks (closed)
 
 The cross-stack benchmark program is complete: eight workloads, six ecosystems, sixteen engines,
-gates green in every harness, report published at `docs/benchmarks/<date>/`. Decisions with
+gates green in every harness; measurements are taken and kept outside the repository. Decisions with
 ongoing force are collapsed below with their origin ids. The operational contract the harnesses
 implement (workloads, parity contract, golden corpus, metrics protocol, per-ecosystem harness
 docs) lives in [`benchmarks/docs/`](../../../benchmarks/docs/README.md). Full phase documents:
@@ -394,7 +396,7 @@ docs) lives in [`benchmarks/docs/`](../../../benchmarks/docs/README.md). Full ph
 - Non-Heddle engines are never ranked or compared across ecosystems; the single sanctioned exception is the per-workload cross-stack ranked table carrying evidence-class and implied-throughput columns, and even then no geomean, points total, medal count or overall score exists and the prose stays Heddle-anchored. (benchmarks phase 1 D13/Q6.2, phase 7 D6 as amended)
 - Every per-ecosystem report carries a labeled wall-time-only Heddle reference row excerpted from the protocol run with the ratio column anchored to it; non-comparable metrics anchor to the ecosystem's credibility pick; every table names its track and tracks are never mixed. (benchmarks phase 1 D13, presentation rules 1–5)
 - Honest-reporting rules 1–6 are protocol: no universal-superiority claims, losses named as prominently as wins with numbers, dated/hardware-specific figures with a reproduce command, verbatim labels including the encoded-suite confinement caveat adjacent to every encoded result, no numbers from a gate-failed suite, and excluded cells never blank. (metrics protocol, phase 7 D12)
-- Runs publish as immutable `docs/benchmarks/<yyyy-MM-dd>/` directories (corrections get a new date, never an edit), and `docs/benchmarks/` keeps only the latest run's report — citations of removed runs are de-linked with their visible text preserved, never repointed at a run that never measured them. (phase 7 D2, benchmarks E15)
+- Runs publish as immutable `<results>/<yyyy-MM-dd>/` directories in a results archive kept outside this repository (corrections get a new date, never an edit); the repository carries no measurement, and a citation of a run names it without repointing at a run that never measured the claim. (phase 7 D2, benchmarks E15)
 - The consolidated report recomputes nothing: every figure is a verbatim excerpt of a published source table with unit conversion and a Heddle-anchored ratio the only permitted arithmetic, the newest protocol run per ecosystem is aggregated, and defects escalate to the owning harness rather than being patched in the report. (benchmarks phase 7 D1, D4, D14)
 - Report workload order is presentation-only — tier 1 (below the LOH line as UTF-16) before tier 2, ascending by rendered size, derived in `consolidate.py` — and the implied-throughput numerator is rendered size, not the normalized golden. (benchmarks E7)
 - All cross-compared runs execute on the one recorded Windows 11 / Ryzen 9 9950X box with a required environment block; the Ubuntu 24.04 cross-check is published separately, never merged with Windows numbers, with no Windows-attributed absolute value or time unit in it and tooling that stores ratios and dispersions rather than absolute times. (benchmarks phase 1 D14/Q1.6, phase 8 D14/D17, Q5.2)
@@ -405,8 +407,132 @@ docs) lives in [`benchmarks/docs/`](../../../benchmarks/docs/README.md). Full ph
 
 The precompilation v2 program is complete: compiled form (phase 1), build integration (phase 2),
 generated sites (phase 3), removal and release tail (phase 4). Decisions with ongoing force are
-collapsed below with their origin ids. Full phase documents: `docs/spec/precompilation-v2/` and
-`docs/plan/precompilation-v2/`.
+collapsed below with their origin ids (P1-R1 … P4-R8, AC-1 … AC-10, PD1 … PD11). The plan and spec
+documents are retired (2026-09-18) — full text: `git show f8a9497c:docs/spec/precompilation-v2/` and
+`git show f8a9497c:docs/plan/precompilation-v2/`; the artifact contract in particular is
+`git show f8a9497c:docs/spec/precompilation-v2/artifact-contract.md`.
+
+**PLAN DECISIONS (PD1–PD11, condensed)**
+
+- PD1: `Heddle.Generator` (package, three Roslyn builds, both suites, CI legs) and everything in `Heddle.dll`
+  that existed for generated 2.x code are removed in v3; the last 2.x package is deprecated on NuGet naming
+  `Heddle.Build`; nothing from the program ships in 2.x.
+- PD2: typed entry points `Heddle.Generated.<SanitizedName>.Generate(model, chained, callerData)` (string,
+  `TextWriter`, `IBufferWriter<byte>`) are thin wrappers over the loaded entry; they render under the
+  process-wide `PrecompiledTemplates.DefaultOptions` (unset → engine defaults), materialize and validate their
+  own artifact on first call, and throw `PrecompiledMismatchException` on a failed check — a typed entry has
+  nothing to degrade to.
+- PD3: retired MSBuild surface `HeddleObserveEngine`, `HeddleNodeFallback`, `HeddleEmitUtf8Pieces` (warn
+  `HED7037`), `HeddleObserveIntermediatePath`, `HeddleObserveImplementationPath` (silent); added per-item
+  `OutputProfile`; D4 superseded by its dated note.
+- PD4: the compiled form is v3-only; among v3-and-later artifacts `PrecompiledSchema.IsEngineCompatible` (same
+  major, artifact not newer than the runtime) and the schema number tracks breakage under breaking-windows rule
+  7; a 2.x marker makes `Register` throw `PrecompiledRegistrationException`; `Heddle.Build`'s version must equal
+  the referenced `Heddle` (`HED7035`).
+- PD5: under `ExpressionMode.FullCSharp` a C# site is serialized as source plus binding context, compiled at
+  load through the engine's Roslyn path or served from the site table; under `Heddle.CSharpTierEnabled=false`
+  it degrades with `HED9001` as the dynamic tier does.
+- PD6: `Heddle.Build` runs `heddle compile` (`Heddle.Tool`, carried in the package) out of process through
+  `HeddleCompile : ToolTask`; build machines need a .NET 10 runtime; the host binds by reflection over the
+  consumer's **implementation** images (project outputs, package lib folders, declared assemblies), an
+  unloadable image costs the templates naming its types (`HED7036`), and a BCL member absent on the target
+  framework is a load-time gate fallback, not a build error (host ≠ target).
+- PD7: a template naming a same-project type triggers one content-addressed intermediate compile fed
+  signature-only stubs; design-time builds run only the stub pass so `Heddle.Generated.*` resolves in the IDE.
+- PD8: the program constitutes the v3 breaking window; its removals are window items (the register's
+  `ResolvePartial` row adopted). The 2.1 window it was to follow was retired without a release (2026-09-18).
+- PD9: the **bodiless rule** — a bodiless value-position call the build registry cannot bind is late-bound data
+  (call shape and tree serialized, typed at load against the live `TemplateOptions.Functions`); a call whose
+  result would shape a body or a hook is refusal class (c) and takes the dynamic path; remedy
+  `[ExportFunctions]`, else `Precompile="false"`; `ValidateAll` reports a name the live registry lacks as
+  `UnsupportedFunction`; late-bound sites are never generated sites.
+- PD10: strict no-load-time-compilation mode — `AppContext` switch `Heddle.Precompiled.StrictLoad` mirrored on
+  `TemplateOptions.PrecompiledStrictLoad`, default off; any load-time compilation throws
+  `PrecompiledStrictLoadException(templateKey, siteOrdinal, siteKind)`.
+- PD11: for a fact the engine diagnoses the build reports the engine's id at the `.heddle` position and nothing
+  else; `HED70xx` twins retire in place (the R4 register below).
+
+**ARTIFACT CONTRACT (essentials; full text in the retired `artifact-contract.md`)**
+
+- AC-1 carriage: one embedded resource per assembly, logical name `Heddle.CompiledForm`, reached through
+  `[assembly: Heddle.Precompiled.HeddleCompiledTemplates(typeof(Heddle.Generated.HeddleArtifact), 4, "<engine version>")]`.
+- AC-2 encodings: unsigned LEB128 for counts/indices/lengths, zig-zag for signed, IEEE LE `double`, four-int
+  `decimal`, one-byte `bool`; every string is an index into a UTF-16LE string table, so any .NET string
+  round-trips exactly.
+- AC-3 container: magic `HCF3`, `schemaVersion` u32, section count, section table, the twelve sections in id order —
+  `Header`, `Strings`, `Types`, `Extensions`, `Functions`, `Members`, `Expressions`, `CSharp`, `Documents` (with
+  parse facts), `Definitions`, `Templates`, `Sites` (refusal sites are per-row `RefusalSites` payloads, not a section);
+  a same-major runtime may skip an additive section.
+- AC-4 type identity: Named (`fullName`, `assemblySimpleName`, `framework` flag — framework refs resolve by full
+  name across CoreLib/mscorlib), Constructed generic, Array, Dynamic (`ExType.Dynamic`, distinct from `object`).
+- AC-5 member identity: `(startType, segments[])` plus per hop `(declaringType, memberName, memberType)`, re-resolved
+  by `MemberPathResolver` at load; any difference is `MemberBindingMismatch`; a `DynamicHop` records no identity.
+- AC-6 site ids: every delegate-bearing site is a `Sites` row `(templateIndex, siteOrdinal, kind, payloadRef)`;
+  the ordinal is the position in a fixed depth-first document-order walk (chains right-to-left, then parameter,
+  body, caller content; alt bodies, removed items and fills walked); a site id is (template `ContentHash`, row
+  index, ordinal); the artifact digest covers the rows.
+- AC-7 documents: `(rawText, shapedText, needsLocals, parseFacts, elements[])`; a body records raw and shaped
+  text, consumed types and post-state; refusal-site payloads are bounded by the row's `RefusalSites`; parse facts
+  are carried but reserved (no loader consumer; ratified 2026-09-17).
+- AC-8 template rows: key, registered name, content hash, model type (+ ambient flag), options fingerprint
+  `(OutputProfile, ExpressionMode, TrimDirectiveLines)`, imports, extension and function refs, root document,
+  site count, refusal sites `(siteOrdinal, class, detail, position)`.
+- AC-9 determinism: same input → identical bytes, serialize→load→serialize identical; rows in ordinal key order,
+  string and type tables in first-use order of that walk; no timestamps, GUIDs, paths or host values.
+- AC-10 not carried: options beyond the fingerprint, hook state (hooks run at load), delegates or IL, generated
+  C# text, the UTF-8 pre-encoding of pieces.
+
+**LOADER, GAUNTLET AND SITES**
+
+- Materialization is **replay** (P1-R1/P1-R2 as ratified 2026-09-17): `HeddleCompiler.Materialize` re-parses the
+  recorded raw text with the engine's own parser and compiler under the request's `CompileScope`, with the form
+  cursor (`FormCursor`) serving every hook-requested body, refusal fragment and named child from the form and
+  checking the recorded consumed types; the element, member and expression records feed the gauntlet and the
+  site table by position. Accepted for one code path and structural parity (the corpus harness, three sinks,
+  three artifact passes, table on and off). `ExtensionInitCompileError` / `ExtensionInitTypingMismatch` are the
+  materialization faults; `TryResolve` materializes and reports them through `OnFallback` (throws under `Strict`).
+- The gauntlet (`PrecompiledGauntlet`) checks, in order, options fingerprint, ambient model type, extension bindings,
+  member bindings (`MemberBindingMismatch`, must surface), function bindings and staleness; `ValidateAll` runs
+  every step but model type without materializing (P2-R9).
+- Site table (P3-R1): the build prints one static method per printable site, keyed by site id, into
+  `Heddle.CompiledForm.g.cs`; the loader serves a site from the table when the id matches and rebuilds it from
+  data otherwise; `Heddle.Precompiled.UseGeneratedSites=false` turns the table off for evidence runs.
+- Printer decline rule (P3-R2): the printer never reads template text and declines a site — records the
+  decline, prints nothing — when a name is not spellable from the consumer's assembly (non-public type,
+  foreign `internal` member, `[Obsolete(error: true)]`, compiler-generated name), the expression contains a
+  deferred call, the chosen `FunctionEntry` has a delegate `Target`, the path contains a `DynamicHop`, an
+  operator's verdict is `RequiresRuntimeSemantics`, or a node kind has no printer arm; declines are listed in
+  `HED7031`.
+- Strict load (P3-R6/PD10): under `PrecompiledStrictLoad` any expression-tree or Roslyn compile the table did
+  not serve, a refusal site's text compile, or a late-bound site's compile throws
+  `PrecompiledStrictLoadException`; **declared exceptions** are DLR call-site creation for a `DynamicHop`
+  (`:: dynamic`, model-less templates — outside the NativeAOT claim) and the hook-level reflection every tier
+  performs (`Activator.CreateInstance` over a registered extension, `ListExtension`'s count reader).
+  `ValidateAll` is unaffected; a typed entry throws from `BindTyped`.
+- Refusal classes (P1-R8) are declared per corpus row in `CorpusIntent` and gated by set equality: class (a) is an
+  extension's own `[PrecompileUnsupported]` declaration (`UnsupportedExtension`, reason carried verbatim), class (b)
+  a value whose reflection order the build cannot fix (`ReflectionOrderValue`), class (c) the bodied/hook-typed
+  unbindable call (`UnbindableCallTyping`, PD9).
+
+**EVIDENCE POSTURE (P3-R8 / GI-3 as ratified 2026-09-17)**
+
+- Allocation: the compiled form allocates **at or below** the runtime tier per workload × sink
+  (`CompiledFormAllocationTests` pins `<=`). Mean: within BenchmarkDotNet's reported error **or faster**; a
+  cell measured slower outside error is an open finding to re-measure (F-202), never a widened budget.
+  Cold start: registration + first render is **reported beside** `CompileHeddle`, not claimed below it — both
+  are dominated by the engine's one-time initialization. The evidence is measured with `bench-techniques`
+  (table on / data-only / runtime), `bench-startup` and the `gate-precompiled` trailer, and kept outside the
+  repository.
+- NativeAOT (P3-R9): `Heddle` is `IsTrimmable`/`IsAotCompatible` with zero IL analyzer warnings
+  (`WarningsAsErrors` on the IL codes); the `precompiled-aot` sample publishes and renders under strict load.
+
+**DIAGNOSTIC RATIFICATIONS (2026-09-17)**
+
+- `HED7007` stays **host-raised** at the `@model`/`ModelType` spelling that resolves to no type; it is retired
+  only as a generator-issued diagnostic (RR4-4) and is not forwarded under `HED7012`.
+- `HED7011` is **retired in place**: the host resolves an `@<<` spelling like the engine's `ImportMap` (item key,
+  else disk under the root), so the fact never fires; an unreadable spelling is the engine's own `HED4009`.
+- `HED7031` is `Info`; `HED7020` covers both the per-template host fault and the output-write failure.
 
 **2.x-GENERATOR-AND-LEGACY (phase-4 removal record)**
 
@@ -436,7 +562,7 @@ collapsed below with their origin ids. Full phase documents: `docs/spec/precompi
   and every `PrecompiledFallbackReason` stay as-is, `PrecompiledTemplateInfo.EntryPointType`/`RefusalSites`
   and the internal adapter constructor stay, and the whole `PrecompiledTemplates` /
   `PrecompiledValidationReport` / `PrecompiledFallbackEvent` surface stays. (P4-R3, P4-R5)
-- Migration is one entry: [precompilation.md](../../precompilation.md#generator-removal-migration-note).
+- Migration is one entry: [precompilation.md](../../precompilation.md#upgrading-from-2x).
   Class (a) is a no-op for consumers (nothing referenced the deleted names); class (b) deletes one
   attribute; class (c) deletes the one remedy its templates relied on. (P4-R8)
 
@@ -528,7 +654,7 @@ amendment E16 (folded into the program records above).
 | `HED7012`–`HED7013` | [precompilation.md](../../precompilation.md) | Build-tier diagnostics: forwarded errors and warnings |
 | `HED7016` | [precompilation.md](../../precompilation.md) | **Retired in place — no build raises it, and the id stays claimed.** It was a generator build-time drift warning for a branch role missing its scope channel; the Roslyn analyzer is gone and nothing raises this fact. Constant, catalog row and published row stay; the id is never reused |
 | `HED7014` | [precompilation.md](../../precompilation.md) | Generator build-time **warning** — a called function neither the default table nor any `[ExportFunctions]` reference binds, **and** in a call shape a late-bound site cannot serve either. The second clause is the row: until late binding landed, the id named any function the build could not bind, including a delegate-only registration, which is precisely the case a `PrecompiledFunctionSite` now resolves at first render through the engine's own ranker. What is left is the genuinely unrankable call — chiefly an argument whose static type has no build-time answer, so no overload can be selected against it and inventing one would pick an overload the engine never picks. Severity, position and the marker-entry outcome are unchanged; the population narrowed |
-| `HED7015` | [precompilation.md](../../precompilation.md) | **Retired in place — no build raises it, and the id stays claimed.** It was a generator build-time diagnostic reporting that a bound extension *outside the engine assembly* overrode `InitStart`/`CompleteInit` that **this build had not read**, so the build tier had only the *base* behaviour to emit and the template fell back. It shipped as an **Error**, was relaxed to a **Warning** inside the same 2.1 window (the fault is a property of someone else's package, so its cost is a tier and not the consumer's build), and is now **unreachable**: the build no longer reasons about a hook at all. The extension's own `InitStart`/`CompleteInit` runs inside the consumer's assembly at static-init through `PrecompiledRuntime.Init`, whichever way the extension arrives — a package reference, a project reference, or a declaration in the compilation being built — so the fact this id reported is not true of any build. **Nothing user-visible replaced it**, and that is the row: the condition it named became precompilation rather than a different diagnostic. The nearest neighbour is `HED7033`, and it is not a successor — that id reports an extension author's own `[PrecompileUnsupported]` *choice*, taken at their word and costing one call site, where this one reported a build's inability and cost the template. The descriptor stays in `HeddleDiagnosticCatalog` and the constant stays on `HeddleDiagnosticIds` even though nothing references the descriptor: an id once shipped is never reused and never renumbered, the bidirectional registry↔constants gate reads both, and `docs/precompilation.md` keeps the retirement note the published-mention gate requires. Deleting any of the three would free the number for a later, different fault — which is exactly what retirement in place exists to prevent |
+| `HED7015` | [precompilation.md](../../precompilation.md) | **Retired in place — no build raises it, and the id stays claimed.** It was a generator build-time diagnostic reporting that a bound extension *outside the engine assembly* overrode `InitStart`/`CompleteInit` that **this build had not read**, so the build tier had only the *base* behaviour to emit and the template fell back. It shipped as an **Error**, was relaxed to a **Warning** inside the same 2.1 window (the fault is a property of someone else's package, so its cost is a tier and not the consumer's build), and is now **unreachable**: the build no longer reasons about a hook at all. The extension's own `InitStart`/`CompleteInit` runs inside the consumer's assembly at materialization, whichever way the extension arrives — a package reference, a project reference, or a declaration in the compilation being built — so the fact this id reported is not true of any build. **Nothing user-visible replaced it**, and that is the row: the condition it named became precompilation rather than a different diagnostic. The nearest neighbour is `HED7033`, and it is not a successor — that id reports an extension author's own `[PrecompileUnsupported]` *choice*, taken at their word and costing one call site, where this one reported a build's inability and cost the template. The descriptor stays in `HeddleDiagnosticCatalog` and the constant stays on `HeddleDiagnosticIds` even though nothing references the descriptor: an id once shipped is never reused and never renumbered, the bidirectional registry↔constants gate reads both, and `docs/precompilation.md` keeps the retirement note the published-mention gate requires. Deleting any of the three would free the number for a later, different fault — which is exactly what retirement in place exists to prevent |
 | `HED7017` | **Retired in place — no build raises it, and the id stays claimed.** Shipped in 2.0.0; this registry row is the live normative home | Generator build-time twin for a malformed extension `[Prop]` parameter declaration (Error), incl. an inherited-`[Prop]` re-declaration widening. Extension parameters reuse call-time `HED5001`–`HED5004` and declaration-side `HED5007`/`HED5008`/`HED5009`/`HED5010`/`HED5015`, and *additively relax* `HED5005` only (no new call-time id) |
 | `HED7018` | [precompilation.md](../../precompilation.md) | Generator build-time **warning** — a template outside `HeddleTemplateRoot` carrying no explicit `Key` metadata registers under a flattened filename key that no root-relative lookup can hit (generator↔engine code-sharing program, phase 5 D3) |
 | `HED7019` | **Retired in place — no build raises it, and the id stays claimed.** [precompilation.md](../../precompilation.md) | Generator build-time **warning** — the `Heddle` engine assembly is not visible among the compilation's references (aliased/embedded/ILMerged), so the manifest records the generator's own version as `engineVersion` (generator↔engine code-sharing program, phase 5 D6) |
@@ -544,11 +670,11 @@ amendment E16 (folded into the program records above).
 | `HED7030` | **Retired in place — no build raises it, and the id stays claimed.** [precompilation.md](../../precompilation.md) | Generator build-time **warning** — a type the engine binds by reflection but generated code in the consumer's assembly may not name: a model type, a member on one, or a bound host extension: an `internal` type or an `internal` member in a *referenced* assembly. Roslyn imports from metadata only what the importing assembly could legally name, so the emitter's symbol model shows an internal member as simply absent, and the build reported the same `HED7008` **error** it reports for a typo — a failed build over a template the engine renders. Distinguishing them needs a second view of the same references opened with `MetadataImportOptions.All`: a member the engine's own visibility policy accepts *there* and not here is hidden, not missing, and the template degrades to the dynamic tier under this warning instead. An internal model **type** never reached `HED7007` at all — types are imported from metadata regardless of accessibility — so the emitter pre-compiled a cast it could not write and the consumer's build failed on a wall of `CS0122` against generated `.g.cs`, with no Heddle id and no `.heddle` position. One id covers both: one situation, one shape. The same id, and the same degrade, later took `[Obsolete(…, error: true)]` on a model type or member: reflection ignores `[Obsolete]` outright, so the engine renders while every generated mention of the name is a `CS0619` in the consumer's build — the same class of "a name the emitter may spell and the consumer's compiler will reject". The **warning** form is deliberately not degraded: it is a note to the author rather than a refusal, taking every deprecated model off the precompiled tier would be a large silent cost, and the generated file's blanket `#pragma warning disable` already keeps `CS0618` out of the consumer's build. The same id later took a third position, the **bound extension's own type**: the engine's discovery filters a type on the extension interface and the name attribute and instantiates it with `Activator.CreateInstance`, so a non-public or error-obsolete extension registers and renders, while the field declaration and the `new` the emitter writes for it are `CS0122`/`CS0619`. The question is asked once, before any of the three writers allocates a field, so a role extension routed through the branch-emission path is covered by the same check. It is deliberately **not** asked of an extension's declared `[Prop]` type: nothing on the parameter path spells one |
 | `HED7031` | [precompilation.md](../../precompilation.md) | Build-host **info** — once per template whose row carries a refusal site, a late-bound site, a C# site carried as data or a printer decline, naming each (`not fully precompiled: refusal site at (12,4) UnbindableCallTyping 'toItems'; late-bound functions: toUpper, slug; 1 C# site carried as data`). Informational by decision (P2-R8): late binding and data-carried sites are designed behaviour, and a strict host's gate is `PrecompiledStrictLoad`, not this id's severity. Rewritten 2026-09-16 from the 2.x warning-with-`WarningsAsErrors` reading. |
 | `HED7032` | [precompilation.md](../../precompilation.md) | Generator build-time **error** — a template carrying both an in-file `@model` directive and `ModelType` item metadata whose spellings resolve to **different types**. The runtime reads only the directive, so quietly preferring either spelling would let the two tiers type one template differently; agreement is required instead (equal spellings, or different spellings resolving to the same symbol, raise nothing). A metadata spelling that resolves to nothing is not this fault — it draws the same `HED7007`/`HED7023` family a non-resolving directive spelling draws. A build-only id under the same-fact-same-id rule: the engine never sees item metadata, so no engine-compile-time counterpart exists to forward |
-| `HED7033` | [precompilation.md](../../precompilation.md) | Generator build-time **warning** — a bound extension declares `[PrecompileUnsupported]`, the extension author's own statement that its compile-time behaviour cannot be reproduced from a static initializer. The declared reason is carried **verbatim** into the message: the sentence a template author can act on is the extension author's, and paraphrasing it would put the build between them. Cost is **one call site** — the call binds dynamically (it renders by compiling its own source text at first render) while the rest of the template stays precompiled — which is why this is not a second spelling of `HED7031`: that id reports a template leaving the tier, this one reports a call leaving it. Its primary population is a hook that walks the enclosing document through `InitContext.ParseContext.Tokens`/`SubContexts`: the token stream *is* the enclosing document's parse tree, no call site can carry one, and a synthesized parse context is the only place the binding seam presents an empty member rather than an absent one — so it is the one thing a hook can be told about itself that the seam would otherwise get silently wrong. Read on **both** sides, and that is the row rather than an implementation note: the build reads the declaration off the symbol, and `PrecompiledRuntime.Init` reads it off the **live** type, so an extension package that adds the declaration after a consumer's assembly was built still falls back instead of binding through a seam its author has disowned. Deliberately a warning and not silence: a declaration that costs a tier should be visible to the template author who is paying for it, and `<WarningsAsErrors>` is available to a project for which it is not acceptable |
+| `HED7033` | [precompilation.md](../../precompilation.md) | Generator build-time **warning** — a bound extension declares `[PrecompileUnsupported]`, the extension author's own statement that its compile-time behaviour cannot be reproduced from a serialized compiled form. The declared reason is carried **verbatim** into the message: the sentence a template author can act on is the extension author's, and paraphrasing it would put the build between them. Cost is **one call site** — the call binds dynamically (it renders by compiling its own source text at first render) while the rest of the template stays precompiled — which is why this is not a second spelling of `HED7031`: that id reports a template leaving the tier, this one reports a call leaving it. Its primary population is a hook that walks the enclosing document through `InitContext.ParseContext.Tokens`/`SubContexts`: the token stream *is* the enclosing document's parse tree, no call site can carry one, and a synthesized parse context is the only place the binding seam presents an empty member rather than an absent one — so it is the one thing a hook can be told about itself that the seam would otherwise get silently wrong. Read on **both** sides, and that is the row rather than an implementation note: the build host reads the declaration off the live type it loaded, and the loader reads it off the **live** type again at materialization, so an extension package that adds the declaration after a consumer's assembly was built still falls back instead of binding through a seam its author has disowned. Deliberately a warning and not silence: a declaration that costs a tier should be visible to the template author who is paying for it, and `<WarningsAsErrors>` is available to a project for which it is not acceptable |
 | `HED7034` | **Retired in place — no build raises it, and the id stays claimed.** [precompilation.md](../../precompilation.md) | Generator build-time **note** (`Info`) under `HeddleObserveEngine=Auto`, and the same id as an **error** under `Strict` — the build could not observe a real engine compile of the templates it is emitting, so a body whose model type only an extension's hook can supply is emitted type-agnostically instead of with a direct cast. It is deliberately not a warning in either mode: observation is a **typing optimisation**, the template still precompiles through the engine's own zero-allocation accessors, and the rendered bytes are identical either way — so the default severity has to be quieter than `HED7031`, which reports a template genuinely leaving the tier. `Strict` exists for the opposite reason: a CI leg that cannot observe would otherwise emit **different sources** from a developer machine that can, silently, and a project that cares about that asks for the failure rather than diffing generated code. Reported **once per compilation**, not once per template — a build has one fact to learn here, not one per file — and suppressed entirely under `Auto` when no observe directory was configured at all, because a build that never had the option is not a build that tried and failed. The third `HeddleDiagnosticSeverity` member exists for this row and only for it: every other catalogued id describes a template, and this one describes the build |
-| `HED7035` | [precompilation.md](../../precompilation.md) | Build host **error** — the `Heddle.Build` package's engine version differs from the `Heddle` package the project references; the artifact is stamped with the engine that compiled it, so the two must be equal. Claimed by the precompilation-v2 spec ([phase 2](../precompilation-v2/phase-2-build-integration.md#diagnostics)) |
-| `HED7036` | [precompilation.md](../../precompilation.md) | Build host **error** — an implementation assembly the build must bind over (a project reference's output, a package's runtime image, a declared `HeddleModelAssembly`/`HeddleExtensionAssembly` item) could not be loaded; names the path and the loader's message. Claimed by the precompilation-v2 spec ([phase 2](../precompilation-v2/phase-2-build-integration.md#diagnostics)) |
-| `HED7037` | [precompilation.md](../../precompilation.md) | Build **warning** — a retired MSBuild property (`HeddleObserveEngine`, `HeddleNodeFallback`, `HeddleEmitUtf8Pieces`) is set; it is ignored. Claimed by the precompilation-v2 spec ([phase 4](../precompilation-v2/phase-4-removal-and-release-tail.md#diagnostics)) |
+| `HED7035` | [precompilation.md](../../precompilation.md) | Build host **error** — the `Heddle.Build` package's engine version differs from the `Heddle` package the project references; the artifact is stamped with the engine that compiled it, so the two must be equal. Claimed by the precompilation-v2 spec (phase 2 § Diagnostics (retired)) |
+| `HED7036` | [precompilation.md](../../precompilation.md) | Build host **error** — an implementation assembly the build must bind over (a project reference's output, a package's runtime image, a declared `HeddleModelAssembly`/`HeddleExtensionAssembly` item) could not be loaded; names the path and the loader's message. Claimed by the precompilation-v2 spec (phase 2 § Diagnostics (retired)) |
+| `HED7037` | [precompilation.md](../../precompilation.md) | Build **warning** — a retired MSBuild property (`HeddleObserveEngine`, `HeddleNodeFallback`, `HeddleEmitUtf8Pieces`) is set; it is ignored. Claimed by the precompilation-v2 spec (phase 4 § Diagnostics (retired)) |
 | `HED7101`–`HED7103` | [precompilation.md](../../precompilation.md) | Runtime registration/fallback |
 | `HED7104` | [precompilation.md](../../precompilation.md) | Precompiled-runtime registration **warning** — a template's registered `Name` could not become a lookup spelling: another *registered* template already answers to it (as its key or as its own name), or the name is not a spelling the shared `TemplateKey` rule accepts at all (Q8.32(b) — one id for both, because from the host's side they are one situation and the remedy is the same). Reported through `OnFallback` (`PrecompiledFallbackReason.RegisteredNameUnavailable`), never a throw: the template stays registered under its key and only the addition is lost. A **runtime** id because the collision spans assemblies — within one compilation the build tier reports the same fault as `HED7004`, but a referenced assembly's manifest rows live in a `GetTemplates` method body, i.e. IL rather than symbol metadata, so nothing at build time can see them (generator↔engine code-sharing program, phase 5 / Q8.30) |
 | `HED8xxx` | — reserved, none claimed | Sink APIs throw host errors, no compile diagnostics |

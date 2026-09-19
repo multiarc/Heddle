@@ -710,8 +710,8 @@ for eco in "${SELECTED[@]}"; do
       # budget is therefore spent on independent processes: run.sh --repeat N, then
       # bench/aggregate.mjs medians the per-pass avg into artifacts/<track>.json and emits the
       # stability verdict. That makes the stability procedure the measurement rather than a separate
-      # publication-gating step someone has to remember, which is how the withdrawn 2026-07-22 run
-      # JS numbers with no RSD verdict at all.
+      # publication-gating step someone has to remember, which is how a run
+      # can otherwise ship JS numbers with no RSD verdict at all.
       #
       # cold-compile stays a single pass: it is a compile-dominated sidebar, not a protocol
       # cell, so repeating it buys a stability verdict for numbers no ranking consumes.
@@ -787,7 +787,7 @@ done
 write_summary
 
 # --- consolidated tables ----------------------------------------------------------------------
-# Publishing used to mean copying artifacts into docs/benchmarks/<date>/ and then running
+# Publishing used to mean copying artifacts into <results>/<date>/ and then running
 # consolidate.py by hand. That hand step is exactly where table ORDER and transcribed figures drift
 # from the artifacts, so the runner does it here: the out dir gets its own consolidated-tables.md
 # and summary-tables.md, generated in tier order, before anyone looks at a number. Publishing is

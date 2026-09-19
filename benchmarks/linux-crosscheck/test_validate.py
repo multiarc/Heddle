@@ -16,10 +16,10 @@ def wcell(engine_r, engine_d, heddle_d, rank=2):
     return {
         "engines": {
             "engineA": {"rank": rank, "r": engine_r, "d": engine_d,
-                        "source": "docs/benchmarks/2099-01-01/example-report.md"},
+                        "source": "results/2099-01-01/example-report.md"},
         },
         "heddle": {"r": 1.0, "d": heddle_d,
-                   "source": "docs/benchmarks/2099-01-01/example-report.md"},
+                   "source": "results/2099-01-01/example-report.md"},
     }
 
 

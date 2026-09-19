@@ -13,8 +13,8 @@ with declared **binary and source** breaks in the precompiled-manifest contract,
 assembly auto-loading, and build-time behaviours that begin to occur because they were never wired.
 **3.0 is a ratified breaking window**, scoped to binary changes and minor API changes or additions;
 the running window record is in
-[breaking-windows.md](docs/spec/common/breaking-windows.md#current-window--21-open-as-implemented-pending-release)
-(the 2.1 window never shipped; its items release here) and the per-item judgements that predate the
+[breaking-windows.md](docs/spec/common/breaking-windows.md#30-window--pending-tag-21-retired-without-a-release)
+(there is no 2.1 release: that window was retired without one, and its items release here) and the per-item judgements that predate the
 window's ratification remain in
 [breaking-windows.md](docs/spec/common/breaking-windows.md#explicit-not-window-gated-rulings).
 
@@ -24,7 +24,7 @@ window's ratification remain in
   `PrecompiledSchema.MinSupportedSchemaVersion` and `MaxSupportedSchemaVersion` are both `4`, and a
   manifest below 4 is not degraded — registration **throws** `PrecompiledRegistrationException`, because a
   hand-written manifest row can claim any schema number while carrying none of the behaviour the
-  number promises, and a degrade path would bless it. 2.0.x and 2.1 manifests (schemas 1–3) are
+  number promises, and a degrade path would bless it. 2.0.x manifests (schemas 1–2) and the never-released schema 3 are
   therefore rejected outright, which also retires the question the 2.1 window left open: there is no
   version of the old Roslyn generator whose output this engine runs.
   **What to do:** rebuild with the 3.0 `Heddle.Build` package (or `heddle compile`), which emits
@@ -45,7 +45,7 @@ window's ratification remain in
   warning naming it and renders through the byte-identical dynamic path. Hand-written manifests and
   generator-constructed rows have no upgrade path: the loader binds only rows the 3.0 build wrote.
   Migration details, including the per-member disposition of the deleted API, are in the
-  [generator-removal migration note](docs/precompilation.md#generator-removal-migration-note).
+  [Upgrading from 2.x](docs/precompilation.md#upgrading-from-2x).
 
 - **`PrecompiledFallbackEvent.Key` is removed**, replaced by `TemplateKey` and `AssemblyName` with
   exactly one populated. The single `Key` carried two different kinds of string — a template key for
@@ -118,7 +118,7 @@ window's ratification remain in
 
 - **Build-diagnostic ids were re-keyed onto engine ids** for every fact the engine diagnoses. The
   twin → engine-id table is in the
-  [generator-removal migration note](docs/precompilation.md#generator-removal-migration-note) (e).
+  [Upgrading from 2.x](docs/precompilation.md#upgrading-from-2x) (e).
 
 - **Removed public members** (the phase-4 removal record, listed so the diff is readable without the
   spec). Types removed whole: `Heddle.Precompiled.PrecompiledRuntime` (every member: `Bind`,
@@ -218,7 +218,7 @@ window's ratification remain in
   place: the constant, the catalog row and the published mention stay, so the id is never reused.
   `HED7011` (import not included) joins them: the host reads an import outside the item set from disk,
   mirroring the engine's `ImportMap`, so it never fires.
-  See the [generator-removal migration note](docs/precompilation.md#generator-removal-migration-note)
+  See the [Upgrading from 2.x](docs/precompilation.md#upgrading-from-2x)
   for the twin → engine-id re-keying.
 - **`Precompile="false"` items are validated and advised.** An opted-out item's `Key`/`Name` now raise the
   same `HED7004` faults an included item's would, instead of failing silently and surfacing as `HED7011`

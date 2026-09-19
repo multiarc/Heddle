@@ -86,7 +86,7 @@ against the parity test's own exclusion set, so it cannot quietly fall out of da
 | `Data` | Render input (the model instance); analysis compiles, never renders. |
 | `Encoder` | Render‑time output encoding, object‑valued; changes rendered bytes, never a diagnostic. |
 | `RenderBudget` | Per‑render resource limits, object‑valued; no lint depends on them. |
-| `ValidateModelType` | Retained for source compatibility but no longer read — the render‑time model‑type check is always on; analysis has no data anyway. |
+| `ValidateModelType` | Not read — the render‑time model‑type check is always on; analysis has no data anyway. |
 | `PrecompiledMismatchPolicy` | Selects run‑tier fallback vs throw; the analyzer never consults the precompiled registry. |
 | `PrecompiledStrictLoad` | Fails materialization instead of compiling a site at load; analysis compiles, never materializes precompiled entries. |
 | `EnableFileChangeCheck` | The runtime's file watcher; the editor owns document versioning itself. |
@@ -108,9 +108,8 @@ log line naming the accepted values (visible in the client's Heddle output chann
 wrong JSON type is ignored the same way.
 
 ::: warning The default output profile is `html`
-Before 2.0.x the editor defaulted to `text` while the engine and the build tier defaulted to `html`,
-so a workspace with no `outputProfile` never saw the encoding lints (`HED2004` and friends) its
-build of record produces. The editor now defaults to `html` like everything else. If your templates
+The editor, the engine and the build all default to `html`, so a workspace with no `outputProfile`
+sees the encoding lints (`HED2004` and friends) its build produces. If your templates
 really are text‑profile, set `"outputProfile": "text"` — that is the opt‑out, and it is also what
 your host should be passing.
 :::
@@ -176,9 +175,8 @@ installed the extension still colors `.heddle` files from the grammar — no con
 ## Precompilation notes
 
 The editor reflects the last rebuild: model types, diagnostics and completions update on
-rebuild, not on source edit. Retired 2.x build options (`HeddleObserveEngine`,
-`HeddleNodeFallback`, `HeddleEmitUtf8Pieces`) have no editor effect — where set, the build
-warns `HED7037` and ignores them.
+rebuild, not on source edit. The properties `HeddleObserveEngine`, `HeddleNodeFallback` and
+`HeddleEmitUtf8Pieces` have no editor effect — where set, the build warns `HED7037` and ignores them.
 
 See also: [syntax highlighting](syntax-highlighting.md) (grammar‑only setups),
 [getting started](getting-started.md), and [the C# API](csharp-api.md) (hosting the facade

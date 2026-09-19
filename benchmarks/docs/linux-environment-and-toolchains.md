@@ -14,8 +14,8 @@ Decisions of record: D1–D5 (this document carries their normative text).
 ### Sequencing gate (hard precondition)
 
 No step in this document executes until **every Windows run the program will publish is
-published** — concretely: the shipped subset of phases 1–7 each has its `docs/benchmarks/<date>/`
-directory merged, and the maintainer has confirmed no further Windows protocol run is planned.
+published** — concretely: the shipped subset of phases 1–7 each has its `<results>/<date>/`
+directory published, and the maintainer has confirmed no further Windows protocol run is planned.
 The check is recorded as the first line of the run log:
 `PRECONDITION: all Windows protocol runs published as of <date>; shipped subset = <list>`.
 

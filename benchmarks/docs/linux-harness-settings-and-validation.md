@@ -139,7 +139,7 @@ the same programs, unmodified:
 
 | Ecosystem | Commands (from the ecosystem's harness directory) | Pass condition |
 |---|---|---|
-| .NET | `dotnet run -c Release --project src/Heddle.Performance -f net10.0 -- parity` then `-- verify-corpus` | eight `[PASS]` blocks; exit 0 twice |
+| .NET | `dotnet run -c Release --project benchmarks/dotnet -- gate` then `-- verify-corpus` | `gate`: one `[PASS]` line per registered cell, exit 0; `verify-corpus`: the eight-workload corpus check, exit 0 |
 | Rust | `cargo run --release --bin gate` | 32 `[PASS]` cells, exit 0 |
 | JVM | `GateCli calibrate` then `GateCli gate` (via `./mvnw -q clean verify`) | exit 0; excluded cells print their recorded marker |
 | JS | `npm run selftest` then `npm run gate` | exit 0 twice |
@@ -162,7 +162,7 @@ manifest-recorded as blocked.
 **Failure triage (exact steps, in order):**
 
 1. **Capture** the full failure surface (first-diff excerpt / verifier kind + needle) into
-   `docs/benchmarks/<date>/portability-findings.md` (created on first failure).
+   `<results>/<date>/portability-findings.md` (created on first failure).
 2. **Classify checkout corruption first:** the gate runners verify corpus SHA-256 against the
    manifest; a checksum failure is an environment/checkout defect — fix and re-run, no finding.
 3. **Whitespace-only divergence cannot reach this point** (N3b reconciles it by construction —
@@ -217,7 +217,7 @@ excluded cells, downgraded and marked.
 
 ## The report (D14–D17)
 
-One new immutable directory `docs/benchmarks/<yyyy-MM-dd>/`. `index.md` follows the protocol's
+One new immutable directory `<results>/<yyyy-MM-dd>/`. `index.md` follows the protocol's
 publication format with two parts inside the standard section skeleton.
 
 ### Part 1 — protocol-format Linux publication (D14)
@@ -381,8 +381,8 @@ program's success criteria made mechanical; the checklist result is recorded in 
    Windows source runs appear only as links/dates and as restated ranks, ratio values, and `d`
    values. Check: manual sweep of every table + a grep of `index.md` for each Windows report's
    headline numbers (transcribed into the checklist from the cited reports) finding zero hits.
-2. **No Linux number outside this directory:** `git status`/diff shows no modification to any
-   existing `docs/benchmarks/*` file; the cross-check adds exactly one new dated
+2. **No Linux number outside this directory:** no modification to any
+   existing `<results>/*` directory; the cross-check adds exactly one new dated
    directory (plus its own tooling under `benchmarks/linux-crosscheck/`).
 3. **No absolute-unit dispersion crossing:** every cross-OS dispersion statement uses `d`
    (dimensionless); check: part 2 contains no time-unit token (`ns`, `µs`, `ms`, `s/op`)

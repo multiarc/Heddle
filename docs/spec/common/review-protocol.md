@@ -28,8 +28,8 @@ Before you probe anything:
 
 1. Read it in full. It is a few pages; there is no excuse to skip any part.
 2. **Regression duty.** The suites are the regression record: run the ones
-   your area touches, serially, and include a Release leg for the generator
-   suites. The register's *weak pins* section lists the fixes the suites
+   your area touches, serially, and include the Release leg (`lsp.yml` runs all
+   four suites in Release). The register's *weak pins* section lists the fixes the suites
    cannot defend — if your area touches one, re-check that fix by hand.
    (That section trends to empty; anything added to it comes with the test
    that empties it, or an open row saying why none can exist.)
@@ -73,7 +73,7 @@ Build a matrix over the enumerated surface, not a handful of probes. State
 its dimensions and its cell count. Run it against BOTH tiers. Report the
 tally by outcome class:
 
-  match / generator-renders-where-engine-refuses / generator-throws-where-
+  match / precompiled-renders-where-engine-refuses / precompiled-throws-where-
   engine-refuses / different-bytes / degrade-where-engine-renders /
   degrade-where-engine-refuses
 

@@ -31,8 +31,8 @@ benchmarks/dotnet/GoldenCorpus/
                                    non-.NET ports load; hash-recorded in the manifest
 ```
 
-Rationale for the location: the corpus is produced by and re-verified against the code that
-lives in `src/Heddle.Performance`, so it sits beside its generator; phases 2–6 read the files by
+Rationale for the location: the corpus is produced by and re-verified against the .NET harness
+(`benchmarks/dotnet`, verbs `export-corpus` and `verify-corpus`), so it sits beside it; phases 2–6 read the files by
 repo-relative path (`benchmarks/dotnet/GoldenCorpus/<id>.golden.html`). No new top-level
 repo directory is introduced (most reversible choice; the trigger to revisit is a phase 2–6 spec
 demonstrating that its harness cannot conveniently reach into `src/` — then the corpus *moves*
@@ -77,7 +77,7 @@ round-trip byte-exact).
 ```json
 {
   "$schema": "manifest schema v1 (informal; fields below are normative)",
-  "generator": "Heddle.Performance export-corpus",
+  "generator": "benchmarks/dotnet export-corpus",
   "entries": [
     {
       "workload": "fortunes-encoded",
@@ -119,22 +119,22 @@ Entries are ordered by workload number (1–8). The manifest is regenerated whol
 
 ## Export tool
 
-The export tool lives in `src/Heddle.Performance` (built net-new for the program; the
+The export tool lives in the .NET harness, `benchmarks/dotnet` (the
 `Heddle.Tests` golden-file pattern was a precedent, not a shared mechanism).
 
-- **Entry point:** `dotnet run -c Release --project src/Heddle.Performance -f net10.0 -- export-corpus`
-  (a new verb in `Program.cs`, beside the existing `parity` verb). Optional flag `--allow-dirty`.
-- **Implementation:** new `Runners/GoldenCorpus.cs` (internal static class) with a single
+- **Entry point:** `dotnet run -c Release --project benchmarks/dotnet -- export-corpus`
+  (a verb in `Program.cs`, beside `gate` and `verify-corpus`). Optional flag `--allow-dirty`.
+- **Implementation:** `src/Corpus/CorpusMaintenance.cs` over `src/Corpus/Corpus.cs`, with a single
   registry of the eight workloads:
-  `(string Id, string Suite, Func<string> RenderHeddle)` — the render funcs reuse the existing
-  and new `*HeddleTest` runners. Export, per entry: render → normalize to the stored form
+  `(string Id, string Suite, Func<string> RenderHeddle)` — the render funcs are the Heddle
+  engine module's own cells (`src/Engines/HeddleEngine.cs`). Export, per entry: render → normalize to the stored form
   (`TwinContent.Normalize` = N2/N3/N4; encoded entries need no extra step, N5 is identity on Heddle
   output) → UTF-8-encode (no BOM) → write `<id>.golden.html` → compute SHA-256 → append manifest
   entry. **N3b is deliberately not applied at export**: it is the gate's comparison-time whitespace
   strip (applied to both sides at gate time), not a stored-form step, so the on-disk oracle stays
   readable and byte-stable while the oracle and every candidate still pass through the identical
   comparison ([contract — N3b](parity-contract-v2.md#normalization-pipeline)). Also writes every `<id>.verify.json` from the check definitions in
-  `Runners/IdiomaticChecks.cs` (single source of truth in C#; the JSON is the exported,
+  `src/Corpus/VerifierDefinitions.cs` (single source of truth in C#; the JSON is the exported,
   cross-language-consumable form).
 - **Added (E20):** the export additionally serializes the composed-page nav model to
   `fixtures/composed-page/nav.json` and records it in the manifest's `fixtures` section (see
@@ -155,8 +155,8 @@ The export tool lives in `src/Heddle.Performance` (built net-new for the program
 
 ## Verification
 
-`dotnet run -c Release --project src/Heddle.Performance -f net10.0 -- verify-corpus` — a second
-new verb, exit 0 iff all checks pass:
+`dotnet run -c Release --project benchmarks/dotnet -- verify-corpus` — a second
+verb, exit 0 iff all checks pass:
 
 1. **Freshness** — for each of the eight entries: render Heddle live, normalize to the stored form
    (N1–N5, `TwinContent.Normalize` + N5; N3b is not a stored-form step), UTF-8-encode, compare
@@ -167,11 +167,11 @@ new verb, exit 0 iff all checks pass:
    (`nav.json` from `NavData`), compared byte-for-byte with the committed file, and its
    hash/length re-checked against the manifest entry.
 2. **Verifier calibration** — for each workload: run the idiomatic verifier
-   (`IdiomaticChecks`) against the corpus entry (must accept), then against its applicable
+   (`VerifierDefinitions`) against the corpus entry (must accept), then against its applicable
    synthesized corruptions — two per raw workload, three per encoded workload — each of which
    must be rejected with the correct failing check kind:
    - *removed row* — delete the first occurrence of the workload's row-level marker segment
-     (per-workload substring pinned in `IdiomaticChecks`, e.g. the full first `<tr>…</tr>` of
+     (per-workload substring pinned in `VerifierDefinitions`, e.g. the full first `<tr>…</tr>` of
      `large-loop`). The two rowless raw anchors pin a whole segment instead: **composed-page**
      deletes its `SectionSocial` marker fragment (trips the ordered-`markers` check for the
      missing fragment) *(amended (E20): composed-page now deletes the SLIDER fragment the page
@@ -201,7 +201,7 @@ setup-time only.)
 
 ## Idiomatic verifier definitions
 
-One `<workload>.verify.json` per workload, exported from `IdiomaticChecks.cs`. Schema (all
+One `<workload>.verify.json` per workload, exported from `src/Corpus/VerifierDefinitions.cs`. Schema (all
 fields required; empty arrays allowed):
 
 ```json
@@ -217,7 +217,7 @@ fields required; empty arrays allowed):
 
 Semantics are defined in the
 [contract's idiomatic-track gate](parity-contract-v2.md#idiomatic-track-gate). The per-workload
-check contents (normative; `IdiomaticChecks.cs` transcribes them):
+check contents (normative; `src/Corpus/VerifierDefinitions.cs` transcribes them):
 
 | Workload | `values` (text → exact count) | `markers` (in order) | `forbidden` / `required` |
 |---|---|---|---|

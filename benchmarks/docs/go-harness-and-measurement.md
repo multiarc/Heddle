@@ -109,7 +109,7 @@ idiomatic verification; any failure prints the failure surface and `os.Exit(1)` 
 benchmark in the package can time until every gate passed in the same invocation**, satisfying
 the contract's before-any-timing rule. The same checks are additionally exposed as ordinary
 `Test…` functions so plain `go test ./suites` is the phase's parity command (the Go analogue of
-the .NET `-- parity` verb).
+the .NET `-- gate` verb).
 
 ## Idiomatic verifier
 
@@ -205,7 +205,7 @@ timed invocations, and benchstat. It is the reproduce command the report prints.
 
 ## Report format (instantiates the protocol)
 
-Published as `docs/benchmarks/<yyyy-MM-dd>/` — `index.md` in the pinned protocol shape plus the
+Published as `<results>/<yyyy-MM-dd>/` — `index.md` in the pinned protocol shape plus the
 raw `bench-*.txt` and `benchstat-*.txt` artifacts. Phase-specific content requirements, all
 mandatory:
 
