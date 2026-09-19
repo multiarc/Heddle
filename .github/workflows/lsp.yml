@@ -2,9 +2,9 @@
 # per-RID dotnet tool, and packages the VS Code extension. Phase 6 (editor tooling / LSP).
 #
 # Marketplace publishing is TAG-DRIVEN, like the NuGet and npm workflows: a `vX.Y.Z` tag publishes
-# every per-target VSIX to the Visual Studio Marketplace under the `multiarc` publisher through
-# Marketplace Trusted Publishing (GitHub OIDC, no token of any kind). See marketplace-publish for
-# the switch that keeps the job off until the Marketplace side exists.
+# every per-target VSIX to the Visual Studio Marketplace under the `multiarc` publisher. The
+# credential is the VSCE_PAT secret on the `marketplace` environment; see marketplace-publish for
+# why it is a token and not OIDC.
 
 name: Heddle LSP
 
@@ -120,25 +120,24 @@ jobs:
           path: editors/vscode/*.vsix
 
   # Production release of the extension: every per-target VSIX the matrix above built for this tag,
-  # published in one job that holds no credential at all. Packaging is separated from publishing
-  # exactly as in dotnet.yml: this job starts from artifacts that are already known to have built.
+  # published in one job. Packaging is separated from publishing exactly as in dotnet.yml: this job
+  # starts from artifacts that are already known to have built, and only this job sees the token.
   #
-  # This is Marketplace Trusted Publishing, the same shape as npm's: the job requests a GitHub OIDC
-  # token for the marketplace.visualstudio.com audience and vsce exchanges it for a short-lived
-  # publish credential, honoured because the publisher carries a trusted-publishing policy naming
-  # this repository, this workflow file and this environment. Until Microsoft ships the publisher-
-  # side policy page and a vsce release carrying `--oidc` (the vsce README documents the flag; no
-  # published version has it yet), the job is OFF: it runs only when the repository variable
-  # MARKETPLACE_TRUSTED_PUBLISHING is `true`. Meanwhile a release tag still builds the seven VSIXs
-  # as artifacts, and they are uploaded by hand on the publisher's Marketplace manage page.
+  # Why a token and not OIDC like the NuGet and npm jobs: the Marketplace's GitHub Trusted
+  # Publishing is still being built (microsoft/vsmarketplace#1422, staff 2026-09-14) and the Entra
+  # alternative needs an Azure subscription. VSCE_PAT is an Azure DevOps personal access token
+  # (organization "All accessible organizations", scope Marketplace: Manage) stored as a secret on
+  # the `marketplace` environment, so no other job can read it. When Trusted Publishing ships, this
+  # becomes `vsce publish --oidc` with `id-token: write` and the secret goes away.
   marketplace-publish:
     needs: [ test, vsix ]
-    if: ${{ startsWith(github.ref, 'refs/tags/v') && vars.MARKETPLACE_TRUSTED_PUBLISHING == 'true' }}
+    if: ${{ startsWith(github.ref, 'refs/tags/v') }}
     runs-on: ubuntu-latest
     environment: marketplace
     permissions:
       contents: read
-      id-token: write   # OIDC token for Marketplace Trusted Publishing
+    env:
+      VSCE_PAT: ${{ secrets.VSCE_PAT }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -150,11 +149,15 @@ jobs:
           path: vsix
           merge-multiple: true
       # vsce comes from the extension's own lock file, so the version that publishes is the one the
-      # VSIXs were packaged with. Bump that pin to the first release that carries `--oidc`.
-      # No --skip-duplicate: a release of an already-published version must fail loudly (dotnet.yml).
-      # The seven VSIXs share one version; the Marketplace lists them as one extension.
-      - name: Publish to the Visual Studio Marketplace (Trusted Publishing)
+      # VSIXs were packaged with. verify-pat fails before any upload if the token is expired or is
+      # not a member of the publisher.
+      - name: Verify publisher access
         working-directory: editors/vscode
         run: |
           npm ci
-          npx @vscode/vsce publish --oidc --packagePath ../vsix/*.vsix
+          npx @vscode/vsce verify-pat multiarc
+      # No --skip-duplicate: a release of an already-published version must fail loudly (dotnet.yml).
+      # The seven VSIXs share one version; the Marketplace lists them as one extension.
+      - name: Publish to the Visual Studio Marketplace
+        working-directory: editors/vscode
+        run: npx @vscode/vsce publish --packagePath ../vsix/*.vsix
