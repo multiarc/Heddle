@@ -193,7 +193,7 @@ namespace Heddle.Precompiled
                     }
                     catch (InvalidDataException malformed)
                     {
-                        // AC-3: a malformed container is a registration fault naming the assembly, never a
+                        // A malformed container is a registration fault naming the assembly, never a
                         // reader exception escaping the registry.
                         throw new PrecompiledRegistrationException(assemblyName, malformed);
                     }
@@ -304,7 +304,7 @@ namespace Heddle.Precompiled
         /// bytes on each row for materialization. Rows carry no strategy yet: <see cref="Entries"/> reports
         /// them before any render, and <see cref="PrecompiledTemplateInfo.Strategy"/> materializes on first
         /// read. A structurally defective image surfaces from <see cref="Register"/> as
-        /// <see cref="PrecompiledRegistrationException"/> naming the assembly (AC-3).</summary>
+        /// <see cref="PrecompiledRegistrationException"/> naming the assembly.</summary>
         private static IReadOnlyList<PrecompiledTemplateInfo> LoadCompiledRows(Assembly assembly,
             [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)] Type artifactType)
         {

@@ -1,4 +1,6 @@
-namespace Heddle.Language.Expressions
+using Heddle.Language.Expressions;
+
+namespace Heddle.Tests
 {
     /// <summary>What the shared operator table says about one operator applied to one pair of operand kinds.</summary>
     internal enum OperatorVerdict
@@ -18,9 +20,11 @@ namespace Heddle.Language.Expressions
     }
 
     /// <summary>
-    /// Decision table for native-tier operator semantics. Ensures the printed tier and runtime reach the same verdict
-    /// where exact, or both degrade where not. Exact for Numeric, Bool, String, Enum, NullLiteral; inexact for
-    /// Reference, Other, Unknown (runtime-owned).
+    /// Decision table for native-tier operator semantics, written independently of the engine's visitor: the
+    /// oracle <see cref="NativeOperatorRulesTests"/> sweeps against the real compiler, pair by pair. It is test
+    /// code, not product code — the 2.x source generator consulted it before emitting an operator, and the
+    /// build host that replaced it prints the engine's own bound tree, so nothing in the product asks. Exact for
+    /// Numeric, Bool, String, Enum, NullLiteral; inexact for Reference, Other, Unknown (runtime-owned).
     /// </summary>
     internal static class NativeOperatorRules
     {

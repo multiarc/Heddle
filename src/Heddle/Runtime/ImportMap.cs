@@ -10,9 +10,9 @@ namespace Heddle.Runtime
     /// lookup — the spelling a template writes (<c>Banner</c>) meets the key a row carries
     /// (<c>Banner.heddle</c>) — while the disk fallback reads the raw spelling, because the ladder
     /// resolves files, not keys. The build host maps every item's key and registered name to its
-    /// text; the loader maps every artifact row's. Internal: adding a public seam mid-phase would
-    /// churn the API golden twice (here and at phase-4 re-ratification); the host duplicates these
-    /// lines against the same contract instead.</summary>
+    /// text; the loader maps every artifact row's. Internal: the build host is the only other caller, and
+    /// it duplicates these lines against the same contract rather than widen the public surface for one
+    /// consumer.</summary>
     internal static class ImportMap
     {
         internal static Func<string, string> ReaderFor(IReadOnlyDictionary<string, string> contents,

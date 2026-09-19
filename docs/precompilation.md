@@ -217,6 +217,44 @@ Assembly configuration is deliberately **not** in this table — it is not an op
 
 ---
 
+### Models declared in the project being built
+
+A template may name a model that the project it lives in declares — the usual shape for a class
+library. The build cannot see such a type without compiling it once, so when the first (parse-only)
+pass leaves a model spelling unresolved, the targets run an **intermediate compile**: the project's
+whole `@(Compile)` set — the SDK's generated global usings and assembly attributes included, so
+`ImplicitUsings` works — plus throwing stubs for the entry points, compiled as the project's own
+output type (a library needs no entry point) into `obj/…/heddle/models/<digest>/<AssemblyName>.dll`.
+The host binds the templates against that image, and identities recorded from it equal the final
+assembly's because it carries the project's own name **and strong name**: the pass signs with the
+project's `AssemblyOriginatorKeyFile` / key container, `PublicSign` and `DelaySign` exactly as the real
+compile does, so a signed project that reads a friend assembly's internals (an `[InternalsVisibleTo]`
+naming its public key) compiles here too. It also receives the real compile's defines, language
+version, nullable context, analyzer configuration and the project's own `AdditionalFiles`, so a source
+generator — Razor's, for one — produces here what it will produce in the real compile, and a project
+that names a `.razor` component from C# compiles in this pass too. Heddle adds no additional file of
+its own, and nothing is handed to the real compile. Warnings never fail the pass.
+
+- The `<digest>` covers every input of that pass: the sources' contents, the references, the
+  analyzers, the analyzer-configuration and additional files, the strong-name key, and the compiler
+  options (assembly name, output type, defines, language version, nullable context, signing mode,
+  features). The pass runs the compiler only when no image exists for the current digest, so a
+  rebuild that changed none of them compiles nothing. The digest is also an input of the template
+  compile, so **editing a model recompiles the templates** (and so does reverting the edit), while a
+  rebuild that changed nothing still skips that compile too. Only the current digest's
+  directory is kept, and `dotnet clean` removes it.
+- A `@model` spelling is resolved by the engine's own resolver under the template's `@using`
+  imports, so everything the runtime accepts is accepted at build: a dotted nested type
+  (`Shop.Outer.Inner`), a closed generic (`Shop.Box<Shop.Item>`), an alias.
+- An **internal** model is supported: see the accessibility note under
+  [Typed entry points](#typed-entry-points).
+
+**Editors and `dotnet watch`.** Templates, and the `HeddleModelAssembly` / `HeddleExtensionAssembly`
+items, are declared as `UpToDateCheckInput`, and templates as `Watch` items — so Visual Studio's fast
+up-to-date check rebuilds after a template edit instead of serving the stale embedded artifact, and
+`dotnet watch` restarts on one. `dotnet clean` removes what the build wrote under `obj/…/heddle/`,
+the response file and the intermediate compile's stubs included.
+
 ## Typed entry points
 
 Each precompiled template emits a static class (`{HeddleGeneratedNamespace}.{SanitizedName}`,
@@ -229,7 +267,20 @@ string html = Heddle.Generated.Views_Home_Index.Generate(model);
 
 The signature is `Generate(TModel model, object chained = null, object callerData = null)`
 where `TModel` is the declared `@model` type (`object` for `:: dynamic` **and for a
-model‑less template** — the build host always emits an `object model` parameter).
+model‑less template** — the build host always emits an `object model` parameter). Generic arguments
+and nested types are spelled in full (`global::Shop.Box<global::Shop.Item>`,
+`global::Shop.Outer.Inner`).
+
+The entry class is `public` when `TModel` is public, and **`internal` when it is not** — a public
+method cannot take an internal parameter (`CS0051`), so a template over an internal model gets an
+entry point the declaring assembly (and any `[InternalsVisibleTo]` friend) can call, and the registry
+path serves everyone else. An internal model is named only when the project being built provably sees
+it: it is the project's own type, or its assembly carries an `[InternalsVisibleTo]` naming the project's
+assembly (`$(AssemblyName)`, which the targets pass to the host as `--assembly-name`). A grant that
+carries a public key is not taken as proof — the build cannot know the consumer's key. A model the
+project cannot name — another assembly's internal type with no such grant, a `private` nested class —
+leaves the entry point taking `object`; the template still precompiles, binds and renders, and the
+model‑type check at render is unchanged.
 
 > **This path binds once, through the gauntlet, and it has no per‑request fallback.** A typed entry
 > point resolves its template through `PrecompiledTemplates.BindTyped`, which runs the gauntlet for
@@ -337,7 +388,10 @@ Before trusting a precompiled entry the resolver checks it is compatible with th
   `FunctionRegistry` (below).
 - **Member bindings** — every type and member the compiled form bound (the row's model type, each member
   path's start type and, per hop, the declaring and member types) must resolve to the same identity in this
-  process; anything else is `MemberBindingMismatch` naming the member and both identities.
+  process; anything else is `MemberBindingMismatch` naming the member and both identities. Types resolve
+  by name against the assemblies **loaded so far**, and nothing is loaded to find one — so a model whose
+  assembly has not loaded yet reports `live=<unresolved>` and falls back. That verdict is not kept: the
+  lookup repeats on the next request, and the entry serves as soon as the assembly is there.
 - **Staleness** — only under `EnableFileChangeCheck`: the root file's `ContentHash` and the
   transitive `@<<` import closure vs. disk.
 
@@ -660,11 +714,19 @@ site, typed at first render against the live `TemplateOptions.Functions`
 
 The build prints a generated site for a member accessor, native expression or embedded C# expression
 only when the consumer's assembly can spell everything the site names. It declines — the site is
-recorded as data and rebuilt from the compiled form at load — for a type or member the consumer cannot
-name (a non‑public type, a referenced assembly's `internal` member without `[InternalsVisibleTo]`, an
-`[Obsolete(error: true)]` member, a compiler‑generated name), an expression containing a late‑bound
-call, a function bound to a delegate rather than a public static method, a member path through a
-`dynamic` hop, or an operator the shared rules mark as runtime‑owned. Declines are listed in the
+recorded as data and rebuilt from the compiled form at load — for a type or member a printed site does
+not name (any non‑public type or getter, `internal` included whatever `[InternalsVisibleTo]` grants — a
+site is printed without knowing who may see it; an `[Obsolete(error: true)]` member; a
+compiler‑generated name, an open generic, a pointer or by‑ref type), an expression containing a
+late‑bound call, a function bound to a delegate or to anything but a public static method, a member
+path through a `dynamic` hop, a constant with no C# literal (`NaN`, an infinity), a constant
+sub‑expression that throws when evaluated (`@(A + (79228162514264337593543950335M + 1M))` — it throws at
+render on the dynamic tier as well, if it is reached), and an integral or `decimal` division by a
+constant zero with a non‑constant dividend (`@(A / (1 - 1))`: the engine compiles it and throws at
+render, C# refuses to compile it). Operators never decline a site: the printer prints the tree the
+engine bound, operand conversions included, keeps its evaluation order and short‑circuiting exactly,
+and prints every constant sub‑expression as the value the engine computed, so the C# compiler never
+folds one by rules of its own. Declines are listed in the
 template's `HED7031` notice; under strict load such a site is refused instead
 ([Generated sites and strict mode](#generated-sites-and-strict-mode)).
 
@@ -709,7 +771,9 @@ different compilation.
   **throws** `PrecompiledStrictLoadException` at materialization, naming the template key, the site
   ordinal and the site kind (`MemberAccessor`, `NativeExpression`, `CSharp`, `LateBound` or
   `RefusalSite`), instead of compiling it at load. A trimmed or NativeAOT host sets it so that
-  nothing is ever compiled at run time.
+  nothing is ever compiled at run time. An expression made only of constants (`@(1 + 2)`,
+  `@("a" + "b")`) is not a site: the build stores its folded value, and the loader folds it again
+  while materializing — once, never on the render path — so it never trips strict load.
 - **Declared classes.** A strict host that hits `LateBound` has a call the build could not bind:
   export the function with `[ExportFunctions]` on a container the build can see (a referenced
   assembly, or the project's own intermediate compile — the `samples/precompiled-aot` project
@@ -740,7 +804,7 @@ their `.heddle` position; file/key/option‑level conditions report without a so
 | `HED7007` | The `@model` or `ModelType` spelling does not resolve to a type (error). |
 | `HED7008` | **Reserved; the build does not raise it.** A member path does not resolve on the model type; the engine's own `HED0001` reports it. |
 | `HED7009` | An MSBuild option value is unparsable. |
-| `HED7010` | Two keys sanitize to one generated class identifier. |
+| `HED7010` | Two keys sanitize to one generated class identifier, or a key sanitizes to a name the generated code uses itself: `HeddleArtifact`, or `Generate` (the entry point every entry class declares — `generate.heddle` at the template root). Rename the file or set `Key`. |
 | `HED7011` | **Reserved; the build does not raise it.** An `@<<` import outside the item set is read from disk under the template root, as the engine reads it; an unreadable spelling is the engine's own `HED4009`. |
 | `HED7012`/`HED7013` | A forwarded front‑end error/warning carrying no id. |
 | `HED7014` | A called function no build‑time registration binds, in a call shape a late‑bound site cannot serve either (chiefly an argument whose static type has no build‑time answer) — the template falls back (warning). A delegate‑only registration alone is a late‑bound site, not this: see *Functions the build cannot see*. |

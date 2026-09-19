@@ -8,7 +8,10 @@ Heddle.Build.Tests.IncrementalityTests
 Heddle.Build.Tests.IntermediateCompileTests
 Heddle.Build.Tests.MultiTargetTests
 Heddle.Build.Tests.RetiredPropertyTests
+Heddle.Build.Tests.SameProjectModelTests
+Heddle.Build.Tests.SignedConsumerAndEditorInputTests
 Heddle.Build.Tests.SurfaceTests
 Heddle.Build.Tests.TargetScopedBuildTests
 Heddle.Build.Tests.TestClassInventoryTests
 Heddle.Build.Tests.VersionLockTests
+Heddle.Build.Tests.WebSdkConsumerTests

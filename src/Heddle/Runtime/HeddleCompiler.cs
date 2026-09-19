@@ -467,16 +467,17 @@ namespace Heddle.Runtime
                     {
                         Context = extensionItem.Context
                     };
+                    if (record != null)
+                        record.SetBodyOwner(carrierItem, extensionItem);
                     extension = CreateExtension(carrierItem, compileScope,
                         extensionItem.Context ?? parseContext, ref result.ReturnTypeChainedPrevious, null,
                         dataType, null, chainParameter, out var carrierName);
-                    // A bound function forwards its return value through the carrier, whose
-                    // body-derived type says nothing about it: report the bound return type (the
-                    // deferred case above does the same with the deferred marker).
+                    // What flows down the chain is what the carrier produces — its rendered text, the
+                    // type CreateExtension just reported — never the function's own return type: the
+                    // next call would bind its chained value to a type the carrier does not hand over.
+                    // Only an unbound call stays untyped, like any deferred site.
                     if (DeferredResult.IsDeferred(dataType))
                         result.ReturnTypeChainedPrevious = DeferredResult.Deferred;
-                    else
-                        result.ReturnTypeChainedPrevious = dataType;
                     if (record != null && extension != null)
                         record.SetItemExtension(extensionItem, record.GetOrAddExtension(carrierName,
                             UnwrapExtension(extension), PropLayout.Fingerprint(UnwrapExtension(extension))));
@@ -921,8 +922,8 @@ namespace Heddle.Runtime
             return new List<ExprNode> { new PathNode(callParameter.RootReference, segments, null, position) };
         }
 
-        [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "P3-R9: the dynamic tier is outside the AOT claim (spec, deferred: AOT of the dynamic tier); reached only for dynamic scopes, which the printer declines and strict load refuses.")]
-        [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "P3-R9: the dynamic tier is outside the AOT claim (spec, deferred: AOT of the dynamic tier); reached only for dynamic scopes, which the printer declines and strict load refuses.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "The dynamic tier is outside the AOT claim; reached only for dynamic scopes, which the printer declines and strict load refuses.")]
+        [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "The dynamic tier is outside the AOT claim; reached only for dynamic scopes, which the printer declines and strict load refuses.")]
         private static CallSite<Func<CallSite, object, object>> CreateBinder(string model,
             CSharpArgumentInfo[] csharpArgumentInfoArray)
         {

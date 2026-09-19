@@ -10,7 +10,7 @@ namespace Heddle.Precompiled
     /// shape mismatch — both host faults), and hands delegates to the compile points, which match their
     /// own record by value (member chain, expression position, C# source and position). Identical twins
     /// are interchangeable, so first-unconsumed matching is exact; anything unmatched rebuilds from data.
-    /// A null table (or a disabled preference switch) means the phase-1 data path: nothing is consulted
+    /// A null table (or a disabled preference switch) means the data path: nothing is consulted
     /// and, for accessor/native/C# sites, strict mode does not throw — there is no site id to name.
     /// Refusal and late-bound records throw under strict with or without a table (see MaterializeNow and
     /// the deferred hook): they are row data, not table lookups.</summary>
@@ -222,7 +222,7 @@ namespace Heddle.Precompiled
                 return live == null;
             if (live == null)
                 return false;
-            // AC-4: framework refs match by full name alone; everything else by full name and assembly.
+            // Framework refs match by full name alone; everything else by full name and assembly.
             return PrecompiledGauntlet.TypeRefMatches(recorded, live);
         }
 

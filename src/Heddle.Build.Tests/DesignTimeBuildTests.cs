@@ -26,7 +26,7 @@ namespace Heddle.Build.Tests
                 Assert.True(stubs.Length == 1, "expected one stubs file, found " + stubs.Length + ".");
                 string stubsText = File.ReadAllText(stubs[0]);
                 Assert.Contains("public static class Templates_Hello", stubsText);
-                Assert.Contains("throw new InvalidOperationException", stubsText);
+                Assert.Contains("throw new global::System.InvalidOperationException", stubsText);
                 // The opted-out item gets no stub either: the IDE never sees an entry point the real
                 // build omits.
                 Assert.DoesNotContain("Templates_Partial", stubsText);

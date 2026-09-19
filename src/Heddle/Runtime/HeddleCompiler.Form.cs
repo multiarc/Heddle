@@ -13,7 +13,7 @@ namespace Heddle.Runtime
     /// <para>The caller owns the <see cref="CompileScope"/> (model type and options preset, as the registry
     /// will) and checks <c>scope.CompileErrors</c> afterwards: a typing fault or hook error surfaces there,
     /// never as an exception. The cursor touches no <c>Microsoft.CodeAnalysis</c> type; embedded-C# sites
-    /// stay data until phase 3.</para></summary>
+    /// stay data here.</para></summary>
     internal partial class HeddleCompiler
     {
         internal static RuntimeDocument Materialize(CompiledArtifact artifact, CompiledTemplateRow row,

@@ -10,7 +10,7 @@ namespace Heddle.Attributes {
 
         public IReadOnlyCollection<Type> Extensions => _extensions;
 
-        // P3-R9: the scan-all form is read by enumerating the assembly's types, which a trimmed publish
+        // The scan-all form is read by enumerating the assembly's types, which a trimmed publish
         // empties; the consumer gets ILLink's warning here instead of silently losing its extensions. The
         // typed forms root their extensions through the constructor parameter annotation.
         [RequiresUnreferencedCode("[ExportExtensions] without a type enumerates the assembly's types at registration, which trimming removes; name the extension types explicitly ([ExportExtensions(typeof(...))]) in a trimmed host.")]
@@ -19,7 +19,7 @@ namespace Heddle.Attributes {
             All = true;
         }
 
-        // P3-R9: the typeof here roots the extension through a trimmed publish; CreateExtension instantiates it
+        // The typeof here roots the extension through a trimmed publish; CreateExtension instantiates it
         // with Activator.CreateInstance, so the annotation keeps the parameterless constructor.
         public ExportExtensionsAttribute(
             [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)] Type extension)

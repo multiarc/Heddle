@@ -20,7 +20,7 @@ namespace Heddle.Precompiled
             EngineVersion = engineVersion;
         }
 
-        // P3-R9: the loader instantiates the manifest with Activator.CreateInstance, so the typeof in the
+        // The loader instantiates the manifest with Activator.CreateInstance, so the typeof in the
         // generated marker must keep the parameterless constructor through a trimmed publish.
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)]
         public Type ManifestType { get; }

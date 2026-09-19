@@ -286,6 +286,39 @@ namespace Heddle.Tests
             Assert.Contains("Nesting exceeds", fault.Message);
         }
 
+        /// <summary>The header carries the template count as a scalar with only the 32-byte digest after it.
+        /// Pins the regression where the reader held that scalar to the list-length rule (a count may not
+        /// exceed the bytes left in its section), so an assembly with more than 32 templates wrote a valid
+        /// artifact that failed registration as malformed.</summary>
+        [Theory]
+        [InlineData(0)]
+        [InlineData(1)]
+        [InlineData(32)]
+        [InlineData(33)]
+        [InlineData(100)]
+        [InlineData(5000)]
+        public void AnyNumberOfTemplateRowsRoundTripsAndRegisters(int count)
+        {
+            var artifact = CompiledFormHarness.MinimalArtifact();
+            string prefix = "rowcount-" + count + "-" + Guid.NewGuid().ToString("N") + "/";
+            for (int i = 0; i < count; i++)
+                artifact.Templates.Add(CompiledFormHarness.TemplateRow(prefix + i + ".heddle"));
+
+            byte[] image = CompiledFormWriter.Write(artifact);
+            var back = CompiledFormReader.Read(image);
+            Assert.Equal(count, back.Templates.Count);
+            for (int i = 0; i < count; i++)
+                Assert.Equal(prefix + i + ".heddle", back.Templates[i].Key);
+            Assert.Equal(image, CompiledFormWriter.Write(back));
+
+            CompiledFormHarness.RegisterImage(image, "HeddleTestAsm_RowCount_" + count);
+            if (count > 0)
+            {
+                Assert.True(PrecompiledTemplates.TryGet(prefix + "0.heddle", out _));
+                Assert.True(PrecompiledTemplates.TryGet(prefix + (count - 1) + ".heddle", out _));
+            }
+        }
+
         [Fact]
         public void ImportOnlyRowRoundTripsAndIsNotRegistered()
         {

@@ -39,7 +39,7 @@ namespace Heddle.Tests
         }
 
         private static PreparseResult Result(int generation) =>
-            new PreparseResult(new OptionalValue<object>(null, false), typeof(object), new string[0], generation);
+            new PreparseResult(new OptionalValue<object>(null, false), typeof(object), new PreparseDiagnostic[0], generation);
 
         [Fact]
         public void AnEntryAtTheGenerationTheMapHoldsIsServed()

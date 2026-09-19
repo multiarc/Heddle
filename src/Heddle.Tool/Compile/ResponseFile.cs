@@ -37,6 +37,10 @@ namespace Heddle.Tool.Compile
         internal string TrimDirectiveLines;
         internal string MaxRecursionCount;
         internal string GeneratedNamespace;
+
+        /// <summary>The simple name of the assembly the generated source compiles into; null when the caller
+        /// did not say.</summary>
+        internal string AssemblyName;
         internal readonly List<TemplateItem> Templates = new List<TemplateItem>();
         internal readonly List<ImportOnlyItem> ImportOnly = new List<ImportOnlyItem>();
         internal readonly List<string> References = new List<string>();
@@ -118,6 +122,7 @@ namespace Heddle.Tool.Compile
                     case "--generated-namespace":
                         request.GeneratedNamespace = Take(tokens, ref i, flag);
                         break;
+                    case "--assembly-name": request.AssemblyName = Take(tokens, ref i, flag); break;
                     case "--template": request.Templates.Add(ParseTemplate(Take(tokens, ref i, flag))); break;
                     case "--import-only":
                         request.ImportOnly.Add(ParseImportOnly(Take(tokens, ref i, flag)));

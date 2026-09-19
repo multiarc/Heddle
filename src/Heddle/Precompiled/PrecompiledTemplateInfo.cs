@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Threading;
 using Heddle.Data;
 using Heddle.Precompiled.CompiledForm;
 using Heddle.Runtime;
@@ -48,7 +49,8 @@ namespace Heddle.Precompiled
             RegisteredName = row.RegisteredName;
             EntryPointType = ResolveEntryPoint(registeringAssembly, row.EntryPointTypeName);
             _modelTypeRef = row.ModelType;
-            ModelType = ResolveModelType(row.ModelType, out _modelTypeNominal, out _modelTypeUnresolved);
+            _modelTypeNominal = NamesAType(row.ModelType) ? row.ModelType.Nominal() : null;
+            _modelType = NamesAType(row.ModelType) ? FindLoadedType(row.ModelType) : null;
             ModelTypeIsAmbient = row.ModelTypeIsAmbient;
             IsDynamic = row.IsDynamic;
             ContentHash = row.ContentHash ?? string.Empty;
@@ -73,8 +75,24 @@ namespace Heddle.Precompiled
 
         /// <summary>The type the generated code was compiled against — the declared <c>@model</c>/<c>::</c> type, the
         /// <c>ModelType</c> item metadata when the template declares neither, and <c>System.Object</c> when nothing
-        /// typed it. Null only in a hand-written manifest that declines to say.</summary>
-        public Type ModelType { get; }
+        /// typed it. Null only in a hand-written manifest that declines to say.
+        /// <para>Resolved by name against the assemblies loaded so far. Registration can run before the
+        /// model's assembly loads (a module initializer, a plugin host), so a miss is not final: it is looked
+        /// up again on each read until it resolves, and a resolved type is kept — the read is then one field
+        /// load.</para></summary>
+        public Type ModelType
+        {
+            get
+            {
+                var resolved = Volatile.Read(ref _modelType);
+                if (resolved != null || _modelTypeNominal == null)
+                    return resolved;
+                resolved = FindLoadedType(_modelTypeRef);
+                if (resolved != null)
+                    Volatile.Write(ref _modelType, resolved);
+                return resolved;
+            }
+        }
 
         /// <summary>True when the template declares no <c>@model</c> directive, so <see cref="ModelType"/> is the
         /// <b>build's</b> answer (the <c>ModelType</c> item metadata, else <c>System.Object</c>) rather than a type
@@ -110,8 +128,8 @@ namespace Heddle.Precompiled
             get { return GetStrategy(null); }
         }
 
-        /// <summary>Materializes under one request's options and memoizes per request shape
-        /// (P1-R11): a late-bound expression compiles against the materializing request's function
+        /// <summary>Materializes under one request's options and memoizes per request shape:
+        /// a late-bound expression compiles against the materializing request's function
         /// registry, file-backed partials and composition imports resolve under its paths, and
         /// definition recursion reads its limit. A null request materializes under defaults — the
         /// <see cref="Strategy"/> path. Unbound names fail the compile (the gauntlet reports them as
@@ -126,6 +144,16 @@ namespace Heddle.Precompiled
                 if (_requestStrategies.TryGetValue(shape, out strategy))
                     return strategy;
                 MaterializationFaultException fault = null;
+                if (ModelTypeUnresolved)
+                {
+                    // Not memoized: the model's assembly may simply not have loaded yet, and a memoized
+                    // fault would keep the entry on the fallback path for the life of the process.
+                    _requestFaults[shape] = Fault(PrecompiledFallbackReason.MemberBindingMismatch,
+                        "Type '" + _modelTypeNominal + "': manifest=" + AssemblyOf(_modelTypeRef) +
+                        " live=<unresolved>");
+                    return null;
+                }
+
                 try
                 {
                     strategy = MaterializeNow(request);
@@ -136,6 +164,7 @@ namespace Heddle.Precompiled
                     strategy = null;
                 }
                 _requestStrategies.Add(shape, strategy);
+                _requestFaults.Remove(shape);
                 if (fault != null)
                     _requestFaults.Add(shape, fault);
                 if (shape.IsDefault)
@@ -178,9 +207,10 @@ namespace Heddle.Precompiled
         /// order: the gate reports it when it resolves to nothing. Null when the row names none (dynamic).</summary>
         internal CompiledTypeRef ModelTypeRef => _modelTypeRef;
 
-        /// <summary>Whether the recorded root model type resolved to no loaded type. The gate reports it;
-        /// materialization memoizes the same fault.</summary>
-        internal bool ModelTypeUnresolved => _modelTypeUnresolved;
+        /// <summary>Whether the recorded root model type resolves to no loaded type <b>yet</b>. The gate
+        /// reports it; materialization reports the same fault without memoizing it, so the entry serves once
+        /// the type's assembly has loaded.</summary>
+        internal bool ModelTypeUnresolved => _modelTypeNominal != null && ModelType == null;
 
         /// <summary>The memoized materialization fault reason, when <see cref="Strategy"/> read faulted.
         /// Reading this never materializes: null both before the first read and when materialization passed.</summary>
@@ -209,7 +239,7 @@ namespace Heddle.Precompiled
         private readonly IPrecompiledSiteTable _siteTable;
         private readonly CompiledTypeRef _modelTypeRef;
         private readonly string _modelTypeNominal;
-        private readonly bool _modelTypeUnresolved;
+        private Type _modelType;
 
         private readonly object _materializeLock = new object();
         private bool _materialized;
@@ -238,7 +268,7 @@ namespace Heddle.Precompiled
             new MaterializationFaultException(reason, detail);
 
         /// <summary>The compile-varying slice of a request's options: the function registry by
-        /// reference identity (P1-R11: one re-compile per registry instance), the file settings file
+        /// reference identity (one re-compile per registry instance), the file settings file
         /// IO resolves under, the recursion limit hooks read, and the parse-shaping flags. Output
         /// profile, expression mode and directive trimming ride the row fingerprint instead — the
         /// gauntlet enforces their equality before any strategy is read.</summary>
@@ -313,7 +343,7 @@ namespace Heddle.Precompiled
             }
         }
 
-        /// <summary>Runs the P1-W3 materialization entry over the kept bytes. Called once per request
+        /// <summary>Runs the materialization entry over the kept bytes. Called once per request
         /// shape under <see cref="_materializeLock"/>; every failure mode becomes a
         /// <see cref="MaterializationFaultException"/> in gauntlet taxonomy, never a raw exception.</summary>
         private IProcessStrategy MaterializeNow(TemplateOptions request)
@@ -335,11 +365,6 @@ namespace Heddle.Precompiled
                 throw Fault(PrecompiledFallbackReason.ExtensionInitCompileError,
                     "Template '" + Key + "' names no document in this artifact.");
             var row = artifact.Templates[_rowIndex];
-
-            if (_modelTypeUnresolved)
-                throw Fault(PrecompiledFallbackReason.MemberBindingMismatch,
-                    "Type '" + _modelTypeNominal + "': manifest=" + AssemblyOf(row.ModelType) +
-                    " live=<unresolved>");
 
             if (request != null && request.PrecompiledStrictLoad && row.RefusalSites != null &&
                 row.RefusalSites.Count > 0)
@@ -586,7 +611,7 @@ namespace Heddle.Precompiled
 
         /// <summary>Resolves the row's wrapper type name on the registering assembly only. Null when the row
         /// names none or the name does not resolve there; never loads anything.</summary>
-        [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "P3-R9 (D11): resolves an identity the engine recorded itself over registered/loaded assemblies; a trimmed publish resolves only what it kept, and a miss reads as unresolved (a diagnostic or gauntlet mismatch), never a crash.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Resolves an identity the engine recorded itself over registered/loaded assemblies; a trimmed publish resolves only what it kept, and a miss reads as unresolved (a diagnostic or gauntlet mismatch), never a crash.")]
         private static Type ResolveEntryPoint(Assembly registeringAssembly, string typeName)
         {
             if (string.IsNullOrEmpty(typeName))
@@ -601,29 +626,13 @@ namespace Heddle.Precompiled
             }
         }
 
-        /// <summary>Resolves a recorded model type nominally against assemblies already loaded. Never loads
-        /// anything new: an unresolvable identity reports through
-        /// <paramref name="unresolved"/> and becomes a memoized fault at materialization.</summary>
-        private static Type ResolveModelType(CompiledTypeRef typeRef, out string nominal, out bool unresolved)
-        {
-            if (typeRef == null || typeRef is DynamicTypeRef)
-            {
-                nominal = null;
-                unresolved = false;
-                return null;
-            }
-
-            nominal = typeRef.Nominal();
-            var resolved = FindLoadedType(typeRef);
-            unresolved = resolved == null;
-            return resolved;
-        }
+        private static bool NamesAType(CompiledTypeRef typeRef) => typeRef != null && !(typeRef is DynamicTypeRef);
 
         /// <summary>Resolves a recorded type reference against assemblies already loaded into the default
         /// load context, or null when it resolves to nothing. Loads nothing; shared with the binding gate,
-        /// which resolves each member row's start type by the same rule (GI-4/D11).</summary>
-        [UnconditionalSuppressMessage("Trimming", "IL2055", Justification = "P3-R9 (D11): resolves an identity the engine recorded itself over registered/loaded assemblies; a trimmed publish resolves only what it kept, and a miss reads as unresolved (a diagnostic or gauntlet mismatch), never a crash.")]
-        [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "P3-R9 (D11): resolves an identity the engine recorded itself over registered/loaded assemblies; a trimmed publish resolves only what it kept, and a miss reads as unresolved (a diagnostic or gauntlet mismatch), never a crash.")]
+        /// which resolves each member row's start type by the same rule.</summary>
+        [UnconditionalSuppressMessage("Trimming", "IL2055", Justification = "Resolves an identity the engine recorded itself over registered/loaded assemblies; a trimmed publish resolves only what it kept, and a miss reads as unresolved (a diagnostic or gauntlet mismatch), never a crash.")]
+        [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "Resolves an identity the engine recorded itself over registered/loaded assemblies; a trimmed publish resolves only what it kept, and a miss reads as unresolved (a diagnostic or gauntlet mismatch), never a crash.")]
         internal static Type FindLoadedType(CompiledTypeRef typeRef)
         {
             try
@@ -665,12 +674,12 @@ namespace Heddle.Precompiled
             return null;
         }
 
-        [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "P3-R9 (D11): resolves an identity the engine recorded itself over registered/loaded assemblies; a trimmed publish resolves only what it kept, and a miss reads as unresolved (a diagnostic or gauntlet mismatch), never a crash.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Resolves an identity the engine recorded itself over registered/loaded assemblies; a trimmed publish resolves only what it kept, and a miss reads as unresolved (a diagnostic or gauntlet mismatch), never a crash.")]
         private static Type FindLoadedNamedType(string fullName, string assemblySimpleName, bool isFramework)
         {
             if (string.IsNullOrEmpty(fullName))
                 return null;
-            // AC-4: a framework ref's assembly name is advisory (the writer saw System.Private.CoreLib
+            // A framework ref's assembly name is advisory (the writer saw System.Private.CoreLib
             // where net48 has mscorlib), so it resolves by full name alone: the core library first, then
             // every assembly in the default load context. A non-framework ref keeps its authoritative
             // simple-name match below.

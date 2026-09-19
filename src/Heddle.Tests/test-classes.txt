@@ -74,6 +74,7 @@ Heddle.Tests.GenericTypeResolutionTests
 Heddle.Tests.HeddleTemplateDisposalTests
 Heddle.Tests.HeddleTemplateModelTypeGuardTests
 Heddle.Tests.HeddleTemplateTests
+Heddle.Tests.HiddenMemberShadowingTests
 Heddle.Tests.HostedTemplateLoadTests
 Heddle.Tests.HostedTemplateResolverTests
 Heddle.Tests.HtmlContextLintTests
@@ -121,6 +122,7 @@ Heddle.Tests.PrecompiledValidationPassTests
 Heddle.Tests.PreparseCacheGenerationTests
 Heddle.Tests.PreparseDiagnosticReplayTests
 Heddle.Tests.PrinterCoverageTests
+Heddle.Tests.ProcessPathAgreementTests
 Heddle.Tests.ProfileDirectiveTests
 Heddle.Tests.PropLayoutCoreReflectionTests
 Heddle.Tests.PropLayoutFingerprintTests

@@ -124,8 +124,8 @@ namespace Heddle.Runtime
         /// wrap here too — and the precompiled tier, which pastes this text into the consumer's assembly under
         /// settings neither the engine nor the template chooses, wraps it for the same reason.</para>
         /// </summary>
-        [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "P3-R9: the C# tier is outside the AOT claim; guarded by HeddleFeatures.CSharpTierEnabled, which ILLink.Substitutions.xml stubs to false in a trimmed publish, so this is dead code there.")]
-        [UnconditionalSuppressMessage("Trimming", "IL2075", Justification = "P3-R9: the C# tier is outside the AOT claim; guarded by HeddleFeatures.CSharpTierEnabled, which ILLink.Substitutions.xml stubs to false in a trimmed publish, so this is dead code there.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "The C# tier is outside the AOT claim; guarded by HeddleFeatures.CSharpTierEnabled, which ILLink.Substitutions.xml stubs to false in a trimmed publish, so this is dead code there.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2075", Justification = "The C# tier is outside the AOT claim; guarded by HeddleFeatures.CSharpTierEnabled, which ILLink.Substitutions.xml stubs to false in a trimmed publish, so this is dead code there.")]
         private static void CompileCSharp(CompileScope context)
         {
             if (!InitErrors.Success)

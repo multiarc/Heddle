@@ -23,7 +23,7 @@ namespace Heddle.Extensions
     {
         private ICountReader _collectionCountReader;
 
-        [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "P3-R9: CountReader<T> is instantiated only over reference-type elements, which share one canonical instantiation in an AOT publish; value-type elements take the non-generic count path.")]
+        [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "CountReader<T> is instantiated only over reference-type elements, which share one canonical instantiation in an AOT publish; value-type elements take the non-generic count path.")]
         public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType, ExType parent)
         {
             if (dataType == null)
@@ -39,7 +39,7 @@ namespace Heddle.Extensions
             var elementType = dataType.Type.TryGetElementType(typeof(ICollection<>));
             if (elementType != null)
             {
-                // P3-R9: CountReader<T> shares one instantiation for reference-type elements, but a
+                // CountReader<T> shares one instantiation for reference-type elements, but a
                 // value-type element needs fresh codegen per T, which NativeAOT cannot make at load.
                 // Value-type elements take the non-generic ICollection.Count path instead (else no
                 // count, which only loses the result-array pre-size, never a byte).
@@ -49,7 +49,7 @@ namespace Heddle.Extensions
                 }
                 else
                 {
-                    // P3-R9: reference-type instantiations share codegen, so this MakeGenericType is
+                    // Reference-type instantiations share codegen, so this MakeGenericType is
                     // AOT-safe; value-type elements never reach it.
                     _collectionCountReader = (ICountReader) Activator.CreateInstance(typeof(CountReader<>).MakeGenericType(elementType));
                 }
@@ -77,9 +77,11 @@ namespace Heddle.Extensions
                 {
                     probe?.TickDeadline();
                     var itemScope = scope.Model(item, index);
-                    var result = GetInnerResult(itemScope);
+                    // A bodiless @list has no inner result at all; the slot still has to hold a string,
+                    // because the concatenation below copies every slot.
+                    var result = GetInnerResult(itemScope) ?? string.Empty;
                     itemResults[index] = result;
-                    totalLength += result?.Length ?? 0;
+                    totalLength += result.Length;
                     index++;
                 }
 
@@ -155,7 +157,7 @@ namespace Heddle.Extensions
         /// <summary>Detects the reflection-order hazard: the element type the engine would pick is the
         /// first of several <c>IEnumerable&lt;T&gt;</c> implementations in reflection enumeration order,
         /// so no static answer exists. The build records a class-(b) refusal instead of blessing one.</summary>
-        [UnconditionalSuppressMessage("Trimming", "IL2070", Justification = "P3-R9: reflection over a model type; model types reach the engine through [HeddleModelAssembly]/typeof parameters annotated DynamicallyAccessedMemberTypes.All, which keeps their members through a trimmed publish.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2070", Justification = "Reflection over a model type; model types reach the engine through [HeddleModelAssembly]/typeof parameters annotated DynamicallyAccessedMemberTypes.All, which keeps their members through a trimmed publish.")]
         private static bool HasAmbiguousElementType(Type type, out string detail)
         {
             detail = null;

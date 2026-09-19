@@ -6,32 +6,33 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using Heddle.Precompiled;
 
-[assembly: HeddleCompiledTemplates(typeof(Heddle.Generated.HeddleArtifact), 4, "<version>")]
+[assembly: global::Heddle.Precompiled.HeddleCompiledTemplates(typeof(global::Heddle.Generated.HeddleArtifact), 4, "<version>")]
 
 namespace Heddle.Generated
 {
-    internal sealed class HeddleArtifact : IHeddleCompiledArtifact, IPrecompiledSiteTable
+    internal sealed class HeddleArtifact : global::Heddle.Precompiled.IHeddleCompiledArtifact,
+        global::Heddle.Precompiled.IPrecompiledSiteTable
     {
-        public Stream OpenArtifact()
+        public global::System.IO.Stream OpenArtifact()
         {
             var stream = typeof(HeddleArtifact).Assembly
                 .GetManifestResourceStream("Heddle.CompiledForm");
             if (stream == null)
-                throw new InvalidOperationException("Embedded resource " +
+                throw new global::System.InvalidOperationException("Embedded resource " +
                     "'Heddle.CompiledForm' is missing from '" +
                     typeof(HeddleArtifact).Assembly.FullName + "'.");
             return stream;
         }
 
         public string ArtifactDigest => "<digest>";
-        private static readonly Func<object, object> S_1_0 = M_1_0;
-        private static readonly Func<object, object> S_1_1 = M_1_1;
-        private static readonly Func<object, object> S_1_2 = M_1_2;
+        private static readonly global::System.Func<object, object> S_1_0 = M_1_0;
+        private static readonly global::System.Func<object, object> S_1_1 = M_1_1;
+        private static readonly global::System.Func<object, object> S_1_2 = M_1_2;
 
-        public bool TryGetSite(string templateContentHash, int templateIndex, int siteOrdinal, out Delegate site)
+        public bool TryGetSite(string templateContentHash, int templateIndex, int siteOrdinal, out global::System.Delegate site)
         {
             site = null;
-            if (templateIndex == 1 && string.Equals(templateContentHash, "<digest>", System.StringComparison.Ordinal))
+            if (templateIndex == 1 && string.Equals(templateContentHash, "<digest>", global::System.StringComparison.Ordinal))
             {
                 switch (siteOrdinal)
                 {
@@ -47,41 +48,41 @@ namespace Heddle.Generated
         private static object M_1_0(object model)
         {
             var v0 = (global::Heddle.Samples.Codegen.BuildInfo)model;
-            return v0 == null ? null : (object)v0.Project;
+            return (object)v0 == null ? null : (object)v0.Project;
         }
 
         private static object M_1_1(object model)
         {
             var v0 = (global::Heddle.Samples.Codegen.BuildInfo)model;
-            return v0 == null ? null : (object)v0.Version;
+            return (object)v0 == null ? null : (object)v0.Version;
         }
 
         private static object M_1_2(object model)
         {
             var v0 = (global::Heddle.Samples.Codegen.BuildInfo)model;
-            return v0 == null ? null : (object)v0.Commit;
+            return (object)v0 == null ? null : (object)v0.Commit;
         }
     }
 
     public static class Templates_Report
     {
-        private static HeddleTemplate _bound;
-        private static readonly object _bindLock = new object();
+        private static global::Heddle.HeddleTemplate boundTemplate;
+        private static readonly object bindLock = new object();
 
-        private static HeddleTemplate Bound()
+        private static global::Heddle.HeddleTemplate bind()
         {
-            var bound = _bound;
+            var bound = boundTemplate;
             if (bound == null)
-                lock (_bindLock)
+                lock (bindLock)
                 {
-                    bound = _bound;
+                    bound = boundTemplate;
                     if (bound == null)
                     {
-                        bound = PrecompiledTemplates.BindTyped(
+                        bound = global::Heddle.Precompiled.PrecompiledTemplates.BindTyped(
                             typeof(HeddleArtifact).Assembly,
                             "templates/report.heddle",
                             typeof(global::Heddle.Samples.Codegen.BuildInfo));
-                        _bound = bound;
+                        boundTemplate = bound;
                     }
                 }
             return bound;
@@ -89,17 +90,17 @@ namespace Heddle.Generated
 
         public static string Generate(global::Heddle.Samples.Codegen.BuildInfo model, object chained = null, object callerData = null)
         {
-            return Bound().Generate(model, chained, callerData);
+            return bind().Generate(model, chained, callerData);
         }
 
-        public static void Generate(global::Heddle.Samples.Codegen.BuildInfo model, TextWriter writer, object chained = null, object callerData = null)
+        public static void Generate(global::Heddle.Samples.Codegen.BuildInfo model, global::System.IO.TextWriter writer, object chained = null, object callerData = null)
         {
-            Bound().Generate(model, writer, chained, callerData);
+            bind().Generate(model, writer, chained, callerData);
         }
 
-        public static void Generate(global::Heddle.Samples.Codegen.BuildInfo model, System.Buffers.IBufferWriter<byte> writer, object chained = null, object callerData = null)
+        public static void Generate(global::Heddle.Samples.Codegen.BuildInfo model, global::System.Buffers.IBufferWriter<byte> writer, object chained = null, object callerData = null)
         {
-            Bound().Generate(model, writer, chained, callerData);
+            bind().Generate(model, writer, chained, callerData);
         }
     }
 }

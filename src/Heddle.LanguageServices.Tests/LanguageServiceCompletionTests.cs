@@ -32,6 +32,26 @@ namespace Heddle.LanguageServices.Tests
             Assert.DoesNotContain("Articles", labels); // that is Blog's member, not Article's
         }
 
+        /// <summary>A name the model type withholds — a <c>[Hidden]</c> override or <c>new</c> property, a field
+        /// or a method hiding a property — is not
+        /// offered from the base class that still declares it visibly, and binding it is the same positioned
+        /// <c>HED0001</c> the compiler raises.</summary>
+        [Fact]
+        public void MembersHiddenByTheDerivedTypeAreNotOfferedFromItsBase()
+        {
+            var labels = Complete("@model(){{Corpus.Bank}}\n@list(Accounts){{ @(§ }}");
+            Assert.Contains("Owner", labels);
+            Assert.Contains("Number", labels);
+            Assert.DoesNotContain("Secret", labels);
+            Assert.DoesNotContain("Token", labels);
+            Assert.DoesNotContain("Pin", labels);  // hidden by a field
+            Assert.DoesNotContain("Code", labels); // hidden by a method
+
+            using var service = CorpusFixture.NewTypedService();
+            var analysis = service.Analyze(Path, "@model(){{Corpus.Bank}}\n@list(Accounts){{ @(Secret)|@(Token)|@(Pin)|@(Code)|@(Owner) }}", 1);
+            Assert.Equal(4, analysis.Diagnostics.Count(d => d.Id == "HED0001"));
+        }
+
         [Fact] // C02 — root members via ::
         public void C02_RootReferenceOffersRootMembers()
         {

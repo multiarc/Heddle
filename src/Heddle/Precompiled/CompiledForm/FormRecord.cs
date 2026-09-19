@@ -488,6 +488,8 @@ namespace Heddle.Precompiled.CompiledForm
     internal sealed class FormRecord
     {
         private readonly Dictionary<OutputItem, FormItem> _items = new Dictionary<OutputItem, FormItem>();
+        private readonly Dictionary<OutputItem, OutputItem> _bodyOwners =
+            new Dictionary<OutputItem, OutputItem>();
         private readonly Dictionary<TemplateItem, FormItem> _byTemplate =
             new Dictionary<TemplateItem, FormItem>();
         private readonly Dictionary<IRuntimeParameter, FormParam> _params =
@@ -504,7 +506,7 @@ namespace Heddle.Precompiled.CompiledForm
         private readonly Dictionary<OutputItem, List<OutputItem>> _itemChildren =
             new Dictionary<OutputItem, List<OutputItem>>();
         private readonly List<FormRefusalData> _refusals = new List<FormRefusalData>();
-        // AC-6: the converted refusal parameters, so the site walk can give each refusal its walk ordinal.
+        // The converted refusal parameters, so the site walk can give each refusal its walk ordinal.
         private readonly Dictionary<CompiledParameter, int> _refusalParameters =
             new Dictionary<CompiledParameter, int>();
         private readonly Dictionary<int, int> _refusalOrdinals = new Dictionary<int, int>();
@@ -982,9 +984,21 @@ namespace Heddle.Precompiled.CompiledForm
             return _documents.Count - 1;
         }
 
+        /// <summary>Declares that a body a hook records for <paramref name="standIn"/> belongs to
+        /// <paramref name="owner"/>. A standalone function call initializes its carrier through a private
+        /// stand-in item at the call's own position; the artifact walks the call item, so a body recorded
+        /// against the stand-in would be dropped and the template could not materialize.</summary>
+        internal void SetBodyOwner(OutputItem standIn, OutputItem owner)
+        {
+            _bodyOwners[standIn] = owner;
+        }
+
         internal void RecordBody(OutputItem item, string rawText, string shapedText, ExType dataType,
             ExType chainedType, RuntimeDocument document)
         {
+            OutputItem owner;
+            if (_bodyOwners.TryGetValue(item, out owner))
+                item = owner;
             FormItem form;
             if (!_items.TryGetValue(item, out form))
                 return;
@@ -1164,35 +1178,43 @@ namespace Heddle.Precompiled.CompiledForm
             return row;
         }
 
-        internal static CompiledTypeRef ToTypeRef(ExType type)
+        internal CompiledTypeRef ToTypeRef(ExType type) => ToTypeRef(type, HostImplementationImages);
+
+        /// <summary>The conversion for a caller with no record in hand; <paramref name="hostImages"/> is the
+        /// owning compile's <see cref="HostImplementationImages"/>, or null.</summary>
+        internal static CompiledTypeRef ToTypeRef(ExType type, ISet<string> hostImages)
         {
             if (type == null || type.Type == null || DeferredResult.IsDeferred(type))
                 return null;
             if (type.IsDynamic)
                 return DynamicTypeRef.Instance;
-            return ToTypeRef(type.Type);
+            return ToTypeRef(type.Type, null, hostImages);
         }
 
-        private static CompiledTypeRef ToTypeRef(Type type, string member = null)
+        private CompiledTypeRef ToTypeRef(Type type, string member = null) =>
+            ToTypeRef(type, member, HostImplementationImages);
+
+        private static CompiledTypeRef ToTypeRef(Type type, string member, ISet<string> hostImages)
         {
             if (type == null)
                 return null;
             if (type.IsArray)
-                return new ArrayTypeRef(ToTypeRef(type.GetElementType(), member), type.GetArrayRank());
+                return new ArrayTypeRef(ToTypeRef(type.GetElementType(), member, hostImages),
+                    type.GetArrayRank());
             if (type.IsGenericType && !type.IsGenericTypeDefinition)
             {
                 var definition = type.GetGenericTypeDefinition();
                 var arguments = type.GetGenericArguments();
                 var converted = new CompiledTypeRef[arguments.Length];
                 for (int i = 0; i < arguments.Length; i++)
-                    converted[i] = ToTypeRef(arguments[i], member);
-                return new GenericTypeRef(ToNamed(definition, member), converted);
+                    converted[i] = ToTypeRef(arguments[i], member, hostImages);
+                return new GenericTypeRef(ToNamed(definition, member, hostImages), converted);
             }
 
-            return ToNamed(type, member);
+            return ToNamed(type, member, hostImages);
         }
 
-        private static NamedTypeRef ToNamed(Type type, string member)
+        private static NamedTypeRef ToNamed(Type type, string member, ISet<string> hostImages)
         {
             if (type.IsGenericParameter || type.IsByRef || type.IsPointer || type.FullName == null)
                 throw Refuse("type '" + type + "' has no nominal form" + (member == null ? "" : " at '" + member + "'"));
@@ -1206,22 +1228,22 @@ namespace Heddle.Precompiled.CompiledForm
                 throw Refuse("the assembly of type '" + type.FullName + "' is not readable");
             }
 
-            return new NamedTypeRef(type.FullName, assemblyName, IsFramework(type, assemblyName));
+            return new NamedTypeRef(type.FullName, assemblyName, IsFramework(type, assemblyName, hostImages));
         }
 
-        /// <summary>The simple names of the implementation images the build host was given (AC-4): a type
-        /// from one of them is never a framework type, wherever its assembly lives. Set by the host for the
-        /// duration of a compile; null (every other caller) excludes nothing.</summary>
-        internal static ISet<string> HostImplementationImages { get; set; }
+        /// <summary>The simple names of the implementation images the build host was given: a type
+        /// from one of them is never a framework type, wherever its assembly lives. Set by the host on each
+        /// compile's own record — two compiles in one process never see each other's set; null (every other
+        /// caller) excludes nothing.</summary>
+        internal ISet<string> HostImplementationImages { get; set; }
 
-        [UnconditionalSuppressMessage("SingleFile", "IL3000", Justification = "P3-R9: an empty Location (single-file/AOT) reads as not-framework below, which only widens the recorded identity.")]
-        private static bool IsFramework(Type type, string assemblyName)
+        [UnconditionalSuppressMessage("SingleFile", "IL3000", Justification = "An empty Location (single-file/AOT) reads as not-framework below, which only widens the recorded identity.")]
+        private static bool IsFramework(Type type, string assemblyName, ISet<string> images)
         {
             if (assemblyName == "Heddle" || assemblyName == "Heddle.Language" ||
                 assemblyName == "Antlr4.Runtime.Standard" ||
                 assemblyName.StartsWith("Microsoft.CodeAnalysis", StringComparison.Ordinal))
                 return false;
-            var images = HostImplementationImages;
             if (images != null && images.Contains(assemblyName))
                 return false;
             string location;
@@ -1770,9 +1792,9 @@ namespace Heddle.Precompiled.CompiledForm
             {
                 if (dynamic.MemberIndex < 0 || dynamic.MemberIndex >= _members.Count)
                     throw Refuse("a member path reference is out of range");
-                // Root and non-root dynamic paths share one stored form (AC-7's "dynamic path (segments)"):
+                // Root and non-root dynamic paths share one stored form (the dynamic path's segments):
                 // a hop the engine classifies DynamicHop records no identity and binds through the engine's
-                // dynamic parameter at load (AC-5), so there is nothing root-specific to store.
+                // dynamic parameter at load, so there is nothing root-specific to store.
                 return new CompiledParameter
                 {
                     Kind = CompiledParameterKind.DynamicPath,
@@ -1978,7 +2000,7 @@ namespace Heddle.Precompiled.CompiledForm
             _refusalOrdinals.Clear();
             WalkSites(artifact, row);
             row.SiteCount = artifact.Sites.Count;
-            // AC-6: a refusal-class site is a row in Sites at its walk ordinal, and the row's refusal
+            // A refusal-class site is a row in Sites at its walk ordinal, and the row's refusal
             // list carries that ordinal (not its own index), which is what strict load names.
             foreach (var pair in _refusalOrdinals)
             {
@@ -1994,7 +2016,7 @@ namespace Heddle.Precompiled.CompiledForm
 
         private void WalkSites(CompiledArtifact artifact, CompiledTemplateRow row)
         {
-            // First-visit order (AC-6): a self-recursive definition's caller-content document is one of its
+            // First-visit order: a self-recursive definition's caller-content document is one of its
             // own ancestors, so the document graph is cyclic and an unguarded walk never terminates. Each
             // document's sites are enumerated once, at first visit.
             var walked = new HashSet<int>();

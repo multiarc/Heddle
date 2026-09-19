@@ -8,7 +8,7 @@ namespace Heddle.Language
     /// out of the directive stream, by both tiers. Reading them is not the build predicting what an extension does;
     /// it is the build reading the language's own keywords, exactly as the parse listener reads <c>@&lt;&lt;</c>.</para>
     /// <para>They live here rather than in the emitter so there is one spelling of each, shared by every tier that
-    /// reads it, and so the ledger row that records them says "grammar keyword" in the file that owns the grammar.</para>
+    /// reads it, in the file that owns the grammar's keywords.</para>
     /// </summary>
     internal static class DirectiveNames
     {

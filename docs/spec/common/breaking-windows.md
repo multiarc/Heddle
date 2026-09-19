@@ -423,6 +423,7 @@ The full 2.1 table (2.0.0 state and as-implemented text per item) is in git hist
 | 8 | Host ≠ target runtime: a BCL member absent on the target framework is a load-time gate fallback, not a build error | `ValidateAll` on the target before serving | The gauntlet's member-binding step |
 | 9 | Registry validation gains member-path and late-bound-function checks with must-surface reasons | — | `PrecompiledGauntlet`; `HED7101`–`HED7104` |
 | 10 | Spec records: `shared-source-architecture.md` reduced to what still governs; D4 superseded by a dated note; generator rules leave `.claude/rules` | — | Done on this tree |
+| 11 | Member resolution is decided by the **most-derived declaration** of a name: a `[Hidden]` override, a `[Hidden]`/non-public/`static` `new` property, or a field or method of that name makes the name not-found (`HED0001`) instead of binding the base class's visible property. A sandbox fix — the 2.x walk rendered a hidden override's value through virtual dispatch — and a narrowing: a template that reached a base member through such a derived type stops compiling | Expose the value under a name the derived type does not hide | `MemberPathWalk`; `HiddenMemberShadowingTests`; CHANGELOG 3.0.0 § Fixed; [patterns.md](../../patterns.md#exposing-models-to-untrusted-templates) |
 
 **Accepted residue, recorded rather than glossed.** Roslyn has no per-reference suppression for
 `CS8002` — the warning carries no source location and the `Csc` task takes only a project-wide disabled

@@ -11,7 +11,13 @@ namespace Heddle.Tool
     /// </summary>
     public static class Program
     {
-        public static int Main(string[] args) => Run(args, Console.Out, Console.Error);
+        public static int Main(string[] args)
+        {
+            // What a build writes must not depend on the machine's regional settings.
+            System.Globalization.CultureInfo.DefaultThreadCurrentCulture = System.Globalization.CultureInfo.InvariantCulture;
+            System.Globalization.CultureInfo.CurrentCulture = System.Globalization.CultureInfo.InvariantCulture;
+            return Run(args, Console.Out, Console.Error);
+        }
 
         /// <summary>Runs the CLI with injectable streams (testable). Returns a process exit code.</summary>
         public static int Run(string[] args, TextWriter stdout, TextWriter stderr)

@@ -79,7 +79,7 @@ namespace Heddle.Native
         /// white-box test project sets it.</summary>
         internal static Action<Assembly> CreateObserver;
 
-        [UnconditionalSuppressMessage("SingleFile", "IL3000", Justification = "P3-R9: the C# tier is outside the AOT claim; guarded by HeddleFeatures.CSharpTierEnabled, which ILLink.Substitutions.xml stubs to false in a trimmed publish, so this is dead code there.")]
+        [UnconditionalSuppressMessage("SingleFile", "IL3000", Justification = "The C# tier is outside the AOT claim; guarded by HeddleFeatures.CSharpTierEnabled, which ILLink.Substitutions.xml stubs to false in a trimmed publish, so this is dead code there.")]
         private static MetadataReference CreateSafe(Assembly assembly)
         {
             CreateObserver?.Invoke(assembly);

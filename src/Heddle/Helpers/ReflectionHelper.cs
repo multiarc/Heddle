@@ -53,7 +53,7 @@ namespace Heddle.Helpers
         /// Rebuilds the name maps from the current assembly set and publishes them in one write, so a concurrent
         /// resolve sees either the whole old set or the whole new one.
         /// </summary>
-        [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "P3-R9 (D11): enumerates the registered assemblies for name resolution; a trimmed publish keeps the types the host's DynamicallyAccessedMembers roots keep, and a type it removed is one no template could name.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Enumerates the registered assemblies for name resolution; a trimmed publish keeps the types the host's DynamicallyAccessedMembers roots keep, and a type it removed is one no template could name.")]
         public static void Reconfigure()
         {
             var shortNames = new Dictionary<string, List<Type>>();
@@ -67,6 +67,13 @@ namespace Heddle.Helpers
                     try
                     {
                         return a.GetTypes();
+                    }
+                    catch (ReflectionTypeLoadException partial)
+                    {
+                        // One type whose base class or interface cannot load — a controller, when the
+                        // process does not run on the web framework — must not cost the assembly's other
+                        // types their names. The types that did load are all here; the rest are null.
+                        return partial.Types.Where(t => t != null);
                     }
                     catch
                     {
@@ -150,7 +157,7 @@ namespace Heddle.Helpers
 
         public bool IsClass => _innerType.GetTypeInfo().IsClass;
 
-        [UnconditionalSuppressMessage("Trimming", "IL2080", Justification = "P3-R9: reflection over a model type; model types reach the engine through [HeddleModelAssembly]/typeof parameters annotated DynamicallyAccessedMemberTypes.All, which keeps their members through a trimmed publish.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2080", Justification = "Reflection over a model type; model types reach the engine through [HeddleModelAssembly]/typeof parameters annotated DynamicallyAccessedMemberTypes.All, which keeps their members through a trimmed publish.")]
         public bool IsImplement(Type type)
         {
             if (type == null)
@@ -210,7 +217,7 @@ namespace Heddle.Helpers
             /// <summary>The CLR's own resolution of an assembly-qualified spelling, over the assemblies the host
             /// has loaded. The build tier answers the same question against a compilation's references instead,
             /// which is why this arm is the seam's and not the ladder's.</summary>
-            [UnconditionalSuppressMessage("Trimming", "IL2057", Justification = "P3-R9 (D11): resolves an identity the engine recorded itself over registered/loaded assemblies; a trimmed publish resolves only what it kept, and a miss reads as unresolved (a diagnostic or gauntlet mismatch), never a crash.")]
+            [UnconditionalSuppressMessage("Trimming", "IL2057", Justification = "Resolves an identity the engine recorded itself over registered/loaded assemblies; a trimmed publish resolves only what it kept, and a miss reads as unresolved (a diagnostic or gauntlet mismatch), never a crash.")]
             public bool TryResolveAssemblyQualified(string spelling, out Type type)
             {
                 type = Type.GetType(spelling, false);
@@ -372,11 +379,11 @@ namespace Heddle.Helpers
                 return false;
             }
 
-            [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "P3-R9 (D11): resolves an identity the engine recorded itself over registered/loaded assemblies; a trimmed publish resolves only what it kept, and a miss reads as unresolved (a diagnostic or gauntlet mismatch), never a crash.")]
+            [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "Resolves an identity the engine recorded itself over registered/loaded assemblies; a trimmed publish resolves only what it kept, and a miss reads as unresolved (a diagnostic or gauntlet mismatch), never a crash.")]
             public Type MakeArray(Type elementType) => elementType.MakeArrayType();
 
-            [UnconditionalSuppressMessage("Trimming", "IL2055", Justification = "P3-R9 (D11): resolves an identity the engine recorded itself over registered/loaded assemblies; a trimmed publish resolves only what it kept, and a miss reads as unresolved (a diagnostic or gauntlet mismatch), never a crash.")]
-            [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "P3-R9 (D11): resolves an identity the engine recorded itself over registered/loaded assemblies; a trimmed publish resolves only what it kept, and a miss reads as unresolved (a diagnostic or gauntlet mismatch), never a crash.")]
+            [UnconditionalSuppressMessage("Trimming", "IL2055", Justification = "Resolves an identity the engine recorded itself over registered/loaded assemblies; a trimmed publish resolves only what it kept, and a miss reads as unresolved (a diagnostic or gauntlet mismatch), never a crash.")]
+            [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "Resolves an identity the engine recorded itself over registered/loaded assemblies; a trimmed publish resolves only what it kept, and a miss reads as unresolved (a diagnostic or gauntlet mismatch), never a crash.")]
             public bool TryMakeGeneric(Type definition, IReadOnlyList<Type> arguments, out Type constructed)
             {
                 constructed = null;
@@ -390,7 +397,7 @@ namespace Heddle.Helpers
                 return true;
             }
 
-            [UnconditionalSuppressMessage("Trimming", "IL2057", Justification = "P3-R9 (D11): resolves an identity the engine recorded itself over registered/loaded assemblies; a trimmed publish resolves only what it kept, and a miss reads as unresolved (a diagnostic or gauntlet mismatch), never a crash.")]
+            [UnconditionalSuppressMessage("Trimming", "IL2057", Justification = "Resolves an identity the engine recorded itself over registered/loaded assemblies; a trimmed publish resolves only what it kept, and a miss reads as unresolved (a diagnostic or gauntlet mismatch), never a crash.")]
             public bool TryGetValueTupleDefinition(int arity, out Type definition)
             {
                 definition = Type.GetType("System.ValueTuple`" + arity, false);

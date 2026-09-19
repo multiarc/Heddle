@@ -8,14 +8,14 @@ import CSharp;
 
 tokens {
     TEXT, WS, IMPORT_TOKEN, ID, ROOT_REF, MEMBER_P, OUT, SUB_START, SUB_CLOSE, CSHARP_END, CSHARP_TOKEN, CSHARP_START, DEF_STARTNAME, DEF_ENDNAME, DELIM, DEF_START, DEF_CLOSE, RAW, OUT_PARAMSTART, OUT_PARAMEND, DEF_OUT,
-    // NEW (phase 1 — native expressions):
+    // Native expressions:
     TRUE, FALSE, NULL, INT_LIT, REAL_LIT, STRING_LIT, CHAR_LIT,
     OP_QQ, OP_QUESTION, OP_AND, OP_OR, OP_EQ, OP_NEQ,
     OP_LSHIFT, OP_RSHIFT, OP_LE, OP_GE, OP_LT, OP_GT,
     OP_PLUS, OP_MINUS, OP_STAR, OP_SLASH, OP_PERCENT,
     OP_AMP, OP_PIPE, OP_CARET, OP_NOT, OP_TILDE,
     LBRACKET, RBRACKET, COMMA,
-    // NEW (phase 5 — props & slots):
+    // Props & slots:
     THIS, ASSIGN
 }
 
@@ -57,7 +57,7 @@ DEF_START: DEF_ST -> pushMode(DEF);
 
 START_IMPORT: IMP -> type(IMPORT_TOKEN), pushMode(IMPORT_MODE);
 
-// Phase 2 (post-2.0) — the literal-@ escape: '@@' re-types to RAW and collapses to a single '@' via the
+// The literal-@ escape: '@@' re-types to RAW and collapses to a single '@' via the
 // raw-substitution path (ParseContext.CreateRawOutputItem special-cases the two-char "@@"). The trailing
 // semantic predicate is the comment-adjacency guard: when the character after the pair is '*', the second
 // '@' begins a comment ('@*…*@'), so the escape must not fire and the lexer falls back to the one-char
@@ -86,7 +86,7 @@ SUB_DEF_START: DEF_ST -> type(DEF_START), pushMode(DEF);
 
 SUB_START_IMPORT: IMP -> type(IMPORT_TOKEN), pushMode(IMPORT_MODE);
 
-// Phase 2 (post-2.0) — the SUB_BLOCK mirror of AT_ESCAPE (same comment-adjacency guard).
+// The SUB_BLOCK mirror of AT_ESCAPE (same comment-adjacency guard).
 SUB_AT_ESCAPE: '@@' {InputStream.LA(1) != '*'}? -> type(RAW);
 
 SUB_START_OUT: OUT_ST WS* -> type(OUT), pushMode(OUT_MODE);
@@ -101,7 +101,7 @@ DEF_COMMENT: COMMENT_BLOCK -> channel(HIDDEN);
 DEF_STARTNAME: DEF_STNAME;
 TYPE_ID: ID_TYPE -> type(ID);
 DEF_ENDNAME: DEF_CLNAME;
-// NEW (phase 5) — a '(' after the definition name opens the prop list. Reuses the OUT_PARAMSTART
+// A '(' after the definition name opens the prop list. Reuses the OUT_PARAMSTART
 // token type; pushes the dedicated DEF_PROPS mode (it does NOT push CALL — the declaration surface
 // has its own vocabulary). '(' is a token-recognition error in DEF mode today, so no existing
 // template's token stream can change.
@@ -113,7 +113,7 @@ DELIM: EXT_DELIM;
 DEF_CLOSE: DEF_CL -> popMode;
 DEF_WS: WS+ -> channel(HIDDEN);
 
-// NEW (phase 5) — the prop-declaration surface. Reachable solely through DEF_PROPSTART, whose trigger
+// The prop-declaration surface. Reachable solely through DEF_PROPSTART, whose trigger
 // character '(' is a token error in DEF mode today; therefore no existing template's token stream can
 // change (ANTLR only matches rules of the current mode) and the ten existing DEF rules are byte-identical.
 mode DEF_PROPS;
@@ -137,7 +137,7 @@ DEFP_FALSE: 'false' SINGLE_LINE_WS* -> type(FALSE);
 DEFP_NULL:  'null'  SINGLE_LINE_WS* -> type(NULL);
 
 // Literals for defaults (fragments from CSharp.g4). REAL before INT is cosmetic — maximal munch already
-// prefers '1.5' over '1'. The string rule deliberately mirrors phase 1's CALL_STRING (no UTF8_SUFFIX).
+// prefers '1.5' over '1'. The string rule deliberately mirrors the call surface's CALL_STRING (no UTF8_SUFFIX).
 DEFP_REAL:   REAL -> type(REAL_LIT);
 DEFP_INT:    INT  -> type(INT_LIT);
 DEFP_STRING: '"' REGULAR_STRING_LITERALS? '"' -> type(STRING_LIT);
@@ -239,7 +239,7 @@ CALL_TRUE:  'true'  WS* -> type(TRUE);
 CALL_FALSE: 'false' WS* -> type(FALSE);
 CALL_NULL:  'null'  WS* -> type(NULL);
 
-// NEW (phase 5) — the 'this' keyword. Same trailing-WS* technique as CALL_TRUE et al.: CALL_ID is
+// The 'this' keyword. Same trailing-WS* technique as CALL_TRUE et al.: CALL_ID is
 // ID_TOKEN WS*, so a bare 'this' rule would lose maximal munch for input "this " (5 chars via CALL_ID
 // vs 4). Equal lengths make rule order decide, so this precedes CALL_ID.
 CALL_THIS: 'this' WS* -> type(THIS);

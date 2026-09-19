@@ -38,7 +38,8 @@ namespace Heddle.Tool.Compile
                     ModelSpelling = spelling ?? string.Empty
                 };
                 stubs.Add(entry);
-                if (!string.IsNullOrEmpty(spelling) && images.ResolveModelType(spelling) == null &&
+                if (!string.IsNullOrEmpty(spelling) &&
+                    images.ResolveModelType(spelling, ScanUsingDirectives(template.Text)) == null &&
                     seenUnresolved.Add(spelling))
                     unresolved.Add(spelling);
             }

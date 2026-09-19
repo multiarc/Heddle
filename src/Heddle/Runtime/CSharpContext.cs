@@ -170,13 +170,25 @@ namespace Heddle.Runtime
                 // reference set was taken at, so the entry can only ever be stamped with the set it was built from.
                 var preparsed = Preparse(generatedCode, context, expressionOptions, out var generation);
                 cached = new PreparseResult(preparsed.Item1, preparsed.Item2,
-                    context.CompileErrors.Skip(firstDiagnostic).Select(e => e.Error).ToArray(), generation);
+                    context.CompileErrors.Skip(firstDiagnostic)
+                        .Select(e => new PreparseDiagnostic(e.Error, e is HeddleCompileWarning)).ToArray(),
+                    generation);
                 PreparseCache.Store(generatedCode, cached);
             }
             else
             {
-                foreach (var message in cached.Diagnostics)
-                    context.CompileErrors.Add(message.ToError(expressionOptions.Position));
+                // Replayed at the severity the compiler gave it: a warning that came back as an error would
+                // fail every caller after the first over code the first caller compiled successfully.
+                foreach (var diagnostic in cached.Diagnostics)
+                {
+                    context.CompileErrors.Add(diagnostic.IsWarning
+                        ? new HeddleCompileWarning
+                        {
+                            Error = diagnostic.Message,
+                            Position = expressionOptions.Position
+                        }
+                        : diagnostic.Message.ToError(expressionOptions.Position));
+                }
             }
 
             objectType = cached.Type;
@@ -226,8 +238,8 @@ namespace Heddle.Runtime
             }
         }
 
-        [UnconditionalSuppressMessage("Trimming", "IL2057", Justification = "P3-R9: the C# tier is outside the AOT claim; guarded by HeddleFeatures.CSharpTierEnabled, which ILLink.Substitutions.xml stubs to false in a trimmed publish, so this is dead code there.")]
-        [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "P3-R9: the C# tier is outside the AOT claim; guarded by HeddleFeatures.CSharpTierEnabled, which ILLink.Substitutions.xml stubs to false in a trimmed publish, so this is dead code there.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2057", Justification = "The C# tier is outside the AOT claim; guarded by HeddleFeatures.CSharpTierEnabled, which ILLink.Substitutions.xml stubs to false in a trimmed publish, so this is dead code there.")]
+        [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "The C# tier is outside the AOT claim; guarded by HeddleFeatures.CSharpTierEnabled, which ILLink.Substitutions.xml stubs to false in a trimmed publish, so this is dead code there.")]
         private ExType ResolveTypeReference(CompileContext context,
             ExpressionOptions expressionOptions, ITypeSymbol type)
         {

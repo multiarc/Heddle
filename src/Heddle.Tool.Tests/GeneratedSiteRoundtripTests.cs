@@ -42,6 +42,7 @@ namespace Heddle.Tool.Tests
     /// and the bytes equal the dynamic tier on all three sinks — over null and full models. A declined
     /// site (an internal getter, an engine-internal built-in call) is listed in HED7031, rebuilds from
     /// data, and still parities — but never under strict load, which names it instead of compiling it.</summary>
+    [Collection("PrecompiledProcessStateSerial")]
     public class GeneratedSiteRoundtripTests : IDisposable
     {
         private readonly string _dir;
@@ -286,7 +287,7 @@ namespace Heddle.Tool.Tests
                 {
                 }
 
-                if (string.IsNullOrEmpty(location) || !seen.Add(location))
+                if (string.IsNullOrEmpty(location) || !File.Exists(location) || !seen.Add(location))
                     continue;
                 references.Add(MetadataReference.CreateFromFile(location));
             }

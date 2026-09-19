@@ -18,7 +18,7 @@ namespace Heddle.Precompiled.CompiledForm
                 throw new ArgumentException("At least one artifact is required.", nameof(parts));
             if (parts.Count == 1)
                 return parts[0];
-            // AC-9: rows in ordinal key order, whatever order the parts arrived in, so item or
+            // Rows in ordinal key order, whatever order the parts arrived in, so item or
             // response-file order cannot change the artifact's bytes or digest.
             var ordered = new List<CompiledArtifact>(parts);
             ordered.Sort((a, b) => string.CompareOrdinal(FirstKey(a), FirstKey(b)));
@@ -96,7 +96,7 @@ namespace Heddle.Precompiled.CompiledForm
                 case CompiledSiteKind.EmbeddedCSharp:
                     return csharp;
                 case CompiledSiteKind.Refusal:
-                    // A refusal row's payload indexes its own template row's RefusalSites list (AC-6),
+                    // A refusal row's payload indexes its own template row's RefusalSites list,
                     // which is per row and never rebased.
                     return 0;
                 default:

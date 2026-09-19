@@ -13,7 +13,7 @@ export class HeddleLexerExtended extends HeddleLexer {
         this.addErrorListener(new HeddleErrorListener(context));
     }
 
-    // Phase 2 (post-2.0) — JS-target translation of the grammar's comment-adjacency
+    // JS-target translation of the grammar's comment-adjacency
     // guard on AT_ESCAPE / SUB_AT_ESCAPE ('@@' {InputStream.LA(1) != '*'}? -> type(RAW)).
     // The predicate action in HeddleLexer.g4 is written for the C# target
     // (`InputStream` property, char literal); the ANTLR JavaScript target copies it

@@ -246,7 +246,7 @@ namespace Heddle.Runtime {
         /// <param name="absoluteTextPosition">Usage position in the source text</param>
         /// <param name="context">Parser context for definition resolution</param>
         /// <returns>An <see cref="IExtension"/> instance, or null on error</returns>
-        [UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "P3-R9: the registry is fed by LoadExtensions, whose types the DynamicDependency roots on LoadBaseExtensions and the [ExportExtensions(typeof(...))] parameter annotation preserve.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "The registry is fed by LoadExtensions, whose types the DynamicDependency roots on LoadBaseExtensions and the [ExportExtensions(typeof(...))] parameter annotation preserve.")]
         public static IExtension Create(string templateName, BlockPosition absoluteTextPosition, ParseContext context, CompileContext compileContext)
         {
             if (templateName == null)
@@ -303,7 +303,7 @@ namespace Heddle.Runtime {
         /// Loads all built-in extensions from this assembly.
         /// </summary>
         /// <returns>All discovered extensions.</returns>
-        // P3-R9 rooting story: LoadExtensions enumerates the engine assembly, which trimming would
+        // Trimming roots: LoadExtensions enumerates the engine assembly, which trimming would
         // otherwise empty. One root per built-in extension type keeps CreateExtension's
         // Activator.CreateInstance working after trimming; host extensions are rooted by the
         // typeof in [ExportExtensions]/[ExportFunctions]/[HeddleModelAssembly].
@@ -350,7 +350,7 @@ namespace Heddle.Runtime {
         /// unresolvable reference — a plugin built against a version the host does not have — would otherwise throw
         /// <see cref="ReflectionTypeLoadException"/> out of the host's startup call.
         /// </summary>
-        [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "P3-R9: the enumeration is the discovery the DynamicDependency roots on LoadBaseExtensions preserve; a host assembly is enumerated only through [ExportExtensions] in its parameterless form, which a trimmed host does not use.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "The enumeration is the discovery the DynamicDependency roots on LoadBaseExtensions preserve; a host assembly is enumerated only through [ExportExtensions] in its parameterless form, which a trimmed host does not use.")]
         internal static IEnumerable<ExtensionType> LoadExtensions (Assembly assembly)
         {
             Type[] types;

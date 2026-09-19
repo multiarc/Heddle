@@ -25,6 +25,7 @@ namespace Heddle.Tool.Compile
             text.Append("trim-directive-lines=").Append(request.TrimDirectiveLines ?? string.Empty).Append('\n');
             text.Append("max-recursion-count=").Append(request.MaxRecursionCount ?? string.Empty).Append('\n');
             text.Append("generated-namespace=").Append(request.GeneratedNamespace ?? string.Empty).Append('\n');
+            text.Append("assembly-name=").Append(request.AssemblyName ?? string.Empty).Append('\n');
             foreach (var template in templates)
             {
                 text.Append("template=").Append(template.Item.Path).Append('|')

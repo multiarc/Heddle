@@ -195,6 +195,39 @@ namespace Heddle.Tests
         /// suite here does. What reddens is any walk on an observation pass, which is where both the deleted walk and
         /// the review's reimplementation of it lived.</para>
         /// </summary>
+        /// <summary>
+        /// A registered assembly may hold a type this process cannot load — its base class lives in an assembly
+        /// that is not there (a controller, when the build host does not run on the web framework). Pins the
+        /// regression where that one type cost every other type of the assembly its name: enumerating the types
+        /// threw, the whole assembly was skipped, and a model declared right beside it did not resolve.
+        /// </summary>
+        [Fact]
+        public void ATypeThatCannotLoadDoesNotHideItsNeighboursFromTypeResolution()
+        {
+            var suffix = Guid.NewGuid().ToString("N").Substring(0, 12);
+            var baseBytes = CompileAs("MissingBase" + suffix,
+                "namespace MissingBase" + suffix + " { public class Root { } }");
+            var references = AssemblyHelper.GetApplicationReferences();
+            references.Add(MetadataReference.CreateFromImage(baseBytes));
+            var compilation = CSharpCompilation.Create("Neighbours" + suffix,
+                new[]
+                {
+                    CSharpSyntaxTree.ParseText(
+                        "namespace Neighbours" + suffix + " { public class Broken : MissingBase" + suffix +
+                        ".Root { } public class Model" + suffix + " { public string Name { get; set; } } }")
+                },
+                references, new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+            using var image = new MemoryStream();
+            Assert.True(compilation.Emit(image).Success);
+            // The base assembly is never loaded, so GetTypes() on this one throws ReflectionTypeLoadException.
+            var neighbours = Assembly.Load(image.ToArray());
+            Assert.Throws<ReflectionTypeLoadException>(() => neighbours.GetTypes());
+
+            HeddleTemplate.Register(neighbours);
+            var resolved = ReflectionHelper.ResolveType("Model" + suffix, "Neighbours" + suffix);
+            Assert.Equal("Neighbours" + suffix + ".Model" + suffix, resolved.FullName);
+        }
+
         [Fact]
         public void ObservingAndRenderingLoadsNoReferencedAssembly()
         {

@@ -26,7 +26,7 @@ namespace Heddle.Tool.Compile.Sites
         internal readonly List<string> CSharpUsings = new List<string>();
     }
 
-    /// <summary>Prints the generated sites for one template (P3-R2): one typed static method per
+    /// <summary>Prints the generated sites for one template: one typed static method per
     /// member accessor, native expression and embedded C# site, addressable by site id through the
     /// site table. Reads the build's in-memory form record (live types, bound trees) correlated by
     /// payload index against the merged artifact rows; a site the rules decline prints nothing and
@@ -64,7 +64,7 @@ namespace Heddle.Tool.Compile.Sites
                         PrintCSharp(input, row, output);
                         break;
                     default:
-                        // Late-bound and refusal rows are data by decision (P3-R2 declines nothing
+                        // Late-bound and refusal rows are data by design (the printer declines nothing
                         // here): the table carries no delegate and the loader rebuilds or, under
                         // strict load, throws the site's own kind.
                         break;
@@ -108,7 +108,7 @@ namespace Heddle.Tool.Compile.Sites
                 TemplateIndex = input.TemplateIndex,
                 Ordinal = row.SiteOrdinal,
                 Kind = "MemberAccessor",
-                DelegateType = "Func<object, object>",
+                DelegateType = "global::System.Func<object, object>",
                 FieldName = "S_" + input.TemplateIndex + "_" + row.SiteOrdinal,
                 MethodName = methodName,
                 MethodCode = code
@@ -132,7 +132,7 @@ namespace Heddle.Tool.Compile.Sites
 
             if (tree.Deferred)
             {
-                // Late-bound sites are never generated (P3-R2); the load registry binds them.
+                // Late-bound sites are never generated; the load registry binds them.
                 output.Declines.Add(new SiteDecline("NativeExpression", row.SiteOrdinal, position,
                     "deferred call binds at load"));
                 return;
@@ -154,8 +154,8 @@ namespace Heddle.Tool.Compile.Sites
                 Ordinal = row.SiteOrdinal,
                 Kind = "NativeExpression",
                 DelegateType = tree.UsesProps
-                    ? "Func<object, object, object, object[], object>"
-                    : "Func<object, object, object, object>",
+                    ? "global::System.Func<object, object, object, object[], object>"
+                    : "global::System.Func<object, object, object, object>",
                 FieldName = "S_" + input.TemplateIndex + "_" + row.SiteOrdinal,
                 MethodName = methodName,
                 MethodCode = code
@@ -221,7 +221,7 @@ namespace Heddle.Tool.Compile.Sites
                 TemplateIndex = input.TemplateIndex,
                 Ordinal = row.SiteOrdinal,
                 Kind = "CSharp",
-                DelegateType = "Func<object, object, object, object>",
+                DelegateType = "global::System.Func<object, object, object, object>",
                 FieldName = "S_" + input.TemplateIndex + "_" + row.SiteOrdinal,
                 MethodName = null,
                 MethodCode = wrapper
@@ -246,7 +246,7 @@ namespace Heddle.Tool.Compile.Sites
         {
             sb.Append("            if (templateIndex == ").Append(templateIndex)
                 .Append(" && string.Equals(templateContentHash, \"").Append(contentHash)
-                .Append("\", System.StringComparison.Ordinal))\n");
+                .Append("\", global::System.StringComparison.Ordinal))\n");
             sb.Append("            {\n");
             sb.Append("                switch (siteOrdinal)\n");
             sb.Append("                {\n");

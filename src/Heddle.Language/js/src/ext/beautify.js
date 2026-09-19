@@ -224,8 +224,8 @@ function splitTopLevel(atoms) {
  * Format a Heddle document held in an Ace EditSession.
  *
  * The formatter is deliberately conservative: HTML, text, `@*…*@` comments and
- * string/char literals outside directives are reproduced **verbatim** (WS4 task
- * 4 - no text/HTML reflow). Only three things are rewritten, and each is a pure
+ * string/char literals outside directives are reproduced **verbatim**
+ * (no text/HTML reflow). Only three things are rewritten, and each is a pure
  * function of the token stream so the whole pass is idempotent:
  *   1. `@elif`/`@elseif`/`@else` get exactly one space after a closing `}}`.
  *   2. Native-expression regions inside `@(…)` / `@out(…)` get normalized

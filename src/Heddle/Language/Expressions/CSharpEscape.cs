@@ -66,7 +66,7 @@ namespace Heddle.Language.Expressions
                 case '\t': sb.Append("\\t"); return;
                 case '\v': sb.Append("\\v"); return;
                 default:
-                    if (c < 0x20 || IsSurrogate(c))
+                    if (c < 0x20 || IsSurrogate(c) || IsLineTerminator(c))
                         sb.Append("\\u").Append(((int) c).ToString("x4"));
                     else
                         sb.Append(c);
@@ -75,6 +75,10 @@ namespace Heddle.Language.Expressions
         }
 
         private static bool IsSurrogate(char c) => c >= '\uD800' && c <= '\uDFFF';
+
+        /// <summary>The line terminators C# recognizes beyond CR and LF. Raw inside a regular literal they end
+        /// the line, and the literal with it.</summary>
+        private static bool IsLineTerminator(char c) => c == '\u0085' || c == '\u2028' || c == '\u2029';
 
         /// <summary>Whether <paramref name="value"/> contains an unpaired surrogate. Defined via <see cref="IndexOfLoneSurrogate"/> to ensure consistency.</summary>
         public static bool HasLoneSurrogate(string value) => IndexOfLoneSurrogate(value) >= 0;

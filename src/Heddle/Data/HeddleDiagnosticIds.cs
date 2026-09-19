@@ -346,7 +346,7 @@ namespace Heddle.Data
         public const string BuildImplementationImageNotLoaded = "HED7036";
 
         /// <summary>A retired MSBuild property (<c>HeddleObserveEngine</c>, <c>HeddleNodeFallback</c>,
-        /// <c>HeddleEmitUtf8Pieces</c>) is set; it is ignored. Warned in phase 4; the observe-path
+        /// <c>HeddleEmitUtf8Pieces</c>) is set; it is ignored. A warning, not an error; the observe-path
         /// properties retire silently.
         /// <para>Supersedes the retired narrower 2.x observe-configuration facts: a stale option is one
         /// warning under this id, not a fact per option.</para></summary>

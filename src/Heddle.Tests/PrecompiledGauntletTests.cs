@@ -218,6 +218,50 @@ namespace Heddle.Tests
             Assert.Equal(PrecompiledFallbackReason.OptionsMismatch, evt.Value.Reason);
         }
 
+        /// <summary>Registration can run before the model's assembly has loaded — a module initializer, a
+        /// plugin host. Pins the regression where the model type was resolved once, at registration, so such an
+        /// entry reported <c>live=&lt;unresolved&gt;</c> for the life of the process; it now resolves on the first
+        /// read after the assembly arrives, and a materialization attempted too early leaves no memoized
+        /// fault behind.</summary>
+        [Fact]
+        public void AModelTypeWhoseAssemblyLoadsAfterRegistrationResolvesOnTheNextRequest()
+        {
+            string assemblyName = "LateModel_" + Guid.NewGuid().ToString("N");
+            var artifact = CompiledFormHarness.MinimalArtifact();
+            var template = CompiledFormHarness.TemplateRow("views/late-model.heddle",
+                modelType: CompiledFormHarness.TypeRef("LateModels.Late", assemblyName));
+            artifact.Templates.Add(template);
+            var entry = CompiledFormHarness.LoaderRow(artifact);
+
+            Assert.Null(entry.ModelType);
+            var early = Run(entry, Match());
+            Assert.NotNull(early);
+            Assert.Equal(PrecompiledFallbackReason.MemberBindingMismatch, early.Value.Reason);
+            Assert.Equal("Type 'LateModels.Late, " + assemblyName + "': manifest=" + assemblyName + " live=<unresolved>",
+                early.Value.Detail);
+            Assert.Null(entry.GetStrategy(Match()));
+            Assert.True(entry.TryGetRequestFault(Match(), out var reason, out _));
+            Assert.Equal(PrecompiledFallbackReason.MemberBindingMismatch, reason);
+
+            var compilation = Microsoft.CodeAnalysis.CSharp.CSharpCompilation.Create(assemblyName,
+                new[]
+                {
+                    Microsoft.CodeAnalysis.CSharp.CSharpSyntaxTree.ParseText(
+                        "namespace LateModels { public class Late { public string Name { get; set; } } }")
+                },
+                Heddle.Native.AssemblyHelper.GetApplicationReferences(),
+                new Microsoft.CodeAnalysis.CSharp.CSharpCompilationOptions(
+                    Microsoft.CodeAnalysis.OutputKind.DynamicallyLinkedLibrary));
+            using var image = new MemoryStream();
+            Assert.True(compilation.Emit(image).Success);
+            var loaded = System.Reflection.Assembly.Load(image.ToArray());
+
+            Assert.Same(loaded.GetType("LateModels.Late"), entry.ModelType);
+            Assert.Null(Run(entry, Match()));
+            Assert.NotNull(entry.GetStrategy(Match()));
+            Assert.False(entry.TryGetRequestFault(Match(), out _, out _));
+        }
+
         [Fact]
         public void ExtensionUnresolved()
         {

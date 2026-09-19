@@ -19,7 +19,7 @@ namespace Heddle.Attributes
         private readonly Type[] _containers;
 
         /// <summary>Exports one container class.</summary>
-        // P3-R9: the typeof here roots the container through a trimmed publish; RegisterContainer reads its
+        // The typeof here roots the container through a trimmed publish; RegisterContainer reads its
         // public static methods by reflection, so the annotation keeps them.
         public ExportFunctionsAttribute(
             [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicMethods)] Type container)

@@ -132,7 +132,7 @@ namespace Heddle.Tool.Compile
             if (!DeriveKeys(request, templates, diagnostics))
                 return 1;
 
-            // AC-9: the artifact's rows, the stubs and the stamp all follow ordinal key order, so
+            // The artifact's rows, the stubs and the stamp all follow ordinal key order, so
             // item or response-file order cannot change a byte or the digest.
             templates.Sort((a, b) => string.CompareOrdinal(a.Key ?? string.Empty, b.Key ?? string.Empty));
 
@@ -231,21 +231,13 @@ namespace Heddle.Tool.Compile
                     BuildVersion = buildVersion,
                     Functions = functions
                 };
-                // The implementation images are never framework types, wherever they live (AC-4).
-                var imageNames = new HashSet<string>(StringComparer.Ordinal);
+                // The implementation images are never framework types, wherever they live. Carried on this
+                // compile's options and handed to each template's own record, so two compiles running in
+                // one process never read each other's set.
                 foreach (var image in images.Images)
-                    imageNames.Add(image.GetName().Name ?? string.Empty);
-                CompileOutcome outcome;
-                FormRecord.HostImplementationImages = imageNames;
-                try
-                {
-                    outcome = CompileAll(request, templates, images, options, diagnostics,
-                        FormatVersion(hostEngine));
-                }
-                finally
-                {
-                    FormRecord.HostImplementationImages = null;
-                }
+                    options.HostImplementationImages.Add(image.GetName().Name ?? string.Empty);
+                CompileOutcome outcome = CompileAll(request, templates, images, options, diagnostics,
+                    FormatVersion(hostEngine));
                 if (outcome == null)
                     return 1;
                 try
@@ -255,7 +247,7 @@ namespace Heddle.Tool.Compile
                 catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
                 {
                     // Every template compiled, so this is a reported error (exit 1), not the exit-3
-                    // host fault reserved for failures before any template compiled (P2-R4).
+                    // host fault reserved for failures before any template compiled.
                     diagnostics.Error(request.Project, HeddleDiagnosticIds.BuildEmitterFault,
                         "outputs could not be written: " + ex.Message + ".");
                     return 1;
@@ -275,6 +267,8 @@ namespace Heddle.Tool.Compile
             internal string GeneratedNamespace;
             internal string BuildVersion;
             internal FunctionRegistry Functions;
+            internal readonly HashSet<string> HostImplementationImages =
+                new HashSet<string>(StringComparer.Ordinal);
         }
 
         private sealed class CompileOutcome
@@ -458,7 +452,9 @@ namespace Heddle.Tool.Compile
             if (!ok)
                 return false;
 
-            // Pass 3: sanitized entry-class names (HED7010; HeddleArtifact is reserved).
+            // Pass 3: sanitized entry-class names (HED7010). Two names are the generated code's own: the
+            // artifact class, and Generate — the entry point callers name, which a class called Generate
+            // could not declare.
             // Import-only rows emit no wrapper, so they take no sanitized name.
             foreach (var template in templates)
             {
@@ -466,13 +462,15 @@ namespace Heddle.Tool.Compile
                     continue;
                 string sanitized = SanitizeName.ForKey(template.Key);
                 sanitizedOwners.TryGetValue(sanitized, out string owner);
-                if (string.Equals(sanitized, "HeddleArtifact", StringComparison.Ordinal) ||
+                bool reserved = string.Equals(sanitized, "HeddleArtifact", StringComparison.Ordinal) ||
+                    string.Equals(sanitized, "Generate", StringComparison.Ordinal);
+                if (reserved ||
                     (owner != null && !string.Equals(owner, template.Key, StringComparison.Ordinal)))
                 {
                     diagnostics.Error(template.FullPath,
                         HeddleDiagnosticIds.BuildDuplicateSanitizedName,
                         Format(HeddleDiagnosticIds.BuildDuplicateSanitizedName,
-                            owner ?? template.Key, template.Key, sanitized));
+                            reserved ? "the generated code itself" : owner, template.Key, sanitized));
                     ok = false;
                     continue;
                 }
@@ -714,7 +712,7 @@ namespace Heddle.Tool.Compile
                 : directive;
             if (!string.IsNullOrEmpty(spelling))
             {
-                modelType = images.ResolveModelType(spelling);
+                modelType = images.ResolveModelType(spelling, Probe.ScanUsingDirectives(template.Text));
                 if (modelType == null)
                 {
                     diagnostics.Error(template.FullPath,
@@ -728,7 +726,7 @@ namespace Heddle.Tool.Compile
                     !string.Equals(directive, template.Item.ModelType, StringComparison.Ordinal))
                 {
                     // Resolved the way the engine resolves the directive: the template's own @using
-                    // imports over the registered model assemblies (D11).
+                    // imports over the registered model assemblies.
                     Type directiveType = null;
                     try
                     {
@@ -766,6 +764,7 @@ namespace Heddle.Tool.Compile
             var context = new CompileContext(templateOptions, modelEx);
             context.DeferUnboundFunctions = true;
             context.RecordForm = true;
+            context.FormRecord.HostImplementationImages = options.HostImplementationImages;
             // Composition imports resolve against the invocation's items first: every key and
             // validated registered name serves its text, anything else reads off disk. The same
             // contract the loader honors from the artifact rows, so build and load expand alike.
@@ -855,13 +854,26 @@ namespace Heddle.Tool.Compile
             // Every compiled row emits its table arms, site methods and entry-point wrapper; the
             // printer runs post-merge, when every template index is final, and HED7031 reports
             // from the merged rows then. Import-only items never reach here (ImportOnlyPart).
+            // The wrapper's model parameter is spelled by the printer's type table (generic arguments,
+            // nested and internal types), never from the reflection name. A type the consumer cannot name — a
+            // private nested model, an internal one it has no access to — leaves the wrapper taking object,
+            // in its parameter and its typeof alike: the row still binds and renders.
+            string modelSpelling = "object";
+            bool modelIsPublic = true;
+            if (modelType != null &&
+                !Sites.TypeNamePrinter.TrySpellModel(modelType, request.AssemblyName, out modelSpelling,
+                    out modelIsPublic, out _))
+            {
+                modelSpelling = "object";
+                modelIsPublic = true;
+            }
+
             var emitted = new SourceEmitter.EmittedTemplate
             {
                 Key = template.Key,
                 Sanitized = sanitized,
-                ModelTypeName = modelType == null
-                    ? "object"
-                    : "global::" + modelType.FullName.Replace('+', '.'),
+                ModelTypeName = modelSpelling,
+                IsPublic = modelIsPublic,
                 ContentHash = template.ContentHash ?? string.Empty,
                 EmitWrapper = true
             };
@@ -992,9 +1004,9 @@ namespace Heddle.Tool.Compile
                 "not fully precompiled: " + string.Join("; ", parts));
         }
 
-        /// <summary>P2-R8: class (c) is HED7014 (warning, at the call, naming the function); class (a) is
-        /// HED7033 (warning, at the call, carrying the extension's declared reason verbatim). Class (b)
-        /// has no id of its own and rides on HED7031.</summary>
+        /// <summary>An unbindable call typing is HED7014 (warning, at the call, naming the function); an
+        /// unsupported extension is HED7033 (warning, at the call, carrying the extension's declared reason
+        /// verbatim). A reflection-order value has no id of its own and rides on HED7031.</summary>
         private static void ReportRefusalSite(TemplateInput template, PrecompiledRefusalSite site,
             FormRefusalData refusal, CompiledArtifact artifact, DiagnosticWriter diagnostics)
         {

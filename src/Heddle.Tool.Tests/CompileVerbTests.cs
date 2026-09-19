@@ -21,6 +21,7 @@ namespace Heddle.Tool.Tests
     /// option parsing, key derivation, artifact/source/stamp outputs, incrementality, probe and
     /// stubs modes, and MSBuild-format diagnostics with the specified exit codes. Every compile
     /// runs in a temp directory; assertions read the outputs back, never the harness.</summary>
+    [Collection("PrecompiledProcessStateSerial")]
     public class CompileVerbTests : IDisposable
     {
         private readonly string _dir;
@@ -130,7 +131,7 @@ namespace Heddle.Tool.Tests
             Assert.Equal("hello.heddle", artifact.Templates[0].Key);
             Assert.Equal("static.heddle", artifact.Templates[1].Key);
             string source = File.ReadAllText(Out("gen.g.cs"));
-            Assert.Contains("[assembly: HeddleCompiledTemplates(typeof(Heddle.Generated.HeddleArtifact), 4,",
+            Assert.Contains("[assembly: global::Heddle.Precompiled.HeddleCompiledTemplates(typeof(global::Heddle.Generated.HeddleArtifact), 4,",
                 source);
             Assert.Contains("public static class Hello", source);
             Assert.Contains("public static class Static", source);
@@ -254,7 +255,7 @@ namespace Heddle.Tool.Tests
             Assert.Equal(0, result.Exit);
             string stubs = File.ReadAllText(Out("stubs.g.cs"));
             Assert.Contains("public static class S", stubs);
-            Assert.Contains("throw new InvalidOperationException", stubs);
+            Assert.Contains("throw new global::System.InvalidOperationException", stubs);
             Assert.False(File.Exists(Out("stamp.txt")));
         }
 

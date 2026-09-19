@@ -18,9 +18,25 @@ namespace Heddle.Runtime
     /// (<c>AssemblyHelper.GetApplicationReferences</c>). It is the entry's whole identity beyond its key: an entry is
     /// served only at that generation and admitted only at the newest one.</para>
     /// </summary>
+    /// <summary>One cached compiler diagnostic: its text and whether the compiler raised it as a warning.
+    /// The position is deliberately absent — a replay stamps the receiving caller's.</summary>
+    internal readonly struct PreparseDiagnostic
+    {
+        public PreparseDiagnostic(string message, bool isWarning)
+        {
+            Message = message;
+            IsWarning = isWarning;
+        }
+
+        public string Message { get; }
+
+        public bool IsWarning { get; }
+    }
+
     internal sealed class PreparseResult
     {
-        public PreparseResult(OptionalValue<object> value, ExType type, string[] diagnostics, int generation)
+        public PreparseResult(OptionalValue<object> value, ExType type, PreparseDiagnostic[] diagnostics,
+            int generation)
         {
             Value = value;
             Type = type;
@@ -30,7 +46,7 @@ namespace Heddle.Runtime
 
         public OptionalValue<object> Value { get; }
         public ExType Type { get; }
-        public string[] Diagnostics { get; }
+        public PreparseDiagnostic[] Diagnostics { get; }
         public int Generation { get; }
 
         public bool Failed => Diagnostics.Length > 0;

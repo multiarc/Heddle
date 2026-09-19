@@ -321,7 +321,12 @@ namespace Heddle.Tests
 
         /// <summary>The out-of-process half of the surface: the host reads plain MSBuild items and properties,
         /// so no <c>CompilerVisible</c> declaration may appear — one would hand the compiler a path to read,
-        /// which is exactly the determinism the response-file route preserves.</summary>
+        /// which is exactly the determinism the response-file route preserves. For the same reason the build
+        /// declares no <c>AdditionalFiles</c> item of its own and lets no Heddle item flow into one.
+        /// <para>What is allowed, and only this: the throwaway intermediate model compile is handed the
+        /// <b>project's own</b> <c>@(AdditionalFiles)</c>, unchanged, so the project's source generators see
+        /// there what they will see in the real compile. That is one <c>Csc</c> attribute whose whole value
+        /// is <c>@(AdditionalFiles)</c>; the real compile is never invoked or altered by these targets.</para></summary>
         [Fact]
         public void BuildSurfaceDeclaresNoCompilerVisibleWiring()
         {
@@ -329,10 +334,39 @@ namespace Heddle.Tests
                 Path.Combine("src", "Heddle.Build", "build", "Heddle.Build.props")));
             var targetsXml = File.ReadAllText(FindRepoFile(
                 Path.Combine("src", "Heddle.Build", "build", "Heddle.Build.targets")));
+            var props = Regex.Replace(propsXml, @"<!--.*?-->", string.Empty, RegexOptions.Singleline);
+            var targets = Regex.Replace(targetsXml, @"<!--.*?-->", string.Empty, RegexOptions.Singleline);
 
-            Assert.DoesNotContain("<CompilerVisible", propsXml, StringComparison.Ordinal);
-            Assert.DoesNotContain("<CompilerVisible", targetsXml, StringComparison.Ordinal);
-            Assert.DoesNotContain("AdditionalFiles", targetsXml, StringComparison.Ordinal);
+            Assert.DoesNotContain("CompilerVisible", props, StringComparison.Ordinal);
+            Assert.DoesNotContain("CompilerVisible", targets, StringComparison.Ordinal);
+            Assert.DoesNotContain("AdditionalFiles", props, StringComparison.Ordinal);
+
+            // No declaration: neither an item nor a property named AdditionalFiles.
+            Assert.DoesNotContain("<AdditionalFiles", targets, StringComparison.Ordinal);
+
+            // Every remaining mention is a read of the project's own item list, never anything of Heddle's...
+            var mentions = Regex.Matches(targets, "AdditionalFiles");
+            var reads = Regex.Matches(targets, @"@\(AdditionalFiles\)");
+            // (the forwarding attribute spells the word once more, as its own name)
+            Assert.Equal(mentions.Count, reads.Count + 1);
+
+            // ...and the only consumers are the intermediate pass: its Csc attribute, passed through whole,
+            // and the digest that decides whether that pass has to run.
+            var forwarded = Regex.Matches(targets, @"\bAdditionalFiles=""([^""]*)""");
+            Assert.Single(forwarded);
+            Assert.Equal("@(AdditionalFiles)", forwarded[0].Groups[1].Value);
+            var cscElements = Regex.Matches(targets, @"<Csc\b[^>]*>", RegexOptions.Singleline);
+            Assert.Single(cscElements);
+            Assert.Contains("AdditionalFiles=\"@(AdditionalFiles)\"", cscElements[0].Value, StringComparison.Ordinal);
+            Assert.Contains("OutputAssembly=\"@(_HeddleIntermediateModel)\"", cscElements[0].Value,
+                StringComparison.Ordinal);
+            Assert.Equal(2, reads.Count);
+            Assert.Matches(@"DigestFiles=""[^""]*@\(AdditionalFiles\)[^""]*""", targets);
+
+            // The real compile is never invoked or redefined from here: the targets only hook before it.
+            Assert.DoesNotContain("<CallTarget", targets, StringComparison.Ordinal);
+            Assert.DoesNotContain("<MSBuild ", targets, StringComparison.Ordinal);
+            Assert.DoesNotContain("Name=\"CoreCompile\"", targets, StringComparison.Ordinal);
         }
 
         /// <summary>The assembly escape hatch, gated the way the item metadata above is. Every item the targets

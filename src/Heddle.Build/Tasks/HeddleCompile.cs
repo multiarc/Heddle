@@ -39,6 +39,10 @@ namespace Heddle.Build.Tasks
 
         public string GeneratedNamespace { get; set; }
 
+        /// <summary>Response <c>--assembly-name</c>: the project's own assembly name, which decides whether an
+        /// entry point may name an internal model type.</summary>
+        public string ConsumerAssemblyName { get; set; }
+
         /// <summary>Implementation images: project-reference outputs, package runtime images, declared
         /// assemblies, and the intermediate model assembly when present.</summary>
         public ITaskItem[] ImplementationImages { get; set; }
@@ -75,6 +79,14 @@ namespace Heddle.Build.Tasks
         /// <summary>Analyzer paths the intermediate digest covers.</summary>
         public ITaskItem[] Analyzers { get; set; }
 
+        /// <summary>Files whose content the intermediate digest covers beyond the sources: analyzer
+        /// configuration, additional files, the strong-name key.</summary>
+        public ITaskItem[] DigestFiles { get; set; }
+
+        /// <summary>Every compiler option the intermediate compile is given, as one string: the image is
+        /// reused only for a digest that covers all of them.</summary>
+        public string DigestOptions { get; set; }
+
         /// <summary>The host tool assembly (<c>Heddle.Tool.dll</c> under <c>tools/net10.0/any/</c>).</summary>
         public string ToolPath { get; set; }
 
@@ -87,6 +99,15 @@ namespace Heddle.Build.Tasks
         /// <summary>Probe mode output: spellings no image resolves.</summary>
         [Output]
         public int UnresolvedCount { get; set; }
+
+        /// <summary>The directory the content-addressed images live under, and the image's file name.</summary>
+        public string IntermediateImageDirectory { get; set; }
+
+        public string IntermediateImageName { get; set; }
+
+        /// <summary>Stubs mode output: whether a complete, readable image already exists for the digest.</summary>
+        [Output]
+        public bool IntermediateImageUsable { get; set; }
 
         /// <summary>Stubs mode output: the intermediate-compile content-addressed digest.</summary>
         [Output]
@@ -177,16 +198,17 @@ namespace Heddle.Build.Tasks
                 AddIfPresent(args, "--trim-directive-lines", TrimDirectiveLines);
                 AddIfPresent(args, "--max-recursion-count", MaxRecursionCount);
                 AddIfPresent(args, "--generated-namespace", GeneratedNamespace);
+                AddIfPresent(args, "--assembly-name", ConsumerAssemblyName);
                 Add(args, "--build-version", version);
                 if (Templates != null)
                     foreach (var template in Templates)
-                        Add(args, "--template", ItemLine(template, true));
+                        Add(args, "--template", ItemLine(template, true, root));
                 if (ImportOnly != null)
                     foreach (var import in ImportOnly)
-                        Add(args, "--import-only", ItemLine(import, false));
+                        Add(args, "--import-only", ItemLine(import, false, root));
                 if (ImplementationImages != null)
                     foreach (var image in ImplementationImages)
-                        Add(args, "--reference", FullPath(root, image.ItemSpec));
+                        Add(args, "--reference", ItemPath(image));
                 if (!string.IsNullOrEmpty(EngineReference))
                     Add(args, "--engine-reference", EngineReference);
                 if (ProbeJson != null)
@@ -214,7 +236,10 @@ namespace Heddle.Build.Tasks
                 File.WriteAllLines(_responseFile, args.ToArray(), new UTF8Encoding(false));
 
                 if (StubsOnly != null)
-                    IntermediateDigest = ComputeIntermediateDigest(root);
+                {
+                    IntermediateDigest = ComputeIntermediateDigest();
+                    IntermediateImageUsable = IsUsableImage();
+                }
                 bool ok = base.Execute();
                 if (ok && ProbeJson != null)
                     UnresolvedCount = CountUnresolved(ProbeJson);
@@ -241,9 +266,16 @@ namespace Heddle.Build.Tasks
             args.Add(value);
         }
 
-        private static string ItemLine(ITaskItem item, bool withProfile)
+        private static string ItemLine(ITaskItem item, bool withProfile, string root)
         {
-            var line = new StringBuilder(item.ItemSpec);
+            // A template item is a project-relative path like any other. Projects written while the task
+            // joined item paths onto the template root spell theirs relative to that root instead; such
+            // a path names no file from the project directory, and is still honoured.
+            string path = ItemPath(item);
+            if (!File.Exists(path) && !Path.IsPathRooted(item.ItemSpec) && !string.IsNullOrEmpty(root) &&
+                File.Exists(Path.Combine(root, item.ItemSpec)))
+                path = Path.Combine(root, item.ItemSpec);
+            var line = new StringBuilder(path);
             line.Append('|').Append(item.GetMetadata("Key") ?? string.Empty);
             line.Append('|').Append(item.GetMetadata("Name") ?? string.Empty);
             if (withProfile)
@@ -255,29 +287,53 @@ namespace Heddle.Build.Tasks
             return line.ToString();
         }
 
-        private static string FullPath(string root, string path) =>
-            Path.IsPathRooted(path) ? path : Path.Combine(root ?? string.Empty, path);
-
-        /// <summary>SHA-256 over the source paths and content hashes, the reference MVIDs and the
-        /// analyzer paths: the intermediate-compile content address.</summary>
-        private string ComputeIntermediateDigest(string root)
+        /// <summary>An item's path as MSBuild resolves it: against the project directory. The template root
+        /// is where keys are measured from, not where item paths start — joining one onto the other reads
+        /// nothing as soon as the root is anything but the project directory.</summary>
+        private static string ItemPath(ITaskItem item)
         {
+            string full = item.GetMetadata("FullPath");
+            return string.IsNullOrEmpty(full) ? item.ItemSpec : full;
+        }
+
+        /// <summary>SHA-256 over every input of the intermediate compile: source, analyzer, configuration and
+        /// key-file contents, the reference MVIDs and the compiler options. Analyzers are hashed by content —
+        /// a project-referenced generator is rebuilt in place, at a path that never changes — which costs
+        /// tens of milliseconds for an SDK's analyzer set, and only on a build that needs this pass. An
+        /// input that cannot be read is never hashed to a placeholder, which would make every such input
+        /// look unchanged for ever: it makes the digest unique, so the pass runs.</summary>
+        private string ComputeIntermediateDigest()
+        {
+            _unreadable = null;
             var text = new StringBuilder();
             if (CompileSources != null)
                 foreach (var source in CompileSources)
                 {
-                    string full = FullPath(root, source.ItemSpec);
                     text.Append("source=").Append(source.ItemSpec).Append('|')
-                        .Append(FileHash(full)).Append('\n');
+                        .Append(FileHash(ItemPath(source))).Append('\n');
                 }
 
             if (DigestReferences != null)
                 foreach (var reference in DigestReferences)
                     text.Append("reference=").Append(reference.ItemSpec).Append('|')
-                        .Append(MvidHex(FullPath(root, reference.ItemSpec))).Append('\n');
+                        .Append(MvidHex(ItemPath(reference))).Append('\n');
             if (Analyzers != null)
                 foreach (var analyzer in Analyzers)
-                    text.Append("analyzer=").Append(analyzer.ItemSpec).Append('\n');
+                    text.Append("analyzer=").Append(analyzer.ItemSpec).Append('|')
+                        .Append(FileHash(ItemPath(analyzer))).Append('\n');
+            if (DigestFiles != null)
+                foreach (var file in DigestFiles)
+                    text.Append("file=").Append(file.ItemSpec).Append('|')
+                        .Append(FileHash(ItemPath(file))).Append('\n');
+            text.Append("options=").Append(DigestOptions ?? string.Empty).Append('\n');
+            if (_unreadable != null)
+            {
+                Log.LogMessage(MessageImportance.Normal,
+                    "Heddle: '{0}' could not be read for the intermediate model digest; the intermediate compile runs.",
+                    _unreadable);
+                text.Append("unreadable=").Append(Guid.NewGuid().ToString("N")).Append('\n');
+            }
+
             using (var sha = System.Security.Cryptography.SHA256.Create())
             {
                 var digest = sha.ComputeHash(Encoding.UTF8.GetBytes(text.ToString()));
@@ -288,7 +344,33 @@ namespace Heddle.Build.Tasks
             }
         }
 
-        private static string FileHash(string path)
+        private string _unreadable;
+
+        /// <summary>Whether the image under the current digest can be reused: the pass that wrote it ran to
+        /// completion (it leaves a marker beside the image) and the file still reads as an assembly. A file
+        /// that merely exists may be what an interrupted compile left behind.</summary>
+        private bool IsUsableImage()
+        {
+            if (string.IsNullOrEmpty(IntermediateImageDirectory) || string.IsNullOrEmpty(IntermediateImageName))
+                return false;
+            string directory = Path.Combine(IntermediateImageDirectory, IntermediateDigest);
+            string image = Path.Combine(directory, IntermediateImageName);
+            if (!File.Exists(image) || !File.Exists(Path.Combine(directory, "complete")))
+                return false;
+            try
+            {
+                using (var stream = File.OpenRead(image))
+                using (var reader = new PEReader(stream))
+                    return reader.HasMetadata && reader.GetMetadataReader().IsAssembly;
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException ||
+                ex is BadImageFormatException || ex is ArgumentException || ex is InvalidOperationException)
+            {
+                return false;
+            }
+        }
+
+        private string FileHash(string path)
         {
             try
             {
@@ -303,15 +385,17 @@ namespace Heddle.Build.Tasks
             }
             catch (IOException)
             {
+                _unreadable = _unreadable ?? path;
                 return "<unreadable>";
             }
             catch (UnauthorizedAccessException)
             {
+                _unreadable = _unreadable ?? path;
                 return "<unreadable>";
             }
         }
 
-        private static string MvidHex(string path)
+        private string MvidHex(string path)
         {
             try
             {

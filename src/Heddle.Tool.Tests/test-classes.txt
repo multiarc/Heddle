@@ -3,6 +3,10 @@
 # reviewer reads; nothing in this file measures how many tests a class carries.
 Heddle.Tool.Tests.CompileVerbTests
 Heddle.Tool.Tests.CompiledFormFixtureTests
+Heddle.Tool.Tests.GeneratedNameCollisionTests
 Heddle.Tool.Tests.GeneratedSiteRoundtripTests
 Heddle.Tool.Tests.HeddleToolTests
+Heddle.Tool.Tests.NativeExpressionPrinterDifferentialTests
 Heddle.Tool.Tests.TestClassInventoryTests
+Heddle.Tool.Tests.TypeNamePrinterTests
+Heddle.Tool.Tests.WrapperModelAccessibilityTests

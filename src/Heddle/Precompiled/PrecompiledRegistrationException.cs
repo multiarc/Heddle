@@ -25,7 +25,7 @@ namespace Heddle.Precompiled
             SchemaVersion = schemaVersion;
         }
 
-        /// <summary>AC-3: the artifact the marker names is malformed (bad magic, unreadable schema, a required
+        /// <summary>The artifact the marker names is malformed (bad magic, unreadable schema, a required
         /// section missing, sections overlapping or duplicated, a value past the end). The reader's
         /// <see cref="InvalidDataException"/> is the inner exception; the assembly is named here.</summary>
         public PrecompiledRegistrationException(string assemblyName, InvalidDataException malformed)

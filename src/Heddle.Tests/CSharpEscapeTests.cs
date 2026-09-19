@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Text;
 using Heddle.Language.Expressions;
 using Xunit;
@@ -49,6 +50,10 @@ namespace Heddle.Tests
             {
                 if (i >= 0xD800 && i <= 0xDFFF)
                     continue;
+                // The legacy table wrote these three raw, and C# ends a line at each of them: the literal it
+                // produced did not compile. LineTerminatorsBeyondAscii pins the corrected form.
+                if (i == 0x85 || i == 0x2028 || i == 0x2029)
+                    continue;
                 var s = ((char) i).ToString();
                 Assert.Equal(LegacyPieceEscape(s), CSharpEscape.StringLiteral(s));
             }
@@ -65,6 +70,28 @@ namespace Heddle.Tests
         [InlineData("it's", "\"it's\"")]
         public void StringTableRows(string value, string expected) =>
             Assert.Equal(expected, CSharpEscape.StringLiteral(value));
+
+        /// <summary>C# ends a line at U+0085, U+2028 and U+2029 as well as at CR and LF, so one of them written
+        /// raw inside a regular literal is CS1010. Pins the regression where only the ASCII control range was
+        /// escaped: template text carrying a Unicode line separator printed source that did not compile.</summary>
+        [Theory]
+        [InlineData('\u0085', "\\u0085")]
+        [InlineData('\u2028', "\\u2028")]
+        [InlineData('\u2029', "\\u2029")]
+        public void LineTerminatorsBeyondAscii_AreEscapedInBothForms(char value, string escape)
+        {
+            Assert.Equal("'" + escape + "'", CSharpEscape.CharLiteral(value));
+            Assert.Equal("\"a" + escape + "b\"", CSharpEscape.StringLiteral("a" + value + "b"));
+
+            string source = "class C { const string S = " + CSharpEscape.StringLiteral("a" + value + "b") +
+                "; const char K = " + CSharpEscape.CharLiteral(value) + "; }";
+            var tree = Microsoft.CodeAnalysis.CSharp.CSharpSyntaxTree.ParseText(source);
+            Assert.Empty(tree.GetDiagnostics());
+            var literals = tree.GetRoot().DescendantNodes()
+                .OfType<Microsoft.CodeAnalysis.CSharp.Syntax.LiteralExpressionSyntax>().ToList();
+            Assert.Equal("a" + value + "b", literals[0].Token.Value);
+            Assert.Equal(value, literals[1].Token.Value);
+        }
 
         [Theory]
         [InlineData('a', "'a'")]

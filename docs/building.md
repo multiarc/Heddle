@@ -151,8 +151,11 @@ exactly the items and properties — per-item metadata `Key`, `Name`, `ModelType
 [src/Heddle.Build/build/Heddle.Build.props](../src/Heddle.Build/build/Heddle.Build.props). **Outputs**
 are the embedded compiled-form artifact (`Heddle.CompiledForm.bin`), the generated source
 (`Heddle.CompiledForm.g.cs`, joined into `Compile` before `CoreCompile`), and a stamp file the host
-uses for incrementality. No `CompilerVisibleProperty`, no `AdditionalFiles`: nothing runs inside the
-compiler, so build output is a pure function of declared inputs.
+uses for incrementality. No `CompilerVisibleProperty`, no `AdditionalFiles` of Heddle's own: nothing
+runs inside the compiler, so build output is a pure function of declared inputs. (The throwaway
+intermediate model compile is handed the *project's own* `@(AdditionalFiles)`, unchanged, so the
+project's source generators behave there as in the real compile; the real compile receives nothing
+from these targets but the generated source.)
 
 Custom MSBuild items extend the reach without changing the shape: `HeddleModelAssembly` and
 `HeddleExtensionAssembly` append assemblies to `@(ReferencePath)` so the host can bind over their

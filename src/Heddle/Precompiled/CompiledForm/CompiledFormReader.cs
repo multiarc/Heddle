@@ -433,7 +433,10 @@ namespace Heddle.Precompiled.CompiledForm
                 };
                 header.TrimDirectiveLines = ReadBool();
                 header.DefaultOutputProfile = ReadOptStringValue();
-                _headerTemplateCount = ReadCount();
+                // A scalar, not the length of a list that follows: only the digest comes after it, so the
+                // bytes-left guard of ReadCount would refuse any artifact with more than 32 templates. It is
+                // bounded by being compared with the template section's real row count.
+                _headerTemplateCount = ReadSized();
                 if (_limit - _offset != 32)
                     Malformed("The header section does not end with a 32-byte digest.");
                 _offset = _limit;

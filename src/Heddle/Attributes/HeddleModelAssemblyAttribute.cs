@@ -37,7 +37,7 @@ namespace Heddle.Attributes
         private readonly Type[] _modelTypes;
 
         /// <summary>Declares the assembly one type comes from.</summary>
-        // P3-R9: the typeof here is what roots a model through a trimmed publish; the gauntlet and the loader
+        // The typeof here is what roots a model through a trimmed publish; the gauntlet and the loader
         // walk its members by reflection, so the annotation keeps them.
         public HeddleModelAssemblyAttribute(
             [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type modelType)

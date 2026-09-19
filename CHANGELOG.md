@@ -143,17 +143,20 @@ window's ratification remain in
 
 ### Added
 
-- **The expression-tier parity program: the build now prints what 2.x degraded.** Five classes
-  of native-expression construct that previously fell back to the dynamic tier now precompile, each by
-  reproducing the engine's own semantics rather than trusting verbatim C# to agree with them: shifts,
-  ternaries and coalesces over mixed numeric kinds (the engine's promotion is spelled as explicit
-  casts); mixed-type equality and string concatenation (replaying the engine's own decision chain, so
-  parity holds by construction); constant subtrees the two tiers type or value differently (emitted as
-  the engine's folded value with a typed literal spelling); same-enum and reference operand shapes
-  (the shared operator table now carries type identity, not just a category); and the structural
-  shapes — `::`-rooted paths, indexers, targeted paths, collided extension names, and `params`
-  exports. Rendered bytes are unchanged — the two tiers are parity-checked — this only moves templates
-  off the slower dynamic path.
+- **Native expressions precompile from the engine's own bound tree.** Where 2.x re-derived each
+  expression's C# from its syntax and degraded whatever it could not prove equivalent — shifts, ternaries
+  and coalesces over mixed numeric kinds, mixed-type equality, string concatenation, same-enum and
+  reference operands, `::`-rooted paths, indexers, `params` exports — the build host now compiles the
+  expression through the real engine and prints the tree it bound: every promotion is already an explicit
+  conversion in that tree, the chosen function overload and user-defined operator are the ones recorded
+  there, and a null-safe hop is the engine's own conditional. The printed site keeps the tree's
+  evaluation order and short-circuiting, compares references where the engine does, and never checks
+  arithmetic for overflow, whatever the consumer's project settings say. An expression made only of
+  constants is stored as its folded value, and a constant sub-expression is printed as the value the
+  engine computed for it. What a printed site cannot name is declined per site and
+  listed in `HED7031` ([Sites rebuilt at load](docs/precompilation.md#sites-rebuilt-at-load)); rendered
+  bytes are the same either way — the two tiers are parity-checked — so this only moves templates off the
+  slower load-time path.
 - **`HED1018` — constant division by zero is a compile error, on both tiers.** `@(1/0)` used to compile
   and throw `DivideByZeroException` at render; rendering it can only ever throw, so both the engine and
   the build now refuse it at compile time under one id. Scoped exactly where C# draws `CS0020`'s
@@ -228,6 +231,27 @@ window's ratification remain in
 
 ### Fixed
 
+- **A member a derived model type hides can no longer be read through its base class (sandbox).**
+  Member resolution walked the model type and then its base classes looking for the first *accessible*
+  property of the requested name, so it stepped over a `[Hidden]` override — or a `[Hidden]`, non-public
+  or `static` `new` property — and bound the base class's visible declaration. For an override that
+  getter dispatches virtually, so `@(Secret)` rendered the very value the derived type had hidden. The
+  **most-derived declaration of a name now decides**: if it is not a visible property (a field or method
+  of that name counts too), the name is the ordinary positioned `HED0001`, on the member tier, the
+  native-expression tier, indexers, the build tier and editor completion alike.
+  **What to do:** nothing, unless a template relied on reaching a base member *through* a derived type
+  that re-declares the name inaccessibly — such a template now fails to compile with `HED0001`; expose
+  the value under a name the derived type does not hide. This is a deliberate tightening, recorded in
+  the [3.0 window](docs/spec/common/breaking-windows.md#the-v3-window-items).
+- **A prop named like a `new`-shadowed model member no longer throws.** The prop-shadow check
+  (`HED5011`) asked reflection for the property by name, which throws `AmbiguousMatchException` when a
+  derived type re-declares the name with another type; it now uses the same member walk the compiler
+  binds with, and warns only about a member a template could actually reach.
+- **A bodiless `@list(...)` no longer throws when its result is processed rather than rendered.** A
+  `@list` with no body of its own — inside a definition's caller content (`@box(){{@list(Items)}}`), or to
+  the right of another call in a chain (`@len(Name):list(Items){{…}}`, where the body belongs to the
+  leftmost call) — threw `NullReferenceException` for any counted collection; it now contributes nothing,
+  exactly as it does when rendered directly.
 - **A model the template cannot accept is refused as a Heddle fault.** The top-level render now checks
   the model against the compiled model type once per render, in every build configuration, and throws
   `TemplateProcessingException` on a mismatch; the wrong-typed value used to reach the compiled
@@ -260,6 +284,16 @@ window's ratification remain in
 
 ### Build and packaging
 
+- **Generated source is safe against the names templates bring.** Every type the build writes into the
+  generated namespace is `global::`-qualified and an entry class's private members start with a
+  lowercase letter, so a template called `system.heddle`, `stream.heddle`, `heddle.heddle` or
+  `bound.heddle` compiles; a key that sanitizes to `Generate` — the one member callers name — is the
+  positioned `HED7010` build error instead of `CS0542` from generated code. A receiver's null test
+  prints as a reference comparison (`(object)v0 == null`), as the engine performs it.
+  **Golden changed:** `samples/codegen-t4-successor/golden/generated-source.cs.txt`, which captures the
+  generated source verbatim, was regenerated through the sample's own capture path; every changed line
+  is one of those three spellings (qualification, the member renames, the null test) and no rendered
+  output of any sample changed.
 - **The `Heddle.Build` package replaces `Heddle.Generator`.** Once the `v3.0.0` tag is pushed and
   the packages publish, the last 2.x `Heddle.Generator` is to be deprecated on NuGet naming
   `Heddle.Build` as its replacement — a post-tag step, not something this release's build does. The

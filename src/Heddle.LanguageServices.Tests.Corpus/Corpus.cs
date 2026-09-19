@@ -41,6 +41,36 @@ namespace Corpus
         public Menu Menu { get; set; }
     }
 
+    public class AccountBase
+    {
+        public string Owner { get; set; }
+        public virtual string Secret { get; set; }
+        public string Token { get; set; }
+        public string Pin { get; set; }
+        public string Code { get; set; }
+    }
+
+    /// <summary>Withholds four names its base exposes: a <c>[Hidden]</c> override, a <c>[Hidden]</c>
+    /// <c>new</c> property, and a field and a method that hide a property. None may be offered or bound
+    /// through the base declaration.</summary>
+    public class Account : AccountBase
+    {
+        [Hidden] public override string Secret { get; set; }
+
+        [Hidden] public new string Token { get; set; }
+
+        public new string Pin = string.Empty;
+
+        public new string Code() => null;
+
+        public string Number { get; set; }
+    }
+
+    public class Bank
+    {
+        public List<Account> Accounts { get; set; }
+    }
+
     /// <summary>A public static container whose <c>TitleCase</c> method exports the function <c>titlecase</c>.</summary>
     public static class CorpusFunctions
     {

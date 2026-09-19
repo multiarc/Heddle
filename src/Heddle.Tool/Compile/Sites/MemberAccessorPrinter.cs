@@ -6,7 +6,7 @@ using Heddle.Precompiled.CompiledForm;
 
 namespace Heddle.Tool.Compile.Sites
 {
-    /// <summary>Prints one member accessor site (P3-R3): the engine's start cast, one local per hop
+    /// <summary>Prints one member accessor site: the engine's start cast, one local per hop
     /// in the <see cref="HopForm"/> the engine chose for that hop, boxed exactly once when the last
     /// member is a value type. The hop form is recomputed with the engine's own
     /// <see cref="MemberHopRule.Form"/> over the recorded hop triple, so the rule exists once.</summary>
@@ -90,10 +90,18 @@ namespace Heddle.Tool.Compile.Sites
 
                 var form = MemberHopRule.Form(hop.Declaring.IsValueType,
                     hop.Member.IsValueType && Nullable.GetUnderlyingType(hop.Member) == null);
+                string nullTest = null;
+                if (form != HopForm.Direct && !TryPrintNullTest("v" + i, hop.Declaring, out nullTest, out why))
+                {
+                    why = "hop " + i + " null test: " + why;
+                    return false;
+                }
+
                 hops[i] = new HopPrint
                 {
                     Name = hop.Name,
                     MemberSpelling = memberSpelling,
+                    NullTest = nullTest,
                     MemberIsValue = hop.Member.IsValueType &&
                         Nullable.GetUnderlyingType(hop.Member) == null,
                     Form = form
@@ -137,21 +145,21 @@ namespace Heddle.Tool.Compile.Sites
                     {
                         if (hop.MemberIsValue)
                         {
-                            sb.Append("            var ").Append(target).Append(" = ").Append(receiver)
-                                .Append(" == null ? ").Append(nullArm).Append(" : ").Append(receiver)
+                            sb.Append("            var ").Append(target).Append(" = ").Append(hop.NullTest)
+                                .Append(" ? ").Append(nullArm).Append(" : ").Append(receiver)
                                 .Append(".").Append(hop.Name).Append(";\n");
                             sb.Append("            return (object)").Append(target).Append(";\n");
                         }
                         else
                         {
-                            sb.Append("            return ").Append(receiver).Append(" == null ? null : (object)")
+                            sb.Append("            return ").Append(hop.NullTest).Append(" ? null : (object)")
                                 .Append(receiver).Append(".").Append(hop.Name).Append(";\n");
                         }
                     }
                     else
                     {
-                        sb.Append("            var ").Append(target).Append(" = ").Append(receiver)
-                            .Append(" == null ? ").Append(nullArm).Append(" : ").Append(receiver)
+                        sb.Append("            var ").Append(target).Append(" = ").Append(hop.NullTest)
+                            .Append(" ? ").Append(nullArm).Append(" : ").Append(receiver)
                             .Append(".").Append(hop.Name).Append(";\n");
                     }
                 }
@@ -164,10 +172,39 @@ namespace Heddle.Tool.Compile.Sites
             return true;
         }
 
+        /// <summary>The receiver's null test, bound the way the engine's hop binds it. The engine builds the
+        /// test as an expression-tree equality, which calls an <c>==</c> operator only when the receiver type
+        /// declares one for exactly that type and is a reference comparison otherwise; a bare <c>v == null</c>
+        /// lets C# pick an operator the type merely inherits. The same factory is asked here, so the two
+        /// cannot disagree.</summary>
+        private static bool TryPrintNullTest(string receiver, Type receiverType, out string test, out string why)
+        {
+            test = null;
+            why = null;
+            System.Reflection.MethodInfo bound = System.Linq.Expressions.Expression.Equal(
+                System.Linq.Expressions.Expression.Parameter(receiverType),
+                System.Linq.Expressions.Expression.Constant(null, receiverType)).Method;
+            if (bound == null)
+            {
+                test = "(object)" + receiver + " == null";
+                return true;
+            }
+
+            var parameters = bound.GetParameters();
+            string left;
+            string right;
+            if (!TypeNamePrinter.TrySpell(parameters[0].ParameterType, out left, out why) ||
+                !TypeNamePrinter.TrySpell(parameters[1].ParameterType, out right, out why))
+                return false;
+            test = "(" + left + ")" + receiver + " == (" + right + ")null";
+            return true;
+        }
+
         private sealed class HopPrint
         {
             internal string Name;
             internal string MemberSpelling;
+            internal string NullTest;
             internal bool MemberIsValue;
             internal HopForm Form;
         }

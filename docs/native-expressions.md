@@ -71,8 +71,8 @@ where C# has a lifted operator this tier has none:
 | `@(N < 3)` (`int?` vs `int`) | lifted, compiles | lifted, compiles |
 
 Both tiers agree on refusing the bitwise row with the same positioned id — the bool arm of the
-bitwise visitor guards mismatched nullability explicitly, and `NativeOperatorRules.ClassifyBitwise`
-carries the same verdict at build time.
+bitwise visitor guards mismatched nullability explicitly, and the build tier reaches the same verdict
+because it runs that same visitor: the build host compiles through the real engine.
 
 The `null` **literal** is separate from a `null`-valued `Nullable<T>`: `@(x < null)` and
 `@(3 == null)` are `HED1008`, exactly as C# rejects them.
@@ -233,7 +233,7 @@ Native expressions match C# except for a small, deliberate set of ergonomic choi
    reference/value mix such as `@(Name == Count)` is a positioned `HED1008` on **both** tiers, which
    is what `NativeExpressionCompiler`'s `IsReferenceish(left) && IsReferenceish(right)` guard decides
    and what `NativeOperatorRulesTests.Deviation1_MixedEqualityEmitsThroughTheAdapterWhereTheEnginesChainIsTotal`
-   pins in the shared rule core. **Do not widen the guard to match a looser reading of this rule:** doing so turns a compile
+   pins against the engine. **Do not widen the guard to match a looser reading of this rule:** doing so turns a compile
    error into a silent `false`, which is a breaking change.
    On the precompiled tier this deviation prints from the engine's own tree, which already carries
    the fallback verdict — a user operator where the pair binds one, null‑safe `object.Equals`
@@ -289,7 +289,9 @@ the template meets the engine's verdict at runtime.
 
 A member‑path segment that fails resolution is **`HED0001`**, not a `HED1xxx`: the member tier is
 shared with the C# tier and the dynamic path, so its diagnostic is shared too. It fires when a segment
-is missing, non‑readable, `[Hidden]`, or has an inaccessible getter — see
+is missing, non‑readable, `[Hidden]`, or has an inaccessible getter — judged on the **most‑derived**
+declaration of the name, so a base class's visible property never stands in for a derived one that is
+hidden or inaccessible — see
 [Exposing models to untrusted templates](patterns.md#exposing-models-to-untrusted-templates).
 
 An expression that faults the compiler itself for a reason no other diagnostic covers is
@@ -322,8 +324,9 @@ budgets, and encoding contexts — see
 the diagnostics table ✓ (`DiagnosticIdTests.EveryShippedIdIsNamedInAPublishedDocument` — every id
 here is a shipped constant and this page is its registry-designated home); deviation 1's guard ✓
 (`NativeOperatorRulesTests.Deviation1_MixedEqualityEmitsThroughTheAdapterWhereTheEnginesChainIsTotal`); the
-operator legality table and the lifted-operand shapes ✓ (`NativeOperatorRulesTests`, which drives the
-shared rule core both tiers use); the overload-rank measurement ✓
+operator legality table and the lifted-operand shapes ✓ (`NativeOperatorRulesTests`, which sweeps an
+independently written verdict table against the engine's compiler, pair by pair); the hidden-member
+rule ✓ (`HiddenMemberShadowingTests`); the overload-rank measurement ✓
 (`OverloadBetternessEvaluationTests`). Everything else on this page is verified against source, not gated —
 which matters: an unmarked claim is **evidence of intent, not an authority**, so a contradiction
 between it and both tiers agreeing is investigated and recorded, never resolved by editing code to

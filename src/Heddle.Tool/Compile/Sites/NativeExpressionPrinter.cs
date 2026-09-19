@@ -4,10 +4,11 @@ using System.Globalization;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
+using Heddle.Language.Expressions;
 
 namespace Heddle.Tool.Compile.Sites
 {
-    /// <summary>Prints one native-expression site (P3-R4) from the typed bound tree the engine
+    /// <summary>Prints one native-expression site from the typed bound tree the engine
     /// compiled: every operand cast to its promoted CLR type is already a <c>Convert</c> in the
     /// tree, so C#'s own promotion never decides; the chosen overload is the <c>MethodCall</c>
     /// method; hop forms are the <c>Condition</c> shapes. A bound node kind with no arm here is
@@ -17,6 +18,8 @@ namespace Heddle.Tool.Compile.Sites
         private readonly List<string> _statements = new List<string>();
         private readonly Dictionary<ParameterExpression, string> _locals =
             new Dictionary<ParameterExpression, string>();
+        private readonly Dictionary<ParameterExpression, Expression> _pending =
+            new Dictionary<ParameterExpression, Expression>();
         private int _localCount;
 
         private NativeExpressionPrinter()
@@ -57,7 +60,9 @@ namespace Heddle.Tool.Compile.Sites
             sb.Append("        {\n");
             foreach (var statement in printer._statements)
                 sb.Append("            ").Append(statement).Append('\n');
-            sb.Append("            return ").Append(resultCast).Append(";\n");
+            // The engine's arithmetic and conversions never check for overflow; the consumer's project may
+            // (CheckForOverflowUnderflow), and C# checks constant sub-expressions regardless.
+            sb.Append("            return unchecked(").Append(resultCast).Append(");\n");
             sb.Append("        }\n");
             code = sb.ToString();
             return true;
@@ -76,6 +81,8 @@ namespace Heddle.Tool.Compile.Sites
             var constant = node as ConstantExpression;
             if (constant != null)
                 return PrintConstant(constant, out text, out why);
+            if (!(node is DefaultExpression) && IsConstantSubtree(node))
+                return PrintFolded(node, out text, out why);
             var parameter = node as ParameterExpression;
             if (parameter != null)
                 return PrintParameter(parameter, out text, out why);
@@ -117,6 +124,111 @@ namespace Heddle.Tool.Compile.Sites
             return false;
         }
 
+        /// <summary>Whether the subtree is built from constants and the engine's own pure operators alone — no
+        /// parameter, member, indexer or function call, so evaluating it here observes nothing.</summary>
+        private static bool IsConstantSubtree(Expression node)
+        {
+            if (node is ConstantExpression || node is DefaultExpression)
+                return true;
+            var unary = node as UnaryExpression;
+            if (unary != null)
+                return IsPureOperator(unary.Method) && IsConstantSubtree(unary.Operand);
+            var binary = node as BinaryExpression;
+            if (binary != null)
+                return binary.NodeType != ExpressionType.Assign && binary.Conversion == null &&
+                    IsPureOperator(binary.Method) && !FormatsAtRender(binary) &&
+                    IsConstantSubtree(binary.Left) && IsConstantSubtree(binary.Right);
+            var conditional = node as ConditionalExpression;
+            return conditional != null && IsConstantSubtree(conditional.Test) &&
+                IsConstantSubtree(conditional.IfTrue) && IsConstantSubtree(conditional.IfFalse);
+        }
+
+        /// <summary>Whether a concatenation turns a non-text operand into text. It does so when it runs, under
+        /// the culture of the render — <c>"x" + 1.5</c> is <c>x1,5</c> in German — so its value is not a
+        /// constant of the template, and evaluating it here would bake in the build machine's culture.</summary>
+        private static bool FormatsAtRender(BinaryExpression node)
+        {
+            return IsStringConcat(node.Method) && (FormatsOperand(node.Left) || FormatsOperand(node.Right));
+        }
+
+        private static bool FormatsOperand(Expression operand)
+        {
+            while (operand.NodeType == ExpressionType.Convert && operand.Type == typeof(object))
+                operand = ((UnaryExpression)operand).Operand;
+            return operand.Type != typeof(string) && operand.Type != typeof(char) &&
+                !(operand is ConstantExpression && ((ConstantExpression)operand).Value == null);
+        }
+
+        /// <summary>No method, or one of the core library's own operators (decimal arithmetic, string
+        /// concatenation and equality): never a user-defined operator, whose body is not ours to run.</summary>
+        private static bool IsPureOperator(MethodInfo method) =>
+            method == null || method.DeclaringType.Assembly == typeof(object).Assembly;
+
+        private static bool TryEvaluate(Expression node, out object value, out string why)
+        {
+            value = null;
+            why = null;
+            try
+            {
+                value = Expression.Lambda<Func<object>>(Expression.Convert(node, typeof(object))).Compile()();
+                return true;
+            }
+            catch (Exception ex)
+            {
+                why = "a constant sub-expression throws " + ex.GetType().Name + " when evaluated";
+                return false;
+            }
+        }
+
+        /// <summary>Prints a constant subtree as the value the engine's own evaluation gives it. Left as
+        /// source, the C# compiler would fold it again by C#'s rules, which are not the engine's: constant
+        /// <c>decimal</c> overflow is a compile error even under <c>unchecked</c>, and <c>int.MinValue / -1</c>
+        /// folds to a value where the engine throws. A subtree that throws here throws at render on the
+        /// dynamic tier too — but only if it is reached — so there is no literal to print and the site is
+        /// declined.</summary>
+        private bool PrintFolded(Expression node, out string text, out string why)
+        {
+            text = null;
+            object value;
+            if (!TryEvaluate(node, out value, out why))
+                return false;
+            var underlying = Nullable.GetUnderlyingType(node.Type);
+            if (value == null || underlying == null)
+                return PrintConstant(Expression.Constant(value, node.Type), out text, out why);
+
+            string literal;
+            if (!TrySpellLiteral(value, underlying, out literal, out why))
+                return false;
+            string lifted;
+            if (!TypeNamePrinter.TrySpell(node.Type, out lifted, out why))
+                return false;
+            text = "(" + lifted + ")(" + literal + ")";
+            return true;
+        }
+
+        /// <summary>Whether an integral or decimal division has a constant divisor of zero. C# refuses to
+        /// compile one (CS0020) whatever the dividend; the engine compiles it and throws when it runs.</summary>
+        private static bool DividesByConstantZero(BinaryExpression node)
+        {
+            if (node.NodeType != ExpressionType.Divide && node.NodeType != ExpressionType.Modulo)
+                return false;
+            var type = Nullable.GetUnderlyingType(node.Type) ?? node.Type;
+            if (type == typeof(float) || type == typeof(double) || !IsConstantSubtree(node.Right))
+                return false;
+            object divisor;
+            string ignored;
+            if (!TryEvaluate(node.Right, out divisor, out ignored) || !(divisor is IConvertible))
+                return false;
+            try
+            {
+                return Convert.ToDecimal(divisor, CultureInfo.InvariantCulture) == 0m;
+            }
+            catch (Exception ex) when (ex is FormatException || ex is InvalidCastException || ex is OverflowException)
+            {
+                return false;
+            }
+        }
+
         private bool PrintConstant(ConstantExpression node, out string text, out string why)
         {
             text = null;
@@ -152,77 +264,22 @@ namespace Heddle.Tool.Compile.Sites
         {
             literal = null;
             why = null;
-            if (value is string text)
+            if (value is float || value is double)
             {
-                literal = Quote(text);
-                return true;
-            }
-
-            if (value is bool boolean)
-            {
-                literal = boolean ? "true" : "false";
-                return true;
-            }
-
-            if (value is char character)
-            {
-                literal = "'" + EscapeChar(character) + "'";
-                return true;
-            }
-
-            if (value is decimal number)
-            {
-                literal = number.ToString(CultureInfo.InvariantCulture) + "m";
-                return true;
-            }
-
-            if (value is double)
-            {
-                double dbl = (double)value;
-                if (double.IsNaN(dbl) || double.IsInfinity(dbl))
+                double real = Convert.ToDouble(value, CultureInfo.InvariantCulture);
+                if (double.IsNaN(real) || double.IsInfinity(real))
                 {
-                    why = "non-finite double constant";
+                    why = value is float ? "non-finite float constant" : "non-finite double constant";
                     return false;
                 }
-
-                literal = dbl.ToString("R", CultureInfo.InvariantCulture) + "d";
-                return true;
             }
 
-            if (value is float)
+            // One literal table for the whole engine: the escape rules and the round-trip real formats
+            // are the shared formatter's, so a printed constant decodes to the value the engine bound.
+            string shared = type.IsEnum ? null : LiteralFormatter.Format(value);
+            if (shared != null)
             {
-                float flt = (float)value;
-                if (float.IsNaN(flt) || float.IsInfinity(flt))
-                {
-                    why = "non-finite float constant";
-                    return false;
-                }
-
-                literal = flt.ToString("R", CultureInfo.InvariantCulture) + "f";
-                return true;
-            }
-
-            if (value is int)
-            {
-                literal = ((int)value).ToString(CultureInfo.InvariantCulture);
-                return true;
-            }
-
-            if (value is uint)
-            {
-                literal = ((uint)value).ToString(CultureInfo.InvariantCulture) + "u";
-                return true;
-            }
-
-            if (value is long)
-            {
-                literal = ((long)value).ToString(CultureInfo.InvariantCulture) + "L";
-                return true;
-            }
-
-            if (value is ulong)
-            {
-                literal = ((ulong)value).ToString(CultureInfo.InvariantCulture) + "UL";
+                literal = shared;
                 return true;
             }
 
@@ -261,43 +318,15 @@ namespace Heddle.Tool.Compile.Sites
                     return false;
                 }
 
-                literal = "(" + enumSpelling + ")" + numericText;
+                // A signed operand of a cast to a named type must be grouped: `(E)-1` parses as a
+                // subtraction from `E`.
+                literal = "(" + enumSpelling + ")" +
+                    (numericText.Length != 0 && numericText[0] == '-' ? "(" + numericText + ")" : numericText);
                 return true;
             }
 
             why = "constant of type '" + (type.FullName ?? type.Name) + "'";
             return false;
-        }
-
-        private static string Quote(string text)
-        {
-            var sb = new StringBuilder(text.Length + 2);
-            sb.Append('"');
-            foreach (var character in text)
-                sb.Append(EscapeChar(character));
-            sb.Append('"');
-            return sb.ToString();
-        }
-
-        private static string EscapeChar(char character)
-        {
-            switch (character)
-            {
-                case '"': return "\\\"";
-                case '\\': return "\\\\";
-                case '\0': return "\\0";
-                case '\a': return "\\a";
-                case '\b': return "\\b";
-                case '\f': return "\\f";
-                case '\n': return "\\n";
-                case '\r': return "\\r";
-                case '\t': return "\\t";
-                case '\v': return "\\v";
-                default:
-                    if (char.IsControl(character))
-                        return "\\u" + ((int)character).ToString("X4");
-                    return character.ToString();
-            }
         }
 
         private bool PrintParameter(ParameterExpression node, out string text, out string why)
@@ -307,7 +336,19 @@ namespace Heddle.Tool.Compile.Sites
             string local;
             if (_locals.TryGetValue(node, out local))
             {
-                text = local;
+                Expression binding;
+                if (!_pending.TryGetValue(node, out binding))
+                {
+                    text = local;
+                    return true;
+                }
+
+                // The first read of a bound local carries its binding.
+                _pending.Remove(node);
+                string value;
+                if (!Print(binding, out value, out why))
+                    return false;
+                text = "(" + local + " = " + value + ")";
                 return true;
             }
 
@@ -364,8 +405,8 @@ namespace Heddle.Tool.Compile.Sites
                 // Every operand the engine promotes is already converted in the tree; the cast
                 // only names the recorded CLR type, so C# promotion never re-decides.
                 text = node.NodeType == ExpressionType.TypeAs
-                    ? Paren(operand) + " as " + target
-                    : "(" + target + ")" + Paren(operand);
+                    ? Operand(node.Operand, operand) + " as " + target
+                    : "(" + target + ")" + Operand(node.Operand, operand);
                 return true;
             }
 
@@ -380,16 +421,16 @@ namespace Heddle.Tool.Compile.Sites
             switch (node.NodeType)
             {
                 case ExpressionType.Not:
-                    text = "!" + Paren(side);
+                    text = "!" + Operand(node.Operand, side);
                     return true;
                 case ExpressionType.Negate:
-                    text = "-" + Paren(side);
+                    text = "-" + Operand(node.Operand, side);
                     return true;
                 case ExpressionType.UnaryPlus:
-                    text = "+" + Paren(side);
+                    text = "+" + Operand(node.Operand, side);
                     return true;
                 case ExpressionType.OnesComplement:
-                    text = "~" + Paren(side);
+                    text = "~" + Operand(node.Operand, side);
                     return true;
             }
 
@@ -419,8 +460,14 @@ namespace Heddle.Tool.Compile.Sites
                     return false;
                 }
 
-                text = Paren(array) + "[" + index + "]";
+                text = Operand(node.Left, array) + "[" + index + "]";
                 return true;
+            }
+
+            if (DividesByConstantZero(node))
+            {
+                why = "division by a constant zero";
+                return false;
             }
 
             string left;
@@ -455,7 +502,50 @@ namespace Heddle.Tool.Compile.Sites
                 return false;
             }
 
-            text = Paren(left) + " " + op + " " + Paren(right);
+            string leftOperand = Operand(node.Left, left);
+            string rightOperand = Operand(node.Right, right);
+            if (node.Method == null)
+            {
+                // No operator method on an equality over references is reference equality. A bare infix
+                // would let C# bind an operator the operand type declares or inherits.
+                if ((node.NodeType == ExpressionType.Equal || node.NodeType == ExpressionType.NotEqual) &&
+                    !node.Left.Type.IsValueType && !node.Right.Type.IsValueType)
+                {
+                    leftOperand = "(object)" + leftOperand;
+                    rightOperand = "(object)" + rightOperand;
+                }
+            }
+            else if (!node.IsLifted)
+            {
+                // The operator the engine bound: operands typed exactly as its parameters leave C# overload
+                // resolution no better candidate.
+                var parameters = node.Method.GetParameters();
+                if (parameters.Length == 2)
+                {
+                    if (!TryPinOperand(node.Left, parameters[0].ParameterType, ref leftOperand, out why) ||
+                        !TryPinOperand(node.Right, parameters[1].ParameterType, ref rightOperand, out why))
+                        return false;
+                }
+            }
+
+            text = leftOperand + " " + op + " " + rightOperand;
+            return true;
+        }
+
+        private static bool TryPinOperand(Expression operand, Type parameterType, ref string text, out string why)
+        {
+            why = null;
+            if (operand.Type == parameterType)
+                return true;
+            string spelling;
+            string spellWhy;
+            if (!TypeNamePrinter.TrySpell(parameterType, out spelling, out spellWhy))
+            {
+                why = "operator parameter type: " + spellWhy;
+                return false;
+            }
+
+            text = "(" + spelling + ")" + text;
             return true;
         }
 
@@ -541,7 +631,7 @@ namespace Heddle.Tool.Compile.Sites
                 return false;
             }
 
-            // Generated code names only what the consumer's assembly can see (P3-R2): a call the
+            // Generated code names only what the consumer's assembly can see: a call the
             // engine bound to an internal target — the default built-ins included — is declined and
             // rebuilt from data at load, listed in the template's HED7031 notice.
             if (!method.IsPublic || !method.IsStatic)
@@ -661,7 +751,7 @@ namespace Heddle.Tool.Compile.Sites
                 return false;
             }
 
-            text = Paren(receiver) + "." + property.Name;
+            text = Operand(node.Expression, receiver) + "." + property.Name;
             return true;
         }
 
@@ -725,7 +815,7 @@ namespace Heddle.Tool.Compile.Sites
             }
 
             // The indexer the engine bound, with the converted arguments it built.
-            text = Paren(receiver) + "[" + string.Join(", ", arguments) + "]";
+            text = Operand(node.Object, receiver) + "[" + string.Join(", ", arguments) + "]";
             return true;
         }
 
@@ -759,89 +849,104 @@ namespace Heddle.Tool.Compile.Sites
 
             // The engine's common type is already unified in the tree (explicit Convert arms),
             // so the ternary only names the recorded shapes.
-            text = Paren(test) + " ? " + Paren(whenTrue) + " : " + Paren(whenFalse);
+            text = Operand(node.Test, test) + " ? " + Operand(node.IfTrue, whenTrue) + " : " +
+                Operand(node.IfFalse, whenFalse);
             return true;
         }
 
+        /// <summary>Prints a block of receiver bindings as a <b>single expression</b>: each binding is folded
+        /// into the first read of its local — <c>(h = receiver) == default(T) ? default(R) : h.Member</c> — so
+        /// the receiver is read exactly where the tree reads it. Lifting the bindings into statements ahead of
+        /// the <c>return</c> reads them unconditionally and first, which runs the untaken arm of every
+        /// <c>?:</c>, <c>&amp;&amp;</c>, <c>||</c> and <c>??</c> above the block and moves them ahead of operands
+        /// written to their left. Only a local's declaration, which evaluates nothing, is a statement.
+        /// <para>The fold is exact only when the first thing each consumer evaluates is the local bound just
+        /// before it — true of every null-safe hop the engine builds, whose consumer opens with the null test.
+        /// Any other block is declined.</para></summary>
         private bool PrintBlock(BlockExpression node, out string text, out string why)
         {
             text = null;
             why = null;
-            foreach (var variable in node.Variables)
+            int last = node.Expressions.Count - 1;
+            if (last < 1)
             {
-                if (!_locals.ContainsKey(variable))
-                {
-                    string spelling;
-                    string spellWhy;
-                    if (!TypeNamePrinter.TrySpell(variable.Type, out spelling, out spellWhy))
-                    {
-                        why = "block local type: " + spellWhy;
-                        return false;
-                    }
-
-                    string name = "h_" + _localCount;
-                    _localCount++;
-                    _locals.Add(variable, name);
-                    _statements.Add(spelling + " " + name + " = default(" + spelling + ");");
-                }
-            }
-
-            for (int i = 0; i < node.Expressions.Count; i++)
-            {
-                bool last = i == node.Expressions.Count - 1;
-                string part;
-                string partWhy;
-                var assign = node.Expressions[i] as BinaryExpression;
-                if (!last && assign != null && assign.NodeType == ExpressionType.Assign)
-                {
-                    var target = assign.Left as ParameterExpression;
-                    if (target == null)
-                    {
-                        why = "assign to non-local";
-                        return false;
-                    }
-
-                    string name;
-                    if (!_locals.TryGetValue(target, out name))
-                    {
-                        why = "assign to undeclared local";
-                        return false;
-                    }
-
-                    string value;
-                    string valueWhy;
-                    if (!Print(assign.Right, out value, out valueWhy))
-                    {
-                        why = valueWhy;
-                        return false;
-                    }
-
-                    _statements.Add(name + " = " + value + ";");
-                    continue;
-                }
-
-                if (!Print(node.Expressions[i], out part, out partWhy))
-                {
-                    why = partWhy;
-                    return false;
-                }
-
-                if (!last)
-                {
-                    why = "non-assign block statement";
-                    return false;
-                }
-
-                text = part;
-            }
-
-            if (text == null)
-            {
-                why = "empty block";
+                why = "unsupported block shape";
                 return false;
             }
 
+            var bound = new ParameterExpression[last];
+            for (int i = 0; i < last; i++)
+            {
+                var bind = node.Expressions[i] as BinaryExpression;
+                bound[i] = bind != null && bind.NodeType == ExpressionType.Assign
+                    ? bind.Left as ParameterExpression
+                    : null;
+                var consumer = i + 1 < last ? ((BinaryExpression)node.Expressions[i + 1]).Right : node.Expressions[last];
+                if (bound[i] == null || !node.Variables.Contains(bound[i]) || _pending.ContainsKey(bound[i]) ||
+                    FirstEvaluated(consumer) != bound[i])
+                {
+                    why = "unsupported block shape";
+                    return false;
+                }
+            }
+
+            foreach (var variable in node.Variables)
+            {
+                if (_locals.ContainsKey(variable))
+                    continue;
+                string spelling;
+                string spellWhy;
+                if (!TypeNamePrinter.TrySpell(variable.Type, out spelling, out spellWhy))
+                {
+                    why = "block local type: " + spellWhy;
+                    return false;
+                }
+
+                string name = "h_" + _localCount;
+                _localCount++;
+                _locals.Add(variable, name);
+                _statements.Add(spelling + " " + name + " = default(" + spelling + ");");
+            }
+
+            for (int i = 0; i < last; i++)
+                _pending.Add(bound[i], ((BinaryExpression)node.Expressions[i]).Right);
+            if (!Print(node.Expressions[last], out text, out why))
+                return false;
+            for (int i = 0; i < last; i++)
+            {
+                if (_pending.ContainsKey(bound[i]))
+                {
+                    why = "unsupported block shape";
+                    return false;
+                }
+            }
+
             return true;
+        }
+
+        /// <summary>The leaf an expression evaluates before anything else in it.</summary>
+        private static Expression FirstEvaluated(Expression node)
+        {
+            while (true)
+            {
+                var conditional = node as ConditionalExpression;
+                var binary = node as BinaryExpression;
+                var unary = node as UnaryExpression;
+                var member = node as MemberExpression;
+                var index = node as IndexExpression;
+                if (conditional != null)
+                    node = conditional.Test;
+                else if (binary != null && binary.NodeType != ExpressionType.Assign)
+                    node = binary.Left;
+                else if (unary != null)
+                    node = unary.Operand;
+                else if (member != null && member.Expression != null)
+                    node = member.Expression;
+                else if (index != null && index.Object != null)
+                    node = index.Object;
+                else
+                    return node;
+            }
         }
 
         private bool PrintNewArray(NewArrayExpression node, out string text, out string why)
@@ -897,26 +1002,37 @@ namespace Heddle.Tool.Compile.Sites
             return true;
         }
 
-        private static bool IsAtomic(string text)
+        /// <summary>Whether <paramref name="node"/> printed as a C# primary expression, which binds tighter
+        /// than every operator and so stands as an operand without grouping. Decided from the node kind:
+        /// the printed text cannot say, because <c>(A) + (B)</c> opens and closes with a parenthesis and is
+        /// not grouped at all.</summary>
+        private static bool IsPrimary(Expression node, string text)
         {
-            if (string.IsNullOrEmpty(text))
-                return false;
-            char first = text[0];
-            char last = text[text.Length - 1];
-            if (first == '(' && last == ')')
-                return true;
-            foreach (var character in text)
+            // A folded constant subtree printed as a literal, whatever node kind it was.
+            if (!(node is DefaultExpression) && IsConstantSubtree(node))
+                return text.Length != 0 && text[0] != '(' && text[0] != '-';
+            switch (node.NodeType)
             {
-                if (character == ' ' || character == '?' || character == ':' || character == '+' ||
-                    character == '-' || character == '*' || character == '/' || character == '%' ||
-                    character == '<' || character == '>' || character == '=' || character == '!' ||
-                    character == '&' || character == '|' || character == '^')
-                    return false;
+                case ExpressionType.Parameter:
+                case ExpressionType.MemberAccess:
+                case ExpressionType.Index:
+                case ExpressionType.ArrayIndex:
+                case ExpressionType.Call:
+                case ExpressionType.Default:
+                    return true;
+                case ExpressionType.Constant:
+                    // A cast-spelled literal (small integrals, enums) and a signed literal are unary
+                    // expressions, not primaries.
+                    return text.Length != 0 && text[0] != '(' && text[0] != '-';
+                case ExpressionType.Add:
+                    // Printed as a string.Concat call.
+                    return IsStringConcat(((BinaryExpression)node).Method);
             }
 
-            return true;
+            return false;
         }
 
-        private static string Paren(string text) => IsAtomic(text) ? text : "(" + text + ")";
+        private static string Operand(Expression node, string text) =>
+            IsPrimary(node, text) ? text : "(" + text + ")";
     }
 }

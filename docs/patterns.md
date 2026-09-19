@@ -532,6 +532,19 @@ compile error as a misspelled member, applied uniformly to the member tier and t
 tier. It is non‑inherited and does not affect fields or methods (neither is reachable from template
 text anyway). Use it to prune a DTO, but treat the DTO's *shape* as the real boundary, not `[Hidden]`.
 
+**The most‑derived declaration of a name decides.** Resolution walks the model type and then its base
+classes, and stops at the first type that declares the name at all. If that declaration is a visible
+property, it binds; if it is anything else — a `[Hidden]` `override`, a `[Hidden]` or non‑public or
+`static` `new` property, a set‑only or `private` property, a field or method of that name — the name is
+*not found*, and the base class's
+visible property of the same name is **not** used instead. (It could not safely be: an overridden getter
+dispatches to the derived implementation, which is exactly the value the derived type hid.) The same
+rule governs indexers, editor completion, and the build tier. Two consequences follow from
+"non‑inherited": a `[Hidden]` property that a derived class overrides *without* the attribute is
+visible on the derived type, so repeat `[Hidden]` on the override; and the attribute is read from the
+**static** model type the template is compiled against — a template typed to an interface or base
+class sees that type's members, whatever the runtime object hides.
+
 **The `FunctionRegistry` freeze is the whole trust boundary.** Anything registered is callable from
 template text and nothing else is — there is no path from a template to an arbitrary method by name.
 The registry **freezes on first compile use** (`IsFrozen`); registering after that throws

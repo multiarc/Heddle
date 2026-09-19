@@ -12,7 +12,7 @@ namespace Heddle.Runtime
     /// recorded ones; a hook that hands a differing data or chained type faults the item with
     /// <see cref="PrecompiledMismatchException"/> carrying
     /// <see cref="PrecompiledFallbackReason.ExtensionInitTypingMismatch"/>, which the per-item compile catch
-    /// turns into a compile error and phase 1's binding gate later classifies.
+    /// turns into a compile error and the binding gate later classifies.
     /// <para>Correlation is by document and item position: the loader parses the recorded raw text, so a
     /// served body re-parses to the positions the build recorded. Nested bodies stack by the served body's
     /// <c>CompiledDocumentRef</c>; a <c>null</c> ref (or <c>-1</c>) is a leaf and pushes an empty map.</para>
@@ -381,10 +381,10 @@ namespace Heddle.Runtime
             if (recorded == null)
                 return null;
             string recordedNominal = recorded.Nominal();
-            string liveNominal = FormRecord.ToTypeRef(live)?.Nominal();
+            string liveNominal = FormRecord.ToTypeRef(live, null)?.Nominal();
             if (string.Equals(recordedNominal, liveNominal, StringComparison.Ordinal))
                 return null;
-            // AC-4: a framework type compares by full name alone, so a body typed over System.Object
+            // A framework type compares by full name alone, so a body typed over System.Object
             // recorded on .NET 10 (System.Private.CoreLib) is the same type on net48 (mscorlib).
             var liveType = live != null ? live.Type : null;
             if (liveType != null && !(recorded is DynamicTypeRef) &&

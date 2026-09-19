@@ -42,7 +42,7 @@ namespace Heddle.Language.Members
     /// The policy for the member-tier sandbox filter: a path segment binds to a readable, non-<c>[Hidden]</c>
     /// instance property whose getter is public-or-internal. The <b>runtime's</b> observable accept/reject behavior
     /// is normative. Widening the filter (accepting <c>protected internal</c>,
-    /// surfacing base-interface members) is a breaking-window item, never a drift fix.
+    /// surfacing base-interface members) is a breaking change for hosts, never a drift fix.
     /// </summary>
     internal static class MemberVisibility
     {

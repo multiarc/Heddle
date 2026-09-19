@@ -44,7 +44,7 @@ namespace Heddle.Helpers {
             return typeToCheck.IsAssignableFrom(typeof(T));
         }
 
-        [UnconditionalSuppressMessage("Trimming", "IL2070", Justification = "P3-R9: reflection over a model type; model types reach the engine through [HeddleModelAssembly]/typeof parameters annotated DynamicallyAccessedMemberTypes.All, which keeps their members through a trimmed publish.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2070", Justification = "Reflection over a model type; model types reach the engine through [HeddleModelAssembly]/typeof parameters annotated DynamicallyAccessedMemberTypes.All, which keeps their members through a trimmed publish.")]
         public static bool IsImplement(this Type type, Type interfaceType)
         {
             if (type == null)
@@ -55,7 +55,7 @@ namespace Heddle.Helpers {
             return type.GetInterfaces().Any(i => i == interfaceType);
         }
 
-        [UnconditionalSuppressMessage("Trimming", "IL2070", Justification = "P3-R9: reflection over a model type; model types reach the engine through [HeddleModelAssembly]/typeof parameters annotated DynamicallyAccessedMemberTypes.All, which keeps their members through a trimmed publish.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2070", Justification = "Reflection over a model type; model types reach the engine through [HeddleModelAssembly]/typeof parameters annotated DynamicallyAccessedMemberTypes.All, which keeps their members through a trimmed publish.")]
         public static bool IsImplement<T>(this Type type)
         {
             if (type == null)
@@ -103,7 +103,7 @@ namespace Heddle.Helpers {
             return type.GetAttributes<Attributes.BranchRoleAttribute>(true).FirstOrDefault()?.Role;
         }
 
-        [UnconditionalSuppressMessage("Trimming", "IL2070", Justification = "P3-R9: reflection over a model type; model types reach the engine through [HeddleModelAssembly]/typeof parameters annotated DynamicallyAccessedMemberTypes.All, which keeps their members through a trimmed publish.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2070", Justification = "Reflection over a model type; model types reach the engine through [HeddleModelAssembly]/typeof parameters annotated DynamicallyAccessedMemberTypes.All, which keeps their members through a trimmed publish.")]
         public static Type TryGetElementType(this Type type, Type baseType)
         {
             if (type == null)
@@ -148,7 +148,7 @@ namespace Heddle.Helpers {
             return null;
         }
 
-        [UnconditionalSuppressMessage("Trimming", "IL2070", Justification = "P3-R9: reflection over a model type; model types reach the engine through [HeddleModelAssembly]/typeof parameters annotated DynamicallyAccessedMemberTypes.All, which keeps their members through a trimmed publish.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2070", Justification = "Reflection over a model type; model types reach the engine through [HeddleModelAssembly]/typeof parameters annotated DynamicallyAccessedMemberTypes.All, which keeps their members through a trimmed publish.")]
         public static Type[] TryGetTypeArguments(this Type type, Type baseType)
         {
             if (type == null)
@@ -176,7 +176,7 @@ namespace Heddle.Helpers {
             return baseImplementation?.GenericTypeArguments;
         }
 
-        [UnconditionalSuppressMessage("Trimming", "IL2070", Justification = "P3-R9: reflection over a model type; model types reach the engine through [HeddleModelAssembly]/typeof parameters annotated DynamicallyAccessedMemberTypes.All, which keeps their members through a trimmed publish.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2070", Justification = "Reflection over a model type; model types reach the engine through [HeddleModelAssembly]/typeof parameters annotated DynamicallyAccessedMemberTypes.All, which keeps their members through a trimmed publish.")]
         public static bool IsImplementGeneric(this Type type, Type baseType)
         {
             var typeInfo = type.GetTypeInfo();

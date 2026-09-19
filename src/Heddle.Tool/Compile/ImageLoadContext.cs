@@ -103,8 +103,11 @@ namespace Heddle.Tool.Compile
             new ImageLoadException(path, message);
 
         /// <summary>Resolves a model-type spelling over the image set: assembly-qualified first,
-        /// then full name, then simple name in response-file order. Returns null when unresolved.</summary>
-        internal Type ResolveModelType(string spelling)
+        /// then full name, then the engine's own template-spelling resolver under the template's
+        /// <paramref name="usings"/> — the one that reads a dotted nested type, a closed generic or an
+        /// alias, and the one the runtime will apply to the same directive — then simple name in
+        /// response-file order. Returns null when unresolved.</summary>
+        internal Type ResolveModelType(string spelling, ICollection<string> usings = null)
         {
             if (string.IsNullOrEmpty(spelling))
                 return null;
@@ -125,6 +128,18 @@ namespace Heddle.Tool.Compile
 
                 if (found != null)
                     return found;
+            }
+
+            try
+            {
+                Type spelled = Heddle.Helpers.ReflectionHelper.ResolveType(spelling, usings);
+                if (spelled != null)
+                    return spelled;
+            }
+            catch (Exception ex) when (ex is InvalidOperationException || ex is ArgumentException)
+            {
+                // Unresolved or ambiguous under the engine's rules: the simple-name pass below still
+                // speaks, and a miss there is the caller's unresolved-model diagnostic.
             }
 
             foreach (var image in _images)

@@ -5,7 +5,7 @@ using Heddle.Precompiled.CompiledForm;
 
 namespace Heddle.Tool.Compile.Sites
 {
-    /// <summary>Prints one embedded C# site (P3-R5): the same static method the engine's
+    /// <summary>Prints one embedded C# site: the same static method the engine's
     /// <c>CSharpClassTemplate.tcs</c> emits — <c>ProcessData_S&lt;n&gt;(model, chained, root)</c>
     /// with <c>dynamic</c> where the engine used it — inside <c>namespace Heddle.Runtime</c> so
     /// name lookup is identical to the engine's generated assembly, preceded by the site's

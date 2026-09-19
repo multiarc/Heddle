@@ -306,7 +306,8 @@ namespace Heddle.Data
             Add(HeddleDiagnosticIds.BuildOptionParseError, "Invalid Heddle build option", error,
                 "Invalid value '{0}' for build option '{1}'; expected {2}");
             Add(HeddleDiagnosticIds.BuildDuplicateSanitizedName, "Duplicate generated entry-class name", error,
-                "Templates '{0}' and '{1}' sanitize to the same entry-class identifier '{2}'");
+                "Template '{1}' sanitizes to the entry-class identifier '{2}', which {0} already uses. Rename the " +
+                "file, or give the item a Key that sanitizes differently");
             // Retired in place (2026-09-17): the host reads an import outside the item set from disk, mirroring
             // the engine's ImportMap, so this fact never fires; the row stays so the id is never reused.
             Add(HeddleDiagnosticIds.BuildImportNotIncluded, "Heddle import not included in compilation", error,

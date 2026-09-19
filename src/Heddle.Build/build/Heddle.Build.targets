@@ -13,6 +13,25 @@
     <HeddleTemplate Include="**\*.heddle" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder);bin\**;obj\**" />
   </ItemGroup>
 
+  <!-- Editors decide whether to build at all from declared inputs: Visual Studio's fast up-to-date
+       check reads UpToDateCheckInput, dotnet watch reads Watch. Without these a template edit builds
+       nothing and the stale embedded artifact keeps being served. Declared twice on purpose: statically
+       for a project whose items precede this import (the package case), and from the two collection
+       hooks for items declared after it. -->
+  <ItemGroup>
+    <UpToDateCheckInput Include="@(HeddleTemplate);@(HeddleModelAssembly);@(HeddleExtensionAssembly)" />
+    <Watch Include="@(HeddleTemplate)" />
+  </ItemGroup>
+  <PropertyGroup>
+    <CustomCollectWatchItems>$(CustomCollectWatchItems);_HeddleEditorInputs</CustomCollectWatchItems>
+  </PropertyGroup>
+  <Target Name="_HeddleEditorInputs" BeforeTargets="CollectUpToDateCheckInputDesignTime">
+    <ItemGroup>
+      <UpToDateCheckInput Include="@(HeddleTemplate);@(HeddleModelAssembly);@(HeddleExtensionAssembly)" KeepDuplicates="false" />
+      <Watch Include="@(HeddleTemplate)" KeepDuplicates="false" />
+    </ItemGroup>
+  </Target>
+
   <!-- Per-item metadata flows on the items themselves — Key, Name, ModelType, Precompile and the
        OutputProfile override — never restated here: outside a target a cross-item %(Other.Metadata)
        reference evaluates to the empty string and would delete what the declaration copied. -->
@@ -41,6 +60,8 @@
       <_HeddleStubsPath>$(_HeddleDir)stubs/Heddle.Generated.Stubs.g.cs</_HeddleStubsPath>
       <_HeddleResponsePath>$(_HeddleDir)compile.rsp</_HeddleResponsePath>
       <_HeddleOptionsPath>$(_HeddleDir)options.txt</_HeddleOptionsPath>
+      <_HeddleModelsDir>$(_HeddleDir)models/</_HeddleModelsDir>
+      <_HeddleModelDigestPath>$(_HeddleDir)models.txt</_HeddleModelDigestPath>
     </PropertyGroup>
   </Target>
 
@@ -67,6 +88,7 @@
       <_HeddleOptionLine Include="TrimDirectiveLines=$(HeddleTrimDirectiveLines)" />
       <_HeddleOptionLine Include="MaxRecursionCount=$(HeddleMaxRecursionCount)" />
       <_HeddleOptionLine Include="GeneratedNamespace=$(HeddleGeneratedNamespace)" />
+      <_HeddleOptionLine Include="AssemblyName=$(AssemblyName)" />
     </ItemGroup>
     <MakeDir Directories="$(_HeddleDir)" />
     <WriteLinesToFile File="$(_HeddleOptionsPath)" Lines="@(_HeddleOptionLine)" Overwrite="true" WriteOnlyWhenDifferent="true" />
@@ -133,14 +155,29 @@
       <Output TaskParameter="UnresolvedCount" PropertyName="_HeddleUnresolvedCount" />
     </HeddleCompile>
     <ItemGroup>
-      <FileWrites Include="$(_HeddleProbePath)" />
+      <FileWrites Include="$(_HeddleProbePath);$(_HeddleResponsePath)" />
     </ItemGroup>
   </Target>
 
   <!-- Same-project models: the build cannot see a type the project it is building declares without
        compiling it once. The stubs declare every wrapper with throwing bodies; the Csc pass compiles
        the project's own sources plus the stubs into an assembly carrying the project's own name, so
-       identities recorded from it equal the built assembly's. Content-addressed and reused. -->
+       identities recorded from it equal the built assembly's. Content-addressed, and compiled as the
+       project's own output type, determinism and strong name: a library has no entry point to demand,
+       unchanged sources keep one module identity across builds, and a signed project's image carries
+       its public key, so a friend assembly's InternalsVisibleTo grant holds here as it does in the real
+       compile. Every input that decides what binds or what a source generator sees is the real
+       compile's — the project's own additional files and analyzer configuration included, forwarded to
+       this throwaway pass only; Heddle declares none of its own and hands the real compile nothing.
+       Warnings never fail this pass. The digest covers every one of those inputs, so the image found
+       under the current digest is the image this pass would produce, and it is not compiled again —
+       provided the pass that wrote it finished (it leaves a marker beside the image) and the file still
+       reads as an assembly; what an interrupted compile leaves behind is compiled over.
+       The sources are the project's whole Compile set — the SDK's generated global usings and assembly
+       attributes included, which live under the intermediate directory — minus Heddle's own outputs.
+       The digest is a _HeddleCompile input through a file that changes only when the digest does, so
+       editing a model (or reverting the edit) recompiles the templates and an unchanged rebuild still
+       skips. Only the current digest's directory is kept. -->
   <Target Name="_HeddleIntermediateCompile"
           AfterTargets="BeforeCompile"
           BeforeTargets="_HeddleCompile"
@@ -161,16 +198,25 @@
         StubsOnly="$(_HeddleStubsPath)"
         CompileSources="@(Compile)"
         DigestReferences="@(ReferencePathWithRefAssemblies)"
-        Analyzers="@(Analyzer)">
+        Analyzers="@(Analyzer)"
+        IntermediateImageDirectory="$(_HeddleModelsDir)"
+        IntermediateImageName="$(AssemblyName).dll"
+        DigestFiles="@(EditorConfigFiles);@(AdditionalFiles);$(KeyOriginatorFile)"
+        DigestOptions="AssemblyName=$(AssemblyName)|TargetType=$(OutputType)|DefineConstants=$(DefineConstants)|LangVersion=$(LangVersion)|Nullable=$(Nullable)|AllowUnsafeBlocks=$(AllowUnsafeBlocks)|CheckForOverflowUnderflow=$(CheckForOverflowUnderflow)|Deterministic=$(Deterministic)|KeyContainer=$(KeyContainerName)|PublicSign=$(PublicSign)|DelaySign=$(DelaySign)|Features=$(Features)">
       <Output TaskParameter="IntermediateDigest" PropertyName="_HeddleDigest" />
+      <Output TaskParameter="IntermediateImageUsable" PropertyName="_HeddleImageUsable" />
     </HeddleCompile>
     <ItemGroup>
-      <_HeddleIntermediateModel Include="$(_HeddleDir)models/$(_HeddleDigest)/$(AssemblyName).dll" />
-      <_HeddleModelSources Include="@(Compile->'%(FullPath)')" Exclude="$(_HeddleSourcePath);$(_HeddleStubsPath);$([System.IO.Path]::GetFullPath('$(IntermediateOutputPath)'))**;$([System.IO.Path]::GetFullPath('$(OutputPath)'))**" />
+      <_HeddleIntermediateModel Include="$(_HeddleModelsDir)$(_HeddleDigest)/$(AssemblyName).dll" />
+      <_HeddleModelSources Include="@(Compile->'%(FullPath)')" Exclude="$([System.IO.Path]::GetFullPath('$(_HeddleDir)'))**" />
       <_HeddleModelSources Include="$(_HeddleStubsPath)" />
+      <_HeddleModelDigestInput Include="$(_HeddleModelDigestPath)" />
     </ItemGroup>
-    <MakeDir Directories="$(_HeddleDir)models/$(_HeddleDigest)" />
-    <Csc Sources="@(_HeddleModelSources)"
+    <MakeDir Directories="$(_HeddleModelsDir)$(_HeddleDigest)" />
+    <WriteLinesToFile File="$(_HeddleModelDigestPath)" Lines="$(_HeddleDigest)" Overwrite="true" WriteOnlyWhenDifferent="true" />
+    <Delete Condition="'$(_HeddleImageUsable)' != 'true'" Files="$(_HeddleModelsDir)$(_HeddleDigest)/complete" />
+    <Csc Condition="'$(_HeddleImageUsable)' != 'true'"
+         Sources="@(_HeddleModelSources)"
          References="@(ReferencePathWithRefAssemblies)"
          Analyzers="@(Analyzer)"
          DefineConstants="$(DefineConstants)"
@@ -178,9 +224,25 @@
          Nullable="$(Nullable)"
          AllowUnsafeBlocks="$(AllowUnsafeBlocks)"
          CheckForOverflowUnderflow="$(CheckForOverflowUnderflow)"
+         TargetType="$(OutputType)"
+         Deterministic="$(Deterministic)"
+         KeyFile="$(KeyOriginatorFile)"
+         KeyContainer="$(KeyContainerName)"
+         PublicSign="$(PublicSign)"
+         DelaySign="$(DelaySign)"
+         Features="$(Features)"
+         AdditionalFiles="@(AdditionalFiles)"
+         AnalyzerConfigFiles="@(EditorConfigFiles)"
          TreatWarningsAsErrors="false"
          WarningLevel="0"
          OutputAssembly="@(_HeddleIntermediateModel)" />
+    <Touch Condition="'$(_HeddleImageUsable)' != 'true'" Files="$(_HeddleModelsDir)$(_HeddleDigest)/complete" AlwaysCreate="true" />
+    <ItemGroup>
+      <_HeddleModelDir Include="$([System.IO.Directory]::GetDirectories('$(_HeddleModelsDir)'))" />
+      <_HeddleStaleModelDir Include="@(_HeddleModelDir)" Condition="'%(Filename)%(Extension)' != '$(_HeddleDigest)'" />
+      <FileWrites Include="@(_HeddleIntermediateModel);$(_HeddleModelsDir)$(_HeddleDigest)/complete;$(_HeddleModelDigestPath);$(_HeddleStubsPath)" />
+    </ItemGroup>
+    <RemoveDir Directories="@(_HeddleStaleModelDir)" ContinueOnError="true" />
   </Target>
 
   <!-- Design-time builds get compiling stubs and nothing else: no engine compile, image load,
@@ -227,7 +289,7 @@
   <!-- Three retired 2.x properties warn (HED7037) rather than error: an old project file keeps
        building byte-identical output, and only the warning says the option no longer exists. The two
        observe-path properties (HeddleObserveIntermediatePath, HeddleObserveImplementationPath) retire
-       silently (P4-R5). Their own target, ahead of CoreCompile, so a stale option warns even on a
+       silently. Their own target, ahead of CoreCompile, so a stale option warns even on a
        project whose templates are all import-only (where the compile itself has nothing to do). Skipped,
        like every other heddle target, outside a real build (design-time or target-scoped invocations). -->
   <Target Name="_HeddleRetiredPropertyWarnings"
@@ -245,7 +307,7 @@
        FileWrites; the source joins Compile before CoreCompile (live at the Csc task, unlike resources).
        The stubs pass writes none of these outputs. -->
   <Target Name="_HeddleCompile"
-          Inputs="@(HeddleTemplate);@(_HeddleImplementationImage);$(MSBuildAllProjects);$(_HeddleOptionsPath)"
+          Inputs="@(HeddleTemplate);@(_HeddleImplementationImage);$(MSBuildAllProjects);$(_HeddleOptionsPath);@(_HeddleModelDigestInput)"
           Outputs="$(_HeddleArtifactPath);$(_HeddleSourcePath);$(_HeddleStampPath)"
           BeforeTargets="CoreCompile"
           DependsOnTargets="_HeddlePaths;_HeddleItems;_HeddleOptions;_HeddleCollectImages;_HeddleEngineReference;_HeddleProbe;_HeddleIntermediateCompile"
@@ -263,6 +325,7 @@
         TrimDirectiveLines="$(HeddleTrimDirectiveLines)"
         MaxRecursionCount="$(HeddleMaxRecursionCount)"
         GeneratedNamespace="$(HeddleGeneratedNamespace)"
+        ConsumerAssemblyName="$(AssemblyName)"
         ImplementationImages="@(_HeddleImplementationImage)"
         EngineReference="@(_HeddleEngineReference->'%(FullPath)')"
         ToolPath="$(HeddleToolPath)"

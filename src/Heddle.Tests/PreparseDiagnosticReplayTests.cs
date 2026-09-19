@@ -40,6 +40,27 @@ namespace Heddle.Tests
                 second.CompileErrors.Select(error => error.Error));
         }
 
+        /// <summary>
+        /// A failed preparse reports the compiler's warnings beside its errors. Pins the regression where the
+        /// cache kept only message text, so the second caller received the first caller's warning as an error.
+        /// </summary>
+        [Fact]
+        public void AReplayedWarningStaysAWarning()
+        {
+            // An obsolete API draws a warning that does not depend on the rest of the expression binding.
+            var expression = "System.Reflection.Assembly.LoadWithPartialName(\"x\").FullName + no_such_symbol_" +
+                Guid.NewGuid().ToString("N");
+
+            var first = Compile(expression, position: 3);
+            var second = Compile(expression, position: 19);
+
+            Assert.Contains(first.CompileErrors, error => error is HeddleCompileWarning);
+            Assert.Contains(first.CompileErrors, error => !(error is HeddleCompileWarning));
+            Assert.Equal(first.CompileErrors.Select(error => error.Error + "|" + (error is HeddleCompileWarning)),
+                second.CompileErrors.Select(error => error.Error + "|" + (error is HeddleCompileWarning)));
+            Assert.All(second.CompileErrors, error => Assert.Equal(19, error.Position.StartIndex));
+        }
+
         private static CompileContext Compile(string expression, int position)
         {
             var context = new CompileContext(new TemplateOptions { ExpressionMode = ExpressionMode.FullCSharp });

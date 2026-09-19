@@ -1017,7 +1017,7 @@ namespace Heddle.Precompiled.CompiledForm
                         limit = artifact.CSharpSites.Count;
                         break;
                     case CompiledSiteKind.Refusal:
-                        // The payload indexes the owning row's RefusalSites list (AC-6).
+                        // The payload indexes the owning row's RefusalSites list.
                         RequireIndex(site.TemplateIndex, artifact.Templates.Count, "Site template index");
                         limit = artifact.Templates[site.TemplateIndex].RefusalSites.Count;
                         break;

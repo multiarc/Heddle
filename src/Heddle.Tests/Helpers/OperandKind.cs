@@ -1,6 +1,7 @@
 using System;
+using Heddle.Language.Expressions;
 
-namespace Heddle.Language.Expressions
+namespace Heddle.Tests
 {
     /// <summary>Coarse static classification for operands; <see cref="Unknown"/> means "no static type available" and causes graceful degradation.</summary>
     internal enum OperandCategory
