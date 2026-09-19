@@ -55,7 +55,7 @@ const idiomaticComposedChromeSrc = `{{define "alert_top"}}<div class="top-banner
                 <a href="/content/in-the-kitchen">All Recipes</a>
                 </li>
                 <li>
-                <a href="/recipe/Vital-Choice-Seafood-Cooking-Videos">Recipe Videos</a>
+                <a href="/recipe/Seafood-Cooking-Videos">Recipe Videos</a>
                 </li>
                 <li>
                 <a href="/content/Seafood-Storage-Cooking-Tips">Seafood Cooking Tips</a>
@@ -65,18 +65,18 @@ const idiomaticComposedChromeSrc = `{{define "alert_top"}}<div class="top-banner
                 </div>
                 </li>
                 <li>
-                <a href="/content/About-Vital-Choice">Why Vital Choice?</a>
+                <a href="/content/About-Us">Why Us?</a>
                 <div class="dropdown_1column">
                 <div class="col_1">
                 <ul>
                 <li>
-                <a href="/content/About-Vital-Choice">About Us</a>
+                <a href="/content/About-Us">About Us</a>
                 </li>
                 <li>
                 <a href="/content/our-mission">Our Mission</a>
                 </li>
                 <li>
-                <a href="/content/what-are-people-saying-about-vital-choice">Testimonials</a>
+                <a href="/content/customer-reviews">Testimonials</a>
                 </li>
                 <li>
                 <a href="/content/Giving-Back-to-the-Community">Giving Back</a>
@@ -85,7 +85,7 @@ const idiomaticComposedChromeSrc = `{{define "alert_top"}}<div class="top-banner
                 <a href="/content/News-Room">News Room</a>
                 </li>
                 <li>
-                <a href="/content/Vital-Green-Environmental-Stewardship-Program">Vital Green™</a>
+                <a href="/content/Green-Stewardship-Program">Green Stewardship™</a>
                 </li>
                 <li>
                 <a href="/content/Sustainability">Sustainability</a>
@@ -97,7 +97,7 @@ const idiomaticComposedChromeSrc = `{{define "alert_top"}}<div class="top-banner
                 <a href="/content/The-Antidote-Podcast-Series">Randy's Podcasts</a>
                 </li>
                 <li>
-                <a href="/content/HealthWise-Rewards-Program">Customer Rewards</a>
+                <a href="/content/Customer-Rewards-Program">Customer Rewards</a>
                 </li>
                 <li>
                 <a href="/faqs">Frequent Questions (FAQs)</a>
@@ -193,7 +193,7 @@ const idiomaticComposedChromeSrc = `{{define "alert_top"}}<div class="top-banner
                 <a href="/content/in-the-kitchen">All Recipes</a>
                 </li>
                 <li>
-                <a href="/recipe/Vital-Choice-Seafood-Cooking-Videos">Recipe Videos</a>
+                <a href="/recipe/Seafood-Cooking-Videos">Recipe Videos</a>
                 </li>
                 <li>
                 <a href="/content/Seafood-Storage-Cooking-Tips">Seafood Cooking Tips</a>
@@ -203,18 +203,18 @@ const idiomaticComposedChromeSrc = `{{define "alert_top"}}<div class="top-banner
                 </div>
                 </li>
                 <li>
-                <a href="/content/About-Vital-Choice">Why Vital Choice?</a>
+                <a href="/content/About-Us">Why Us?</a>
                 <div class="dropdown_1column">
                 <div class="col_1">
                 <ul>
                 <li>
-                <a href="/content/About-Vital-Choice">About Us</a>
+                <a href="/content/About-Us">About Us</a>
                 </li>
                 <li>
                 <a href="/content/our-mission">Our Mission</a>
                 </li>
                 <li>
-                <a href="/content/what-are-people-saying-about-vital-choice">Testimonials</a>
+                <a href="/content/customer-reviews">Testimonials</a>
                 </li>
                 <li>
                 <a href="/content/Giving-Back-to-the-Community">Giving Back</a>
@@ -223,7 +223,7 @@ const idiomaticComposedChromeSrc = `{{define "alert_top"}}<div class="top-banner
                 <a href="/content/News-Room">News Room</a>
                 </li>
                 <li>
-                <a href="/content/Vital-Green-Environmental-Stewardship-Program">Vital Green™</a>
+                <a href="/content/Green-Stewardship-Program">Green Stewardship™</a>
                 </li>
                 <li>
                 <a href="/content/Sustainability">Sustainability</a>
@@ -235,7 +235,7 @@ const idiomaticComposedChromeSrc = `{{define "alert_top"}}<div class="top-banner
                 <a href="/content/The-Antidote-Podcast-Series">Randy's Podcasts</a>
                 </li>
                 <li>
-                <a href="/content/HealthWise-Rewards-Program">Customer Rewards</a>
+                <a href="/content/Customer-Rewards-Program">Customer Rewards</a>
                 </li>
                 <li>
                 <a href="/faqs">Frequent Questions (FAQs)</a>

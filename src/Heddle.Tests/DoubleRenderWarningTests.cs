@@ -106,7 +106,7 @@ namespace Heddle.Tests
                     hits = scope.CompileWarnings.Count(w => w.DiagnosticId == HeddleDiagnosticIds.DefinitionRendersTwice);
                 }
 
-                int expected = name == "vc-test.heddle" ? 2 : name == "ergo-double-render.heddle" ? 1 : 0;
+                int expected = name == "widgets-layout.heddle" ? 2 : name == "ergo-double-render.heddle" ? 1 : 0;
                 Assert.True(expected == hits, $"{name}: expected {expected} HED4002 warning(s), got {hits}");
             }
         }

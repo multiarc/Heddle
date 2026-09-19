@@ -72,7 +72,7 @@ suite going quiet pass unnoticed.
 Many tests are **golden‑file** comparisons: a `.heddle` template under
 [TestTemplate/](../src/Heddle.Tests/TestTemplate) is rendered and compared against an
 expected `*.html` file (e.g. `recursion.heddle` → `test-recursion.html`,
-`vc-test.heddle` → `test-vc.html`). The `generated-*.html` files are the actual output written
+`widgets-layout.heddle` → `test-widgets-layout.html`). The `generated-*.html` files are the actual output written
 during a run, for diffing against the `test-*.html` expectations. These fixtures double as the
 authoritative examples used throughout this documentation.
 

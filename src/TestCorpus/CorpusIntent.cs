@@ -300,7 +300,7 @@ namespace Heddle.TestCorpus
                 bom: true),
             new CorpusIntentRow("tuple_array.heddle", CorpusTier.EngineError, CorpusRender.ResolveOnly,
                 "The tuple document: the bodied unnamed carrier emits, but the tuple C# is refused under Native (positions 81, 205), so the build fails. HeddleTemplateTests owns its bytes."),
-            new CorpusIntentRow("vc-test.heddle", CorpusTier.Compiles, CorpusRender.Standalone,
+            new CorpusIntentRow("widgets-layout.heddle", CorpusTier.Compiles, CorpusRender.Standalone,
                 "The double-render (W08) subject document: five of its widgets are full overrides, which emit as ordinary definition calls, and it renders model-less on both tiers."),
             new CorpusIntentRow("wierd-whitespace.heddle", CorpusTier.EngineError, CorpusRender.ResolveOnly,
                 "Whitespace-torture document whose @root reads are embedded C#, which the engine itself will not compile outside FullCSharp — the dynamic tier reports two refusals for this document (positions 655, 1051) under the row's own options, and the build fails the same way. HeddleTemplateTests owns its bytes.",

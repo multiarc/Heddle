@@ -618,10 +618,10 @@ namespace Heddle.Tests
         }
 
         [Fact()]
-        public void VcGenerateTest()
+        public void WidgetsLayoutGenerateTest()
         {
             HeddleTemplate.Configure(typeof(HeddleTemplateTests).GetTypeInfo().Assembly);
-            var options = new TemplateOptions("vc-test")
+            var options = new TemplateOptions("widgets-layout")
             {
                 FileNamePostfix = ".heddle",
                 RootPath = @"TestTemplate",
@@ -629,7 +629,7 @@ namespace Heddle.Tests
             };
             var target = new HeddleTemplate(new CompileContext(options));
             Assert.True(target.CompileResult.Success, target.CompileResult.ToString());
-            // vc-test deliberately combines '<default> -> ()' with two '@default()' by-name calls to pin override
+            // widgets-layout deliberately combines '<default> -> ()' with two '@default()' by-name calls to pin override
             // layering across three renders — exactly two HED4002 double-render warnings, both naming 'default',
             // and nothing else. The warning does not alter output (the golden below proves it).
             var doubleRenderWarnings = target.Context.CompileWarnings
@@ -639,12 +639,12 @@ namespace Heddle.Tests
             Assert.All(doubleRenderWarnings, w => Assert.StartsWith("Definition 'default' (declared at ", w.Error));
             Assert.Equal(2, doubleRenderWarnings.Select(w => w.Position.StartIndex).Distinct().Count());
             string expected;
-            using (StreamReader reader = File.OpenText(@"TestTemplate/generated-vc.html"))
+            using (StreamReader reader = File.OpenText(@"TestTemplate/generated-widgets-layout.html"))
             {
                 expected = reader.ReadToEnd();
             }
             var actual = target.Generate(null);
-            using (var writer = File.CreateText(TestCorpusIndex.WrittenArtifactPath("test-vc.html")))
+            using (var writer = File.CreateText(TestCorpusIndex.WrittenArtifactPath("test-widgets-layout.html")))
             {
                 writer.Write(actual);
             }
