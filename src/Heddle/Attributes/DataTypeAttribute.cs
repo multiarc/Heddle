@@ -6,6 +6,7 @@ namespace Heddle.Attributes {
     /// implementation.</summary>
     [AttributeUsage (AttributeTargets.Class, AllowMultiple = true)]
     public class DataTypeAttribute: Attribute {
+        /// <summary>Declares <paramref name="dataType"/> as a data type the extension accepts.</summary>
         public DataTypeAttribute (Type dataType)
         {
             DataType = dataType;

@@ -39,10 +39,16 @@ dotnet run --project samples/precompiled-aot -c Release -- --capture out
 bash samples/tools/compare-golden.sh samples/precompiled-aot
 ```
 
-Writes one file per workload (`composed-page.txt`, …) plus `assemblies.txt` (the loaded assembly names, sorted,
-without the BCL facades: which `System.*` assemblies a run loads depends on the OS, runtime and JIT, so
-the golden pins the host, the engine and its dependencies rather than the machine). The AOT claim is asserted *in capture* before anything is written: any loaded
-`Microsoft.CodeAnalysis` assembly fails the run.
+Writes one file per workload (`composed-page.txt`, …) plus `assemblies.txt`: the host, the engine and
+its parser runtime out of the loaded assembly names, sorted. Nothing else is pinned, because the rest
+describes the runtime rather than the host: the JIT reports its dynamic-methods assembly and loads BCL
+and helper assemblies lazily, while a native binary reports what the AOT compiler kept. The same golden
+therefore holds for the JIT run and for the published binary. The AOT claim is asserted *in capture*
+before anything is written: any loaded `Microsoft.CodeAnalysis` assembly fails the run.
+
+CI runs both: the `sample` matrix entry captures under the JIT like every other sample, and the `aot`
+job builds, publishes the native binary (`linux-x64`) and captures with it, comparing against the same
+goldens.
 
 ## AOT publish
 
@@ -52,12 +58,21 @@ dotnet publish samples/precompiled-aot -c Release --no-build
 ```
 
 The publish must succeed with no trim/AOT analyzer errors, and the published app must capture
-green. Publish is two steps on purpose: the build-time host is an executable project, which a
+green:
+
+```bash
+./samples/precompiled-aot/bin/Release/net10.0/<rid>/publish/PrecompiledAot --capture out
+bash samples/tools/compare-golden.sh samples/precompiled-aot
+```
+
+Publish is two steps on purpose: the build-time host is an executable project, which a
 self-contained publish cannot reference (NETSDK1150), so the Tool reference drops out of publish
-and the precompile stamp must already be up to date from the build.
+and the precompile stamp must already be up to date from the build. The dynamic twin runs in the
+native binary too: expression trees compile through the interpreter where dynamic code is
+unavailable, which is why the differential can be asserted there and not only under the JIT.
 
 ## What the golden pins
 
 All eight files. The three-tier differential (typed == registry == dynamic twin) is asserted *in
 capture* before the golden is written, so a divergence between the tiers fails the job; the golden
-then pins the bytes and the Roslyn-free assembly list.
+then pins the bytes and the host-side assembly list, on the JIT and in the published native binary.

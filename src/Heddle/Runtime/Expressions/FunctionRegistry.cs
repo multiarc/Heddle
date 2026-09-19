@@ -90,6 +90,7 @@ namespace Heddle.Runtime.Expressions
             AddOrReplace(FunctionEntry.FromMethod(name, staticMethod));
         }
 
+        /// <summary>True when a function with this exact name is registered.</summary>
         public bool Contains(string name)
         {
             return name != null && _functions.ContainsKey(name);

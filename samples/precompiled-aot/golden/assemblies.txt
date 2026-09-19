@@ -1,8 +1,4 @@
-Anonymously Hosted DynamicMethods Assembly
 Antlr4.Runtime.Standard
 Heddle
 Heddle.Language
-Microsoft.Extensions.FileProviders.Abstractions
-Microsoft.Extensions.FileProviders.Embedded
-Microsoft.Extensions.Primitives
 PrecompiledAot

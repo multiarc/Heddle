@@ -6,6 +6,7 @@ namespace Heddle.Attributes {
     /// implementation.</summary>
     [AttributeUsage (AttributeTargets.Class, AllowMultiple = true)]
     public sealed class ChainedTypeAttribute: Attribute {
+        /// <summary>Declares <paramref name="dataType"/> as a chained type the extension accepts.</summary>
         public ChainedTypeAttribute(Type dataType)
         {
             DataType = dataType;

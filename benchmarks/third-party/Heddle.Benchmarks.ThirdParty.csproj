@@ -11,8 +11,9 @@
     Isolation: references only the Heddle engine (ProjectReference) — the engine gains no packages.
     Every competitor package is pinned here, at the exact versions the upstream harness pins
     (Fluid Directory.Packages.props @ the same commit): BenchmarkDotNet 0.15.8, Scriban 7.2.5,
-    DotLiquid 2.3.197, Handlebars.Net 2.1.6. Fluid itself is the released Fluid.Core 2.31.0
-    (upstream builds it from its own source tree via ProjectReference).
+    DotLiquid 2.3.197, Handlebars.Net 2.1.6. Fluid itself is Fluid.Core 3.0.0-beta.5, the released
+    package matching the 3.0 API the vendored benchmark targets (upstream builds Fluid from its own
+    source tree via ProjectReference; see the note on the PackageReference).
   -->
   <PropertyGroup>
     <OutputType>Exe</OutputType>

@@ -49,3 +49,27 @@ jobs:
       run: dotnet run --project samples/${{ matrix.sample }} -c Release -- --capture out
     - name: Compare against goldens
       run: bash samples/tools/compare-golden.sh samples/${{ matrix.sample }}
+
+  # The NativeAOT claim, verified on the artifact that makes it: the sample is built (the build-time
+  # host is an executable, which a self-contained publish cannot reference, so publish is a second
+  # step over an up-to-date build), published as a native linux-x64 binary, and that binary captures
+  # and compares against the same goldens the JIT run above compares against.
+  aot:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v7
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v6
+      with:
+        dotnet-version: 10.0.x
+    - name: Native toolchain
+      run: sudo apt-get update && sudo apt-get install -y clang zlib1g-dev
+    - name: Build
+      run: dotnet build samples/precompiled-aot -c Release
+    - name: Publish native binary
+      run: dotnet publish samples/precompiled-aot -c Release -r linux-x64 --no-build
+    - name: Run the published binary (capture mode)
+      working-directory: samples/precompiled-aot
+      run: ./bin/Release/net10.0/linux-x64/publish/PrecompiledAot --capture out
+    - name: Compare against goldens
+      run: bash samples/tools/compare-golden.sh samples/precompiled-aot

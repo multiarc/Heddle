@@ -216,15 +216,16 @@ namespace Heddle.Samples.PrecompiledAot
                 throw new InvalidOperationException(
                     "AOT CLAIM FAILED: rendering loaded " + string.Join(", ", roslyn) + ".");
 
-            // The captured list leaves out the BCL facades (System.*, Microsoft.Win32.*, netstandard, mscorlib):
-            // which of those a run loads depends on the OS, the runtime and what the JIT happened to compile,
-            // and pinning them made the golden a statement about the machine rather than about the host.
-            // The assertion above still runs over the full list.
+            // The captured list is the host, the engine and its parser runtime, nothing else. Which other
+            // assemblies a run reports is a statement about the runtime, not the host: the JIT lists its
+            // dynamic-methods assembly and loads BCL and helper assemblies lazily, while a NativeAOT
+            // binary lists what the compiler kept and nothing it trimmed. The same golden must hold for
+            // the JIT run CI makes and for the published native binary. The assertion above still runs
+            // over the full list.
             var captured = assemblies
-                .Where(n => !n.StartsWith("System.", StringComparison.Ordinal) &&
-                            !n.StartsWith("Microsoft.Win32.", StringComparison.Ordinal) &&
-                            !string.Equals(n, "netstandard", StringComparison.Ordinal) &&
-                            !string.Equals(n, "mscorlib", StringComparison.Ordinal))
+                .Where(n => string.Equals(n, "PrecompiledAot", StringComparison.Ordinal) ||
+                            n.StartsWith("Heddle", StringComparison.Ordinal) ||
+                            n.StartsWith("Antlr4", StringComparison.Ordinal))
                 .ToList();
 
             var capture = Heddle.Samples.SampleCapture.Resolve(args);

@@ -1,6 +1,8 @@
 ﻿using System;
 
 namespace Heddle.Attributes {
+    /// <summary>Names an extension the way templates call it: <c>@name(...)</c>. Every extension class
+    /// carries one; a class may carry several to answer to more than one name.</summary>
     [AttributeUsage (AttributeTargets.All, AllowMultiple = true)]
     public sealed class ExtensionNameAttribute: Attribute {
         /// <param name="name">Extension name. The empty string <c>""</c> is the unnamed <c>@(...)</c> carrier:

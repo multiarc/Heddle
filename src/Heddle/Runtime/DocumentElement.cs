@@ -11,6 +11,7 @@ namespace Heddle.Runtime
     {
         private readonly TemplateChain _callChain;
 
+        /// <summary>The element's position in the template source.</summary>
         public BlockPosition Position { get; set; }
 
         public DocumentElement(BlockPosition position)
@@ -19,6 +20,7 @@ namespace Heddle.Runtime
             _callChain = new TemplateChain();
         }
 
+        /// <summary>The extension chain the element runs.</summary>
         public TemplateChain CallChain => _callChain;
 
         public void Dispose()
