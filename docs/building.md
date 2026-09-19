@@ -116,8 +116,8 @@ dotnet run -c Release -- bench-startup      # cold start: fresh-process compile 
 
 `bench-techniques` measures the three technique classes side by side — `TechniqueRuntimeBenchmarks`,
 `TechniquePrecompiledBenchmarks` (site table on) and `TechniquePrecompiledDataOnlyBenchmarks` (table
-off) — and `bench-startup` is the cold-start row; both are published in the precompiled-tier report
-([docs/benchmarks/2026-09-16](benchmarks/2026-09-16/index.md)).
+off) — and `bench-startup` is the cold-start row. Measurements are taken and kept outside the
+repository.
 
 What the cross-stack suites measure, with `[MemoryDiagnoser]` enabled: one `[Benchmark]` per engine
 per workload, on the **controlled** track (every engine authored to produce byte-identical output)
@@ -136,13 +136,6 @@ The fixtures every engine renders from live in [`src/Models/`](../benchmarks/dot
 templates are files under [`templates/`](../benchmarks/dotnet/templates), one directory per track per
 engine, so the idiomatic track is reviewable as templates instead of as escaped literals. No engine
 carries its own copy of the data, so no twin can drift from the engine it is compared against.
-
-In the cross‑stack report ([docs/benchmarks/2026-08-08](benchmarks/2026-08-08/index.md); fifteen
-engines, six ecosystems, one session) **Heddle is the fastest of the six .NET engines on the five realistic‑size workloads** — by
-2.25×–3.64× over the next .NET engine — and leads ASP.NET Core Razor, a full member of every
-workload under the same byte‑identical parity gate, on seven of the eight. For the numbers see the
-[README Performance section](../README.md#performance); for *why*, see
-[Architecture → Performance characteristics](architecture.md#performance-characteristics).
 
 > Benchmark numbers are hardware‑ and workload‑specific — run the suite on your target machine
 > and with a page shaped like your real one to get figures you can quote. The repository

@@ -54,9 +54,7 @@ dotnet publish samples/precompiled-aot -c Release --no-build
 The publish must succeed with no trim/AOT analyzer errors, and the published app must capture
 green. Publish is two steps on purpose: the build-time host is an executable project, which a
 self-contained publish cannot reference (NETSDK1150), so the Tool reference drops out of publish
-and the precompile stamp must already be up to date from the build. The publish log of the run
-that produced the benchmark report's numbers is kept at
-`docs/benchmarks/<date>/precompiled-aot-publish.log`.
+and the precompile stamp must already be up to date from the build.
 
 ## What the golden pins
 

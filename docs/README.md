@@ -30,13 +30,12 @@ tree is just a placeholder.
   embedded C# to Roslyn delegates). With a typed model, member access and embedded C# are checked
   at compile time rather than discovered at render time; declaring `@model(){{dynamic}}` instead
   opts into render‑time member binding.
-- **Fast.** In the cross‑stack benchmark ([docs/benchmarks/2026-08-08](benchmarks/2026-08-08/index.md))
-  Heddle is the fastest of the six .NET engines on the five realistic‑size workloads (2.25×–3.64×
-  over the next .NET engine) and leads ASP.NET Core Razor — a full member of every workload under
-  the same byte‑identical parity gate — on seven of the eight. The precompiled tier renders at
-  runtime‑tier speed with allocation at or below it
-  ([docs/benchmarks/2026-09-16](benchmarks/2026-09-16/index.md)). See [Architecture → Performance](architecture.md#performance-characteristics),
-  the [README Performance section](../README.md#performance) and the [benchmark harnesses](../benchmarks/README.md).
+- **Fast.** A template renders as a pre‑built document with every accessor already compiled, so a
+  render does no parsing, reflection or per‑call activation, and the precompiled tier is the same
+  render path loaded from the assembly. The repository carries a cross‑stack benchmark harness that
+  holds every engine to byte‑identical output before timing anything; measurements are taken and
+  kept outside the repository. See [Architecture → Performance](architecture.md#performance-characteristics)
+  and the [benchmark harnesses](../benchmarks/README.md).
 - **Composable without coupling.** Reusable templates are declarative extension points, so a
   page can be split into independent pieces recombined by a layout — at no runtime cost — and
   any page can serve as a base for another. See

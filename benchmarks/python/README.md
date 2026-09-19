@@ -57,4 +57,4 @@ python mem_tracemalloc.py -o results\memory.json   # separate pass, never combin
 python -m runner.report_table results
 ```
 
-`results/` is git-ignored; published copies go to `docs/benchmarks/<date>/`.
+`results/` is git-ignored; published copies go to `<results>/<date>/`.

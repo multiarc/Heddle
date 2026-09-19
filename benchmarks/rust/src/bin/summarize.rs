@@ -3,7 +3,7 @@
 //! Reads every `target/criterion/<group>/<engine>/new/estimates.json` written by the three
 //! bench targets, takes `mean.point_estimate` plus the 95% CI bounds, joins the Heddle
 //! reference values from the checked-in `heddle-reference.toml`, and prints GitHub-flavored
-//! Markdown rows for `docs/benchmarks/<date>/index.md`. Generation (rather than hand
+//! Markdown rows for `<results>/<date>/index.md`. Generation (rather than hand
 //! transcription) is what makes the tables mechanically faithful to the committed JSON.
 //!
 //! Two deliberate loud failures, both exit nonzero and print nothing pasteable:
@@ -152,11 +152,10 @@ fn render_table(track: &str, reference: &Reference, missing: &mut Vec<String>) -
         "### Wall time - {track} track (Criterion mean, 95% CI)\n\n"
     ));
     out.push_str(&format!(
-        "Heddle rows are the labeled excerpt from the published run of {} named by \
+        "Heddle rows are the labeled excerpt from the run of {} named by \
          `heddle-reference.toml`; they are not re-measured here. Whether \
-         that run is on the protocol machine is stated in that file's header - as of 2026-07-25 \
-         it is not, and the Windows protocol run is pending a re-test. Ratios are engine / \
-         Heddle.\n\n",
+         that run is on the protocol machine is stated in that file's header. Ratios are \
+         engine / Heddle.\n\n",
         reference.source_run
     ));
     out.push_str("| Workload | Engine | Criterion mean (95% CI) | ns/render | Ratio vs Heddle |\n");

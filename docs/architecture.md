@@ -214,13 +214,10 @@ length‑based on net8+ and count‑based on older targets).
 
 The repository's [BenchmarkDotNet suite](../benchmarks/dotnet) measures Heddle against five
 other .NET template engines (Fluid, Scriban, DotLiquid, Handlebars.Net and ASP.NET Core Razor) over
-a component‑heavy composition workload, every one of them rendering byte‑identical parity‑checked
-output (`[MemoryDiagnoser]` enabled). In the cross‑stack report
-([docs/benchmarks/2026-08-08](benchmarks/2026-08-08/index.md)) Razor is a full member of all eight
-workloads and both tracks, and Heddle leads it on seven of them and is the fastest of the six .NET
-engines on the five realistic‑size workloads (the numbers are in the
-[README Performance section](../README.md#performance)). The reasons Heddle leads on the render path are
-structural, not incidental:
+eight workloads, every one of them rendering byte‑identical parity‑checked output
+(`[MemoryDiagnoser]` enabled); measurements are taken and kept outside the repository
+([benchmarks/README.md](../benchmarks/README.md)). The design of the render path is what the harness
+measures:
 
 - **Execution‑ready document, not per‑call activation.** Each template becomes a
   `RuntimeDocument` / `IProcessStrategy` with extension instances already resolved and typed,

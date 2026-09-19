@@ -10,8 +10,8 @@ Table ORDER is owned by this script, not by the report: workloads are emitted ti
 sizing) before tier 2 (edge-case sizing), ascending by rendered size within each tier. See the
 `sizing regimes` block below for how the tier is derived.
 
-    python benchmarks/report/consolidate.py docs/benchmarks/2026-08-08
-    python benchmarks/report/consolidate.py --check docs/benchmarks/2026-08-08
+    python benchmarks/report/consolidate.py <results>/<run-date>
+    python benchmarks/report/consolidate.py --check <results>/<run-date>
 
 Contract:
 
@@ -200,7 +200,7 @@ BENCHSTAT_UNITS = {"n": 1.0, "µ": 1e3, "u": 1e3, "m": 1e6, "": 1e9}
 # sustained store bandwidth than a single core of the protocol machine has while *also* running
 # template logic, so the harness cannot be materialising the full output. Set from the observed
 # distribution of an earlier run, which had a clean gap. It is deliberately CONSERVATIVE for
-# modern hardware: a raw 55,466-byte memcpy on the 2026-07-25 box costs 438 ns, i.e. 126 B/ns, so
+# modern hardware: a raw memcpy of a mid-size page sustains well over 100 B/ns on one core, so
 # a compiled template that is largely a memcpy of literal chunks can legitimately sit above 50.
 # A flagged cell means "look at this", not "this is impossible" — the authoritative materialisation
 # control is the harness-side MATERIALISATION-CHECK, not this ceiling.
@@ -211,8 +211,8 @@ PLAUSIBILITY_CEILING_B_PER_NS = 50.0
 # The CLR allocates any object of 85,000 bytes or more on the Large Object Heap, and .NET strings
 # are UTF-16 — so a rendered page crosses that line at 42,500 characters, and every render past it
 # allocates on the LOH and drives a full, blocking Gen2 collection. The step is sharp and
-# measurable: on the 2026-07-25 box `new string(ReadOnlySpan<char>)` sustains 40.3 B/ns at
-# 84,800 B and 8.9 B/ns at 108,680 B — 4.5x, at the threshold. None of the other five ecosystems
+# measurable: `new string(ReadOnlySpan<char>)` throughput falls several-fold across the
+# threshold. None of the other five ecosystems
 # has this cliff; their outputs are UTF-8 or Latin-1 and stay on the normal heap.
 #
 # Workloads on either side of that boundary are therefore not measuring the same thing, so the
@@ -229,8 +229,7 @@ UTF16_BYTES_PER_CHAR = 2
 # chars rendered since the full-page redesign), so using the golden here would understate that
 # workload's implied throughput.
 #
-# Measured 2026-07-25, re-measured 2026-08-08 after the redesign for the two workloads
-# whose output changed (composed-page, fragment-heavy): .NET via `HeddleTest.Render()`, JS via
+# Measured on the harness after the full-page redesign of composed-page and fragment-heavy: .NET via `HeddleTest.Render()`, JS via
 # `tracks.controlled.<engine>[<id>]()`, Rust via `engines::askama_controlled::render_*()`. The
 # three ecosystems agree within 2% (they differ only in whitespace, which N3b erases before the
 # gate compares); the .NET figure is recorded because it is the one that decides the LOH
@@ -1107,14 +1106,11 @@ def render(run: Path) -> str:
         f"### Cells above the {PLAUSIBILITY_CEILING_B_PER_NS:.0f} B/ns ceiling",
         "",
         "A cell above this ceiling claims more sustained store bandwidth than one core of this",
-        "machine has while also executing template logic. The threshold was set from the observed",
-        "distribution of an earlier run rather than from a model. That run — since withdrawn, and",
-        "its render figures invalid — had two cells at 105.4 and 91.7 B/ns and then nothing until",
-        "30.9 B/ns, which was a compiled Rust template whose output is mostly a memcpy of large",
-        "literal chunks: fast, but physically possible. The ceiling sits in that gap. The two high",
-        "cells were the V8 rope artifact, since fixed harness-side (benchmarks amendment E4),",
-        "and the threshold",
-        "is retained as a standing cross-check rather than as a finding about that run.",
+        "machine has while also executing template logic. The threshold sits in the gap between",
+        "what a compiled template whose output is mostly a memcpy of large literal chunks can",
+        "legitimately reach and what only an unmaterialised render (the V8 rope artifact, since",
+        "fixed harness-side by benchmarks amendment E4) reports; it is a standing cross-check,",
+        "not a finding about any run.",
         "",
     ]
     # This run's own distribution, stated rather than asserted: a hardcoded sentence about
@@ -1283,7 +1279,7 @@ def render_summary(
 
 def main(argv: list[str]) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("run", type=Path, help="the run directory, e.g. docs/benchmarks/2026-07-25")
+    ap.add_argument("run", type=Path, help="the run directory: <results>/<run-date>, the results archive kept outside the repository")
     ap.add_argument("--check", action="store_true",
                     help="re-derive the tables and diff against the committed file")
     args = ap.parse_args(argv)

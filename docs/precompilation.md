@@ -702,8 +702,8 @@ recorded artifact digest matches the artifact it loaded, so a table can never se
 different compilation.
 
 - **`"Heddle.Precompiled.UseGeneratedSites"`** (`AppContext` switch, default `true`) — set it to
-  `false` to make the loader ignore the table and rebuild every site from data: the "without" arm the
-  evidence runs compare against, and a diagnostic aid when a generated site is suspected.
+  `false` to make the loader ignore the table and rebuild every site from data: the comparison arm for
+  a technique measurement, and a diagnostic aid when a generated site is suspected.
 - **`TemplateOptions.PrecompiledStrictLoad`** (seeded from the **`"Heddle.Precompiled.StrictLoad"`**
   `AppContext` switch, default `false`) — under strict load a site the table does not serve
   **throws** `PrecompiledStrictLoadException` at materialization, naming the template key, the site

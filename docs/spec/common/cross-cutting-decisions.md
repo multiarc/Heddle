@@ -345,7 +345,7 @@ process legacy in [review-protocol.md](review-protocol.md) and
 ## Program record — cross-stack benchmarks (closed)
 
 The cross-stack benchmark program is complete: eight workloads, six ecosystems, sixteen engines,
-gates green in every harness, report published at `docs/benchmarks/<date>/`. Decisions with
+gates green in every harness; measurements are taken and kept outside the repository. Decisions with
 ongoing force are collapsed below with their origin ids. The operational contract the harnesses
 implement (workloads, parity contract, golden corpus, metrics protocol, per-ecosystem harness
 docs) lives in [`benchmarks/docs/`](../../../benchmarks/docs/README.md). Full phase documents:
@@ -396,7 +396,7 @@ docs) lives in [`benchmarks/docs/`](../../../benchmarks/docs/README.md). Full ph
 - Non-Heddle engines are never ranked or compared across ecosystems; the single sanctioned exception is the per-workload cross-stack ranked table carrying evidence-class and implied-throughput columns, and even then no geomean, points total, medal count or overall score exists and the prose stays Heddle-anchored. (benchmarks phase 1 D13/Q6.2, phase 7 D6 as amended)
 - Every per-ecosystem report carries a labeled wall-time-only Heddle reference row excerpted from the protocol run with the ratio column anchored to it; non-comparable metrics anchor to the ecosystem's credibility pick; every table names its track and tracks are never mixed. (benchmarks phase 1 D13, presentation rules 1–5)
 - Honest-reporting rules 1–6 are protocol: no universal-superiority claims, losses named as prominently as wins with numbers, dated/hardware-specific figures with a reproduce command, verbatim labels including the encoded-suite confinement caveat adjacent to every encoded result, no numbers from a gate-failed suite, and excluded cells never blank. (metrics protocol, phase 7 D12)
-- Runs publish as immutable `docs/benchmarks/<yyyy-MM-dd>/` directories (corrections get a new date, never an edit), and `docs/benchmarks/` keeps only the latest run's report — citations of removed runs are de-linked with their visible text preserved, never repointed at a run that never measured them. (phase 7 D2, benchmarks E15)
+- Runs publish as immutable `<results>/<yyyy-MM-dd>/` directories in a results archive kept outside this repository (corrections get a new date, never an edit); the repository carries no measurement, and a citation of a run names it without repointing at a run that never measured the claim. (phase 7 D2, benchmarks E15)
 - The consolidated report recomputes nothing: every figure is a verbatim excerpt of a published source table with unit conversion and a Heddle-anchored ratio the only permitted arithmetic, the newest protocol run per ecosystem is aggregated, and defects escalate to the owning harness rather than being patched in the report. (benchmarks phase 7 D1, D4, D14)
 - Report workload order is presentation-only — tier 1 (below the LOH line as UTF-16) before tier 2, ascending by rendered size, derived in `consolidate.py` — and the implied-throughput numerator is rendered size, not the normalized golden. (benchmarks E7)
 - All cross-compared runs execute on the one recorded Windows 11 / Ryzen 9 9950X box with a required environment block; the Ubuntu 24.04 cross-check is published separately, never merged with Windows numbers, with no Windows-attributed absolute value or time unit in it and tooling that stores ratios and dispersions rather than absolute times. (benchmarks phase 1 D14/Q1.6, phase 8 D14/D17, Q5.2)
@@ -517,11 +517,12 @@ documents are retired (2026-09-18) — full text: `git show f8a9497c:docs/spec/p
 **EVIDENCE POSTURE (P3-R8 / GI-3 as ratified 2026-09-17)**
 
 - Allocation: the compiled form allocates **at or below** the runtime tier per workload × sink
-  (`CompiledFormAllocationTests` pins `<=`; the published tables show 88–112 B/render less on Utf8 and
-  TextWriter). Mean: within BenchmarkDotNet's reported error **or faster**; the one slower cell
-  (`composed-page`/String, data-only, +5.5% at the baseline budget) is open finding F-202. Cold start:
-  registration + first render is **reported beside** `CompileHeddle`, not claimed below it — both are dominated
-  by the engine's one-time initialization. Evidence: `docs/benchmarks/2026-09-16/`.
+  (`CompiledFormAllocationTests` pins `<=`). Mean: within BenchmarkDotNet's reported error **or faster**; a
+  cell measured slower outside error is an open finding to re-measure (F-202), never a widened budget.
+  Cold start: registration + first render is **reported beside** `CompileHeddle`, not claimed below it — both
+  are dominated by the engine's one-time initialization. The evidence is measured with `bench-techniques`
+  (table on / data-only / runtime), `bench-startup` and the `gate-precompiled` trailer, and kept outside the
+  repository.
 - NativeAOT (P3-R9): `Heddle` is `IsTrimmable`/`IsAotCompatible` with zero IL analyzer warnings
   (`WarningsAsErrors` on the IL codes); the `precompiled-aot` sample publishes and renders under strict load.
 

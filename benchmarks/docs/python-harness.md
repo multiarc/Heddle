@@ -17,7 +17,7 @@ benchmarks/python/
   README.md                    ← pointer to this document + the setup/run commands below
   requirements.txt             ← the five D2 pins, == only
   .venv/                       ← git-ignored
-  results/                     ← git-ignored raw outputs; published copies go to docs/benchmarks/<date>/
+  results/                     ← git-ignored raw outputs; published copies go to <results>/<date>/
   templates/                   ← per python-templates.md (jinja2|mako × controlled|idiomatic)
   runner/
     __init__.py
@@ -259,7 +259,7 @@ so no memory number is ever produced from a non-conformant template.
 
 ## Report format instantiation
 
-The published report is a `docs/benchmarks/<yyyy-MM-dd>/` directory in the protocol's exact
+The published report is a `<results>/<yyyy-MM-dd>/` directory in the protocol's exact
 `index.md` shape. Python-specific content, in protocol order:
 
 1. **Intro** — suites covered (both engines, both tracks, cold compile, memory) and the full

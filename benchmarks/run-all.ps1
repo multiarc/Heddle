@@ -556,7 +556,7 @@ foreach ($eco in $Selected) {
             # -Repeat N, then bench/aggregate.mjs medians the per-pass avg into
             # artifacts/<track>.json and emits the stability verdict. The stability procedure IS the
             # measurement now, rather than a separate gate someone has to remember -- which is
-            # how the withdrawn 2026-07-22 run shipped JS numbers with no RSD verdict at all.
+            # a run can otherwise ship JS numbers with no RSD verdict at all.
             #
             # cold-compile stays a single pass: a compile-dominated sidebar, not a protocol
             # cell, so repeating it buys a verdict for numbers no ranking consumes.
@@ -623,7 +623,7 @@ foreach ($eco in $Selected) {
 Write-Summary
 
 # --- consolidated tables ----------------------------------------------------------------------
-# Publishing used to mean copying artifacts into docs/benchmarks/<date>/ and then running
+# Publishing used to mean copying artifacts into <results>/<date>/ and then running
 # consolidate.py by hand. That hand step is exactly where table ORDER and transcribed figures drift
 # from the artifacts, so the runner does it here: the out dir gets its own consolidated-tables.md
 # and summary-tables.md, generated in tier order, before anyone looks at a number. Publishing is

@@ -205,7 +205,7 @@ timed invocations, and benchstat. It is the reproduce command the report prints.
 
 ## Report format (instantiates the protocol)
 
-Published as `docs/benchmarks/<yyyy-MM-dd>/` — `index.md` in the pinned protocol shape plus the
+Published as `<results>/<yyyy-MM-dd>/` — `index.md` in the pinned protocol shape plus the
 raw `bench-*.txt` and `benchstat-*.txt` artifacts. Phase-specific content requirements, all
 mandatory:
 

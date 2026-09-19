@@ -11,11 +11,11 @@ the publication checklist. Decision rationale (phase 7 D1–D14) is condensed in
 record; this document is the instantiation an implementer executes.
 
 Throughout, `<date>` is the report's publication date and `../<run-date>/` denotes a source run
-directory reached relatively from inside `docs/benchmarks/<date>/`.
+directory reached relatively from inside `<results>/<date>/`.
 
 ## Published directory contents
 
-`docs/benchmarks/<date>/` contains exactly four files (phase 7 D2):
+`<results>/<date>/` contains exactly four files (phase 7 D2):
 
 | File | Content | Produced by |
 |---|---|---|
@@ -67,8 +67,8 @@ published directory may be ordered by hand.
      superseded "collapse to a single space" form); "byte-identical" therefore means
      byte-identical after that disclosed pipeline, with entity spellings canonicalized by N5;
      idiomatic cells passed the functional-equivalence verifier;
-   - the pre-protocol history sentence: the 2026-07-11 and 2026-07-18 reports are the
-     intra-.NET historical record, cited as motivation, **not aggregated**.
+   - the pre-protocol history sentence, where an earlier intra-.NET run is cited as
+     motivation: history, **not aggregated**.
 3. **`## Inclusion manifest`** — format below.
 4. **`## Source environments, drift, and reproduce commands`** — format below.
 5. **`## How to read these tables`** — required content:
@@ -344,7 +344,7 @@ completeness checklist. A caveat the register expects but the run omitted → D1
 | L8 | Rust included | The Criterion Windows posture (no priority/affinity manipulation; 10 s measurement time; the CI-half-width re-run disclosure if the Phase 2 D9 trigger fired), as published. |
 | L9 | Go included | The benchstat variance posture (`-count=20`, read `±%`; High priority, no affinity — or the CCD0 pinning disclosure if the Phase 6 fallback fired), as published; the quicktemplate dormancy disclosure iff its rows shipped. |
 | L10 | any sidebar with allocation/memory data | The protocol's allocation non-comparability label, verbatim, in each such sidebar (register entry here points at the sidebars; the label lives there). |
-| L11 | always | Pre-protocol reports (2026-07-11, 2026-07-18) are history, not aggregated rows. |
+| L11 | always | Pre-protocol runs are history, not aggregated rows. |
 
 ## Verbatim texts
 
@@ -439,7 +439,7 @@ empty arrays; every ecosystem id appears exactly once.
 
 - **Runtime:** CPython ≥ 3.12, standard library only. Run from inside the report directory.
 - **CLI:** `python consolidate.py [--check] [--repo-root <path>]` (`--repo-root` defaults to
-  `../../..`, used only to resolve `docs/benchmarks/` siblings and commit existence checks via
+  `../../..`, used only to resolve `<results>/` siblings and commit existence checks via
   `git rev-parse --verify <shorthash>^{commit}` — the sole subprocess).
 - **Generate mode (default):**
   1. load + schema-validate `sources.json` (error surface per phase 7's pinned table);
@@ -507,14 +507,14 @@ disposition is empty. Phase 7 performs no measurement under any disposition.
 Every item binary; all must pass before the publication commit (WI5). Plan success-criteria
 coverage noted per item.
 
-- **C1** — exactly one new `docs/benchmarks/<date>/` directory; the publication commit touches
-  nothing else (`git status` proof). *(plan SC 1–2)*
+- **C1** — exactly one new `<results>/<date>/` directory; the publication adds
+  nothing else. *(plan SC 1–2)*
 - **C2** — the directory contains exactly the four pinned files.
 - **C3** — `python consolidate.py --check` exits 0.
 - **C4** — spot-check executed per the procedure (deterministic cell set, raw artifacts); all
   cells match; the Files section records the statement. *(plan SC 3)*
 - **C5** — every aggregated run is a phase 1–6 protocol run on the protocol machine;
-  2026-07-11/2026-07-18 appear as cited history only (manifest classification). *(plan SC 4)*
+  pre-protocol runs appear as cited history only (manifest classification). *(plan SC 4)*
 - **C6** — every wall-time table: Q2.1 statistic + dispersion + ns/render + Heddle ratio, no
   other column; no allocation/memory/cold figure appears outside the sidebars H2; no table
   contains two ecosystems' non-Heddle engines; no prose ranks non-Heddle engines across

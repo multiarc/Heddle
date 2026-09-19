@@ -43,7 +43,7 @@ Benchmarks, the runner script (`run-benchmarks.ps1`), and the engine ports are a
 
 ## Templ feasibility spike results
 
-Executed 2026-07-21 at the pinned toolchain (`go1.26.5`, templ `v0.3.1020`, Windows 11).
+Executed at the pinned toolchain (`go1.26.5`, templ `v0.3.1020`, Windows 11).
 Command: `go test ./internal/spike/ -v` (probes are the committed tests in
 `internal/spike/spike_test.go`; templ sources in `internal/spike/spike.templ`, generated code
 committed alongside). **Verdict: clean pass on all four probes — the expected outcome of

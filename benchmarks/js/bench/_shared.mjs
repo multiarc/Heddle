@@ -32,8 +32,8 @@ const artifactsDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 
 // Both engines build their output with `+=`, so `render()` hands back an unflattened V8
 // ConsString rope. mitata's `do_not_optimize(v)` is `{ $._ = v; }` in full: it makes the value
 // escape so V8 cannot prove it unread, and never walks it. Timing that measures rope
-// CONSTRUCTION, not output production — the 2026-07-22 run reported eta/composed-page at
-// 330.7 ns for 34,847 B, i.e. ~105 GB/s, which is above this machine's store bandwidth.
+// CONSTRUCTION, not output production — an unflattened render can report an implied throughput
+// above the machine's store bandwidth, which is physically impossible for real output.
 //
 // %FlattenString forces the rope into a flat sequential string, which is the work every other
 // ecosystem's harness already does. Note `s.length` would NOT work: V8 stores the length on the
@@ -243,7 +243,7 @@ export function deoptCheckTrailer() {
  *
  * This is the companion DEOPT-CHECK cannot be: mitata's `!` marker fires only when
  * `avg < 1.42 * noop.avg` against an EMPTY FUNCTION, so a cell can skip nearly all of its work
- * and still sit three orders of magnitude above the trigger. The 2026-07-22 run reported
+ * and still sit three orders of magnitude above the trigger: a run can report
  * `DEOPT-CHECK: clean` while measuring rope construction.
  *
  * Unlike DEOPT-CHECK, a violation here is fatal rather than explainable: it means the harness is
