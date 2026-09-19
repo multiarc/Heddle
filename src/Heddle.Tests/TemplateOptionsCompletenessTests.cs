@@ -10,14 +10,13 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// <para>The self-extending copy-constructor completeness guard (phase 2 D7). Reflection walks every
-    /// public settable instance property of <see cref="TemplateOptions"/>, sets a synthesized non-default
-    /// value on a fresh instance, copies it through <c>new TemplateOptions(source)</c>, and asserts the copy
-    /// round-trips the value. Any later phase adding an option property inherits the guard for free; an
-    /// unknown property type fails the test with an explicit "add a synthesizer" message — that failure is
-    /// the omission guard.</para>
-    /// <para>This pins the historically-missed <c>ProvideLanguageFeatures</c> copy bug (roadmap criterion 6)
-    /// and the phase 2 <c>OutputProfile</c> addition.</para>
+    /// <para>The self-extending copy-constructor completeness guard. Reflection walks every public settable
+    /// instance property of <see cref="TemplateOptions"/>, sets a synthesized non-default value on a fresh
+    /// instance, copies it through <c>new TemplateOptions(source)</c>, and asserts the copy round-trips the value.
+    /// Any later phase adding an option property inherits the guard for free; an unknown property type fails the
+    /// test with an explicit "add a synthesizer" message — that failure is the omission guard.</para>
+    /// <para>This pins the historically-missed <c>ProvideLanguageFeatures</c> copy bug and the
+    /// <c>OutputProfile</c> addition.</para>
     /// </summary>
     public class TemplateOptionsCompletenessTests
     {
@@ -42,9 +41,9 @@ namespace Heddle.Tests
             if (type == typeof(FunctionRegistry))
                 return new FunctionRegistry();
             if (type == typeof(TextEncoder))
-                return HtmlEncoder.Create(UnicodeRanges.All);   // B2: a distinct, non-default encoder reference
+                return HtmlEncoder.Create(UnicodeRanges.All);   // A distinct, non-default encoder reference
             if (type == typeof(RenderBudget))
-                return new RenderBudget { MaxRenderOps = 123 };   // C1: a distinct, non-default budget reference
+                return new RenderBudget { MaxRenderOps = 123 };   // A distinct, non-default budget reference
             if (type == typeof(object))
                 return new object();
 
@@ -68,8 +67,7 @@ namespace Heddle.Tests
 
             foreach (var property in settable)
             {
-                // Fresh instance per property so that derived properties (AllowCSharp -> ExpressionMode)
-                // cannot interfere with one another.
+                // Fresh instance: derived properties (AllowCSharp→ExpressionMode) must not interfere.
                 var source = new TemplateOptions();
                 var current = property.GetValue(source);
                 var probe = Synthesize(property, current);
@@ -93,7 +91,6 @@ namespace Heddle.Tests
             }
         }
 
-        /// <summary>Roadmap criterion 6: the historically-missed ProvideLanguageFeatures copy, pinned by name.</summary>
         [Fact]
         public void CopyConstructorPreservesProvideLanguageFeatures()
         {
@@ -102,7 +99,6 @@ namespace Heddle.Tests
             Assert.True(copy.ProvideLanguageFeatures);
         }
 
-        /// <summary>OutputProfile copies through the copy constructor (phase 2 D7).</summary>
         [Fact]
         public void CopyConstructorPreservesOutputProfile()
         {
@@ -111,7 +107,6 @@ namespace Heddle.Tests
             Assert.Equal(OutputProfile.Html, copy.OutputProfile);
         }
 
-        /// <summary>The get-only, ctor-set TemplateName copies when no override name is passed.</summary>
         [Fact]
         public void CopyConstructorPreservesTemplateNameWhenNoOverride()
         {

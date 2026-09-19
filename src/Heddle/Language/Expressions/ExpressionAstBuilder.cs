@@ -193,7 +193,7 @@ namespace Heddle.Language.Expressions
 
         /// <summary>
         /// Decodes a <c>def_literal</c> (a prop default) into its pre-conversion boxed CLR value, reusing the
-        /// same literal-decoding routines the expression builder uses (the D2 DRY move). <paramref name="isNull"/>
+        /// same literal-decoding routines the expression builder uses to avoid duplication. <paramref name="isNull"/>
         /// is true for the <c>null</c> literal (the returned value is then <c>null</c>). Emits the default's
         /// editor tokens through <paramref name="parseContext"/>.
         /// </summary>
@@ -243,7 +243,11 @@ namespace Heddle.Language.Expressions
             return minus != null ? Negate(real.Value) : real.Value;
         }
 
-        private static object Negate(object value)
+        /// <summary>
+        /// Applies the lexer's sign prefix to a decoded literal. Internal (not private) because it is part of
+        /// the <c>LiteralFormatter</c> round-trip contract verified by tests.
+        /// </summary>
+        internal static object Negate(object value)
         {
             switch (value)
             {
@@ -290,7 +294,9 @@ namespace Heddle.Language.Expressions
 
         #region Literal decoding
 
-        private static LiteralNode DecodeInteger(string text, BlockPosition position)
+        /// <summary>Integer first-fit decoding — <c>int → uint → long → ulong</c>, suffix-driven. Internal so the
+        /// <c>LiteralFormatter</c> round-trip test can drive the exact inverse the formatter must satisfy.</summary>
+        internal static LiteralNode DecodeInteger(string text, BlockPosition position)
         {
             string body = text;
             int suffixLength = 0;
@@ -369,7 +375,9 @@ namespace Heddle.Language.Expressions
             return result;
         }
 
-        private static LiteralNode DecodeReal(string text, BlockPosition position)
+        /// <summary>Real decoding — <c>F</c>/<c>D</c>/<c>M</c> suffixes, bare form is <c>double</c>. Internal so the
+        /// <c>LiteralFormatter</c> round-trip test can drive the exact inverse the formatter must satisfy.</summary>
+        internal static LiteralNode DecodeReal(string text, BlockPosition position)
         {
             string body = text.Replace("_", string.Empty);
             char last = body[body.Length - 1];
@@ -415,7 +423,6 @@ namespace Heddle.Language.Expressions
 
         private static string DecodeString(string text)
         {
-            // Strip the surrounding double quotes.
             string body = text.Substring(1, text.Length - 2);
             return DecodeEscapes(body, false);
         }

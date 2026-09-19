@@ -8,7 +8,7 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// White-box (IVT) coverage of the phase 6 D2 scope map: spans + effective types recorded for nested bodies
+    /// White-box (IVT) coverage of the scope map: spans + effective types recorded for nested bodies
     /// (<c>@list</c> narrowing, <c>@if</c> step-back — the body records the <i>caller's</i> model, not
     /// <see cref="bool"/>), one entry per compiled call site for abstract definitions, and the <c>null</c> map
     /// when <see cref="TemplateOptions.ProvideLanguageFeatures"/> is off (the null-cost guarantee's source).
@@ -44,7 +44,6 @@ namespace Heddle.Tests
             var context = Compile("@list(Articles){{@(Title)}}", typeof(Blog));
             Assert.NotNull(context.ScopeMap);
             Assert.Equal(typeof(Blog), context.ScopeMap.RootType.Type);
-            // The @list body narrows the model to the element type.
             Assert.Contains(context.ScopeMap.Entries, e => e.ModelType != null && e.ModelType.Type == typeof(Article));
         }
 
@@ -62,8 +61,7 @@ namespace Heddle.Tests
         [Fact]
         public void AbstractDefinitionBodyRecordsOneEntryPerCallSite()
         {
-            // <panel> is abstract (no :: type): the compiler substitutes each caller's type, so the body compiles
-            // once per call site — Article at one, Menu at the other.
+            // Abstract definitions compile once per call site with each caller's type substituted.
             var template = "@%<panel>{{@(Title)}}%@@panel(Article)@panel(Menu)";
             var context = Compile(template, typeof(Page));
             Assert.NotNull(context.ScopeMap);

@@ -5,16 +5,20 @@
     <LangVersion>latest</LangVersion>
     <Nullable>disable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>          <!-- required by the JS interop source generator -->
-    <InvariantGlobalization>true</InvariantGlobalization> <!-- ~-30% bundle; matches phase 1 invariant defaults -->
+    <InvariantGlobalization>true</InvariantGlobalization> <!-- ~-30% bundle -->
     <PublishTrimmed>true</PublishTrimmed>                 <!-- wasm default, stated explicitly -->
     <IsPackable>false</IsPackable>
     <WasmMainJSPath>wwwroot/main.js</WasmMainJSPath>
+    <!-- Strong-named like every other first-party assembly: unsigned, it draws CS8002 in the signed
+         Heddle.LanguageServices.Tests that references it. -->
+    <SignAssembly>true</SignAssembly>
+    <AssemblyOriginatorKeyFile>..\..\heddle.snk</AssemblyOriginatorKeyFile>
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- D4: disable the C# tier and let the trimmer drop the whole Microsoft.CodeAnalysis graph -->
+    <!-- Disable the C# tier so the trimmer can drop the whole Microsoft.CodeAnalysis graph -->
     <RuntimeHostConfigurationOption Include="Heddle.CSharpTierEnabled" Value="false" Trim="true" />
-    <!-- D5: reflection roots — the demo picker reflects over the models; the engine reflects over extensions/functions -->
+    <!-- Reflection roots: the demo picker reflects over the models, the engine over extensions/functions -->
     <TrimmerRootAssembly Include="Heddle.Demo.Models" />
     <TrimmerRootDescriptor Include="linker\Heddle.Demo.roots.xml" />
   </ItemGroup>

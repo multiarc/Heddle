@@ -1,9 +1,11 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Collections.Generic;
 using System.Reflection;
 using Heddle.Attributes;
 using Heddle.Data;
 using Heddle.Helpers;
+using Heddle.Language.Members;
 
 namespace Heddle.Runtime.Expressions
 {
@@ -56,10 +58,51 @@ namespace Heddle.Runtime.Expressions
             new MemberPathResolution(MemberPathResolutionKind.Failed, null, null, index, message);
     }
 
+    /// <summary>
+    /// Reflection adapter for member walk. <see cref="BaseInterfaces"/> returns nothing (surfacing them would be a breaking change),
+    /// and non-public base members stay invisible per <see cref="MemberVisibility"/>.
+    /// </summary>
+    internal sealed class ReflectionTypeModel : ITypeModel<Type, PropertyInfo>
+    {
+        public static readonly ReflectionTypeModel Instance = new ReflectionTypeModel();
+
+        private ReflectionTypeModel() { }
+
+        public bool IsDynamic(Type type) => false;   // dynamic-ness is an ExType fact, decided before the walk
+
+        [UnconditionalSuppressMessage("Trimming", "IL2070", Justification = "Reflection over a model type; model types reach the engine through [HeddleModelAssembly]/typeof parameters annotated DynamicallyAccessedMemberTypes.All, which keeps their members through a trimmed publish.")]
+        public IEnumerable<PropertyInfo> DeclaredProperties(Type type, string name)
+        {
+            foreach (var property in type.GetProperties(MemberPathResolver.DeclaredBindingFlags))
+            {
+                if (string.Equals(property.Name, name, StringComparison.Ordinal))
+                    yield return property;
+            }
+        }
+
+        public bool DeclaresNonPropertyMember(Type type, string name) =>
+            MemberPathResolver.DeclaresNonPropertyMember(type, name);
+
+        public MemberFacts FactsOf(PropertyInfo member) => MemberPathResolver.FactsOf(member);
+
+        public Type TypeOf(PropertyInfo member) => member.PropertyType;
+
+        public Type BaseOf(Type type) => type.BaseType;
+
+        public bool IsInterface(Type type) => type.IsInterface;
+
+        public IEnumerable<Type> BaseInterfaces(Type type) => Array.Empty<Type>();
+    }
+
     internal static class MemberPathResolver
     {
         internal const BindingFlags MemberBindingFlags =
             BindingFlags.Instance | BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public;
+
+        /// <summary>The same set restricted to one type's own declarations — the shared walk visits the base chain
+        /// itself, most-derived-first, so a <c>new</c>-shadowed property resolves deterministically instead of
+        /// throwing <c>AmbiguousMatchException</c> out of <c>Type.GetProperty</c>.</summary>
+        internal const BindingFlags DeclaredBindingFlags = MemberBindingFlags | BindingFlags.DeclaredOnly;
 
         /// <summary>
         /// Walks <paramref name="segments"/> off <paramref name="startType"/>, applying the member-tier filter
@@ -74,8 +117,8 @@ namespace Heddle.Runtime.Expressions
                 if (currentType.IsDynamic)
                     return MemberPathResolution.DynamicHop(properties, i);
 
-                var dataProperty = currentType.Type.GetProperty(segments[i], MemberBindingFlags);
-                if (!IsAccessible(dataProperty))
+                if (!MemberPathWalk.TryFind(ReflectionTypeModel.Instance, currentType.Type, segments[i],
+                        out var dataProperty))
                 {
                     return MemberPathResolution.Failed(i,
                         $"Property {segments[i]} not found in Type [{currentType}]");
@@ -94,33 +137,104 @@ namespace Heddle.Runtime.Expressions
 
         /// <summary>
         /// Every visible property of <paramref name="type"/> under the <b>identical</b> member-tier filter
-        /// <see cref="TryResolve"/> applies (phase 6 D3; feeds LSP member completion). Returns nothing for a null
-        /// type. Distinct by name (a hidden/derived duplicate collapses to the most-derived accessible one).
+        /// <see cref="TryResolve"/> applies (feeds LSP member completion). Returns nothing for a null
+        /// type. Distinct by name, and the most-derived declaration of a name decides — a name a derived type
+        /// re-declares as hidden, non-public, static or as a non-property member is not offered from its base.
         /// </summary>
+        [UnconditionalSuppressMessage("Trimming", "IL2070", Justification = "Reflection over a model type; model types reach the engine through [HeddleModelAssembly]/typeof parameters annotated DynamicallyAccessedMemberTypes.All, which keeps their members through a trimmed publish.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2075", Justification = "Reflection over a model type; model types reach the engine through [HeddleModelAssembly]/typeof parameters annotated DynamicallyAccessedMemberTypes.All, which keeps their members through a trimmed publish.")]
         internal static IEnumerable<PropertyInfo> GetVisibleProperties(Type type)
         {
             if (type == null)
                 yield break;
 
             var seen = new HashSet<string>(StringComparer.Ordinal);
-            foreach (var property in type.GetProperties(MemberBindingFlags))
+            var offered = new HashSet<string>(StringComparer.Ordinal);
+            bool declaredOnReceiver = true;
+            for (var current = type; current != null; current = current.BaseType)
             {
-                if (!IsAccessible(property))
-                    continue;
-                if (seen.Add(property.Name))
-                    yield return property;
+                foreach (var property in current.GetProperties(DeclaredBindingFlags))
+                {
+                    if (seen.Contains(property.Name))
+                        continue;
+                    if (!MemberVisibility.IsAccessible(FactsOf(property), declaredOnReceiver))
+                        continue;
+                    if (offered.Add(property.Name))
+                        yield return property;
+                }
+
+                foreach (var member in current.GetMembers(DeclaredBindingFlags))
+                    seen.Add(member.Name);
+                declaredOnReceiver = false;
             }
         }
 
-        /// <summary>The exact member-tier property filter: readable, not <c>[Hidden]</c>, getter assembly/public.</summary>
+        /// <summary>Whether <paramref name="type"/> itself declares a field, method, event or nested type named
+        /// <paramref name="name"/>.</summary>
+        [UnconditionalSuppressMessage("Trimming", "IL2070", Justification = "Reflection over a model type; model types reach the engine through [HeddleModelAssembly]/typeof parameters annotated DynamicallyAccessedMemberTypes.All, which keeps their members through a trimmed publish.")]
+        internal static bool DeclaresNonPropertyMember(Type type, string name)
+        {
+            foreach (var member in type.GetMember(name, DeclaredBindingFlags))
+            {
+                if (member.MemberType != MemberTypes.Property)
+                    return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>The exact member-tier property filter: readable, not <c>[Hidden]</c>, instance, getter
+        /// assembly/public. Kept as a <see cref="PropertyInfo"/>-shaped entry point for the callers that already
+        /// hold a resolved property (prop-shadow detection, indexer selection).</summary>
         internal static bool IsAccessible(PropertyInfo property)
         {
+            return property != null && MemberVisibility.IsAccessible(FactsOf(property));
+        }
+
+        /// <summary>The reflection → <see cref="MemberFacts"/> adapter.</summary>
+        internal static MemberFacts FactsOf(PropertyInfo property)
+        {
             if (property == null || !property.CanRead)
-                return false;
-            if (property.GetCustomAttribute<HiddenAttribute>(false) != null)
-                return false;
+                return new MemberFacts(false, MemberAccess.Private, false, false);
+
             var getter = property.GetGetMethod(true);
-            return getter != null && (getter.IsAssembly || getter.IsPublic);
+            if (getter == null)
+                return new MemberFacts(false, MemberAccess.Private, false, false);
+
+            return new MemberFacts(true, AccessOf(getter), HasHidden(property), getter.IsStatic);
+        }
+
+        private static readonly string HiddenAttributeFullName = typeof(HiddenAttribute).FullName;
+
+        /// <summary>Matched by full metadata name rather than <see cref="Type"/> identity. A model assembly
+        /// loaded into its own load context can bind its attribute to another copy of this assembly; an
+        /// identity lookup then finds nothing and the member is exposed. The name match fails closed, and a
+        /// foreign <c>*.HiddenAttribute</c> in any other namespace still hides nothing.</summary>
+        private static bool HasHidden(PropertyInfo property)
+        {
+            foreach (var attribute in property.GetCustomAttributesData())
+            {
+                if (string.Equals(attribute.AttributeType.FullName, HiddenAttributeFullName,
+                        StringComparison.Ordinal))
+                    return true;
+            }
+
+            return false;
+        }
+
+        private static MemberAccess AccessOf(MethodBase getter)
+        {
+            if (getter.IsPublic)
+                return MemberAccess.Public;
+            if (getter.IsFamilyOrAssembly)
+                return MemberAccess.ProtectedOrInternal;
+            if (getter.IsFamilyAndAssembly)
+                return MemberAccess.ProtectedAndInternal;
+            if (getter.IsAssembly)
+                return MemberAccess.Internal;
+            if (getter.IsFamily)
+                return MemberAccess.Protected;
+            return MemberAccess.Private;
         }
     }
 }

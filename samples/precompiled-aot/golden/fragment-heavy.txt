@@ -1,0 +1,4 @@
+<h1>Fragments</h1>
+<p>Many small pieces</p>
+<ul><li>one</li><li>two</li></ul>
+<p>End</p>

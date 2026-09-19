@@ -7,7 +7,7 @@ using System.Runtime.Loader;
 namespace Heddle.LanguageServices
 {
     /// <summary>
-    /// Collectible <see cref="AssemblyLoadContext"/> for the workspace model assemblies (phase 6 D14).
+    /// Collectible <see cref="AssemblyLoadContext"/> for the workspace model assemblies.
     /// Dependency probing runs through <see cref="AssemblyDependencyResolver"/> when a <c>.deps.json</c> sits next
     /// to the assembly, else same-directory probing. Model assemblies are byte-loaded so the source files stay
     /// rebuildable for the watch loop.

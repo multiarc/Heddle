@@ -1,0 +1,8 @@
+{# Idiomatic Tera stat partial. Patterns follow the Tera docs
+   (keats.github.io/tera): "Include" (partial rendered with the including scope's current
+   context); default auto-escaping left on. #}
+<div class="stat">
+  <span class="stat-name">{{ item.name }}</span>
+  <span class="stat-value">{{ item.value }}</span>
+  <span class="stat-delta">{{ item.delta }}</span>
+</div>

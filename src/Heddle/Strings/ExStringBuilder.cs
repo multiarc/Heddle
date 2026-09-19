@@ -25,14 +25,7 @@ namespace Heddle.Strings {
         }
 
         static ExStringBuilder() {
-            // string.FastAllocateString is an internal BCL fast path that returns an uninitialized string; we bind it
-            // by reflection for zero-cost buffer allocation. On an aggressively trimmed / AOT / interpreted runtime
-            // (e.g. the WASM demo) that private method may be removed, or present but non-bindable to a delegate — both
-            // would otherwise throw from this type initializer and break every string operation. So bind defensively
-            // and fall back to a managed zero-initialized string, which every caller then fully overwrites via the
-            // fixed/Span writes below (the only observable difference is skipping the harmless zero-init). The fast
-            // path is still taken wherever it binds. Match on name + single parameter only (that parameter is int on
-            // ≤net8 and nint on net10+).
+            // Defensively bind to FastAllocateString for zero-cost allocation; may not be available on all runtimes (AOT, trimmed, interpreted).
             Allocate bound = null;
             try
             {
@@ -165,9 +158,6 @@ namespace Heddle.Strings {
             if (replacements.Length == 0)
                 return source;
 
-            //if (source.Length == 0)
-            //    return string.Empty;
-
             int capacity = source.Length;
             int srcLen = capacity;
             unchecked {
@@ -208,9 +198,6 @@ namespace Heddle.Strings {
 
             if (replacements.Count == 0)
                 return source;
-
-            //if (source.Length == 0)
-            //    return string.Empty;
 
             int capacity = source.Length;
             int srcLen = capacity;

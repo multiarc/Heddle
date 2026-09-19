@@ -9,7 +9,7 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// <see cref="FunctionRegistry"/> semantics (D12): overload ranking (exact/widening/object), the
+    /// <see cref="FunctionRegistry"/> semantics: overload ranking (exact/widening/object), the
     /// params-expanded composite <c>format</c> (incl. HED1015), replace-on-exact-signature, freeze-then-throw,
     /// delegate closures, and <see cref="FunctionRegistry.Default"/> immutability.
     /// </summary>
@@ -67,6 +67,30 @@ namespace Heddle.Tests
             registry.Register("describe", M(nameof(DescribeInt)));
             registry.Register("describe", (Func<int, string>)(x => "replaced"));
             Assert.Equal("replaced", Render("@(describe(N))", registry, new IntModel { N = 1 }));
+        }
+
+        public static string LowerReplacement(string value) => "lowered(" + value + ")";
+        public static string FloorOfString(string value) => "floored(" + value + ")";
+
+        /// <summary>A host registration with the exact parameter types of a shipped built-in takes its slot in the
+        /// merged overload set, so a template calling the collided name reaches the replacement, not the shim.</summary>
+        [Fact]
+        public void AnExactSignatureRegistrationReplacesTheBuiltInForTemplateCalls()
+        {
+            var registry = new FunctionRegistry();
+            registry.Register("lower", M(nameof(LowerReplacement)));
+            Assert.Equal("lowered(AbC)", Render("@(lower(Name))", registry, new NameModel { Name = "AbC" }));
+        }
+
+        /// <summary>A different-signature registration under a built-in name joins the overload set instead of
+        /// replacing it: each call binds by the shared rank, so both targets stay reachable from one template.</summary>
+        [Fact]
+        public void ADifferentSignatureRegistrationJoinsTheBuiltInOverloadSet()
+        {
+            var registry = new FunctionRegistry();
+            registry.Register("floor", M(nameof(FloorOfString)));
+            Assert.Equal("floored(hi)", Render("@(floor(Name))", registry, new NameModel { Name = "hi" }));
+            Assert.Equal("7", Render("@(floor(N))", registry, new IntModel { N = 7 }));
         }
 
         [Fact]

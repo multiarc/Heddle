@@ -1,0 +1,12 @@
+@*
+    Idiomatic Razor -- composed-page nav-link partial.
+
+    Patterns followed, from Microsoft's own documentation:
+      Razor syntax        https://learn.microsoft.com/aspnet/core/mvc/views/razor
+      Partial views       https://learn.microsoft.com/aspnet/core/mvc/views/partial
+
+    One navigation link. Checked by the functional verifier, not the byte gate.
+*@
+@using Heddle.Benchmarks.Dotnet.Models
+@model NavLink
+<li class="nav-link"><a href="@Model.Href">@Model.Label</a></li>

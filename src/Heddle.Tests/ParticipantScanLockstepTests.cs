@@ -1,0 +1,205 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using Heddle.Attributes;
+using Heddle.Core;
+using Heddle.Data;
+using Heddle.Helpers;
+using Heddle.Language;
+using Heddle.Runtime;
+using Xunit;
+using Heddle.TestCorpus;
+
+namespace Heddle.Tests
+{
+    /// <summary>
+    /// The <c>[ScopeChannel]</c> participant scan. Two things: the characterization (<see cref="LegacyLeftmostScan"/>
+    /// transcribes the legacy probe to show the divergence as data), and the lockstep that the parse-level scan must
+    /// agree with the runtime's <c>RuntimeDocument.NeedsLocals</c>. The parse-level scan may over-provision
+    /// (behavior-invisible) but never under-provision.
+    /// </summary>
+    public class ParticipantScanLockstepTests
+    {
+        private static bool LegacyLeftmostScan(ParseContext ctx, Func<string, bool> hasScopeChannel)
+        {
+            if (ctx?.OutputChains == null)
+                return false;
+            foreach (var chain in ctx.OutputChains)
+            {
+                var lm = chain.Chain != null && chain.Chain.Count > 0 ? chain.Chain[0].ExtensionName : null;
+                if (lm != null && hasScopeChannel(lm))
+                    return true;
+            }
+
+            return false;
+        }
+
+        private static readonly Func<string, bool> HasScopeChannel = name =>
+            TemplateFactory.TryGetExtensionType(name, out var type) &&
+            type.IsHaveAttribute<ScopeChannelAttribute>(true);
+
+        private static ParseContext Parse(string template) =>
+            DocumentParser.Parse(template, new ParserSettings { RootPath = string.Empty }, out _);
+
+        /// <summary>Templates whose participant reachability the two scans must agree on. Chains and nested chain
+        /// parameters both appear, because those are exactly the shapes the leftmost-only probe missed.</summary>
+        public static IEnumerable<object[]> Corpus()
+        {
+            yield return new object[] { "no participant", "hello @(this)", false };
+            yield return new object[] { "leftmost participant", "@if(this){{x}}@else(){{y}}", true };
+            yield return new object[] { "participant in a chain tail", "@(this):else(){{y}}", true };
+            yield return new object[] { "participant as a nested chain parameter", "@(else())", true };
+            yield return new object[] { "participant nested in a bodied host's parameter", "@if(else()){{x}}", true };
+            yield return new object[] { "non-participant chain", "@(this):@(this)", false };
+        }
+
+        [Theory]
+        [MemberData(nameof(Corpus))]
+        public void TheSharedScanFindsEveryReachableParticipant(string label, string template, bool expected)
+        {
+            Assert.Equal(expected, ParticipantScan.BodyHostsParticipant(Parse(template), HasScopeChannel));
+            Assert.NotNull(label);
+        }
+
+        /// <summary>The divergence set, as data: every corpus row the legacy leftmost-only probe got wrong is one
+        /// the shared scan now gets right, and the legacy probe was never <em>more</em> permissive — the fix only
+        /// ever adds frames, which is why it cannot regress a template that already worked.</summary>
+        [Theory]
+        [MemberData(nameof(Corpus))]
+        public void TheLegacyProbeWasOnlyEverAnUnderApproximation(string label, string template, bool expected)
+        {
+            var legacy = LegacyLeftmostScan(Parse(template), HasScopeChannel);
+            var shared = ParticipantScan.BodyHostsParticipant(Parse(template), HasScopeChannel);
+
+            Assert.Equal(expected, shared);
+            Assert.False(legacy && !shared, label + ": the legacy probe found a participant the shared scan misses");
+        }
+
+        [Fact]
+        public void TheLegacyProbeMissesANonLeftmostParticipant()
+        {
+            const string template = "@(this):else(){{y}}";
+            Assert.False(LegacyLeftmostScan(Parse(template), HasScopeChannel));
+            Assert.True(ParticipantScan.BodyHostsParticipant(Parse(template), HasScopeChannel));
+        }
+
+        [Fact]
+        public void TheLegacyProbeMissesANestedChainParameterParticipant()
+        {
+            const string template = "@(else())";
+            Assert.False(LegacyLeftmostScan(Parse(template), HasScopeChannel));
+            Assert.True(ParticipantScan.BodyHostsParticipant(Parse(template), HasScopeChannel));
+        }
+
+        /// <summary>
+        /// The lockstep against the compiled-tree scan. The parse-level rule may over-provision — see the
+        /// shadowing row below — but must never miss what the runtime provisions for.
+        /// </summary>
+        [Theory]
+        [MemberData(nameof(Corpus))]
+        public void TheSharedScanIsNeverNarrowerThanTheRuntimeScan(string label, string template, bool expected)
+        {
+            var runtimeNeedsLocals = RuntimeNeedsLocals(template);
+            var shared = ParticipantScan.BodyHostsParticipant(Parse(template), HasScopeChannel);
+
+            Assert.Equal(expected, shared);
+            Assert.False(runtimeNeedsLocals && !shared,
+                label + ": the runtime provisions a frame the shared parse-level scan does not");
+        }
+
+        /// <summary>
+        /// The documented over-provision (ruling: keep). A definition named after a <c>[ScopeChannel]</c>
+        /// extension shadows it, so the compiled tree holds a definition carrier — no participant — while the
+        /// parse-level scan, which deliberately runs before definition resolution, still counts the name. The
+        /// resulting frame is never read (publish/read happens only inside participants), so this is
+        /// behavior-invisible and emit-time only. Asserted explicitly rather than left implicit: the day this
+        /// branch needs to change is the trigger for giving the scan a <c>definitionExists</c> predicate.
+        /// </summary>
+        [Fact]
+        public void AShadowedParticipantNameOverProvisionsAndThatIsTheRuling()
+        {
+            const string template = "@%<else>{{shadow}}%@\n@else()";
+
+            Assert.True(ParticipantScan.BodyHostsParticipant(Parse(template), HasScopeChannel),
+                "the parse-level scan counts the shadowed name — the documented over-provision");
+            Assert.False(RuntimeNeedsLocals(template),
+                "the compiled tree holds a definition carrier, so the runtime provisions nothing");
+        }
+
+        private static bool RuntimeNeedsLocals(string template)
+        {
+            var compileScope = new CompileScope(new CompileContext(new TemplateOptions(), ExType.Dynamic));
+            var parse = DocumentParser.Parse(template, new ParserSettings { RootPath = string.Empty },
+                out var clean);
+            var document = HeddleCompiler.Compile(clean, compileScope, parse, null);
+            compileScope.CompileContext.Compile();
+            return document != null && document.NeedsLocals;
+        }
+
+        // The whole-corpus sweep ensures shapes the hand-picked rows miss are caught.
+        // The corpus is src/Heddle.Tests/TestTemplate/**, the same set CorpusDifferentialTests classifies.
+
+        /// <summary>Corpus templates whose compiled tree provisions a frame. Pinned exactly (not a floor) to
+        /// prevent the sweep from becoming vacuous silently.</summary>
+        private static readonly string[] CorpusTemplatesNeedingLocals =
+        {
+            "branch-import-else.heddle", "branching-flagship.heddle", "branching-interleaved.heddle",
+            "branching-nested.heddle", "branching-partial-child.heddle", "branching-partial-parent.heddle"
+        };
+
+        /// <summary>Corpus templates where the parse-level scan legitimately over-provisions (definition shadowing
+        /// a <c>[ScopeChannel]</c> name). Empty today; any new entry requires conscious edit, not silent widening.</summary>
+        private static readonly string[] CorpusOverProvisionAllowList = new string[0];
+
+        [Fact]
+        public void TheSharedScanAgreesWithTheRuntimeOverTheWholeCorpus()
+        {
+            var dir = TestCorpusIndex.CorpusDir;
+
+            var files = Directory.GetFiles(dir, "*.heddle")
+                .OrderBy(p => p, StringComparer.Ordinal).ToList();
+            // SetEquals prevents the sweep from silently becoming vacuous: it pins against named files, not an
+            // editable count.
+            var observed = files.Select(Path.GetFileName).ToList();
+            var declared = CorpusIntent.DeclaredNames();
+            Assert.True(new HashSet<string>(observed, StringComparer.Ordinal).SetEquals(declared),
+                CorpusIntent.Describe("The participant-scan sweep corpus", declared, observed));
+
+            var settings = new ParserSettings { RootPath = dir + Path.DirectorySeparatorChar };
+            var options = new TemplateOptions { RootPath = dir, FileNamePostfix = ".heddle" };
+
+            var narrower = new List<string>();
+            var overProvisioned = new List<string>();
+            var needingLocals = new List<string>();
+
+            foreach (var file in files)
+            {
+                var name = Path.GetFileName(file);
+                var text = File.ReadAllText(file).Replace("\r\n", "\n");
+
+                var compileScope = new CompileScope(new CompileContext(options, ExType.Dynamic));
+                var parse = DocumentParser.Parse(text, settings, out var clean);
+                var document = HeddleCompiler.Compile(clean, compileScope, parse, null);
+                compileScope.CompileContext.Compile();
+                Assert.NotNull(document);
+
+                var runtime = document.NeedsLocals;
+                var shared = ParticipantScan.BodyHostsParticipant(
+                    DocumentParser.Parse(text, settings, out _), HasScopeChannel);
+
+                if (runtime)
+                    needingLocals.Add(name);
+                if (runtime && !shared)
+                    narrower.Add(name);
+                if (shared && !runtime)
+                    overProvisioned.Add(name);
+            }
+
+            // The contract: the parse-level scan may over-provision, never under-provision.
+            Assert.Empty(narrower);
+            Assert.Equal(CorpusOverProvisionAllowList, overProvisioned.ToArray());
+            Assert.Equal(CorpusTemplatesNeedingLocals, needingLocals.ToArray());
+        }
+    }
+}

@@ -8,12 +8,11 @@
     <AssemblyName>Heddle.Tool</AssemblyName>
     <RootNamespace>Heddle.Tool</RootNamespace>
 
-    <!-- WI12 / roadmap "Codegen CLI distribution": the T4-successor CLI hosts the full dynamic engine and ships like
-         the phase 6 LSP server — a normal dotnet tool, per-RID ReadyToRun for fast cold start. -->
+    <!-- The T4-successor CLI hosts the full dynamic engine and ships like the LSP server: a normal dotnet tool,
+         per-RID ReadyToRun for fast cold start. -->
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>heddle</ToolCommandName>
     <PackageId>Heddle.Tool</PackageId>
-    <Version>2.0.0$(VersionSuffix)</Version>
     <Description>Heddle template-engine CLI: render a template against a JSON model (a T4-successor codegen tool).</Description>
     <RuntimeIdentifiers>win-x64;win-arm64;linux-x64;linux-arm64;linux-musl-x64;osx-x64;osx-arm64;any</RuntimeIdentifiers>
     <!-- R2R is opt-in via EnableToolR2R (set by the CI release/publish steps). Keeping the property
@@ -29,6 +28,9 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Heddle.Tool.Tests, PublicKey=00240000048000009400000006020000002400005253413100040000010001008F699CB432AD3DC770F9147DE37911B49099706C36AF5F14DB7C2031DD216FFAE283B63A2591814F371929AB231C4A82BCBFAC9803C37B96AE90DC703F4159E8B6AC6E2E9F364F072D1BA2FC5B79F26ACF3BD61637D2DB47F409E2B07CF3F49E988BF2C5F6DDAE6D8F804C770601CCE3F3CEA11F7D61A3583109D9AD3244F6C6" />
+    <!-- The corpus printer gate (Heddle.Tests.PrinterCoverageTests) runs the site printer over
+         every corpus row record: a decline on a row without the field is a red gate. -->
+    <InternalsVisibleTo Include="Heddle.Tests, PublicKey=00240000048000009400000006020000002400005253413100040000010001008F699CB432AD3DC770F9147DE37911B49099706C36AF5F14DB7C2031DD216FFAE283B63A2591814F371929AB231C4A82BCBFAC9803C37B96AE90DC703F4159E8B6AC6E2E9F364F072D1BA2FC5B79F26ACF3BD61637D2DB47F409E2B07CF3F49E988BF2C5F6DDAE6D8F804C770601CCE3F3CEA11F7D61A3583109D9AD3244F6C6" />
   </ItemGroup>
 
   <ItemGroup>

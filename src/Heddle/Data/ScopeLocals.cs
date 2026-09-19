@@ -4,7 +4,7 @@ using System.Collections.Generic;
 namespace Heddle.Data
 {
     /// <summary>
-    /// <para>The per-body-execution local-context frame reached through <see cref="Scope"/> (phase 3 D4).</para>
+    /// <para>The per-body-execution local-context frame reached through <see cref="Scope"/>.</para>
     /// <para>Holds a dedicated inline slot for the branch protocol (<see cref="BranchState"/>) plus a lazily
     /// created overflow map for arbitrary public keys — the first publish of a user key costs one dictionary
     /// allocation; the branch protocol never touches the map. Identical code on every target framework.</para>

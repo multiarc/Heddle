@@ -1,0 +1,28 @@
+{
+  "workload": "composed-page",
+  "suite": "raw",
+  "values": [
+    { "text": "<title>Title</title>", "count": 1 },
+    { "text": "<li class=\"nav-link\"><a href=\"", "count": 245 },
+    { "text": "<div class=\"nav-column\">", "count": 36 },
+    { "text": "<span class=\"nav-title\">Need Help?</span>", "count": 1 },
+    { "text": "<li class=\"nav-link\"><a href=\"/content/privacy-policy\">Privacy Policy</a></li>", "count": 1 }
+  ],
+  "markers": [
+    "<!DOCTYPE html>",
+    "<title>Title</title>",
+    "xmas-shipping-alert-1.jpg",
+    "id=\"search-area-form\"",
+    "/content/wholesale-promotions",
+    "/content/request-catalog\">Catalog</a>",
+    ">Shop All Products</a>",
+    "/product/coming-soon-paleo-pork",
+    "/products/paleo-friendly-pork",
+    "homebtmbanners/gluten-hp.jpg",
+    "/Assets/images/seeourcatalog.jpg",
+    "<script src=\"/bodyend.js\"></script>",
+    "</html>"
+  ],
+  "forbidden": [],
+  "required": []
+}

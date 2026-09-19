@@ -5,8 +5,8 @@ using Heddle.Data;
 namespace Heddle.Runtime.Parameters
 {
     /// <summary>
-    /// A body-level prop read (D9): a direct <c>scope.PropsData[index]</c> load for a bare single-segment read,
-    /// or the phase 1 null-safe property chain rooted at <c>Convert(slot, propType)</c> for a multi-hop read.
+    /// A body-level prop read: a direct <c>scope.PropsData[index]</c> load for a bare single-segment read,
+    /// or the null-safe property chain rooted at <c>Convert(slot, propType)</c> for a multi-hop read.
     /// Render never sees a name — the slot index is resolved at compile time.
     /// </summary>
     internal sealed class PropsSlotParameter : IRuntimeParameter

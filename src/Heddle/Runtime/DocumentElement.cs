@@ -5,18 +5,13 @@ using Heddle.Strings.Core;
 namespace Heddle.Runtime
 {
     /// <summary>
-    /// Recognized template in the source template
+    /// One template block recognized in the source, owning the chain of extensions it expands to.
     /// </summary>
     internal class DocumentElement : IDataProcessor
     {
-        /// <summary>
-        /// Template chain to execute
-        /// </summary>
         private readonly TemplateChain _callChain;
 
-        /// <summary>
-        /// Position in the source (start and end)
-        /// </summary>
+        /// <summary>The element's position in the template source.</summary>
         public BlockPosition Position { get; set; }
 
         public DocumentElement(BlockPosition position)
@@ -25,9 +20,7 @@ namespace Heddle.Runtime
             _callChain = new TemplateChain();
         }
 
-        /// <summary>
-        /// Template chain to execute
-        /// </summary>
+        /// <summary>The extension chain the element runs.</summary>
         public TemplateChain CallChain => _callChain;
 
         public void Dispose()

@@ -1,0 +1,183 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The .NET cross-stack benchmark harness. Structured like the other five ecosystem
+    harnesses under benchmarks/: models, templates, a gate, and bench targets, all under one
+    project with a verb-dispatching entry point.
+
+    net10.0 only. The cross-stack protocol pins a single runtime for the .NET leg; a multi-TFM
+    matrix answers an intra-.NET historical question this program does not ask.
+
+    Deliberately NOT strong-name signed: three of the five competitor packages ship unsigned, and
+    signing this assembly only buys a CS8002 warning per unsigned reference. Nothing consumes it,
+    and it is granted no access to the engine's internals (see the engine's AssemblyInfo.cs).
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <IsPackable>false</IsPackable>
+    <AssemblyName>Heddle.Benchmarks.Dotnet</AssemblyName>
+    <RootNamespace>Heddle.Benchmarks.Dotnet</RootNamespace>
+    <TieredCompilation>true</TieredCompilation>
+    <!-- The golden corpus lives beside this project and is read at runtime, never compiled. -->
+    <EnableDefaultNoneItems>true</EnableDefaultNoneItems>
+  </PropertyGroup>
+
+  <!-- Build-time precompilation through Heddle.Build (phase 2): the controlled-track entry
+       templates compile out of process and the assembly embeds the artifact plus the generated
+       entry points. The runtime techniques below are unaffected. -->
+  <Import Project="..\..\src\Heddle.Build\build\Heddle.Build.props" />
+
+  <PropertyGroup>
+    <!-- The engine defaults the runtime templates use, so both backends compile the same way. -->
+    <HeddleOutputProfile>Text</HeddleOutputProfile>
+    <HeddleExpressionMode>Native</HeddleExpressionMode>
+    <HeddleGeneratedNamespace>Heddle.Benchmarks.Dotnet.Generated</HeddleGeneratedNamespace>
+    <!-- The templates tree is data read at runtime; default-globbing it would also sweep the
+         idiomatic tree in under colliding keys. Templates are declared explicitly below, with
+         item paths relative to the default HeddleTemplateRoot (the project directory) — the
+         host resolves template paths against that root, so project-relative items are
+         required. Bare-name entry keys come from the Key metadata below, matching what
+         `@<<{{shared/layout.heddle}}` looks up and what PrecompiledBackend.KeyFor computes. -->
+    <EnableDefaultHeddleTemplates>false</EnableDefaultHeddleTemplates>
+  </PropertyGroup>
+
+  <Import Project="..\..\src\Heddle.Build\build\Heddle.Build.targets" />
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Heddle\Heddle.csproj" />
+    <ProjectReference Include="..\..\src\Heddle.Build\Heddle.Build.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\..\src\Heddle.Tool\Heddle.Tool.csproj" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+  <!-- Rooted: a relative path here would resolve against the imported targets file. -->
+  <PropertyGroup>
+    <HeddleBuildTasksPath>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)/../../src/Heddle.Build/bin/$(Configuration)/netstandard2.0/Heddle.Build.Tasks.dll'))</HeddleBuildTasksPath>
+    <HeddleToolPath>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)/../../src/Heddle.Tool/bin/$(Configuration)/net10.0/Heddle.Tool.dll'))</HeddleToolPath>
+    <!-- The shared-frameworks root beside the dotnet host driving this build (DOTNET_HOST_PATH
+         is the same variable the HeddleCompile task itself reads): no SDK path or version is
+         hardcoded below. Empty when the variable is unset, and the glob then matches nothing. -->
+    <_HeddleBenchmarkSharedFrameworks>$([System.IO.Path]::GetFullPath('$([System.IO.Path]::GetDirectoryName('$(DOTNET_HOST_PATH)'))/shared/Microsoft.AspNetCore.App'))</_HeddleBenchmarkSharedFrameworks>
+  </PropertyGroup>
+
+  <!-- The intermediate model assembly carries every source, including the Razor twin whose nested
+       host implements IWebHostEnvironment from Microsoft.AspNetCore.Hosting.Abstractions. That
+       assembly ships only inside the AspNetCore.App shared framework, which the plain-NETCore.App
+       build host never loads — so one unloadable nested type makes the engine's whole-assembly
+       type scan drop the intermediate entirely, and short model names (the layout's
+       `:: ComposedModel`) stop resolving. Declaring the framework assembly as an implementation
+       image completes the host's closure so every intermediate type loads. The version segment
+       is a glob over servicing versions of the app's own major (net10.0): several majors may sit
+       side by side and all of them would collide as references. When the engine tolerates
+       partially-loadable images this row and the prune below can both go. -->
+  <ItemGroup Condition="Exists('$(_HeddleBenchmarkSharedFrameworks)')">
+    <HeddleExtensionAssembly Include="$(_HeddleBenchmarkSharedFrameworks)/10.*/Microsoft.AspNetCore.Hosting.Abstractions.dll" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Precompiled templates, CONTROLLED TRACK ONLY. The glob is recursive on purpose: only the
+         eight directly-runnable entry templates sit at the top level, with every non-entry (the
+         layout, the chrome-fragment and fragment libraries) under `shared/`, and the import map
+         needs both levels. The idiomatic track carries the three runtime techniques only.
+         The two ENCODED workloads compile under the Html profile they actually need via the
+         per-item OutputProfile override below — one project precompiles both profiles. -->
+    <HeddleTemplate Include="templates\controlled\heddle\**\*.heddle" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <HeddleTemplate Update="templates\controlled\heddle\fortunes-encoded.heddle" OutputProfile="Html" />
+    <HeddleTemplate Update="templates\controlled\heddle\encoded-loop.heddle" OutputProfile="Html" />
+  </ItemGroup>
+
+  <!-- Bare-name entry keys: the Key metadatum wins over the path-derived key, so the controlled
+       entry templates answer to `composed-page.heddle` (not their project-relative path) and the
+       shared libraries to `shared/*.heddle` — exactly the spellings the `@<<{{...}}` imports use.
+       Updates compose with the profile and model-type rows. -->
+  <ItemGroup>
+    <HeddleTemplate Update="templates\controlled\heddle\composed-page.heddle" Key="composed-page.heddle" />
+    <HeddleTemplate Update="templates\controlled\heddle\trivial-substitution.heddle" Key="trivial-substitution.heddle" />
+    <HeddleTemplate Update="templates\controlled\heddle\large-loop.heddle" Key="large-loop.heddle" />
+    <HeddleTemplate Update="templates\controlled\heddle\mixed-page.heddle" Key="mixed-page.heddle" />
+    <HeddleTemplate Update="templates\controlled\heddle\conditional-heavy.heddle" Key="conditional-heavy.heddle" />
+    <HeddleTemplate Update="templates\controlled\heddle\fragment-heavy.heddle" Key="fragment-heavy.heddle" />
+    <HeddleTemplate Update="templates\controlled\heddle\fortunes-encoded.heddle" Key="fortunes-encoded.heddle" />
+    <HeddleTemplate Update="templates\controlled\heddle\encoded-loop.heddle" Key="encoded-loop.heddle" />
+    <HeddleTemplate Update="templates\controlled\heddle\shared\layout.heddle" Key="shared/layout.heddle" />
+    <HeddleTemplate Update="templates\controlled\heddle\shared\fragments.heddle" Key="shared/fragments.heddle" />
+    <HeddleTemplate Update="templates\controlled\heddle\shared\chrome-fragments.heddle" Key="shared/chrome-fragments.heddle" />
+  </ItemGroup>
+
+  <!-- The model type each entry template renders: the same type the runtime backend compiles
+       against (HeddleEngine.Specs), so the build-time rows bind the same member shapes and the
+       typed backend below passes the gauntlet's model-type step with BindTyped. Updates compose,
+       so the encoded pair keeps its Html profile from above. Nested classes use the reflection
+       spelling (`Outer+Inner`): the host resolves the metadatum with Assembly.GetType, which only
+       answers the `+` form, while the emitter writes the C# dotted form into the generated
+       source from the resolved Type. -->
+  <ItemGroup>
+    <HeddleTemplate Update="templates\controlled\heddle\composed-page.heddle" ModelType="Heddle.Benchmarks.Dotnet.Models.ComposedModel" />
+    <HeddleTemplate Update="templates\controlled\heddle\trivial-substitution.heddle" ModelType="Heddle.Benchmarks.Dotnet.Models.SubstitutionContent+SubstitutionModel" />
+    <HeddleTemplate Update="templates\controlled\heddle\large-loop.heddle" ModelType="Heddle.Benchmarks.Dotnet.Models.LoopContent+LoopModel" />
+    <HeddleTemplate Update="templates\controlled\heddle\mixed-page.heddle" ModelType="Heddle.Benchmarks.Dotnet.Models.MixedContent+MixedModel" />
+    <HeddleTemplate Update="templates\controlled\heddle\conditional-heavy.heddle" ModelType="Heddle.Benchmarks.Dotnet.Models.ConditionalContent+ConditionalModel" />
+    <HeddleTemplate Update="templates\controlled\heddle\fragment-heavy.heddle" ModelType="Heddle.Benchmarks.Dotnet.Models.FragmentContent+FragmentModel" />
+    <HeddleTemplate Update="templates\controlled\heddle\fortunes-encoded.heddle" ModelType="Heddle.Benchmarks.Dotnet.Models.FortunesContent+FortuneModel" />
+    <HeddleTemplate Update="templates\controlled\heddle\encoded-loop.heddle" ModelType="Heddle.Benchmarks.Dotnet.Models.EncodedLoopContent+EncodedLoopModel" />
+  </ItemGroup>
+
+  <!-- The engine under test's own harness. -->
+  <ItemGroup>
+    <PackageReference Include="BenchmarkDotNet" Version="0.15.8" />
+  </ItemGroup>
+
+  <!--
+    Competitor engines, versions pinned to the cross-stack manifest. These are harness-only
+    dependencies; the Heddle engine itself gains nothing from them.
+  -->
+  <ItemGroup>
+    <PackageReference Include="Fluid.Core" Version="2.31.0" />
+    <PackageReference Include="Scriban" Version="7.2.5" />
+    <PackageReference Include="DotLiquid" Version="2.3.197" />
+    <PackageReference Include="Handlebars.Net" Version="2.1.6" />
+  </ItemGroup>
+
+  <!-- Razor renders through MVC DI, so the twin needs a host and runtime view compilation. -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="10.0.10" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation" Version="10.0.10" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.10" />
+  </ItemGroup>
+
+  <!--
+    The corpus is data read at runtime by every harness in the repo, this one included. It is not
+    copied to the output directory: the gate resolves it repo-relative from the assembly location
+    so there is exactly one copy in the tree (Corpus.cs).
+  -->
+  <ItemGroup>
+    <None Remove="GoldenCorpus\**" />
+    <None Include="GoldenCorpus\**" CopyToOutputDirectory="Never" />
+  </ItemGroup>
+
+  <!-- The build host is a plain NETCore.App console: it cannot resolve Microsoft.AspNetCore.App
+       shared-framework assemblies, so package images whose closure reaches into that framework
+       (the Razor stack) fail to load there and fault the compile. Those images carry no model,
+       extension or function types this project's templates use — models arrive same-project
+       through the intermediate assembly and the templates are pure composition — so they are
+       pruned from the HOST's image set only, after _HeddleCollectImages and before the probe
+       and compile consume it. @(RuntimeCopyLocalItems) is untouched: the built harness still
+       ships and loads the full closure at gate and bench time. -->
+  <Target Name="_HeddleBenchmarkPruneHostImages"
+          AfterTargets="_HeddleCollectImages"
+          BeforeTargets="CoreCompile">
+    <ItemGroup>
+      <!-- The shared-framework completion row above shares the filename prefix but must survive:
+           it is the one image in the set that loads (the package ones are what fault). Told apart
+           by path: only the framework copy sits under a Microsoft.AspNetCore.App directory. -->
+      <_HeddleImplementationImage Remove="@(_HeddleImplementationImage)"
+          Condition="$([System.String]::Copy('%(Filename)').StartsWith('Microsoft.AspNetCore.')) and !$([System.String]::Copy('%(FullPath)').Contains('Microsoft.AspNetCore.App'))" />
+    </ItemGroup>
+  </Target>
+
+</Project>

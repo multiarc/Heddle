@@ -1,0 +1,19 @@
+@*
+    Idiomatic Heddle -- fragment-heavy.
+
+    Patterns followed, from Heddle's own documentation:
+      Language reference   docs/language-reference.md ("Composition without coupling" --
+                           definition libraries imported via @<<)
+      Architecture         docs/architecture.md
+
+    Authored the way the reference teaches -- readable block layout, definitions imported
+    from the shared/fragments.heddle library via `@<<`, and `@list`/`@if`/`@elif`/`@else`
+    for control flow -- rather than collapsed onto one line to match the oracle
+    byte-for-byte. Four fragment kinds dispatch per row on the precomputed booleans.
+    Checked by the functional verifier, not the byte gate.
+*@
+
+@<<{{shared/fragments.heddle}}
+<div class="panel">
+@list(Items){{@if(IsTile){{@tile()}}@elif(IsCard){{@card()}}@elif(IsMedia){{@media_row()}}@else(){{@stat()}}}}
+</div>

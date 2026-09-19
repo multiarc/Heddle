@@ -5,7 +5,7 @@
  *
  * SINGLE SOURCE OF TRUTH. Consumed by BOTH:
  *   - the language worker (mode/heddle_worker.js onUpdate), and
- *   - the WS5 test harness (js/test/helpers/parse.js),
+ *   - the test harness (js/test/helpers/parse.js),
  * so the harness validates the exact mapping the worker ships.
  *
  * Message alignment with the C# engine (HED0003 syntax errors)

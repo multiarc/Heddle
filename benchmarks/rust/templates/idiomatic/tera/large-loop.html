@@ -1,0 +1,10 @@
+{# Idiomatic Tera template. Patterns follow the Tera docs
+   (keats.github.io/tera): "Control structures - For loops"; default auto-escaping on.
+   The display name is template-composed as the literal `row-` + the value substitution
+   (the model carries data only). #}
+{% for item in items %}
+  <tr>
+    <td>row-{{ item.value }}</td>
+    <td>{{ item.value }}</td>
+  </tr>
+{% endfor %}

@@ -1,0 +1,61 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <SignAssembly>true</SignAssembly>
+    <AssemblyOriginatorKeyFile>..\..\heddle.snk</AssemblyOriginatorKeyFile>
+    <EnableDefaultHeddleTemplates>false</EnableDefaultHeddleTemplates>
+    <PublishAot>true</PublishAot>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <RuntimeIdentifiers>linux-x64;win-x64</RuntimeIdentifiers>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <RuntimeHostConfigurationOption Include="Heddle.CSharpTierEnabled" Value="false" Trim="true" />
+    <RuntimeHostConfigurationOption Include="Heddle.Precompiled.StrictLoad" Value="true" />
+  </ItemGroup>
+
+  <!-- Build-time precompilation through Heddle.Build: the templates compile out of process and the
+       assembly embeds the artifact plus the generated entry points (Heddle.Generated.*). -->
+  <Import Project="..\..\src\Heddle.Build\build\Heddle.Build.props" />
+  <Import Project="..\..\src\Heddle.Build\build\Heddle.Build.targets" />
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Heddle\Heddle.csproj" />
+    <ProjectReference Include="..\..\src\Heddle.Build\Heddle.Build.csproj" ReferenceOutputAssembly="false" />
+    <!-- The host is an executable, which a self-contained (AOT) publish cannot reference
+         (NETSDK1150). It is still needed to sequence the build-time precompile, so it stays for
+         build/run and drops out of publish: publish therefore requires a prior build, when the
+         precompile stamp is already up to date. See README.md for the two-step publish.
+         The switch is _IsPublishing (set by `dotnet publish`), not PublishDir: the SDK defines
+         PublishDir for every build, so a condition on it dropped the reference always and the
+         sample only built where the Tool had been built by something else. -->
+    <ProjectReference Include="..\..\src\Heddle.Tool\Heddle.Tool.csproj" ReferenceOutputAssembly="false"
+                      Condition="'$(_IsPublishing)' != 'true'" />
+  </ItemGroup>
+
+  <!-- Rooted: a relative path here would resolve against the imported targets file. -->
+  <PropertyGroup>
+    <HeddleBuildTasksPath>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)/../../src/Heddle.Build/bin/$(Configuration)/netstandard2.0/Heddle.Build.Tasks.dll'))</HeddleBuildTasksPath>
+    <HeddleToolPath>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)/../../src/Heddle.Tool/bin/$(Configuration)/net10.0/Heddle.Tool.dll'))</HeddleToolPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <HeddleTemplate Include="templates\composed-page.heddle" />
+    <HeddleTemplate Include="templates\large-loop.heddle" />
+    <HeddleTemplate Include="templates\mixed-page.heddle" />
+    <HeddleTemplate Include="templates\conditional-heavy.heddle" />
+    <HeddleTemplate Include="templates\fragment-heavy.heddle" />
+    <HeddleTemplate Include="templates\fortunes-encoded.heddle" />
+    <HeddleTemplate Include="templates\encoded-loop.heddle" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\tools\SampleCapture.cs" Link="SampleCapture.cs" />
+    <ProjectCapability Include="SupportsSystemTextJson" />
+  </ItemGroup>
+
+</Project>

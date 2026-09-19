@@ -1,0 +1,55 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <AssemblyName>Heddle.Build.Tasks</AssemblyName>
+    <RootNamespace>Heddle.Build.Tasks</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <SignAssembly>true</SignAssembly>
+    <AssemblyOriginatorKeyFile>..\..\heddle.snk</AssemblyOriginatorKeyFile>
+
+    <!-- The out-of-process build package: the MSBuild node must not host the engine's Roslyn. -->
+    <PackageId>Heddle.Build</PackageId>
+    <Description>Heddle build-time precompilation: compiles .heddle templates through the real engine out of process and embeds the compiled form.</Description>
+    <DevelopmentDependency>true</DevelopmentDependency>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Build.Utilities.Core" Version="17.8.3" PrivateAssets="all" />
+    <PackageReference Include="System.Reflection.Metadata" Version="8.0.0" PrivateAssets="all" GeneratePathProperty="true" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The task assembly ships under tasks/, beside its metadata reader (not provided by MSBuild). -->
+    <None Include="$(TargetPath)" Pack="true" PackagePath="tasks/netstandard2.0/" Visible="false" />
+    <None Include="$(PkgSystem_Reflection_Metadata)/lib/netstandard2.0/System.Reflection.Metadata.dll" Pack="true" PackagePath="tasks/netstandard2.0/" Visible="false" />
+    <None Include="build/Heddle.Build.props" Pack="true" PackagePath="buildTransitive/" />
+    <None Include="build/Heddle.Build.targets" Pack="true" PackagePath="buildTransitive/" />
+  </ItemGroup>
+
+  <!-- The framework-dependent host the task launches: published (not built) so deps.json and the
+       runtimeconfig travel with the binaries. Runs before Pack; skipped for metadata-only packs. -->
+  <PropertyGroup>
+    <_HeddleToolPublishDir>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)/obj/$(Configuration)/$(TargetFramework)/tool/'))</_HeddleToolPublishDir>
+  </PropertyGroup>
+  <!-- Before _GetPackageFiles (a hook, not a property: NuGet reassigns GenerateNuspecDependsOn
+       after this file evaluates, wiping a prepend). Publishes the host, then adds its files. -->
+  <Target Name="_HeddlePublishTool" BeforeTargets="_GetPackageFiles"
+          Condition="'$(HeddleSkipToolPublish)' != 'true'">
+    <MSBuild Projects="..\Heddle.Tool\Heddle.Tool.csproj" Targets="Publish"
+             Properties="Configuration=$(Configuration);TargetFramework=net10.0;PublishDir=$(_HeddleToolPublishDir)" />
+    <ItemGroup>
+      <_HeddleToolFile Include="$(_HeddleToolPublishDir)**/*" />
+      <None Include="@(_HeddleToolFile)" Pack="true" PackagePath="tools/net10.0/any/" Visible="false" />
+    </ItemGroup>
+  </Target>
+
+  <ItemGroup>
+    <!-- Directory.Build.props sets PackageReadmeFile=README.md for every project, so the file must be
+         packed (else NU5039). Matches Heddle.LanguageServer / Heddle.Language. -->
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+</Project>

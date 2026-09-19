@@ -1,0 +1,10 @@
+{# Idiomatic Jinja2 tile fragment: one of the four dispatched fragment kinds,
+   as a macro imported by fragment-heavy.jinja.
+   Doc: https://jinja.palletsprojects.com/en/stable/templates/#macros #}
+{% macro tile(item) %}
+<section class="tile">
+  <h3>{{ item.name }}</h3>
+  <p class="v">{{ item.value }}</p>
+  <span class="badge">{{ item.badge }}</span>
+</section>
+{% endmacro %}

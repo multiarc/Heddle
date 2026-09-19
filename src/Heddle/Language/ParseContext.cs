@@ -12,8 +12,6 @@ namespace Heddle.Language {
     public class ParseContext {
         private readonly int _offset;
 
-        //internal bool DefenitionsOnly { get; set; }
-
         private readonly bool _inDefintionContext;
 
         private readonly List<HeddleToken> _tokens = new List<HeddleToken>();
@@ -36,17 +34,16 @@ namespace Heddle.Language {
             Errors = parentContext?.Errors ?? new List<HeddleCompileError>();
             Warnings = parentContext?.Warnings ?? new List<HeddleCompileWarning>();
             RegionFillCandidates = parentContext?.RegionFillCandidates ?? new List<RegionFillCandidate>();
+            ImporterSatisfiableErrors = parentContext?.ImporterSatisfiableErrors ??
+                                        new HashSet<HeddleCompileError>();
             ImportOrigin = parentContext?.ImportOrigin;
         }
 
-        /// <summary>
-        /// The absolute (document-space) UTF-16 offset this context's tokens are keyed from — the phase 6 D2
-        /// span key for the scope map. Equal to the private <c>_offset</c>.
-        /// </summary>
+        /// <summary>The absolute document-space UTF-16 offset this context's tokens are keyed from.</summary>
         internal int AbsoluteOffset => _offset;
 
         /// <summary>
-        /// The phase 6 D25 import-provenance marker: non-null while this context (or an ancestor) is the parse
+        /// Import-provenance marker: non-null while this context (or an ancestor) is the parse
         /// of an imported/partial file. Inherited by child contexts through the ctor; <c>null</c> outside imports
         /// and always <c>null</c> unless <see cref="ProvideLanguageFeatures"/> is on. Diagnostics compiled under a
         /// context carrying this marker are re-anchored to the import site by the LSP facade.
@@ -54,7 +51,7 @@ namespace Heddle.Language {
         internal ImportOrigin ImportOrigin { get; set; }
 
         /// <summary>
-        /// Phase 7 D5: the stable identity of a caller-content context across isolation copies. Each
+        /// The stable identity of a caller-content context across isolation copies. Each
         /// <c>EnterSubtemplate</c> creates one fresh root context per body; every isolation copy of it (parse-time
         /// <c>IsolateContextWithTree</c> or per-call-site <c>OutputItem</c> isolation) maps back to that root, so
         /// a <see cref="RegionFillCandidate"/> captured while parsing the body matches its call site's
@@ -66,14 +63,26 @@ namespace Heddle.Language {
         internal ParseContext OriginIdentity => IsolationOrigin ?? this;
 
         /// <summary>
-        /// Phase 7 D5: the root-shared region-fill candidate list (initialized the same shared-up-the-chain way
+        /// The root-shared region-fill candidate list (initialized the same shared-up-the-chain way
         /// as <see cref="Errors"/>), so a candidate captured in any sub-context is reachable from the compiler's
         /// call-site fill step without any sub-context sweep.
         /// </summary>
         internal List<RegionFillCandidate> RegionFillCandidates { get; }
 
         /// <summary>
-        /// Phase 7 D2/D3: the regions declared directly in this context (a component body), in declaration order,
+        /// The subset of <see cref="Errors"/> that names something this document does not itself declare and an
+        /// <b>importer</b> could have declared — today, a base definition that was not found. Shared up the chain
+        /// the same way <see cref="Errors"/> is.
+        /// <para>A file meant only to be imported is compiled on its own by the build tier, and a fragment that is
+        /// only well-formed inside an importer fails that pass. The engine never runs that pass in production — an
+        /// imported file only ever reaches the compiler already expanded into the document importing it — so a
+        /// caller that knows something imports the file can tell these errors from the ones the file owns whatever
+        /// its surroundings. Nothing here changes what the engine itself reports.</para>
+        /// </summary>
+        internal HashSet<HeddleCompileError> ImporterSatisfiableErrors { get; }
+
+        /// <summary>
+        /// The regions declared directly in this context (a component body), in declaration order,
         /// appended on the <c>EnterDef</c> store-success path only. Transferred to the enclosing component's
         /// <see cref="DefinitionItem.Regions"/> when its body context is attached at <c>ExitSubtemplate</c>.
         /// Per-context (never shared up the chain).
@@ -82,7 +91,7 @@ namespace Heddle.Language {
 
         private static ParseContext IsolateContextFrom(ParseContext context)
         {
-            var newContext = new ParseContext(context, context._offset);// { DefenitionsOnly = context.DefenitionsOnly };
+            var newContext = new ParseContext(context, context._offset);
             newContext.IsolationOrigin = context.OriginIdentity;
             newContext.DefinitionsBlock.Positions.AddRange(context.DefinitionsBlock.Positions);
             newContext.RawOutputItems.AddRange(context.RawOutputItems);
@@ -106,26 +115,21 @@ namespace Heddle.Language {
         internal ParseContext IsolateContext(string definitionName = null)
         {
             var result = IsolateContextFrom(this);
-            //Check if this context already was isolated from other one in the call tree
             if (_isolatedList.Contains(this))
             {
                 return this;
             }
-            //Prevent from stack overflow if child items could have the same context or same subsequent contexts
             if (!_isolatedSet.ContainsKey(this))
             {
                 _isolatedSet.Add(this, result);
                 _isolatedList.Add(result);
             }
-            //Return already isolated context instance
             else
             {
                 return _isolatedSet[this];
             }
             if (definitionName != null)
             {
-                //DefinitionItem definition;
-                //if (DefinitionsBlock.Definitions.TryGetValue(definitionName, out definition) && definition.BaseDefinition != null)
                 if (DefinitionsBlock.Definitions.ContainsKey(definitionName))
                 {
                     var item = new DefinitionItem(DefinitionsBlock.Definitions[definitionName]);
@@ -190,8 +194,6 @@ namespace Heddle.Language {
         internal DefinitionItem CreateDefinition(HeddleParser.DefContext context, out OutputChain chain) {
             if (context == null)
                 throw new ArgumentNullException(nameof(context));
-            // Phase 7 D1/D2: <:name> / <:name :: Type> — a public region declaration. The leading DELIM is a
-            // direct child of def only in the region alternative (the <child:base> DELIM lives inside def_base).
             if (context.DELIM() != null)
                 return CreateRegionDefinition(context, out chain);
             var defBase = context.def_base();
@@ -230,7 +232,6 @@ namespace Heddle.Language {
                     HasDefaultOutput = chain != null,
                     PropDeclarations = noBaseProps,
                     SlotTypeName = noBaseSlot,
-                    // Phase 7 D2: a plain <name> parsed inside a definition body is a private region.
                     IsRegion = InDefintionContext
                 };
             } else {
@@ -252,12 +253,9 @@ namespace Heddle.Language {
                 HeddleCompileError baseNotFound = null;
                 if (baseDefenition == null)
                 {
-                    // Phase 7 D5 (emit-then-retract): the base-not-found error keeps its exact text/position and
-                    // is emitted at parse into the shared Errors list, exactly as today. The error object is
-                    // captured below on the fill candidate so a compile-time public-region match can retract the
-                    // identical instance from BOTH downstream lists; a genuinely dangling <x:x> retracts nothing.
                     baseNotFound = $"Base definition {baseName} couldn't be found".ToError(GetAbsoluteBlockPosition(context));
                     Errors.Add(baseNotFound);
+                    ImporterSatisfiableErrors.Add(baseNotFound);
                 }
                 AddToken(defBase.ID(), HeddleTokenType.Id);
                 AddToken(context.DEF_ENDNAME(), HeddleTokenType.DefEndName);
@@ -293,10 +291,9 @@ namespace Heddle.Language {
                     SlotTypeName = baseSlot
                 };
 
-                // Phase 7 D5/D12: only an unresolved-base <x:x> (same name both sides) becomes a region-fill
-                // candidate. It is flagged so the listener never registers it into any DefinitionsBlock, and the
-                // captured error object makes the compile-time retract possible. A <x:y> with an unresolved base
-                // keeps today's plain error and is never a candidate.
+                // Only an unresolved-base <x:x> (same name both sides) becomes a region-fill candidate. It is flagged
+                // so the listener never registers it into any DefinitionsBlock, and the captured error object makes
+                // the compile-time retract possible. A <x:y> with an unresolved base keeps the plain error and is never a candidate.
                 if (baseNotFound != null && string.Equals(definitionName, baseName, StringComparison.Ordinal))
                 {
                     item.IsFillCandidate = true;
@@ -312,12 +309,7 @@ namespace Heddle.Language {
             }
         }
 
-        /// <summary>
-        /// Phase 7 D1/D2: builds the <see cref="DefinitionItem"/> for a public region declaration
-        /// (<c>&lt;:name&gt;</c> / <c>&lt;:name :: Type&gt;</c>). A region carries no prop list, no base, and no
-        /// default output chain; its model type is the in-header <c>def_region_type</c> or <c>object</c> when
-        /// omitted. A <c>&lt;:name&gt;</c> outside any definition body is a positioned id-less parse error (F6).
-        /// </summary>
+        /// <summary>Builds the <see cref="DefinitionItem"/> for a public region declaration (<c>&lt;:name&gt;</c> or <c>&lt;:name :: Type&gt;</c>).</summary>
         private DefinitionItem CreateRegionDefinition(HeddleParser.DefContext context, out OutputChain chain)
         {
             chain = null;
@@ -357,12 +349,7 @@ namespace Heddle.Language {
             };
         }
 
-        /// <summary>
-        /// Parses a definition header's prop list (phase 5). Builds the <see cref="PropDeclaration"/> list and
-        /// the slot type name, emitting the parse-time header diagnostics HED5015/HED5016/HED5017/HED5007 and
-        /// the editor tokens (D18). Base props are not flattened here — inheritance flattening is a compile-time
-        /// concern (the layout resolver).
-        /// </summary>
+        /// <summary>Parses the prop list and slot type, emitting diagnostics HED5015/HED5016/HED5017/HED5007.</summary>
         private (IReadOnlyList<PropDeclaration> props, string slotTypeName) ParseDefProps(
             HeddleParser.Def_propsContext defProps, string definitionName)
         {
@@ -433,8 +420,7 @@ namespace Heddle.Language {
                     defaultValue = ExpressionAstBuilder.DecodeDefaultLiteral(defaultCtx.def_literal(), this, out _);
                 }
 
-                if (string.Equals(name, "out", StringComparison.Ordinal) ||
-                    string.Equals(name, "this", StringComparison.Ordinal))
+                if (HeddleDiagnosticCatalog.PropFaults.IsReserved(name))
                 {
                     var fix = string.Equals(name, "out", StringComparison.Ordinal)
                         ? " Declare the slot parameter with 'out:: Type'."
@@ -555,7 +541,7 @@ namespace Heddle.Language {
                 throw new TemplateParseException("Raw block is strangely null".ToError(GetAbsoluteBlockPosition(context)));
             var text = raw.GetText();
 
-            // Phase 2 (post-2.0) WI1 — the '@@' literal-@ escape: the lexer re-types the two-char '@@' as
+            // The '@@' literal-@ escape: the lexer re-types the two-char '@@' as
             // RAW (AT_ESCAPE/SUB_AT_ESCAPE); it maps to a single literal '@' collapsed by ReplaceRawOutput.
             if (text == "@@")
             {
@@ -566,8 +552,7 @@ namespace Heddle.Language {
                 };
             }
 
-            var oneLineStyle = text.StartsWith("@:");
-            
+            var oneLineStyle = text.StartsWith("@:", StringComparison.Ordinal);
             if (oneLineStyle && text.Length < 2 || !oneLineStyle && text.Length < 4)
                 throw new TemplateParseException("Raw block is wrongly formatted".ToError(GetAbsoluteBlockPosition(context)));
             return new RawOutputItem
@@ -659,7 +644,7 @@ namespace Heddle.Language {
         }
 
         /// <summary>
-        /// Reads the 5th <c>call</c> alternative (named arguments, phase 5 D4). Classifies the optional leading
+        /// Reads the 5th <c>call</c> alternative (named arguments). Classifies the optional leading
         /// positional <c>expr</c>: a pure <see cref="PathNode"/> (no target) maps to the member-path shape (bit
         /// identical to alternative 2); a <see cref="ThisNode"/> maps to the empty model parameter; anything
         /// else becomes a native expression. Returns <see cref="Alt5Info.IsAlt5"/> false when the call carries no
@@ -829,14 +814,10 @@ namespace Heddle.Language {
             }
         }
 
-        #region Helpers
-
         private static Dictionary<ParseContext, ParseContext> _isolatedSet;
 
         private static HashSet<ParseContext> _isolatedList;
 
         private static readonly object LockObject = new object();
-
-        #endregion
     }
 }

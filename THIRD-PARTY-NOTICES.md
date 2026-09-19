@@ -42,6 +42,22 @@ package and are covered by their own licenses (see the `LICENSE` and
 > Licensed under the **BSD 3-Clause License**.
 > <https://github.com/antlr/antlr4/blob/master/LICENSE.txt>
 
+### Packed tools (`Heddle.Tool`, `Heddle.LanguageServer`, `Heddle.Build`)
+
+The two .NET tool packages and the build package carry their dependency closure inside the
+package, so these are redistributed there (and only there); the `Heddle` and `Heddle.Language`
+library packages declare them instead:
+
+| Component | License | Carried by |
+| --- | --- | --- |
+| Microsoft.CodeAnalysis.CSharp (Roslyn) | MIT | Heddle.Tool, Heddle.LanguageServer, Heddle.Build |
+| Microsoft.CSharp | MIT | Heddle.Tool, Heddle.LanguageServer, Heddle.Build |
+| Microsoft.Extensions.FileProviders.Embedded | MIT | Heddle.Tool, Heddle.LanguageServer, Heddle.Build |
+| System.Memory, System.Text.Encodings.Web | MIT | Heddle.Tool, Heddle.LanguageServer, Heddle.Build |
+| Antlr4.Runtime.Standard | BSD-3-Clause | Heddle.Tool, Heddle.LanguageServer, Heddle.Build |
+| StreamJsonRpc | MIT | Heddle.LanguageServer |
+| System.Reflection.Metadata | MIT | Heddle.Build (beside the MSBuild task) |
+
 ---
 
 ## Declared dependencies (not redistributed by this project)
@@ -54,8 +70,9 @@ packages and are listed here only for transparency.
 | Antlr4.Runtime.Standard | BSD-3-Clause |
 | Microsoft.CodeAnalysis.CSharp (Roslyn) | MIT |
 | Microsoft.CSharp | MIT |
-| Microsoft.Extensions.DependencyModel | MIT |
 | Microsoft.Extensions.FileProviders.Embedded | MIT |
+| System.Memory | MIT |
+| System.Text.Encodings.Web | MIT |
 
 ## Build- and test-time only (never shipped)
 
@@ -66,8 +83,7 @@ artifact.
 | --- | --- | --- |
 | ANTLR 4 tool (`antlr-4.13.1-complete.jar`) | BSD-3-Clause | Grammar code generation |
 | Java / JDK | (vendor-dependent) | Running the ANTLR tool |
-| xunit, xunit.runner.visualstudio | Apache-2.0 | Unit tests |
-| Microsoft.NET.Test.Sdk, coverlet.collector | MIT | Test host / coverage |
+| xunit.v3 (on Microsoft.Testing.Platform) | Apache-2.0 | Unit tests |
 | BenchmarkDotNet | MIT | Performance benchmarks |
 | Microsoft.AspNetCore.Mvc.* (Razor) | MIT | Benchmark comparison baseline |
 | Newtonsoft.Json | MIT | Test/benchmark data |

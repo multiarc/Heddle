@@ -9,7 +9,7 @@ using Heddle.Runtime;
 namespace Heddle.Tool
 {
     /// <summary>
-    /// The reusable render core behind the <c>heddle render</c> command (WI12): parses a JSON model into an
+    /// The reusable render core behind the <c>heddle render</c> command: parses a JSON model into an
     /// <see cref="ExpandoObject"/> tree and renders a template through the full dynamic engine — the T4-successor
     /// codegen path (a build <c>Exec</c> step turns data into source without a runtime Heddle dependency in the
     /// output assembly). Kept engine-facing and side-effect-free so it is unit-testable independently of arg parsing

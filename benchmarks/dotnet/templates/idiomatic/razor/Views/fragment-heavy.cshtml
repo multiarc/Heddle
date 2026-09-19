@@ -1,0 +1,36 @@
+@*
+    Idiomatic Razor -- fragment-heavy.
+
+    Patterns followed, from Microsoft's own documentation:
+      Razor syntax        https://learn.microsoft.com/aspnet/core/mvc/views/razor
+      Partial views       https://learn.microsoft.com/aspnet/core/mvc/views/partial
+
+    Per-row fragment dispatch plus nested composition: a C# switch on Kind -- Razor's
+    documented native switch form, permitted on the idiomatic track --
+    selects which of the four partial views to invoke; the card partial nests the badge and
+    price partials against the row's Promo. Checked by the functional verifier, not the
+    byte gate.
+*@
+@using Heddle.Benchmarks.Dotnet.Models
+@model FragmentContent.FragmentModel
+@{ Layout = null; }
+<div class="panel">
+    @foreach (var item in Model.Items)
+    {
+        switch (item.Kind)
+        {
+            case "tile":
+                @await Html.PartialAsync("/Views/Shared/tile.cshtml", item)
+                break;
+            case "card":
+                @await Html.PartialAsync("/Views/Shared/card.cshtml", item)
+                break;
+            case "media":
+                @await Html.PartialAsync("/Views/Shared/media-row.cshtml", item)
+                break;
+            default:
+                @await Html.PartialAsync("/Views/Shared/stat.cshtml", item)
+                break;
+        }
+    }
+</div>

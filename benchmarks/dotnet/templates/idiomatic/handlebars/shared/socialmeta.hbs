@@ -1,0 +1,16 @@
+{{!--
+  Idiomatic Handlebars -- composed-page socialmeta section default.
+
+  Patterns followed, from the engines' own documentation:
+    Handlebars language   https://handlebarsjs.com/guide/
+    Handlebars.Net        https://github.com/Handlebars-Net/Handlebars.Net#readme
+
+  Uses `{{#each}}` blocks with `this`, `{{#if}}`/`{{else if}}` chains, partial blocks
+  (`{{#> layout}}` with `{{> @partial-block}}`), and registered partials. Raw triple-mustaches
+  appear only where the value genuinely IS an HTML fragment; plain text goes through the
+  default encoder, which is what the guide teaches. Checked by the functional verifier.
+--}}
+
+<meta property="og:image" content="/files/catalog/img.jpg">
+<meta itemprop="image" content="/files/catalog/img.jpg"/>
+<link rel="image_src" href="/files/catalog/img.jpg"/>

@@ -60,7 +60,7 @@ function is(token, type) {
     return token.type == type;
 }
 
-// Phase 7 (post-2.0) — public region declarations in the current document:
+// Public region declarations in the current document:
 // `<:name>` / `<:name :: Type>` (whitespace allowed around the visibility `:`
 // and the `::` type annotation, per lexer mode DEF where WS is hidden).
 // The optional type capture covers plain / dotted / array type names; a
@@ -121,9 +121,9 @@ var HeddleCompletions = function() {
         if (is(token, "def_override"))
             return this.getExtensionOverrideCompletions(state, session, pos, prefix);
 
-        // Phase 7 (post-2.0) — region-override position: the caret sits on (or
+        // Region-override position: the caret sits on (or
         // just after) the `<` that opens a definition name, or on a partial name
-        // inside it. Parity with the LSP's RegionOverride completion (WI5): the
+        // inside it. Parity with the LSP's RegionOverride completion: the
         // document's PUBLIC region names are offered with the `name:name`
         // override insert. The LSP additionally narrows the set to the *callee's*
         // regions via semantic analysis; the token-driven Ace completer offers
@@ -165,7 +165,7 @@ var HeddleCompletions = function() {
         });
     };
 
-    // Phase 7 (post-2.0) — public region names for the `<name:name>` call-body
+    // Public region names for the `<name:name>` call-body
     // override. Mirrors the LSP CompletionProvider RegionOverride branch: the
     // insert text is `name:name`, and the meta is "region" or
     // "region :: Type" for a typed region (the untyped/object case shows the

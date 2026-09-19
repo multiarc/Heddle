@@ -1,11 +1,20 @@
 using System;
 using System.Globalization;
 using System.Linq;
+using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Text;
 using Heddle;
 using Heddle.Data;
 using Heddle.Precompiled;
 using Heddle.Runtime;
+
+// One declaration, both tiers. The typeof cannot be spelled without a reference, and this project has no
+// ProjectReference on Acme.Models — the `@(HeddleModelAssembly)` item supplies it — so if that item ever stops
+// reaching the compiler, this line is CS0246 before anything else can go quietly wrong. At run time
+// HeddleTemplate.Configure reads the same attribute and registers the assembly, so the engine resolves the
+// spelling `@model(){{Acme.Models.Ticket}}` regardless of what else the process happens to have touched.
+[assembly: Heddle.Attributes.HeddleModelAssembly(typeof(Acme.Models.Ticket))]
 
 namespace Heddle.Samples.Precompiled
 {
@@ -16,6 +25,31 @@ namespace Heddle.Samples.Precompiled
         public decimal Amount { get; set; }
     }
 
+    /// <summary>
+    /// `@(HeddleModelAssembly)` reaches the COMPILER and nothing else — that is the whole design, because it is what
+    /// keeps build output a function of the compilation's declared inputs. It is not an ordinary reference, so it is
+    /// absent from the deps file and the host runtime will not find `Acme.Models` on its own. Putting the file where
+    /// the process can load it stays deployment's job, which is the obligation the item form carries and the
+    /// attribute form does not: a project that takes an ordinary reference to its model assembly needs none of this.
+    /// <para>In a module initializer rather than at the top of <c>Main</c> because the CLR resolves a method's types
+    /// when it compiles the method — a load statement inside <c>Main</c> would run after <c>Main</c> had already
+    /// failed to bind <c>Acme.Models.Ticket</c>.</para>
+    /// </summary>
+    internal static class ExternalModelAssembly
+    {
+        // Guarded by existence: the build host loads this assembly into its own process to read the
+        // model types, where the deployed copy is absent. Skipping there is correct — the load only
+        // matters at runtime, where the None copy guarantees the file. An unguarded LoadFrom would
+        // fail the assembly's module initializer inside the host and fault every expression compile.
+        [ModuleInitializer]
+        internal static void Load()
+        {
+            var deployed = System.IO.Path.Combine(AppContext.BaseDirectory, "Acme.Models.dll");
+            if (System.IO.File.Exists(deployed))
+                Assembly.LoadFrom(deployed);
+        }
+    }
+
     internal static class Program
     {
         private static int Main(string[] args)
@@ -23,6 +57,12 @@ namespace Heddle.Samples.Precompiled
             CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
             PrecompiledTemplates.Register(typeof(Program).Assembly);
             HeddleTemplate.Configure(typeof(Program).Assembly);
+
+            var report = PrecompiledTemplates.ValidateAll(new TemplateOptions());
+            if (report.Failures.Count != 0)
+                throw new InvalidOperationException(
+                    "Precompiled validation failed: " + report.Failures[0].Reason + ": " +
+                    report.Failures[0].Detail + ".");
 
             var model = new Invoice { Number = 1042, Customer = "Ada Lovelace", Amount = 129.50m };
 
@@ -43,11 +83,32 @@ namespace Heddle.Samples.Precompiled
             if (!string.Equals(precompiled, dynamic, StringComparison.Ordinal))
                 throw new InvalidOperationException("DIFFERENTIAL FAILED: precompiled output != dynamic twin output.");
 
+            // The same two tiers over a model type that reaches the build only through @(HeddleModelAssembly) and
+            // the run tier only through the assembly attribute. Both tiers configured by one declaration, and the
+            // differential is what proves they agreed rather than that one of them quietly took over.
+            var ticket = new Acme.Models.Ticket { Reference = "AC-7781", Passenger = "Grace Hopper", Seat = "12A" };
+            var ticketPrecompiled = global::Heddle.Generated.Templates_Ticket.Generate(ticket);
+
+            var ticketSource = System.IO.File.ReadAllText(
+                System.IO.Path.Combine(SampleCapture.SampleRoot(), "templates", "ticket.heddle"));
+            string ticketDynamic;
+            using (var twin = new HeddleTemplate(ticketSource,
+                       new CompileContext(new TemplateOptions(), typeof(Acme.Models.Ticket))))
+            {
+                if (!twin.CompileResult.Success)
+                    throw new InvalidOperationException("dynamic ticket twin failed: " + twin.CompileResult);
+                ticketDynamic = twin.Generate(ticket);
+            }
+
+            if (!string.Equals(ticketPrecompiled, ticketDynamic, StringComparison.Ordinal))
+                throw new InvalidOperationException(
+                    "DIFFERENTIAL FAILED: external-model precompiled output != dynamic twin output.");
+
             // Discovery: the public registry enumeration (ordered).
             var discovery = new StringBuilder();
             foreach (var entry in PrecompiledTemplates.Entries.OrderBy(e => e.Key, StringComparer.Ordinal))
                 discovery.Append(entry.Key).Append("  model=").Append(entry.ModelType?.Name ?? "(none)")
-                    .Append("  precompiled=").Append(entry.IsPrecompiled).Append('\n');
+                    .Append('\n');
 
             var capture = SampleCapture.Resolve(args);
             if (capture != null)
@@ -56,11 +117,15 @@ namespace Heddle.Samples.Precompiled
                 SampleCapture.Write(capture, "discovery.txt", discovery.ToString());
                 SampleCapture.Write(capture, "differential.txt",
                     $"identical\nbytes={Encoding.UTF8.GetByteCount(precompiled)}\n");
-                Console.WriteLine("captured precompiled-output.html, discovery.txt, differential.txt (differential held)");
+                SampleCapture.Write(capture, "external-model-output.txt", ticketPrecompiled);
+                Console.WriteLine(
+                    "captured precompiled-output.html, discovery.txt, differential.txt, external-model-output.txt " +
+                    "(both differentials held)");
                 return 0;
             }
 
             Console.WriteLine("=== precompiled output ===\n" + precompiled);
+            Console.WriteLine("=== external-model output ===\n" + ticketPrecompiled);
             Console.WriteLine("=== discovery ===\n" + discovery);
             Console.WriteLine("differential: precompiled == dynamic twin (identical)");
             return 0;

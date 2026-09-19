@@ -2,9 +2,9 @@ namespace Heddle.Data
 {
     /// <summary>
     /// <para>Stable diagnostic-ID constants surfaced by <see cref="HeddleCompileError"/> and consumed by
-    /// tooling (see the cross-cutting diagnostic-ID registry).</para>
-    /// <para>IDs are allocated in per-phase blocks — <c>HED0xxx</c> for pre-existing core diagnostics and
-    /// <c>HED1xxx</c> for the phase 1 native-expression tier. An ID once shipped is never reused or
+    /// tooling.</para>
+    /// <para>IDs are allocated in per-feature blocks — <c>HED0xxx</c> for core diagnostics,
+    /// <c>HED1xxx</c> for the native-expression tier. An ID once shipped is never reused or
     /// renumbered.</para>
     /// </summary>
     public static class HeddleDiagnosticIds
@@ -19,10 +19,12 @@ namespace Heddle.Data
         /// <summary>An ANTLR parser syntax error.</summary>
         public const string SyntaxError = "HED0003";
 
-        /// <summary>A chained/model return type is assignable to none of an extension's declared
-        /// <c>[DataType]</c>s (pre-existing <c>CheckTypes</c> message; assigned as touched in phase 4 —
-        /// notably <c>@for(Name)</c> with a non-<c>int</c>/<c>Range</c> value).</summary>
+        /// <summary>A chained/model return type is assignable to none of an extension's declared <c>[DataType]</c>s.</summary>
         public const string ReturnTypeMismatch = "HED0004";
+
+        /// <summary>Compiling one call in the document failed for a reason no other diagnostic covers; the attached
+        /// <see cref="HeddleCompileError.Exception"/> is the fault.</summary>
+        public const string CompilationFailed = "HED0005";
 
         /// <summary>A native-expression function name matched neither the registry nor an extension/definition.</summary>
         public const string UnknownFunction = "HED1001";
@@ -75,6 +77,12 @@ namespace Heddle.Data
         /// <summary>A standalone registry hit was given a chain/C# parameter shape.</summary>
         public const string FunctionRequiresExpressionArguments = "HED1017";
 
+        /// <summary>An integral or <c>decimal</c> divide/modulo over constant operands whose divisor is zero.
+        /// Rendering could only throw, so the expression is refused at compile time — by the engine and, with
+        /// this same id forwarded, by the build host. Floating-point stays legal (<c>1.0/0</c> is Infinity), and
+        /// a runtime divisor that happens to be zero still throws at render, exactly as C# draws both lines.</summary>
+        public const string DivisionByConstantZero = "HED1018";
+
         /// <summary>A <c>@profile()</c> directive names a value other than <c>text</c>/<c>html</c> (or is empty).</summary>
         public const string UnknownOutputProfile = "HED2001";
 
@@ -84,10 +92,7 @@ namespace Heddle.Data
         /// <summary>A nested <c>[EncodeOutput]</c> producer feeds the auto-encoding unnamed output under the Html profile.</summary>
         public const string RedundantEncodingExtension = "HED2003";
 
-        /// <summary>A bare, bodiless unnamed <c>@(value)</c> output sits — under the Html profile — in an HTML
-        /// attribute value, a <c>&lt;script&gt;</c> block, or a URL component, where element-text encoding is
-        /// insufficient or wrong; the matching context encoder (<c>@attr</c>/<c>@js</c>/<c>@url</c>) is not used.
-        /// Warning; heuristic (local adjacent-literal scan); never fires off the Html profile.</summary>
+        /// <summary>A bare <c>@(value)</c> output in an HTML attribute value, <c>&lt;script&gt;</c> block, or URL component has insufficient encoding; requires <c>@attr</c>/<c>@js</c>/<c>@url</c> (Html profile only).</summary>
         public const string MissingContextEncoder = "HED2004";
 
         /// <summary>Non-whitespace text between the blocks of a branch set is stripped and never rendered.</summary>
@@ -96,47 +101,45 @@ namespace Heddle.Data
         /// <summary>A branch continuation (such as <c>@elif</c>/<c>@elseif</c>) has no preceding opener in scope — it starts a new set, acting as an opener.</summary>
         public const string ElifWithoutIf = "HED3002";
 
-        /// <summary>A branch terminal (such as <c>@else</c>) has no matching opener in scope (orphan, or a set already closed by an earlier terminal).</summary>
+        /// <summary>A branch terminal (@else) has no matching opener in scope.</summary>
         public const string ElseWithoutIf = "HED3003";
 
         /// <summary>A branch terminal (such as <c>@else</c>) was given a condition parameter, which is ignored.</summary>
         public const string ElseConditionIgnored = "HED3004";
 
-        /// <summary>A branch continuation/terminal extension (<c>[BranchRole]</c>) does not carry
-        /// <c>[ScopeChannel]</c>, so its read of the branch state always misses at render time (R11 drift). Never
-        /// raised by the built-ins, which all comply; additive to existing behavior.</summary>
+        /// <summary>A branch continuation/terminal extension (<c>[BranchRole]</c>) lacks <c>[ScopeChannel]</c>, so it misses branch state reads at render time.</summary>
         public const string BranchRoleMissingScopeChannel = "HED3005";
 
-        /// <summary>The literal step argument of the built-in three-argument <c>range</c> is zero or negative
-        /// (a non-terminating loop). The identical condition reached only at render throws
-        /// <c>TemplateProcessingException</c> with the same message and no ID.</summary>
+        /// <summary>The literal step argument of the built-in <c>range</c> is zero or negative (non-terminating loop).</summary>
         public const string RangeStepNotPositive = "HED4001";
 
         /// <summary>A by-name call resolves to a definition that carries a default output (<c>-&gt; chain</c>)
         /// and is therefore rendered twice — once at document end, once at the call.</summary>
         public const string DefinitionRendersTwice = "HED4002";
 
-        /// <summary>The legacy <c>@import()</c> include has been removed. Any <c>@import()</c> call site now
-        /// produces this error (no longer a warning), positioned at the call, and the template no longer compiles.
-        /// The message names the replacements: <c>@&lt;&lt;{{ path }}</c> to share definitions and layouts across
-        /// files, or <c>@partial(){{ name }}</c> to embed another template's rendered output inline. Raised once
-        /// per call site; <c>@&lt;&lt;</c> never raises it.</summary>
+        /// <summary><c>@import()</c> is removed; use <c>@&lt;&lt;{{ path }}</c> for composition or <c>@partial(){{ name }}</c> for embedding.</summary>
         public const string LegacyImportDirective = "HED4003";
 
-        /// <summary>A <c>@&lt;&lt;{{ path }}</c> composition import appears nested inside a subtemplate (an
-        /// <c>@if</c>/<c>@for</c> body, an output block, or a definition body) rather than at the top level of a
-        /// document. Composition merges definitions and re-bases the imported file's output chains into the
-        /// current document, which is only well-defined at document scope; the import is skipped and this error
-        /// is raised, positioned at the <c>@&lt;&lt;</c> directive.</summary>
+        /// <summary>Composition import <c>@&lt;&lt;{{ path }}</c> must be at document scope, not nested in <c>@if</c>/<c>@for</c> bodies, outputs, or definitions.</summary>
         public const string ComposeImportNotTopLevel = "HED4004";
 
-        /// <summary>A literal <c>{{ identifier }}</c> / <c>{{ dotted.path }}</c> appears in body text, where it
-        /// renders verbatim braces rather than interpolating (the number-one misread for authors arriving from
-        /// Liquid/Jinja/Mustache/Handlebars). Warning severity; never fires inside a real <c>{{ … }}</c> body or a
-        /// raw region. Suggests <c>@(identifier)</c>.</summary>
+        /// <summary>A literal <c>{{ identifier }}</c> in body text renders verbatim braces; use <c>@(identifier)</c> to interpolate (warning only).</summary>
         public const string LiquidStyleInterpolationMisread = "HED4005";
 
-        // Phase 5 — props & slots.
+        /// <summary>An <c>@&lt;&lt;</c> composition import reaches a document already being imported; the cycle is
+        /// reported and the repeat import skipped.</summary>
+        public const string ComposeImportCycle = "HED4006";
+
+        /// <summary>Nesting is too deep to build without exhausting the stack: an expression, chain, or block
+        /// past the parse-depth bound, or <c>@&lt;&lt;</c> composition imports past the import-depth bound.</summary>
+        public const string TemplateNestedTooDeeply = "HED4007";
+
+        /// <summary>One parse expanded more <c>@&lt;&lt;</c> composition imports than the engine will process; the
+        /// remaining imports are skipped.</summary>
+        public const string ComposeImportFanOut = "HED4008";
+
+        /// <summary>An <c>@&lt;&lt;</c> composition import names a file that cannot be read; the import is skipped.</summary>
+        public const string ComposeImportUnreadable = "HED4009";
 
         /// <summary>A named argument's name is not declared by the target definition's prop layout.</summary>
         public const string UnknownProp = "HED5001";
@@ -192,20 +195,178 @@ namespace Heddle.Data
         /// <summary>A slot-mode <c>@out(expr)</c> carries a <c>{{ … }}</c> body.</summary>
         public const string SlotValueWithBody = "HED5018";
 
-        // Phase 7 (post-2.0) — named content regions.
-
-        /// <summary>A call-body region override (<c>&lt;name:name&gt;</c>) targets a region the callee declares
-        /// <b>private</b> (a plain inner <c>&lt;name&gt;</c>, not <c>&lt;:name&gt;</c>). Raised at the compile-time
-        /// fill step, positioned at the override declaration in the caller content.</summary>
+        /// <summary>A call-body region override targets a region the callee declared private.</summary>
         public const string RegionNotPublic = "HED5019";
 
-        /// <summary>A component declares more than one <b>public</b> region (<c>&lt;:name&gt;</c>) with the same
-        /// name. Raised at parse for the second declaration; a public region colliding with a private or
-        /// document-scope <c>&lt;name&gt;</c> keeps the pre-existing id-less duplicate message.</summary>
+        /// <summary>A component declares more than one public region with the same name.</summary>
         public const string DuplicateRegionDeclaration = "HED5020";
 
-        // Phase 9 (HED9001) is intentionally NOT a public constant here: the phase adds no public API surface
-        // (see the phase 9 spec's Public API contract). Its stable code lives on the internal
-        // Heddle.Runtime.HeddleFeatures.CSharpTierDisabledDiagnosticId, surfaced through HeddleCompileError.DiagnosticId.
+        // HED7xxx: build-time (HED70xx) and precompiled-runtime (HED71xx) ids, raised through MSBuild
+        // and PrecompiledFallbackEvent. Additive; essential for HeddleDiagnosticCatalog bijection.
+
+        /// <summary>An <c>AdditionalFiles</c> <c>.heddle</c> source could not be read at generation time.</summary>
+        public const string BuildUnreadableFile = "HED7001";
+
+        /// <summary>Two templates in one compilation normalize to the same key.</summary>
+        public const string BuildDuplicateKey = "HED7002";
+
+        /// <summary>Two template keys differ only by case, so ordinal lookup makes one shadow the other.</summary>
+        public const string BuildCaseOnlyKeyTwin = "HED7003";
+
+        /// <summary>Explicit <c>Key</c> item metadata is empty, or carries a <c>.</c>/<c>..</c> segment.</summary>
+        public const string BuildInvalidKeyMetadata = "HED7004";
+
+        /// <summary>A static piece contains an unpaired surrogate, so the <c>u8</c> twins are suppressed. Retired in place: no build raises it any more; the id stays claimed, never reused, never renumbered.</summary>
+        public const string BuildSurrogatePiece = "HED7005";
+
+        /// <summary>A named extension resolves to no <c>[ExtensionName]</c> type in any referenced assembly. Retired in place: no build raises it any more; the id stays claimed, never reused, never renumbered.</summary>
+        public const string BuildExtensionNotBindable = "HED7006";
+
+        /// <summary>The <c>@model</c>/<c>::</c> type name resolves in neither the compilation nor its
+        /// references. Retired as a generator-issued diagnostic: the Roslyn analyzer is gone, and the
+        /// build host raises the same fact through its own channel.</summary>
+        public const string BuildUnresolvableModelType = "HED7007";
+
+        /// <summary>The build-tier twin of <see cref="PropertyNotFound"/>: a member path does not resolve on the
+        /// model type. Retired in place: no build raises it any more; the id stays claimed, never reused, never renumbered.</summary>
+        public const string BuildUnresolvableMember = "HED7008";
+
+        /// <summary>An MSBuild build-option value is unparsable.</summary>
+        public const string BuildOptionParseError = "HED7009";
+
+        /// <summary>Two template keys sanitize to one generated entry-class identifier.</summary>
+        public const string BuildDuplicateSanitizedName = "HED7010";
+
+        /// <summary>An <c>@&lt;&lt;</c> import is not among the compilation's <c>.heddle</c>
+        /// <c>AdditionalFiles</c>.</summary>
+        public const string BuildImportNotIncluded = "HED7011";
+
+        /// <summary>The wrapper for a forwarded front-end <b>error</b> carrying no id of its own; an entry that
+        /// has an id is forwarded under that id.</summary>
+        public const string BuildForwardedError = "HED7012";
+
+        /// <summary>The wrapper for a forwarded front-end <b>warning</b> carrying no id of its own.</summary>
+        public const string BuildForwardedWarning = "HED7013";
+
+        /// <summary>A called function no build-time registration binds, in a call shape that also cannot be
+        /// bound late: an argument whose static type has no build-time answer, or more arguments than a late-bound
+        /// site takes. The template renders through the dynamic path.
+        /// <para>The id is deliberately narrower than it was. A delegate-only registration alone no longer
+        /// reaches it — the call's shape is known even where its target is not, so it is emitted as a site that
+        /// resolves once at first render through the engine's own overload ranker.</para></summary>
+        public const string BuildUnresolvableFunction = "HED7014";
+
+        /// <summary>Retired in place: no build raises it any more; the id stays claimed, never reused,
+        /// never renumbered. It reported a bound extension overriding a compile-time hook this build had
+        /// not read.</summary>
+        public const string BuildExtensionOverridesHook = "HED7015";
+
+        /// <summary>The build-tier twin of <see cref="BranchRoleMissingScopeChannel"/>. Retired in place: no build raises it any more; the id stays claimed, never reused, never renumbered.</summary>
+        public const string BuildBranchRoleMissingScopeChannel = "HED7016";
+
+        /// <summary>The build-tier twin of the declaration-side malformed-<c>[Prop]</c> diagnostics
+        /// (<see cref="DuplicatePropDeclaration"/>, <see cref="PropRedeclarationMismatch"/>,
+        /// <see cref="PropDefaultNotConvertible"/>, <see cref="UnresolvedPropType"/>,
+        /// <see cref="ReservedPropName"/>). Retired in place: no build raises it any more; the id stays claimed, never reused, never renumbered.</summary>
+        public const string BuildMalformedExtensionParameter = "HED7017";
+
+        /// <summary>A template outside <c>HeddleTemplateRoot</c> with no explicit <c>Key</c> registers under a
+        /// flattened filename key.</summary>
+        public const string BuildTemplateOutsideRoot = "HED7018";
+
+        /// <summary>The <c>Heddle</c> assembly is not visible among the compilation's references, so the manifest
+        /// records the generator's own version as <c>engineVersion</c>. Retired in place: no build raises it any more; the id stays claimed, never reused, never renumbered.</summary>
+        public const string BuildEngineVersionUnresolved = "HED7019";
+
+        /// <summary>The build host faulted: compiling one template (a host defect, not a template error — that
+        /// template emits nothing and the pass continues) or writing the outputs after every template compiled
+        /// (an error, exit 1, no artifact).</summary>
+        public const string BuildEmitterFault = "HED7020";
+
+        /// <summary>An <c>[ExportFunctions]</c> container that is not a public static class (runtime throws <c>ArgumentException</c>).</summary>
+        public const string BuildIneligibleExportContainer = "HED7021";
+
+        /// <summary>An <c>@profile(){{…}}</c> value that is neither <c>text</c> nor <c>html</c> (build-time twin of <see cref="UnknownOutputProfile"/>, HED2001). Retired in place: no build raises it any more; the id stays claimed, never reused, never renumbered.</summary>
+        public const string BuildUnknownOutputProfile = "HED7022";
+
+        /// <summary>A model/prop/slot type name several types answer to, unsettled by the template's
+        /// <c>@using</c> imports — the build-time twin of the runtime's "the type name is ambigous" throw. Retired in place: no build raises it any more; the id stays claimed, never reused, never renumbered.</summary>
+        public const string BuildAmbiguousTypeName = "HED7023";
+
+        /// <summary>A call-site fill of a region the definition declares <b>private</b> — the build-time twin of
+        /// the runtime's <see cref="RegionNotPublic"/> (HED5019). The 2.x generator reacted to the region-fill
+        /// verdict exactly as the dynamic engine does, so the error surfaces
+        /// at build instead of waiting for the first dynamic render. Retired in place: no build raises it any more; the id stays claimed, never reused, never renumbered.</summary>
+        public const string BuildRegionNotPublic = "HED7024";
+
+        /// <summary>A function call the 2.x generator proved illegal (ambiguous overload or no applicable match) over typeable arguments; reported at build time only when argument types are certain. Retired in place: no build raises it any more; the id stays claimed, never reused, never renumbered.</summary>
+        public const string BuildFunctionCallNotBindable = "HED7025";
+
+        /// <summary>An <c>@&lt;&lt;</c> import uses the template's registration key when a <c>Name</c> metadatum exists (both spellings work; advisory to prefer <c>Name</c>).</summary>
+        public const string BuildNamedTemplateImportedByKey = "HED7028";
+
+        /// <summary>A model type, a model member, or a bound extension type the engine binds reflectively but
+        /// generated code in the consumer's assembly may not name, so the template renders through the dynamic path
+        /// instead. Retired in place: no build raises it any more; the id stays claimed, never reused, never renumbered.</summary>
+        public const string BuildInaccessibleModelSymbol = "HED7030";
+
+        /// <summary>Info, once per template whose row carries a refusal site, a late-bound site, a C# site
+        /// carried as data or a printer decline, naming each: the template is not fully precompiled and those
+        /// sites rebuild at load or render through the dynamic path.</summary>
+        public const string BuildTemplateNotPrecompiled = "HED7031";
+
+        /// <summary>A template carries both an <c>@model</c> directive and <c>ModelType</c> item metadata and the
+        /// two spellings resolve to different types. Equal spellings, or different spellings resolving to the same
+        /// symbol, agree and raise nothing.</summary>
+        public const string BuildConflictingModelTypeDeclarations = "HED7032";
+
+        /// <summary>A bound extension declares <c>[PrecompileUnsupported]</c>: its compile-time behaviour cannot be
+        /// reproduced from a static initializer, so this call site binds dynamically while the rest of the template
+        /// still precompiles. The declared reason is carried verbatim.</summary>
+        public const string BuildExtensionPrecompileUnsupported = "HED7033";
+
+        /// <summary>The build could not observe a real engine compile of a template, so bodies whose typing only a
+        /// hook can supply are emitted type-agnostically. Informational under <c>HeddleObserveEngine=Auto</c> and an
+        /// error under <c>Strict</c>, which is how a CI leg refuses to emit different sources from a developer
+        /// machine that could observe. Retired in place: no build raises it any more; the id stays claimed, never reused, never renumbered.</summary>
+        public const string BuildEngineNotObserved = "HED7034";
+
+        /// <summary>The <c>Heddle.Build</c> package's engine version differs from the <c>Heddle</c> package
+        /// the project references; the artifact is stamped with the engine that compiled it, so the two
+        /// must be equal.
+        /// <para>Supersedes the retired narrower 2.x engine-resolution facts: one engine version is
+        /// recorded and compared once, instead of a fact per resolution path.</para></summary>
+        public const string BuildEngineVersionMismatch = "HED7035";
+
+        /// <summary>An implementation assembly the build must bind over — a project reference's output, a
+        /// package's runtime image, a declared <c>HeddleModelAssembly</c>/<c>HeddleExtensionAssembly</c> item —
+        /// could not be loaded; names the path and the loader's message.
+        /// <para>Supersedes the retired narrower 2.x image-resolution facts: every unbindable implementation
+        /// image draws this one id, whatever the reference kind.</para></summary>
+        public const string BuildImplementationImageNotLoaded = "HED7036";
+
+        /// <summary>A retired MSBuild property (<c>HeddleObserveEngine</c>, <c>HeddleNodeFallback</c>,
+        /// <c>HeddleEmitUtf8Pieces</c>) is set; it is ignored. A warning, not an error; the observe-path
+        /// properties retire silently.
+        /// <para>Supersedes the retired narrower 2.x observe-configuration facts: a stale option is one
+        /// warning under this id, not a fact per option.</para></summary>
+        public const string BuildRetiredPropertySet = "HED7037";
+
+        /// <summary>A precompiled entry failed the run-time gauntlet, so the render degrades to the dynamic
+        /// tier (carried on <c>PrecompiledFallbackEvent.DiagnosticId</c>).</summary>
+        public const string PrecompiledGauntletFallback = "HED7101";
+
+        /// <summary>A precompiled manifest is rejected whole — unsupported schema version, or an engine version
+        /// the runtime is not compatible with.</summary>
+        public const string PrecompiledManifestRejected = "HED7102";
+
+        /// <summary>A registry lookup missed on case alone; informational, never a failure.</summary>
+        public const string PrecompiledKeyCaseMismatch = "HED7103";
+
+        /// <summary>A template's registered <c>Name</c> collides with another template's key or name (runtime id: cross-assembly collision detected at registration; key remains usable).</summary>
+        public const string PrecompiledRegisteredNameUnavailable = "HED7104";
+
+        // HED9001 intentionally absent: C# expression tier has no public API surface; defined in internal
+        // Heddle.Runtime.HeddleFeatures.CSharpTierDisabledDiagnosticId.
     }
 }

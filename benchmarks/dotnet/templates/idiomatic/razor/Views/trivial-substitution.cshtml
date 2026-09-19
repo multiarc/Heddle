@@ -1,0 +1,27 @@
+@*
+    Idiomatic Razor -- trivial-substitution.
+
+    Patterns followed, from Microsoft's own documentation:
+      Razor syntax        https://learn.microsoft.com/aspnet/core/mvc/views/razor
+      Layouts             https://learn.microsoft.com/aspnet/core/mvc/views/layout
+      Partial views       https://learn.microsoft.com/aspnet/core/mvc/views/partial
+
+    Strongly-typed @model, C# control flow, and the DEFAULT @expression output -- which HTML-encodes
+    -- rather than Html.Raw. That is the substantive idiomatic difference from the controlled twin:
+    a Razor developer reaches for Html.Raw only when the value genuinely is markup, which here is
+    only the composed-page fragments. Checked by the functional verifier, not the byte gate.
+*@
+@using Heddle.Benchmarks.Dotnet.Models
+@model SubstitutionContent.SubstitutionModel
+@{ Layout = null; }
+<article>
+    <h1>@Model.Title</h1>
+    <p class="sku">@Model.Sku</p>
+    <p class="price">@Model.Price</p>
+    <p class="brand">@Model.Brand</p>
+    <p class="cat">@Model.Category</p>
+    <p class="avail">@Model.Availability</p>
+    <a class="link" href="@Model.Url"><img src="@Model.ImageUrl"></a>
+    <p class="sum">@Model.Summary</p>
+    <p class="rating">@Model.Rating</p>
+</article>

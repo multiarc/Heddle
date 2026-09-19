@@ -1,0 +1,166 @@
+// Package suites hosts the harness's gates and benchmarks. TestMain runs every registered
+// gate — corpus integrity, the untrusted-data alphabet assert, every controlled cell's byte
+// gate, and every idiomatic cell's verification — before m.Run(), so no benchmark in the
+// package can time until every gate passed in the same invocation. The same checks are
+// exposed as ordinary Test functions so plain `go test ./suites` is the harness's parity
+// command (the Go analogue of the .NET `-- parity` verb).
+package suites
+
+import (
+	"fmt"
+	"os"
+	"testing"
+
+	"heddle.dev/benchmarks/go/internal/corpus"
+	"heddle.dev/benchmarks/go/internal/model"
+	stdlibcontrolled "heddle.dev/benchmarks/go/internal/stdlibtpl/controlled"
+	stdlibidiomatic "heddle.dev/benchmarks/go/internal/stdlibtpl/idiomatic"
+	templcontrolled "heddle.dev/benchmarks/go/internal/templeng/controlled"
+	templidiomatic "heddle.dev/benchmarks/go/internal/templeng/idiomatic"
+)
+
+// cell is one gated workload × engine × track combination.
+type cell struct {
+	Track    string // "controlled" | "idiomatic"
+	Engine   string // "stdlib-text" | "stdlib-html" | "templ"
+	Workload string // shared workload id
+	Suite    string // "raw" | "encoded"
+	Render   func() string
+}
+
+// cells is the gate registry: every engine × workload × track combination that must pass
+// before anything in this package times.
+var cells = []cell{
+	// stdlib controlled: text/template on the six raw workloads, html/template on
+	// the two encoded.
+	{"controlled", "stdlib-text", "composed-page", "raw", stdlibcontrolled.RenderComposedPage},
+	{"controlled", "stdlib-text", "trivial-substitution", "raw", stdlibcontrolled.RenderTrivialSubstitution},
+	{"controlled", "stdlib-text", "large-loop", "raw", stdlibcontrolled.RenderLargeLoop},
+	{"controlled", "stdlib-text", "mixed-page", "raw", stdlibcontrolled.RenderMixedPage},
+	{"controlled", "stdlib-text", "conditional-heavy", "raw", stdlibcontrolled.RenderConditionalHeavy},
+	{"controlled", "stdlib-text", "fragment-heavy", "raw", stdlibcontrolled.RenderFragmentHeavy},
+	{"controlled", "stdlib-html", "fortunes-encoded", "encoded", stdlibcontrolled.RenderFortunesEncoded},
+	{"controlled", "stdlib-html", "encoded-loop", "encoded", stdlibcontrolled.RenderEncodedLoop},
+	// templ controlled: all eight workloads (@templ.Raw only over pinned literal template
+	// text; the default escaping path on the encoded pair).
+	{"controlled", "templ", "composed-page", "raw", templcontrolled.RenderComposedPage},
+	{"controlled", "templ", "trivial-substitution", "raw", templcontrolled.RenderTrivialSubstitution},
+	{"controlled", "templ", "large-loop", "raw", templcontrolled.RenderLargeLoop},
+	{"controlled", "templ", "mixed-page", "raw", templcontrolled.RenderMixedPage},
+	{"controlled", "templ", "conditional-heavy", "raw", templcontrolled.RenderConditionalHeavy},
+	{"controlled", "templ", "fragment-heavy", "raw", templcontrolled.RenderFragmentHeavy},
+	{"controlled", "templ", "fortunes-encoded", "encoded", templcontrolled.RenderFortunesEncoded},
+	{"controlled", "templ", "encoded-loop", "encoded", templcontrolled.RenderEncodedLoop},
+	// stdlib idiomatic: the same surface split as controlled, authored per the
+	// official docs, gated by the shared idiomatic verifier.
+	{"idiomatic", "stdlib-text", "composed-page", "raw", stdlibidiomatic.RenderComposedPage},
+	{"idiomatic", "stdlib-text", "trivial-substitution", "raw", stdlibidiomatic.RenderTrivialSubstitution},
+	{"idiomatic", "stdlib-text", "large-loop", "raw", stdlibidiomatic.RenderLargeLoop},
+	{"idiomatic", "stdlib-text", "mixed-page", "raw", stdlibidiomatic.RenderMixedPage},
+	{"idiomatic", "stdlib-text", "conditional-heavy", "raw", stdlibidiomatic.RenderConditionalHeavy},
+	{"idiomatic", "stdlib-text", "fragment-heavy", "raw", stdlibidiomatic.RenderFragmentHeavy},
+	{"idiomatic", "stdlib-html", "fortunes-encoded", "encoded", stdlibidiomatic.RenderFortunesEncoded},
+	{"idiomatic", "stdlib-html", "encoded-loop", "encoded", stdlibidiomatic.RenderEncodedLoop},
+	// templ idiomatic: all eight workloads, naturally formatted with idiomatic
+	// component decomposition (internal/templeng/idiomatic).
+	{"idiomatic", "templ", "composed-page", "raw", templidiomatic.RenderComposedPage},
+	{"idiomatic", "templ", "trivial-substitution", "raw", templidiomatic.RenderTrivialSubstitution},
+	{"idiomatic", "templ", "large-loop", "raw", templidiomatic.RenderLargeLoop},
+	{"idiomatic", "templ", "mixed-page", "raw", templidiomatic.RenderMixedPage},
+	{"idiomatic", "templ", "conditional-heavy", "raw", templidiomatic.RenderConditionalHeavy},
+	{"idiomatic", "templ", "fragment-heavy", "raw", templidiomatic.RenderFragmentHeavy},
+	{"idiomatic", "templ", "fortunes-encoded", "encoded", templidiomatic.RenderFortunesEncoded},
+	{"idiomatic", "templ", "encoded-loop", "encoded", templidiomatic.RenderEncodedLoop},
+}
+
+// checkCell dispatches one cell to its track's gate.
+func checkCell(c cell) error {
+	switch c.Track {
+	case "controlled":
+		return corpus.CheckControlled(c.Workload, c.Suite, c.Engine, c.Render)
+	case "idiomatic":
+		def, err := corpus.LoadVerify(c.Workload)
+		if err != nil {
+			return err
+		}
+		if failures := corpus.Verify(def, c.Render()); len(failures) != 0 {
+			msg := fmt.Sprintf("verify: %s/%s", c.Workload, c.Engine)
+			for _, f := range failures {
+				msg += "\n  " + f.String()
+			}
+			return fmt.Errorf("%s", msg)
+		}
+		return nil
+	default:
+		return fmt.Errorf("gate: %s/%s: unknown track %q", c.Workload, c.Engine, c.Track)
+	}
+}
+
+// runAllGates runs corpus integrity, the alphabet assert, and every registered cell's gate.
+func runAllGates() error {
+	if err := corpus.CheckManifest(); err != nil {
+		return err
+	}
+	for _, v := range model.EncodedValues() {
+		if err := corpus.CheckAlphabet(v.Name, v.Value); err != nil {
+			return err
+		}
+	}
+	for _, c := range cells {
+		if err := checkCell(c); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// TestMain gates before any benchmark can time, in the same invocation. Any failure prints the failure surface and exits 1 — no numbers.
+func TestMain(m *testing.M) {
+	if err := runAllGates(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	os.Exit(m.Run())
+}
+
+// ---- the same gates as ordinary Test functions -----------------------------------------------
+
+func TestCorpusIntegrity(t *testing.T) {
+	if err := corpus.CheckManifest(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestEncodedModelAlphabet(t *testing.T) {
+	for _, v := range model.EncodedValues() {
+		if err := corpus.CheckAlphabet(v.Name, v.Value); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func TestControlledGates(t *testing.T) {
+	for _, c := range cells {
+		if c.Track != "controlled" {
+			continue
+		}
+		t.Run(c.Workload+"/"+c.Engine, func(t *testing.T) {
+			if err := checkCell(c); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}
+
+func TestIdiomaticGates(t *testing.T) {
+	for _, c := range cells {
+		if c.Track != "idiomatic" {
+			continue
+		}
+		t.Run(c.Workload+"/"+c.Engine, func(t *testing.T) {
+			if err := checkCell(c); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}

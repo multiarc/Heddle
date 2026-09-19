@@ -4,14 +4,20 @@ using System.IO;
 namespace Heddle.Tool
 {
     /// <summary>
-    /// The <c>heddle</c> CLI entry point (WI12). Usage:
+    /// The <c>heddle</c> CLI entry point. Usage:
     /// <code>heddle render &lt;template&gt; [--model-json &lt;file&gt;] [--out &lt;file&gt;] [--root &lt;dir&gt;]</code>
     /// Hosts the full dynamic engine (the T4-successor story): invoked from an MSBuild <c>Exec</c> step it turns data
     /// into generated source, and the resulting artifact carries no runtime Heddle dependency.
     /// </summary>
     public static class Program
     {
-        public static int Main(string[] args) => Run(args, Console.Out, Console.Error);
+        public static int Main(string[] args)
+        {
+            // What a build writes must not depend on the machine's regional settings.
+            System.Globalization.CultureInfo.DefaultThreadCurrentCulture = System.Globalization.CultureInfo.InvariantCulture;
+            System.Globalization.CultureInfo.CurrentCulture = System.Globalization.CultureInfo.InvariantCulture;
+            return Run(args, Console.Out, Console.Error);
+        }
 
         /// <summary>Runs the CLI with injectable streams (testable). Returns a process exit code.</summary>
         public static int Run(string[] args, TextWriter stdout, TextWriter stderr)
@@ -21,6 +27,9 @@ namespace Heddle.Tool
                 stdout.WriteLine(Usage);
                 return args != null && args.Length != 0 && IsHelp(args[0]) ? 0 : 1;
             }
+
+            if (string.Equals(args[0], "compile", StringComparison.Ordinal))
+                return RunCompile(args, stdout, stderr);
 
             if (!string.Equals(args[0], "render", StringComparison.Ordinal))
             {
@@ -89,6 +98,31 @@ namespace Heddle.Tool
             }
         }
 
+        private static int RunCompile(string[] args, TextWriter stdout, TextWriter stderr)
+        {
+            Compile.CompileRequest request;
+            try
+            {
+                request = Compile.ResponseFile.Parse(args);
+            }
+            catch (Compile.ResponseFileException ex)
+            {
+                stderr.WriteLine("heddle: " + ex.Message);
+                return 2;
+            }
+
+            try
+            {
+                return Compile.CompileCommand.Run(request, stdout, stderr);
+            }
+            catch (Exception ex)
+            {
+                // A host fault before any template compiled carries nothing template-specific.
+                stderr.WriteLine("heddle: " + ex.Message);
+                return 3;
+            }
+        }
+
         private static string Next(string[] args, ref int i)
         {
             if (i + 1 >= args.Length)
@@ -102,7 +136,8 @@ namespace Heddle.Tool
         private const string Usage =
             "heddle — render a Heddle template against a JSON model (T4-successor codegen).\n\n" +
             "Usage:\n" +
-            "  heddle render <template> [--model-json <file>] [--out <file>] [--root <dir>]\n\n" +
+            "  heddle render <template> [--model-json <file>] [--out <file>] [--root <dir>]\n" +
+            "  heddle compile @<response-file>\n\n" +
             "Options:\n" +
             "  --model-json <file>  JSON file whose object is the template model (objects -> members,\n" +
             "                       arrays -> @list/@for, scalars -> primitives). Omit for a model-less template.\n" +

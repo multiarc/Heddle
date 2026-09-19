@@ -1,0 +1,18 @@
+@* Definition-only fragment library for the fragment-heavy workload: the six fragment kinds
+   (tile, badge, price, card, media_row, stat) as named definitions the entry template
+   dispatches over per row; card nests @badge/@price against the row's Promo. Importing
+   this file renders nothing. *@
+@%
+<tile>
+{{<section class="tile"><h3>@(Name)</h3><p class="v">@(Value)</p><span class="badge">@(Badge)</span></section>}}
+<badge>
+{{<span class="promo-badge">@(Label)</span>}}
+<price>
+{{<p class="price">@(Price).99</p>}}
+<card>
+{{<article class="card"><h3>@(Name)</h3>@badge(Promo)@price(Promo)<p class="v">@(Value)</p></article>}}
+<media_row>
+{{<div class="media-row"><img src="/img/@(Name).jpg" alt="@(Name)" /><div class="media-body"><h4>@(Name)</h4><p>Caption for @(Name)</p></div></div>}}
+<stat>
+{{<div class="stat"><span class="stat-name">@(Name)</span><span class="stat-value">@(Value)</span><span class="stat-delta">@(Delta)</span></div>}}
+%@

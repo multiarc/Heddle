@@ -1,0 +1,13 @@
+{%- comment -%}
+  Idiomatic Liquid -- composed-page mega-menu partial (Fluid).
+
+  Patterns followed, from the engines' own documentation:
+    Liquid language reference   https://shopify.github.io/liquid/
+    Fluid                       https://github.com/sebastienros/fluid#readme
+
+  Authored the way the docs teach rather than to match the oracle byte-for-byte: readable
+  whitespace, Liquid's own control-flow tags, and the documented capture/include composition.
+  Checked by the functional verifier, not the byte gate.
+{%- endcomment -%}
+
+<div class="top-menu-wrapper"><ul class="top-menu">{% for tab in mega-menu.tabs %}<li class="{{ tab.css }}"><a href="{{ tab.href }}" class="drop">{{ tab.label }}</a>{% if tab.has_dropdown %}<div class="{{ tab.dropdown_css }}">{% for column in tab.columns %}{% include 'nav-column' with column %}{% endfor %}</div>{% endif %}</li>{% endfor %}</ul></div>

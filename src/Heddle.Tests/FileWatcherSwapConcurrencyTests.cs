@@ -13,14 +13,13 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Phase 1 D5 — the live-document swap under concurrent renders/publishers: coherent old-or-new
-    /// output, no use-after-release, exactly-once release of every superseded document, post-Teardown
-    /// publishes discarded not resurrected. Modeled on <see cref="BranchConcurrencyTests"/>; the D5
-    /// correctness proof carries the guarantee, the green runs corroborate it.
+    /// The live-document swap under concurrent renders/publishers: coherent old-or-new output, no
+    /// use-after-release, exactly-once release of every superseded document, post-Teardown publishes
+    /// discarded not resurrected. Modeled on <see cref="BranchConcurrencyTests"/>; the correctness
+    /// argument carries the guarantee, the green runs corroborate it.
     /// </summary>
     public class FileWatcherSwapConcurrencyTests
     {
-        // Per-test watched-file stem: isolates this test from concurrent tests and parallel TFM hosts.
         private readonly string _stem = FileWatcherTestSupport.NewStem();
 
         private static void AssertQueueDrained(HeddleTemplate template)
@@ -54,7 +53,6 @@ namespace Heddle.Tests
                 }
             });
 
-            // Quiesce: one more render forces the last ExitRender through the _runners == 0 drain.
             var final = template.Generate(null);
             Assert.True(final == "OLD" || final == "NEW", "torn final output: '" + final + "'");
             AssertQueueDrained(template);
@@ -101,16 +99,16 @@ namespace Heddle.Tests
             }
             await Task.WhenAll(tasks);
 
-            var final = template.Generate(null);   // quiesce: last ExitRender drains at _runners == 0
+            var final = template.Generate(null);
             Assert.True(final == "OLD" || final == "NEW", "torn final output: '" + final + "'");
             AssertQueueDrained(template);
 
-            template.Dispose();                    // Teardown releases the live document too
+            template.Dispose();
             Assert.Equal(0, DisposalWitnessExtension.DoubleDisposeCount);
             Assert.Equal(DisposalWitnessExtension.CreatedCount, DisposalWitnessExtension.DisposedCount);
         }
 
-        /// <summary>Blocker-2 drain-TOCTOU witness (deterministic interleaving via an in-render publisher):
+        /// <summary>Drain-TOCTOU witness (deterministic interleaving via an in-render publisher):
         /// while a render of doc₁ is in flight, its extension publishes doc₂ (superseding doc₁, whose drain
         /// must defer on <c>_runners</c>) and then a NEW render on another thread snapshots and renders doc₂
         /// to completion. Neither render throws, both outputs match their snapshotted document, and the
@@ -128,19 +126,18 @@ namespace Heddle.Tests
                 string innerRenderOutput = null;
                 ReentrantPublishExtension.OnRender = () =>
                 {
-                    var result = template.Recompile("NEW", new CompileContext());   // supersede the doc this render holds
+                    var result = template.Recompile("NEW", new CompileContext());
                     Assert.True(result.Success, result.ToString());
-                    // A fresh render on another thread snapshots the NEW document while the OLD render is
-                    // still active (so the publish-drain above deferred on _runners) and completes fully.
+                    // Fresh render on another thread snapshots NEW while OLD render is in-flight.
                     innerRenderOutput = Task.Run(() => template.Generate(null)).GetAwaiter().GetResult();
                 };
 
-                var outerOutput = template.Generate(null);   // holds OLD across the publish
+                var outerOutput = template.Generate(null);
 
-                Assert.Equal("OLD-", outerOutput);           // the held snapshot was never disposed under the render
+                Assert.Equal("OLD-", outerOutput);
                 Assert.Equal("NEW", innerRenderOutput);
                 Assert.Equal("NEW", template.Generate(null));
-                AssertQueueDrained(template);                // the deferred OLD document was released on exit
+                AssertQueueDrained(template);
             }
             finally
             {
@@ -149,7 +146,7 @@ namespace Heddle.Tests
             }
         }
 
-        /// <summary>Blocker-1 ordering regression (deterministic): a reload triggered from INSIDE a render of
+        /// <summary>Ordering regression (deterministic): a reload triggered from INSIDE a render of
         /// the superseded document leaves the in-flight render's snapshot alive — the snapshot is taken after
         /// <c>EnterRender</c>'s increment, so the drain's <c>_runners</c> gate provably covers it.</summary>
         [Fact]
@@ -168,7 +165,6 @@ namespace Heddle.Tests
                     Assert.True(result.Success, result.ToString());
                 };
 
-                // The render that triggered the swap still completes off its own (superseded) snapshot.
                 Assert.Equal("AB", template.Generate(null));
                 Assert.Equal("SWAPPED", template.Generate(null));
                 AssertQueueDrained(template);
@@ -180,7 +176,7 @@ namespace Heddle.Tests
             }
         }
 
-        /// <summary>Blocker-3 post-teardown path (deterministic): a watcher callback landing after
+        /// <summary>Post-teardown path (deterministic): a watcher callback landing after
         /// <c>Dispose()</c> compiles, hits the store block's dispose guard, and releases the fresh artifact
         /// instead of publishing onto (resurrecting) the torn-down template.</summary>
         [Fact]
@@ -199,17 +195,15 @@ namespace Heddle.Tests
                 var liveDoc = FileWatcherTestSupport.GetRuntimeDocument(template);
                 Assert.NotNull(liveDoc);
 
-                template.Dispose();                                 // _runners == 0 → Teardown runs now
+                template.Dispose();
                 DisposalWitnessExtension.Reset();
 
                 File.WriteAllText(path, "ZOMBIE@p1witness()");
-                FileWatcherTestSupport.InvokeChanged(template, dir, _stem + ".heddle");   // late callback
+                FileWatcherTestSupport.InvokeChanged(template, dir, _stem + ".heddle");
 
-                // The fresh artifact was disposed by the store block's guard (its witness fired) …
                 Assert.Equal(DisposalWitnessExtension.CreatedCount, DisposalWitnessExtension.DisposedCount);
                 Assert.True(DisposalWitnessExtension.DisposedCount > 0,
                     "the late publish must have compiled and then released a fresh artifact");
-                // … and nothing was resurrected onto the torn-down template.
                 Assert.Same(liveDoc, FileWatcherTestSupport.GetRuntimeDocument(template));
                 AssertQueueDrained(template);
             }
@@ -220,7 +214,7 @@ namespace Heddle.Tests
         }
 
         /// <summary>The leak fix (deterministic): one idle reload (no concurrent render) disposes the
-        /// superseded document at the publish drain — it is never orphaned as before this phase.</summary>
+        /// superseded document at the publish drain — it is never orphaned.</summary>
         [Fact]
         public void SupersededDocumentIsDisposedAfterReloadWhenIdle()
         {
@@ -237,12 +231,12 @@ namespace Heddle.Tests
                 DisposalWitnessExtension.Reset();
 
                 File.WriteAllText(path, "TWO@p1witness()");
-                FileWatcherTestSupport.InvokeChanged(template, dir, _stem + ".heddle");   // idle reload
+                FileWatcherTestSupport.InvokeChanged(template, dir, _stem + ".heddle");
                 Assert.True(template.CompileResult.Success, template.CompileResult.ToString());
 
                 Assert.Equal("TWO", template.Generate(null));
-                Assert.Equal(1, DisposalWitnessExtension.DisposedCount);   // the ONE document was released …
-                AssertQueueDrained(template);                              // … not parked in the queue
+                Assert.Equal(1, DisposalWitnessExtension.DisposedCount);
+                AssertQueueDrained(template);
                 Assert.Equal(0, DisposalWitnessExtension.DoubleDisposeCount);
             }
             finally
@@ -253,7 +247,7 @@ namespace Heddle.Tests
     }
 
     /// <summary>
-    /// Phase 1 disposal witness: one instance per compiled document occurrence; counts constructions and
+    /// Disposal witness: one instance per compiled document occurrence; counts constructions and
     /// <c>Dispose(true)</c> calls (finalizer passes are ignored so background GC cannot skew the counts),
     /// flagging any instance disposed twice. The exactly-once-release assertions read these counters.
     /// </summary>
@@ -322,7 +316,7 @@ namespace Heddle.Tests
     }
 
     /// <summary>
-    /// Phase 1 reentrancy hook: on render it runs the test-supplied callback once (e.g. a
+    /// Reentrancy hook: on render it runs the test-supplied callback once (e.g. a
     /// <c>Recompile</c> that supersedes the very document this render was invoked from) — the deterministic
     /// driver for the snapshot-after-<c>EnterRender</c> and drain-gate regressions.
     /// </summary>

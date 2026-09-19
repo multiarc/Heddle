@@ -1,4 +1,4 @@
-// Phase 9 D6 — the module-worker dispatcher. The Microsoft ".NET on Web Workers" pattern verbatim: boot
+// The module-worker dispatcher. The Microsoft ".NET on Web Workers" pattern verbatim: boot
 // dotnet.js, resolve the assembly exports, and forward { id, cmd, ...args } envelopes to DemoInterop's [JSExport]
 // surface, replying { id, ok, result | error }. No logic lives here — DemoHost owns all behavior.
 import { dotnet } from './_framework/dotnet.js';

@@ -1,0 +1,6 @@
+@using(){{Heddle.Samples.PrecompiledAot}}
+@model(){{FragmentHeavyModel}}
+<h1>@(Title)</h1>
+<p>@(Tagline)</p>
+<ul>@list(Notes){{<li>@()</li>}}</ul>
+<p>@(Footer)</p>

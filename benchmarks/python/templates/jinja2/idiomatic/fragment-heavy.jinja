@@ -1,0 +1,24 @@
+{# Idiomatic Jinja2 fragment-heavy: four fragment kinds dispatched per row on
+   the precomputed booleans via an {% if %}/{% elif %}/{% else %} chain; each
+   fragment is a macro imported from its own partial file, and the card
+   fragment nests the badge/price sub-macros against the row's promo.
+   Docs: https://jinja.palletsprojects.com/en/stable/templates/#macros
+         https://jinja.palletsprojects.com/en/stable/templates/#import
+         https://jinja.palletsprojects.com/en/stable/templates/#if #}
+{% from "shared/tile.jinja" import tile %}
+{% from "shared/card.jinja" import card %}
+{% from "shared/media-row.jinja" import media_row %}
+{% from "shared/stat.jinja" import stat %}
+<div class="panel">
+{% for item in items %}
+{% if item.is_tile %}
+{{ tile(item) }}
+{% elif item.is_card %}
+{{ card(item) }}
+{% elif item.is_media %}
+{{ media_row(item) }}
+{% else %}
+{{ stat(item) }}
+{% endif %}
+{% endfor %}
+</div>

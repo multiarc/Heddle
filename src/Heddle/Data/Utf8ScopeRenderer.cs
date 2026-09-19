@@ -7,28 +7,26 @@ namespace Heddle.Data
 {
     /// <summary>
     /// <see cref="IUtf8ScopeRenderer"/> over a host-supplied <see cref="IBufferWriter{T}"/> of <see cref="byte"/>,
-    /// producing UTF-8 (phase 8 D2/D4/D5). Write-through into writer-provided spans; the writer is never completed,
+    /// producing UTF-8. Write-through into writer-provided spans; the writer is never completed,
     /// flushed, or disposed — the host owns its lifecycle (e.g. a <c>PipeWriter</c> the host later
     /// <c>FlushAsync</c>es). Single render ownership: not thread-safe; a new instance is constructed per render, so the
     /// lazy <see cref="Encoder"/> is per-render.
     /// </summary>
     public sealed class Utf8ScopeRenderer : IUtf8ScopeRenderer, IEncoderCarrier
     {
-        // 16 KB (D5): keeps GetSpan requests comfortably inside default pool segment sizes while making the chunked
-        // tier rare. Char values up to 5 461 UTF-16 units take the single-call tier (5 461 × 3 = 16 383 ≤ 16 384).
+        // 16 KB buffer keeps single-call tier for typical inputs; 5461+ UTF-16 units use chunked conversion.
         private const int MaxUtf8SizeHint = 16 * 1024;
 
         private readonly IBufferWriter<byte> _writer;
-        private Encoder _encoder;   // lazily created, per-render (D5/D15); carries a trailing high surrogate between chunks
-        private TextEncoder _outputEncoder;   // B2: the effective HTML output encoder (null = legacy path)
+        private Encoder _encoder;   // Carries trailing high surrogate between chunks in chunked mode.
+        private TextEncoder _outputEncoder;   // HTML encoder from render entry point (legacy: null).
 
         public Utf8ScopeRenderer(IBufferWriter<byte> writer)
         {
             _writer = writer ?? throw new ArgumentNullException(nameof(writer));
         }
 
-        // B2: set by the render entry point. Under an encode proxy the chars are encoded before they reach this sink
-        // (encode → transcode, D9), so this carrier value only surfaces the configured encoder to the proxy.
+        // Surfaces configured encoder to encode proxy; encode happens before transcoding to UTF-8.
         internal void SetOutputEncoder(TextEncoder encoder) => _outputEncoder = encoder;
         TextEncoder IEncoderCarrier.Encoder => _outputEncoder;
 
@@ -42,8 +40,7 @@ namespace Heddle.Data
         {
             if (data.IsEmpty)
                 return;
-            // 3 is the UTF-8 worst case per UTF-16 code unit (surrogate pairs produce 4 bytes per 2 units, ≤ 3·L), so
-            // the single-call tier never splits a surrogate — the whole logical value converts in one call.
+            // UTF-8 worst case: 3 bytes per UTF-16 unit; single call handles surrogates atomically.
             if (data.Length * 3 <= MaxUtf8SizeHint)
                 RenderSingle(data);
             else
@@ -54,15 +51,14 @@ namespace Heddle.Data
         {
             if (utf8.IsEmpty)
                 return;
-            // Straight copy: loops GetSpan/CopyTo/Advance for segments smaller than the input. No validation — engine
-            // callers pass only compiler-validated u8 pieces (D2).
+            // Direct copy: compiler guarantees valid UTF-8, no validation needed.
             BuffersExtensions.Write(_writer, utf8);
         }
 
         private void RenderSingle(ReadOnlySpan<char> chars)
         {
             var span = _writer.GetSpan(chars.Length * 3);
-#if NET6_0_OR_GREATER
+#if NET8_0_OR_GREATER
             int bytesWritten = Encoding.UTF8.GetBytes(chars, span);
             _writer.Advance(bytesWritten);
 #else
@@ -80,25 +76,23 @@ namespace Heddle.Data
 
         private void RenderChunked(ReadOnlySpan<char> chars)
         {
-            // The stateful Encoder is the only correct chunking tool: converting slices independently corrupts any
-            // surrogate pair straddling a boundary. Each iteration passes the whole remaining tail with flush: true —
-            // only the iteration consuming the true end of input acts on flush, so no state ever crosses a Render call.
+            // Stateful Encoder prevents surrogate-pair corruption at boundaries; state resets per Render call.
             _encoder = _encoder ?? Encoding.UTF8.GetEncoder();
-#if NET6_0_OR_GREATER
+#if NET8_0_OR_GREATER
             while (true)
             {
-                Span<byte> span = _writer.GetSpan(MaxUtf8SizeHint);   // contract: at least the hint
+                Span<byte> span = _writer.GetSpan(MaxUtf8SizeHint);   // GetSpan contract: ≥ hint bytes.
                 _encoder.Convert(chars, span, flush: true,
                     out int charsUsed, out int bytesUsed, out bool completed);
-                _writer.Advance(bytesUsed);                            // commit before the next GetSpan
+                _writer.Advance(bytesUsed);                            // Advance before next GetSpan.
                 if (completed)
                     break;
-                chars = chars.Slice(charsUsed);                        // remaining tail; loop
+                chars = chars.Slice(charsUsed);
             }
 #else
             while (true)
             {
-                Span<byte> span = _writer.GetSpan(MaxUtf8SizeHint);
+                Span<byte> span = _writer.GetSpan(MaxUtf8SizeHint);   // GetSpan contract: ≥ hint bytes.
                 int charsUsed, bytesUsed;
                 bool completed;
                 unsafe
@@ -110,7 +104,7 @@ namespace Heddle.Data
                             out charsUsed, out bytesUsed, out completed);
                     }
                 }
-                _writer.Advance(bytesUsed);
+                _writer.Advance(bytesUsed);                            // Advance before next GetSpan.
                 if (completed)
                     break;
                 chars = chars.Slice(charsUsed);

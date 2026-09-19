@@ -82,17 +82,8 @@ namespace Heddle.Runtime.Expressions
             return $"{Name}({string.Join(", ", ParameterTypes.Select(FriendlyName))})";
         }
 
-        private static string FriendlyName(Type type)
-        {
-            if (type == typeof(int)) return "int";
-            if (type == typeof(long)) return "long";
-            if (type == typeof(double)) return "double";
-            if (type == typeof(decimal)) return "decimal";
-            if (type == typeof(string)) return "string";
-            if (type == typeof(bool)) return "bool";
-            if (type == typeof(object)) return "object";
-            if (type == typeof(object[])) return "object[]";
-            return type.Name;
-        }
+        /// <summary>Signature text for HED1012/HED1013 (uses shared alias table for consistency with editor completion).</summary>
+        private static string FriendlyName(Type type) =>
+            Helpers.CSharpTypeNames.TryGetDisplayName(type, out var name) ? name : type.Name;
     }
 }

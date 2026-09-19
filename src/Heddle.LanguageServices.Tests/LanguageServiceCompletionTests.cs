@@ -5,9 +5,9 @@ using Xunit;
 namespace Heddle.LanguageServices.Tests
 {
     /// <summary>
-    /// The phase 6 D12 context table and the D13 abstract-definition rule, driven editor-less against the corpus
-    /// blog model (success criterion 1 + 6). Model members come from the retained scope map; extensions/functions
-    /// from the live registries; the abstract intersection excludes members missing at any call site.
+    /// Validates the context table and abstract-definition rule: driven editor-less against the corpus blog model.
+    /// Model members come from the retained scope map; extensions/functions from the live registries; the abstract
+    /// intersection excludes members missing at any call site.
     /// </summary>
     public class LanguageServiceCompletionTests
     {
@@ -32,6 +32,26 @@ namespace Heddle.LanguageServices.Tests
             Assert.DoesNotContain("Articles", labels); // that is Blog's member, not Article's
         }
 
+        /// <summary>A name the model type withholds — a <c>[Hidden]</c> override or <c>new</c> property, a field
+        /// or a method hiding a property — is not
+        /// offered from the base class that still declares it visibly, and binding it is the same positioned
+        /// <c>HED0001</c> the compiler raises.</summary>
+        [Fact]
+        public void MembersHiddenByTheDerivedTypeAreNotOfferedFromItsBase()
+        {
+            var labels = Complete("@model(){{Corpus.Bank}}\n@list(Accounts){{ @(§ }}");
+            Assert.Contains("Owner", labels);
+            Assert.Contains("Number", labels);
+            Assert.DoesNotContain("Secret", labels);
+            Assert.DoesNotContain("Token", labels);
+            Assert.DoesNotContain("Pin", labels);  // hidden by a field
+            Assert.DoesNotContain("Code", labels); // hidden by a method
+
+            using var service = CorpusFixture.NewTypedService();
+            var analysis = service.Analyze(Path, "@model(){{Corpus.Bank}}\n@list(Accounts){{ @(Secret)|@(Token)|@(Pin)|@(Code)|@(Owner) }}", 1);
+            Assert.Equal(4, analysis.Diagnostics.Count(d => d.Id == "HED0001"));
+        }
+
         [Fact] // C02 — root members via ::
         public void C02_RootReferenceOffersRootMembers()
         {
@@ -54,10 +74,10 @@ namespace Heddle.LanguageServices.Tests
             var labels = Complete("@model(){{Corpus.Blog}}\n@§");
             Assert.Contains("list", labels);
             Assert.Contains("if", labels);
-            Assert.Contains("raw", labels);   // phase 2 alias
-            Assert.Contains("else", labels);  // phase 3 alias
+            Assert.Contains("raw", labels);
+            Assert.Contains("else", labels);
             Assert.Contains("upper", labels); // function
-            Assert.Contains("range", labels); // phase 4 function
+            Assert.Contains("range", labels);
             Assert.DoesNotContain("", labels); // the unnamed EmptyExtension alias is filtered
         }
 
@@ -102,14 +122,14 @@ namespace Heddle.LanguageServices.Tests
             Assert.DoesNotContain("Items", labels);  // present only on Menu — excluded
         }
 
-        [Fact] // Corpus D24 export: titlecase offered indistinguishably from built-ins
+        [Fact]
         public void ScannedFunctionExportIsOffered()
         {
             var labels = Complete("@model(){{Corpus.Blog}}\n@(§)");
             Assert.Contains("titlecase", labels);
         }
 
-        [Fact] // Corpus D23 export: badge offered among extension names
+        [Fact]
         public void ScannedExtensionIsOffered()
         {
             var labels = Complete("@model(){{Corpus.Blog}}\n@§");

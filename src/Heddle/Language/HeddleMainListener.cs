@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using Heddle.Data;
 using Heddle.Exceptions;
@@ -49,10 +50,6 @@ namespace Heddle.Language {
                     "Cannot create definition".ToError(CurrentParseContext.GetBlockPosition(context)));
                 return;
             }
-            // Phase 7 D5: a region-fill candidate (<x:x> with an unresolved base) is captured at parse and never
-            // registered — it must not self-shadow the region default a self-call resolves to, and its error is
-            // already emitted (emit-then-retract). CurrentDefenition stays non-null so ExitSubtemplate can attach
-            // the override body's context to the candidate item.
             if (CurrentParseContext.CurrentDefenition.IsFillCandidate)
             {
                 return;
@@ -61,9 +58,6 @@ namespace Heddle.Language {
             {
                 if (CurrentParseContext.DefinitionsBlock.Definitions.ContainsKey(CurrentParseContext.CurrentDefenition.Name))
                 {
-                    // Phase 7 D10 (HED5020): upgrade the id-less duplicate error only when BOTH the stored entry
-                    // and the incoming declaration are public regions. A public region colliding with a private or
-                    // document-scope <name> keeps the id-less message (F6).
                     var stored = CurrentParseContext.DefinitionsBlock.Definitions[CurrentParseContext.CurrentDefenition.Name];
                     if (stored.IsPublicRegion && CurrentParseContext.CurrentDefenition.IsPublicRegion)
                     {
@@ -87,7 +81,7 @@ namespace Heddle.Language {
             }
         }
 
-        /// <summary>Phase 7 D3 (append ordering): records a region declaration into the declaring context's
+        /// <summary>Records a region declaration into the declaring context's
         /// <see cref="ParseContext.DeclaredRegions"/> on the store-success path only, so a rejected duplicate
         /// never lands in the enclosing component's <see cref="DefinitionItem.Regions"/>.</summary>
         private void RecordRegionDeclaration(DefinitionItem definition)
@@ -136,9 +130,6 @@ namespace Heddle.Language {
                                     CurrentParseContext.GetBlockPosition(context)));
                             return;
                         }
-                        // Phase 7 (WI2): a within-component <region:region> replace preserves region-ness — the
-                        // replaced entry's visibility carries onto the replacing layer (the model type already
-                        // inherits via CreateDefinition's `modelType ?? baseDefenition?.ModelType`).
                         if (definition.IsRegion)
                         {
                             CurrentParseContext.CurrentDefenition.IsRegion = true;
@@ -238,7 +229,7 @@ namespace Heddle.Language {
                 if (CurrentParseContext.InDefinition)
                 {
                     CurrentParseContext.CurrentDefenition.Context = parserContext;
-                    // Phase 7 D3: transfer the body's directly-declared regions (store-success entries only,
+                    // Transfer the body's directly-declared regions (store-success entries only,
                     // declaration order) onto the enclosing component.
                     if (parserContext.DeclaredRegions.Count != 0)
                         CurrentParseContext.CurrentDefenition.Regions = parserContext.DeclaredRegions;
@@ -257,10 +248,6 @@ namespace Heddle.Language {
             if (context.GetText() != "import")
                 return;
 
-            // '@import' is removed. Raise the positioned HED4003 removal error at the shared parse layer so the
-            // dynamic and precompiled tiers carry the identical diagnostic for every call shape (top-level,
-            // chained/consuming, and nested in any subtemplate) — the ParseContext.Errors list is shared by
-            // reference down the whole context tree, exactly as the @<< HED4004 detection relies on.
             var call = context.Parent as HeddleParser.CallContext;
             if (call == null)
                 return;
@@ -304,13 +291,92 @@ namespace Heddle.Language {
             var path = string.Concat(context.text().Select(t => t.GetText()));
             if (!string.IsNullOrWhiteSpace(path))
             {
-                string document = _settings.ReadImport(path);
+                var importKey = _settings.ImportIdentity(path);
+                var parseState = ImportParseState.Current;
+                if (parseState.ActiveImports.Contains(importKey))
+                {
+                    if (parseState.CycleReportBudget > 0)
+                    {
+                        parseState.CycleReportBudget--;
+                        var chain = string.Join(" -> ", parseState.ActiveImports.Concat(new[] { importKey }));
+                        CurrentParseContext.Errors.Add(
+                            $"A '@<<' composition import cycle: {chain}. The repeated import is skipped."
+                                .ToError(CurrentParseContext.GetAbsoluteBlockPosition(context),
+                                    HeddleDiagnosticIds.ComposeImportCycle));
+                    }
 
-                // Phase 6 D25 (stamp site 1): mark the imported parse's diagnostics with a shared ImportOrigin so
-                // the LSP facade re-anchors them to this @<< site. Flag-gated — production compiles take one bool
-                // check and allocate nothing. Post-D4 seam: all front-end diagnostics live on the ParseContext,
-                // so the two ParseContext ranges are the only ones stamped (the runtime adapter copies them into
-                // the compile context after the whole parse completes).
+                    return;
+                }
+
+                // Depth, which the cycle check above cannot see: a chain of thousands of distinct files contains no
+                // repeat and still parses itself onto the floor, because each import parses in place.
+                if (parseState.ActiveImports.Count >= ParserSettings.MaxImportDepth)
+                {
+                    CurrentParseContext.Errors.Add(
+                        ($"'@<<' composition imports nest deeper than {ParserSettings.MaxImportDepth} levels. " +
+                         "The import is skipped.")
+                        .ToError(CurrentParseContext.GetAbsoluteBlockPosition(context),
+                            HeddleDiagnosticIds.TemplateNestedTooDeeply));
+                    return;
+                }
+
+                // Fan-out, which neither the cycle guard nor the depth guard can see: a document already parsed and
+                // popped is parsed again every time it is reached, so a shallow acyclic graph that imports each
+                // file twice expands two to the power of its levels.
+                if (parseState.ImportExpansionsRemaining <= 0)
+                {
+                    if (!parseState.FanOutReported)
+                    {
+                        parseState.FanOutReported = true;
+                        CurrentParseContext.Errors.Add(
+                            ($"This document expands more than {ParserSettings.MaxImportExpansions} '@<<' " +
+                             "composition imports. Every repeat of an import is parsed again, so a file imported " +
+                             "from several places multiplies out; the remaining imports are skipped.")
+                            .ToError(CurrentParseContext.GetAbsoluteBlockPosition(context),
+                                HeddleDiagnosticIds.ComposeImportFanOut));
+                    }
+
+                    return;
+                }
+
+                parseState.ImportExpansionsRemaining--;
+
+                // An import whose file is not there is an ordinary editing state — a rename in progress, a path being
+                // typed — and the read runs inside the tree walk, outside the parser's own guard. Letting it throw
+                // took the whole analysis down and published nothing at all, on a document the reader was mid-edit.
+                // Any exception, not the disk reader's set: ImportReader is a public seam a host supplies, and the
+                // two idiomatic ways to say "no such import" — returning null, and letting a dictionary lookup throw
+                // — both escaped a narrower catch and took the parse down, which is the failure this guard exists to
+                // stop.
+                string document;
+                var outerCallback = ImportParseState.EnterHostCallback();
+                try
+                {
+                    document = _settings.ReadImport(path);
+                }
+                catch (Exception e)
+                {
+                    CurrentParseContext.Errors.Add(
+                        ($"The '@<<' import '{path}' cannot be read: {e.Message} The import is skipped.")
+                        .ToError(CurrentParseContext.GetAbsoluteBlockPosition(context),
+                            HeddleDiagnosticIds.ComposeImportUnreadable));
+                    return;
+                }
+                finally
+                {
+                    ImportParseState.ExitHostCallback(outerCallback);
+                }
+
+                if (document == null)
+                {
+                    CurrentParseContext.Errors.Add(
+                        ($"The '@<<' import '{path}' cannot be read: the import reader returned no content. " +
+                         "The import is skipped.")
+                        .ToError(CurrentParseContext.GetAbsoluteBlockPosition(context),
+                            HeddleDiagnosticIds.ComposeImportUnreadable));
+                    return;
+                }
+
                 bool markProvenance = CurrentParseContext.ProvideLanguageFeatures;
                 ImportOrigin origin = null;
                 int peMark = 0, pwMark = 0;
@@ -328,16 +394,16 @@ namespace Heddle.Language {
                 if (markProvenance)
                     isolatedContext.ImportOrigin = origin;
                 isolatedContext.OutputChains.Clear();
-                // The imported document is parsed in its own coordinate space. The importing document's hidden-token
-                // positions (inherited here by IsolateContextWithTree) are in the importing file's coordinates and
-                // must not seed the import parse: EnterSubtemplate transfers a context's SkippedTokens into each
-                // definition-body sub-context by filtering on the body's span, and an importing-file token whose
-                // offset happens to fall inside an imported body's span would be injected into that body, shifting
-                // its output chains and corrupting the render. Clear them so only the imported file's own hidden
-                // tokens (recorded fresh by the parse below) reach the imported bodies — symmetric to the
-                // OutputChains reset above.
                 isolatedContext.SkippedTokens.Clear();
-                DocumentParser.Parse(document, isolatedContext, _settings/*, true*/);
+                parseState.ActiveImports.Add(importKey);
+                try
+                {
+                    DocumentParser.Parse(document, isolatedContext, _settings/*, true*/);
+                }
+                finally
+                {
+                    parseState.ActiveImports.RemoveAt(parseState.ActiveImports.Count - 1);
+                }
                 CurrentParseContext.DefaultChains.Clear();
                 CurrentParseContext.DefaultChains.AddRange(isolatedContext.DefaultChains);
                 CurrentParseContext.DefinitionsBlock.Definitions.Clear();
@@ -355,9 +421,6 @@ namespace Heddle.Language {
                 {
                     StampImportedRange(CurrentParseContext.Errors, peMark, origin);
                     StampImportedRange(CurrentParseContext.Warnings, pwMark, origin);
-                    // Attach the origin to purely-imported definitions so their call-site-compiled bodies
-                    // re-anchor via the D2/D25 funnel bracket (stamp site 4). Definitions copied from the
-                    // pre-import local set keep their own (null) provenance.
                     foreach (var pair in CurrentParseContext.DefinitionsBlock.Definitions)
                     {
                         if (!preImportNames.Contains(pair.Key))
@@ -369,7 +432,7 @@ namespace Heddle.Language {
         }
 
         /// <summary>
-        /// Phase 6 D25: stamps every entry appended after <paramref name="mark"/> with <paramref name="origin"/>.
+        /// Stamps every entry appended after <paramref name="mark"/> with <paramref name="origin"/>.
         /// A null-marker entry (a diagnostic of the imported document itself) takes the shared instance; an entry
         /// already carrying a marker (a nested import's) has only its <see cref="ImportOrigin.Site"/> re-anchored
         /// to this site — the shared instance keeps the deepest <see cref="ImportOrigin.Path"/>.
@@ -387,7 +450,7 @@ namespace Heddle.Language {
             }
         }
 
-        /// <summary>Phase 6 D25: attaches an import origin to a purely-imported definition's context lineage so
+        /// <summary>Attaches an import origin to a purely-imported definition's context lineage so
         /// its call-site-compiled body re-anchors (idempotent; recurses base layers).</summary>
         private static void AttachImportOrigin(DefinitionItem definition, ImportOrigin origin)
         {

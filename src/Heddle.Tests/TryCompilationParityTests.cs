@@ -12,11 +12,11 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Phase 4 WI2 — <c>TryCompilation</c> full parity (P4-Q1): the dry run now executes the same
-    /// finalization (<c>CompleteInit</c> over delayed subtemplates) and <c>FullCSharp</c> Roslyn passes a real
-    /// <c>Compile</c> runs, then discards the artifact, so a green dry run predicts a green real compile.
-    /// The dry run is isolated onto a fresh probe context, so the caller's <see cref="CompileContext"/> is
-    /// never mutated, and the probe artifact is disposed on every non-store exit including exceptions.
+    /// <c>TryCompilation</c> full parity: the dry run now executes the same finalization (<c>CompleteInit</c> over
+    /// delayed subtemplates) and <c>FullCSharp</c> Roslyn passes as a real <c>Compile</c> runs, then discards the
+    /// artifact, so a green dry run predicts a green real compile. The dry run is isolated onto a fresh probe context,
+    /// so the caller's <see cref="CompileContext"/> is never mutated, and the probe artifact is disposed on every
+    /// non-store exit including exceptions.
     /// </summary>
     public class TryCompilationParityTests
     {
@@ -95,9 +95,9 @@ namespace Heddle.Tests
         }
 
         /// <summary>
-        /// D2 constraint 1: the dry run leaves the caller's context pristine (<c>Compiled == false</c>, no
-        /// leaked errors), and a subsequent real <c>Compile</c> of the <b>same instance</b> finalizes from
-        /// scratch — the delayed <c>@partial</c> renders its child content instead of being silently skipped.
+        /// The dry run leaves the caller's context pristine (<c>Compiled == false</c>, no leaked errors), and a
+        /// subsequent real <c>Compile</c> of the <b>same instance</b> finalizes from scratch — the delayed
+        /// <c>@partial</c> renders its child content instead of being silently skipped.
         /// </summary>
         [Fact]
         public void TryCompilationDoesNotMutateCallerContext()
@@ -117,9 +117,9 @@ namespace Heddle.Tests
         }
 
         /// <summary>
-        /// D2: the probe mirrors the caller's <b>current</b> <c>ScopeType</c> and <c>OutputProfile</c> —
-        /// a context mutated after construction (ScopeType diverging from RootScopeType, profile flipped)
-        /// is predicted faithfully: the dry run and the real compile of the same mutated context agree.
+        /// The probe mirrors the caller's <b>current</b> <c>ScopeType</c> and <c>OutputProfile</c> — a context
+        /// mutated after construction (ScopeType diverging from RootScopeType, profile flipped) is predicted
+        /// faithfully: the dry run and the real compile of the same mutated context agree.
         /// </summary>
         [Fact]
         public void TryCompilationMirrorsMutatedScopeTypeAndProfile()
@@ -139,9 +139,9 @@ namespace Heddle.Tests
         }
 
         /// <summary>
-        /// D2 constraint 2: when finalization throws out of <c>compileScope.Compile()</c>, the dry run
-        /// returns an error result and the probe artifact is still disposed (the <c>finally</c> ran) —
-        /// witnessed by the extension the discarded <c>RuntimeDocument</c> owns being disposed.
+        /// When finalization throws out of <c>compileScope.Compile()</c>, the dry run returns an error result and
+        /// the probe artifact is still disposed (the <c>finally</c> ran) — witnessed by the extension the discarded
+        /// <c>RuntimeDocument</c> owns being disposed.
         /// </summary>
         [Fact]
         public void TryCompilationOnThrowingFinalizationLeaksNoArtifact()
@@ -161,9 +161,9 @@ namespace Heddle.Tests
     }
 
     /// <summary>
-    /// A test extension that registers a delayed compile in <c>InitStart</c> and throws from
-    /// <c>CompleteInit</c> — forcing <c>compileScope.Compile()</c> to throw during the dry run — while
-    /// counting <c>Dispose</c> calls as the artifact-leak witness (phase 4 WI2, D2 constraint 2).
+    /// A test extension that registers a delayed compile in <c>InitStart</c> and throws from <c>CompleteInit</c> —
+    /// forcing <c>compileScope.Compile()</c> to throw during the dry run — while counting <c>Dispose</c> calls as
+    /// the artifact-leak witness.
     /// </summary>
     [ExtensionName("p4throwdelayed")]
     public class ThrowingDelayedInitExtension : AbstractExtension

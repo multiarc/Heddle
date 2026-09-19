@@ -3,15 +3,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using Heddle.Data;
+using Heddle.Helpers;
 using Heddle.Runtime;
 using Heddle.Runtime.Expressions;
 
 namespace Heddle.LanguageServices.Completion
 {
     /// <summary>
-    /// Builds completion items as a pure projection of the analysis (phase 6 D12/D13): typed members via the
-    /// scope map + the member-tier filter, definitions/extensions/functions from the live registries, props from
-    /// the definition declarations. Never guesses when types are unknown (D12 rule 7).
+    /// Builds completion items from the analysis. Never guesses when types are unknown.
     /// </summary>
     internal static class CompletionProvider
     {
@@ -77,8 +76,6 @@ namespace Heddle.LanguageServices.Completion
 
                 case CompletionContextKind.RegionOverride:
                 {
-                    // Phase 7 (WI5): offer the callee's PUBLIC region names at a call-body '<' override position,
-                    // inserting the '<name:name>' fill form's name pair.
                     var callee = analysis.Definitions.FirstOrDefault(d => d.Name == context.CallName);
                     if (callee == null)
                         return CompletionResult.Empty;
@@ -140,7 +137,7 @@ namespace Heddle.LanguageServices.Completion
             if (types.Any(t => t == null || t.IsDynamic))
                 return Array.Empty<CompletionItem>();
 
-            // Name-based intersection across the recorded call-site types (D13).
+            // Name-based intersection across the recorded call-site types.
             Dictionary<string, List<PropertyInfo>> byName = null;
             foreach (var type in types)
             {
@@ -195,19 +192,11 @@ namespace Heddle.LanguageServices.Completion
             return $"{ret} {o.Name}({pars})";
         }
 
+        /// <summary>Display name for a type: shared alias table with <see cref="ExType"/> fallback.</summary>
         internal static string Friendly(Type type)
         {
-            if (type == null) return "void";
-            if (type == typeof(void)) return "void";
-            if (type == typeof(int)) return "int";
-            if (type == typeof(long)) return "long";
-            if (type == typeof(double)) return "double";
-            if (type == typeof(decimal)) return "decimal";
-            if (type == typeof(string)) return "string";
-            if (type == typeof(bool)) return "bool";
-            if (type == typeof(object)) return "object";
-            if (type == typeof(object[])) return "object[]";
-            return new ExType(type).ToString();
+            if (type == null || type == typeof(void)) return "void";
+            return CSharpTypeNames.TryGetDisplayName(type, out var name) ? name : new ExType(type).ToString();
         }
 
         private static string FormatDefault(object value)

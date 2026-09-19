@@ -23,16 +23,14 @@ namespace Heddle.Language {
         public BlockPosition Position { get; set; }
 
         /// <summary>
-        /// True only for the synthetic unnamed self-call the parser renames to the definition name for a
-        /// <c>-&gt; chain</c> default output. Exempts that one call from the HED4002 double-render warning
-        /// (it is the definition rendering itself, not a duplicate by-name call). Copied on isolation.
+        /// True for the synthetic unnamed self-call in a <c>-&gt; chain</c> default output;
+        /// exempts it from the HED4002 double-render warning. Copied on isolation.
         /// </summary>
         internal bool IsDefaultChainSelfCall { get; set; }
 
         /// <summary>
-        /// True for a non-leading item of a chain (<c>@a():b()</c> — <c>b</c> consumes <c>a</c>'s output).
-        /// Phase 5 uses this on <c>@out</c> to fire the slot-projection runtime guard (a slot-mode <c>@out</c>
-        /// cannot take a value after a chained call, D11). Copied on isolation.
+        /// True for a non-leading chain item; fires the slot-projection runtime guard on <c>@out</c>.
+        /// Copied on isolation.
         /// </summary>
         internal bool IsChainedConsumer { get; set; }
 

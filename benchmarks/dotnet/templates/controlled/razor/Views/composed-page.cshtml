@@ -1,0 +1,24 @@
+@*
+    Razor parity twin -- composed-page.
+
+    The page is Razor's native composition: it names the layout and its markup body splices
+    at the layout's single mid-page @RenderBody() -- a LIVE body slot, mirroring Heddle's
+    home.heddle (`@<<{{layout.heddle}}` + `@layout(){{ ...slider... }}` splicing at @out()).
+    The slider body is the verifier's removed-segment calibration pin, so an empty body fails.
+    Whitespace is free -- N3b strips every whitespace run from both sides before the byte
+    comparison.
+*@
+@using Heddle.Benchmarks.Dotnet.Models
+@model ComposedModel
+@{ Layout = "/Views/Shared/composed-page-layout.cshtml"; }
+        <div class="slider-wrapper theme-default">
+            <div id="slider" class="nivoSlider">
+            </div>
+            <div class="home-content">
+                <div>
+                    <a href="/products/gluten-free">
+                        <img src="/files/homepage/homebtmbanners/gluten-hp.jpg" width="984" border="0" />
+                    </a>
+                </div>
+            </div>
+        </div>

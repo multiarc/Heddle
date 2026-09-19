@@ -6,7 +6,7 @@ namespace Heddle.Runtime.Parameters
 {
     /// <summary>
     /// The props-aware sibling of <see cref="CompiledParameter"/> (whose 3-arg shape stays untouched). Emitted
-    /// only when a native-expression tree contains a prop root (D9); prop-free expressions keep today's delegate
+    /// only when a native-expression tree contains a prop root; prop-free expressions keep today's delegate
     /// shape bit-identically. The delegate receives <c>PropsData</c> as a fourth argument.
     /// </summary>
     internal sealed class PropsCompiledParameter : IRuntimeParameter

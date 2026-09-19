@@ -12,19 +12,18 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>Top-level so a template's <c>@model(){{FileWatcherConcreteModel}}</c> resolves it by simple
-    /// name through the configured test-assembly namespaces (phase 1 model-directive reload test).</summary>
+    /// name through the configured test-assembly namespaces.</summary>
     public class FileWatcherConcreteModel
     {
         public string Name { get; set; }
     }
 
     /// <summary>
-    /// Phase 1 D3/D4 — a watcher reload recompiles the freshly-read file into a from-scratch-equivalent
-    /// fresh context honoring the original options and pre-<c>@model</c> root model type; the event/reload
-    /// mapping (edit/create reload, rename-onto-target reload, delete keeps last-good, empty save no-op)
-    /// matches the documented contract. Deterministic tests drive the wired private handlers by reflection
-    /// (the exact production <c>Reload()</c> path, synchronously); two FSW-timed tests witness the true
-    /// end-to-end wiring.
+    /// A watcher reload recompiles the freshly-read file into a from-scratch-equivalent fresh context
+    /// honoring the original options and pre-<c>@model</c> root model type; the event/reload mapping is
+    /// edit/create reload, rename-onto-target reload, delete keeps last-good, empty save no-op.
+    /// Deterministic tests drive the wired private handlers by reflection (the exact production
+    /// <c>Reload()</c> path, synchronously); two FSW-timed tests witness the true end-to-end wiring.
     /// </summary>
     public class FileWatcherReloadTests
     {
@@ -70,7 +69,7 @@ namespace Heddle.Tests
             }
         }
 
-        /// <summary>D3 (deterministic): a <c>FullCSharp</c> template re-runs <c>CompleteInit</c> + the Roslyn
+        /// <summary>Deterministic: a <c>FullCSharp</c> template re-runs <c>CompleteInit</c> + the Roslyn
         /// pass on every reload — each of three successive edits renders exactly what a fresh from-scratch
         /// compile of the same content renders (the pre-fix reused scope skipped finalization from the 2nd
         /// reload on).</summary>
@@ -106,7 +105,7 @@ namespace Heddle.Tests
             }
         }
 
-        /// <summary>D3 (deterministic): the reload honors the original options — the configured modern
+        /// <summary>Deterministic: the reload honors the original options — the configured modern
         /// <c>HtmlEncoder</c> (distinguishable from the legacy <c>WebUtility</c> path by the apostrophe),
         /// <c>FullCSharp</c>, and the <c>RenderBudget</c> all still apply to the reloaded document.</summary>
         [Fact]
@@ -139,7 +138,7 @@ namespace Heddle.Tests
             }
         }
 
-        /// <summary>D3 regression (deterministic): <c>OutputProfile</c> is re-derived from the options plus
+        /// <summary>Regression (deterministic): <c>OutputProfile</c> is re-derived from the options plus
         /// the freshly-parsed <c>@profile()</c> on every reload — removing the directive restores the options
         /// default (Html-encoded), adding it flips to Text — never the stale directive-flipped profile a
         /// post-compile capture would have carried.</summary>
@@ -176,7 +175,7 @@ namespace Heddle.Tests
             }
         }
 
-        /// <summary>D3 regression (deterministic): the root model type is captured PRE-compile — a file whose
+        /// <summary>Regression (deterministic): the root model type is captured PRE-compile — a file whose
         /// first compile flipped <c>RootScopeType</c> via a root <c>@model</c> reloads under the ORIGINAL
         /// ctor model when the directive is edited away (a post-compile capture would seed the stale
         /// directive-flipped type and reject the payload the from-scratch compile accepts), and a re-added
@@ -217,7 +216,7 @@ namespace Heddle.Tests
             }
         }
 
-        /// <summary>D3 (deterministic): a code-typed template (model type passed at construction) reloads
+        /// <summary>Deterministic: a code-typed template (model type passed at construction) reloads
         /// under that same model — the edit renders with the original typed member access.</summary>
         [Fact]
         public void RecompiledTypedTemplateRendersWithOriginalModel()
@@ -243,7 +242,7 @@ namespace Heddle.Tests
             }
         }
 
-        /// <summary>D4 end-to-end (test-with, FSW): the atomic-save idiom — write a temp file, then land it
+        /// <summary>End-to-end (test-with, FSW): the atomic-save idiom — write a temp file, then land it
         /// ON the watched name — recompiles (rename-onto-target / delete-then-create both covered by the
         /// Created wiring + rename predicate).</summary>
         [Fact]
@@ -271,7 +270,7 @@ namespace Heddle.Tests
             }
         }
 
-        /// <summary>P1-Q2 (deterministic): a delete raises <c>OnFileDeleted</c> (sender = the template), does
+        /// <summary>Deterministic: a delete raises <c>OnFileDeleted</c> (sender = the template), does
         /// NOT recompile, and the last-good document stays renderable.</summary>
         [Fact]
         public void DeleteRaisesOnFileDeletedAndKeepsLastGood()
@@ -303,7 +302,7 @@ namespace Heddle.Tests
             }
         }
 
-        /// <summary>D4 empty-content policy (deterministic): an empty (then whitespace-only) save is a no-op
+        /// <summary>Empty-content policy (deterministic): an empty (then whitespace-only) save is a no-op
         /// — no recompile, <c>CompileResult</c> untouched (still the prior success), last-good renderable.
         /// <c>OnFileChanged</c> still fires (before the guard) for hosts that want to observe the save.</summary>
         [Fact]
@@ -336,7 +335,7 @@ namespace Heddle.Tests
             }
         }
 
-        /// <summary>D4 end-to-end (test-with, FSW): over a scripted edit → delete → recreate-by-rename
+        /// <summary>End-to-end (test-with, FSW): over a scripted edit → delete → recreate-by-rename
         /// sequence the right public events fire, and touching an unrelated sibling (not matching the
         /// filter) raises nothing.</summary>
         [Fact]

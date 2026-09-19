@@ -1,0 +1,5 @@
+@using(){{Heddle.Samples.PrecompiledAot}}
+@model(){{ComposedPageModel}}
+<h1>@(Title)</h1>
+<p>@shout(Title)</p>
+<ul>@list(Links){{<li>@()</li>}}</ul>

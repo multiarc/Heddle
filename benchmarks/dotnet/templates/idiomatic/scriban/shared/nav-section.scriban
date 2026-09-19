@@ -1,0 +1,21 @@
+{{## Idiomatic Scriban -- composed-page nav-section partial.
+
+     Patterns followed, from Scriban's own documentation:
+       language          https://github.com/scriban/scriban/blob/master/doc/language.md
+       builtins/html     https://github.com/scriban/scriban/blob/master/doc/builtins.md#html-functions
+       runtime/includes  https://github.com/scriban/scriban/blob/master/doc/runtime.md
+
+     Renders one nav section from the scope-shared loop variable `section`: the title (linked
+     or plain on the precomputed title_linked boolean) and the link list through the nav-link
+     partial. Checked by the functional verifier, not the byte gate. Note the multi-line
+     comment delimiters: the single-line form ends at the first newline, which would leave
+     the doc URLs to parse as expressions. ##}}
+
+<div class="nav-section">
+  {{~ if section.title_linked ~}}
+    <span class="nav-title"><a href="{{ section.href }}">{{ section.title }}</a></span>
+  {{~ else ~}}
+    <span class="nav-title">{{ section.title }}</span>
+  {{~ end ~}}
+  <ul>{{ for link in section.links }}{{ include 'nav-link' }}{{ end }}</ul>
+</div>

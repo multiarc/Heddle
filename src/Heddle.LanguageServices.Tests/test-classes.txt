@@ -1,0 +1,21 @@
+# Every class in Heddle.LanguageServices.Tests that declares a [Fact] or [Theory], ordinal-sorted.
+# Set-equality asserted by TestClassInventoryTests. A class added or removed here is the diff a
+# reviewer reads; nothing in this file measures how many tests a class carries.
+Heddle.LanguageServices.Tests.AliasTypeProjectionTests
+Heddle.LanguageServices.Tests.DemoContractTests
+Heddle.LanguageServices.Tests.DiagnosticProjectionCorpusLspTests
+Heddle.LanguageServices.Tests.ExportScanTests
+Heddle.LanguageServices.Tests.LanguageServiceCompletionTests
+Heddle.LanguageServices.Tests.LanguageServiceDefinitionTests
+Heddle.LanguageServices.Tests.LanguageServiceDiagnosticsTests
+Heddle.LanguageServices.Tests.LanguageServiceHoverTests
+Heddle.LanguageServices.Tests.LineMapAgreementTests
+Heddle.LanguageServices.Tests.ModelAssemblyReloadTests
+Heddle.LanguageServices.Tests.PositionMappingTests
+Heddle.LanguageServices.Tests.ProtocolContractTests
+Heddle.LanguageServices.Tests.RegionProjectionTests
+Heddle.LanguageServices.Tests.RenderPathTests
+Heddle.LanguageServices.Tests.ServerLifecycleTests
+Heddle.LanguageServices.Tests.TestClassInventoryTests
+Heddle.LanguageServices.Tests.WorkspaceConfigTests
+Heddle.LanguageServices.Tests.WorkspaceOptionParityTests

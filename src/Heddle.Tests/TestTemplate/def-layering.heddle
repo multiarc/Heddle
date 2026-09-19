@@ -1,0 +1,22 @@
+@%
+<panel>{{[base]}}
+<panel:panel>{{[over @panel()]}}
+
+<badge(tone: string = "plain")>{{(badge @(tone))}}
+<badge(size: string = "small"):badge>{{(over @(tone)/@(size) @badge())}}
+
+<step>{{s1}}
+<step:step>{{s2[@step()]}}
+<step:step>{{s3[@step()]}}
+
+<host>{{host<@%<panel:panel>{{[inner @panel()]}}%@@panel()>}}
+
+<frame>{{base<@out()>}}
+<frame:frame>{{over<@out()>[@frame(){{in}}]}}
+%@
+@panel()
+@badge()
+@badge(tone: "loud", size: "big")
+@step()
+@host()
+@frame(){{out}}

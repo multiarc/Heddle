@@ -8,7 +8,7 @@ engine from C#. If you only want to learn the template syntax, jump to the
 
 ::: tip Try it live
 Want to play before integrating? Open the
-<a href="demo.html" target="_blank" rel="noreferrer">live editor demo</a> — write Heddle in
+<a href="/demo.html" target="_blank" rel="noreferrer">live editor demo</a> — write Heddle in
 your browser with syntax highlighting and real-time parse-error checking. It syntax-checks
 immediately and, once the WebAssembly engine loads, live-renders your template (native tier)
 into a sandboxed iframe after the first clean analysis; syntax-only checking is the pre-WASM
@@ -19,7 +19,7 @@ fallback.
 
 - **.NET SDK 10.0** (the repository pins `10.0.100` with `rollForward: latestMinor` in
   [global.json](../global.json)). The core library itself targets
-  `netstandard2.0;net6.0;net8.0;net10.0`, so the compiled package runs on a wide range of hosts.
+  `netstandard2.0;net8.0;net10.0`, so the compiled package runs on a wide range of hosts.
 - A reference to the **`Heddle`** package.
 
 To build the engine from source, see [Building & Testing](building.md).
@@ -28,28 +28,28 @@ To build the engine from source, see [Building & Testing](building.md).
 
 Using the engine always follows the same shape:
 
-1. **Configure** — register the extensions found in your assemblies (once per process).
+1. **Register** — hand the engine each assembly that exports extensions (once per process).
 2. **Compile** — parse a template string or file into a `HeddleTemplate`.
 3. **Generate** — render the compiled template against a data object, as many times as you like.
 
-### 1. Configure (register extensions)
+### Step 1 register and declare your extensions
 
-`HeddleTemplate.Configure` scans the given assembly (and assemblies it references) for exported
-extensions. The built‑in extensions in the `Heddle` assembly are picked up automatically;
-call `Configure` with *your* startup assembly so any custom extensions you wrote are
-discovered too.
+`HeddleTemplate.Register` reads one assembly's exported extensions. The built‑in extensions in the
+`Heddle` assembly are always present; register *your* assembly so the custom extensions you wrote are
+too. Registration is per assembly and not transitive — the engine loads and scans nothing on its own,
+so an extension library you only *reference* needs its own call.
 
 ```csharp
 using System.Reflection;
 using Heddle;
 
-HeddleTemplate.Configure(typeof(Program).GetTypeInfo().Assembly);
+HeddleTemplate.Register(typeof(Program).GetTypeInfo().Assembly);
 ```
 
 See [Writing Custom Extensions](custom-extensions.md) for how extensions are exported with
 `[assembly: ExportExtensions]`.
 
-### 2 & 3. Compile and generate an inline template
+### Steps 2 and 3 compile and generate an inline template
 
 ```csharp
 using Heddle;
@@ -114,7 +114,7 @@ using var template = new HeddleTemplate(new CompileContext(options));
 string html = template.Generate(myBlog);
 ```
 
-### Validate without committing (dry‑run compile)
+### Validate without committing (dry-run compile)
 
 `TryCompilation` parses and type‑checks a template but discards the compiled output. Use it
 for linting/CI checks where you only care whether a template *would* compile:

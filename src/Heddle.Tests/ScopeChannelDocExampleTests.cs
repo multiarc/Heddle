@@ -9,14 +9,12 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Executable doc tests (phase 3 criterion 7): the two worked examples in
-    /// <c>docs/custom-extensions.md</c> — the zebra‑striping publisher/consumer pair and the
-    /// <see cref="BranchState"/> participant that drives a set — compile and run here so the docs stay honest.
+    /// Two channel behaviours: a publisher/consumer pair that alternates on <c>Publish</c>/<c>TryRead</c>, and a
+    /// participant that satisfies a branch set by publishing <see cref="BranchState"/>. Both shapes also appear in
+    /// the documentation, but nothing couples the two texts and the assertions here stand on their own.
     /// </summary>
     public class ScopeChannelDocExampleTests
     {
-        // --- Verbatim from docs/custom-extensions.md ---
-
         [ExtensionName("zebra")]
         [ScopeChannel]
         public class ZebraExtension : AbstractExtension

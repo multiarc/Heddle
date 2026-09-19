@@ -5,10 +5,9 @@ using Xunit;
 namespace Heddle.LanguageServices.Tests
 {
     /// <summary>
-    /// Phase 7 (WI5) — LSP region projection and the transitively-surfaced region diagnostics.
-    /// <c>DefinitionInfo.Regions</c> projects the parse model; completion offers a callee's PUBLIC region names at
-    /// a call-body <c>&lt;</c> override position; HED5019/HED5020 appear as editor diagnostics; a matched fill's
-    /// retracted base-not-found error is gone from BOTH diagnostic sources (the D5 phase-split retract).
+    /// LSP region projection and diagnostics: <c>DefinitionInfo.Regions</c> projects the parse model; completion
+    /// offers PUBLIC region names at call-body override positions; HED5019/HED5020 appear as editor diagnostics;
+    /// matched fills no longer show base-not-found errors in either diagnostic source.
     /// </summary>
     public class RegionProjectionTests
     {
@@ -69,7 +68,7 @@ namespace Heddle.LanguageServices.Tests
             var analysis = service.Analyze(Path,
                 "@model(){{Corpus.Blog}}\n" + Feed + "@feed(){{@%<divider:divider>{{y}}%@}}", 1);
             Assert.Contains(analysis.Diagnostics, d => d.Id == "HED5019");
-            // The retracted base-not-found error must be gone from the union (D5: removed from BOTH lists).
+            // The retracted base-not-found error is gone from both diagnostic sources.
             Assert.DoesNotContain(analysis.Diagnostics, d => d.Message.Contains("couldn't be found"));
         }
 

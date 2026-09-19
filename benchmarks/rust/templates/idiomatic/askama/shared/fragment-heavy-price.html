@@ -1,0 +1,5 @@
+{# Idiomatic Askama price sub-partial. Rendered by
+   the card partial against the row's promo; the display price is composed by the template
+   as the int substitution + the literal ".99" (the model carries data, never display
+   strings). #}
+<p class="price">{{ item.promo.price }}.99</p>

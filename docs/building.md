@@ -1,4 +1,4 @@
-# Building & Testing
+# Building and Testing
 
 How to build the engine, run the tests, and produce the NuGet packages.
 
@@ -22,103 +22,152 @@ From the repository root (the commands pick up [Heddle.sln](../Heddle.sln)):
 ```bash
 dotnet restore
 dotnet build -c Release
-dotnet test               # runs all test projects, as CI does
+dotnet test               # runs all test projects
 ```
 
 ## Target frameworks
 
 | Project | Targets |
 | --- | --- |
-| `Heddle` ([csproj](../src/Heddle/Heddle.csproj)) | `netstandard2.0; net6.0; net8.0; net10.0` |
-| `Heddle.Language` ([csproj](../src/Heddle.Language/Heddle.Language.csproj)) | `netstandard2.0; net6.0; net8.0; net10.0` |
-| `Heddle.Tests` | `net48` (Windows only); `net6.0; net8.0; net10.0` |
+| `Heddle` ([csproj](../src/Heddle/Heddle.csproj)) | `netstandard2.0; net8.0; net10.0` |
+| `Heddle.Language` ([csproj](../src/Heddle.Language/Heddle.Language.csproj)) | `netstandard2.0; net8.0; net10.0` |
+| `Heddle.Tests` | `net48` (Windows only); `net8.0; net10.0` |
 
 All shipping projects use `LangVersion=latest` and are **strong‑name signed** with
 `heddle.snk` (`SignAssembly=true`, `AssemblyOriginatorKeyFile=..\..\heddle.snk`).
-The current release line is **2.0.0**; the published version is set from the release tag
+The current release line is **3.0.0**; the published version is set from the release tag
 (`vX.Y.Z`) at publish time, so the version in the source tree is just a placeholder.
 
 ### Key dependencies
 
 - `Antlr4.Runtime.Standard` 4.13.1 — runtime for the generated parser.
 - `Microsoft.CodeAnalysis.CSharp` (Roslyn) — compiles embedded C# expressions; the version is
-  pinned per target framework (4.1.0 on netstandard2.0, 4.9.2 on net6.0, 4.11.0 on net8.0,
-  5.3.0 on net10.0).
-- `Microsoft.Extensions.DependencyModel` / `Microsoft.Extensions.FileProviders.Embedded` —
-  assembly discovery and embedded resources.
+  pinned per target framework (4.1.0 on netstandard2.0, 4.11.0 on net8.0, 5.3.0 on net10.0).
+- `Microsoft.Extensions.FileProviders.Embedded` — embedded resources (the C#‑tier class
+  template).
 
 ## Testing
 
-Tests use **xUnit**. The core engine suite lives in [src/Heddle.Tests](../src/Heddle.Tests) — its
+Tests use **xUnit v3** on Microsoft.Testing.Platform — each suite builds as a self‑contained
+test executable, and `dotnet test` drives them per project or per solution. The core engine
+suite lives in [src/Heddle.Tests](../src/Heddle.Tests) — its
 key file is [HeddleTemplateTests.cs](../src/Heddle.Tests/HeddleTemplateTests.cs), with other suites
-covering the compiler, reflection helpers, and string builders. Four more test projects cover the
-rest of the toolchain: `Heddle.Generator.Tests` and `Heddle.Generator.IntegrationTests` (the source
-generator), `Heddle.Tool.Tests` (the `heddle` CLI), and `Heddle.LanguageServices.Tests` (the editor
+covering the compiler, reflection helpers, and string builders. Three more test projects cover the
+rest of the toolchain: `Heddle.Build.Tests` (the MSBuild host), `Heddle.Tool.Tests` (the `heddle` CLI),
+and `Heddle.LanguageServices.Tests` (the editor
 language services).
 
-Run the whole solution — this is what CI does
-([dotnet.yml](../.github/workflows/dotnet.yml) runs `dotnet test -c Debug --no-restore`):
+Run the whole solution:
 
 ```bash
 dotnet test
 ```
 
-Or scope to a single project, e.g. `dotnet test src/Heddle.Tests`.
+Or scope to a single project, e.g. `dotnet test src/Heddle.Tests`. CI
+([dotnet.yml](../.github/workflows/dotnet.yml)) runs each suite as its own step through a
+guarded wrapper that turns a skipped test into a failed one — and each suite asserts its own
+`test-classes.txt` inventory, so a whole‑solution run's aggregate count can never let a single
+suite going quiet pass unnoticed.
 
 Many tests are **golden‑file** comparisons: a `.heddle` template under
 [TestTemplate/](../src/Heddle.Tests/TestTemplate) is rendered and compared against an
 expected `*.html` file (e.g. `recursion.heddle` → `test-recursion.html`,
-`vc-test.heddle` → `test-vc.html`). The `generated-*.html` files are the actual output written
+`widgets-layout.heddle` → `test-widgets-layout.html`). The `generated-*.html` files are the actual output written
 during a run, for diffing against the `test-*.html` expectations. These fixtures double as the
 authoritative examples used throughout this documentation.
 
 ## Performance benchmarks
 
-[src/Heddle.Performance](../src/Heddle.Performance) contains a **BenchmarkDotNet** suite
-that compares Heddle against four other .NET template engines (Fluid, Scriban, DotLiquid,
-Handlebars.Net) on byte‑identical parity‑checked output, plus ASP.NET Core **Razor** on a
-comparable — but larger and not parity‑checked — page. Run it in Release:
+[benchmarks/dotnet](../benchmarks/dotnet) is the **BenchmarkDotNet** harness: the .NET leg of the
+cross-stack benchmark program, structured like the five other ecosystem harnesses under
+[benchmarks/](../benchmarks/README.md). It compares Heddle against five other .NET engines — Fluid,
+Scriban, DotLiquid, Handlebars.Net and ASP.NET Core **Razor** — across eight workloads and two
+fairness tracks. It is deliberately **not** in `Heddle.sln`, and it reaches the engine through its
+public surface only.
+
+**Nothing is timed until it is gated.** Run the gates first; each verb exits non-zero on failure:
 
 ```bash
-dotnet run -c Release --project src/Heddle.Performance
+cd benchmarks/dotnet
+dotnet run -c Release -- gate            # every registered cell: byte gate, verifier, security floor
+dotnet run -c Release -- selftest        # the gate's own checks, incl. the six-technique differential
+dotnet run -c Release -- verify-corpus   # corpus freshness + verifier calibration
+dotnet run -c Release -- gate-precompiled # every workload precompiled and byte-equal to the runtime tier
 ```
 
-What it measures
-([TextRenderBenchmarks.cs](../src/Heddle.Performance/TextRenderBenchmarks.cs),
-`[MemoryDiagnoser]` enabled):
+`gate-precompiled` reports which arm it ran (`SITE-TABLE: on|off`): the generated site table is on by
+default and off when the `"Heddle.Precompiled.UseGeneratedSites"` `AppContext` switch is `false` in the
+`runtimeconfig.json` the harness is launched with: the file handed to `dotnet exec --runtimeconfig` **replaces** the built runtimeconfig wholesale, so it must be a copy of
+`benchmarks/dotnet/bin/Release/net10.0/Heddle.Benchmarks.Dotnet.runtimeconfig.json` — its `Microsoft.NETCore.App` and
+`Microsoft.AspNetCore.App` framework entries included — with `"Heddle.Precompiled.UseGeneratedSites": false` added under
+`configProperties`.
 
-- **`RenderHeddle`** (published in the linked 2026‑07‑11 report under its former name,
-  `RenderTemplateEngine`) renders the Heddle home page
-  ([TestTemplates/home.heddle](../src/Heddle.Performance/TestTemplates/home.heddle) +
-  [layout.heddle](../src/Heddle.Performance/TestTemplates/layout.heddle)) through
-  [`HeddleTest`](../src/Heddle.Performance/Runners/HeddleTest.cs).
-- **`RenderRazor`** renders a comparable Razor page
-  ([Views/home.cshtml](../src/Heddle.Performance/Views) + `layout.cshtml`) with runtime
-  compilation through [`RazorTest`](../src/Heddle.Performance/Runners/RazorTest.cs). Razor's page is
-  larger and renders different bytes, so — unlike the four Liquid/Handlebars twins — it is **not**
-  held to the byte‑identical parity assertion; treat its row as indicative rather than
-  apples‑to‑apples.
+Then measure. Remaining arguments pass straight through to BenchmarkDotNet, so a single workload or
+a shorter job is one flag away:
 
-Both pages are shaped alike: one layout, several reusable templates/sections, and a dozen
-component invocations — the Heddle components live in
-[TestSuite/Extensions](../src/Heddle.Performance/TestSuite/Extensions) and their Razor
-counterparts in [TestSuite/RazorExtensions](../src/Heddle.Performance/TestSuite/RazorExtensions).
-In the published run of 2026‑07‑11 **Heddle rendered faster than Razor and allocated less memory**
-(and led the four parity‑checked engines too); for the numbers see the
-[README Performance section](../README.md#performance), and for *why*, see
-[Architecture → Performance characteristics](architecture.md#performance-characteristics).
+```bash
+dotnet run -c Release -- bench-crossstack                          # all eight suites, both tracks
+dotnet run -c Release -- bench-crossstack --filter *MixedPageBenchmarks*
+dotnet run -c Release -- bench-techniques   # Heddle's six render techniques against each other
+dotnet run -c Release -- bench-cold         # cold parse/compile, per engine
+dotnet run -c Release -- bench-internal     # props, branching, language-service metadata
+dotnet run -c Release -- bench-startup      # cold start: fresh-process compile vs register + bind + first render
+```
+
+`bench-techniques` measures the three technique classes side by side — `TechniqueRuntimeBenchmarks`,
+`TechniquePrecompiledBenchmarks` (site table on) and `TechniquePrecompiledDataOnlyBenchmarks` (table
+off) — and `bench-startup` is the cold-start row. Measurements are taken and kept outside the
+repository.
+
+What the cross-stack suites measure, with `[MemoryDiagnoser]` enabled: one `[Benchmark]` per engine
+per workload, on the **controlled** track (every engine authored to produce byte-identical output)
+and the **idiomatic** track (every engine authored the way its own documentation teaches). Heddle is
+the ratio baseline. The controlled track's byte gate runs in `[GlobalSetup]`, so a twin that drifted
+fails the run rather than contributing a number for different work.
+
+Two things about Heddle's own row are worth knowing before quoting it. It is the **UTF-8 sink**,
+because that is the path comparable with the other five ecosystems — they all emit UTF-8 or Latin-1,
+while a .NET `string` is UTF-16 and crosses the CLR's Large Object Heap threshold on the three
+largest workloads, an allocator cliff no other ecosystem pays. And every technique is measured
+through a checksum folded from the bytes the engine actually wrote, never a materialised string, so
+a sink cannot win by eliding work.
+
+The fixtures every engine renders from live in [`src/Models/`](../benchmarks/dotnet/src/Models); the
+templates are files under [`templates/`](../benchmarks/dotnet/templates), one directory per track per
+engine, so the idiomatic track is reviewable as templates instead of as escaped literals. No engine
+carries its own copy of the data, so no twin can drift from the engine it is compared against.
 
 > Benchmark numbers are hardware‑ and workload‑specific — run the suite on your target machine
 > and with a page shaped like your real one to get figures you can quote. The repository
 > benchmark is a representative, component‑heavy page where the compiled document's advantage
 > is most visible.
 
-There are extra runners (compilation cost, memory) in
-[src/Heddle.Performance/Runners](../src/Heddle.Performance/Runners).
+## Build integration
+
+Precompilation runs out of process: the `Heddle.Build` targets collect `HeddleTemplate` items and
+scalar properties, serialize them into a response file, and invoke `heddle compile`. **Inputs** are
+exactly the items and properties — per-item metadata `Key`, `Name`, `ModelType`, `Precompile` and the
+`OutputProfile` override, plus the scalar properties in
+[src/Heddle.Build/build/Heddle.Build.props](../src/Heddle.Build/build/Heddle.Build.props). **Outputs**
+are the embedded compiled-form artifact (`Heddle.CompiledForm.bin`), the generated source
+(`Heddle.CompiledForm.g.cs`, joined into `Compile` before `CoreCompile`), and a stamp file the host
+uses for incrementality. No `CompilerVisibleProperty`, no `AdditionalFiles` of Heddle's own: nothing
+runs inside the compiler, so build output is a pure function of declared inputs. (The throwaway
+intermediate model compile is handed the *project's own* `@(AdditionalFiles)`, unchanged, so the
+project's source generators behave there as in the real compile; the real compile receives nothing
+from these targets but the generated source.)
+
+Custom MSBuild items extend the reach without changing the shape: `HeddleModelAssembly` and
+`HeddleExtensionAssembly` append assemblies to `@(ReferencePath)` so the host can bind over their
+implementations (see [Build‑Time Pre‑compilation](precompilation.md#assemblies-the-build-must-see)).
+
+The properties `HeddleObserveEngine`, `HeddleNodeFallback`, `HeddleEmitUtf8Pieces`,
+`HeddleObserveIntermediatePath` and `HeddleObserveImplementationPath` are not read; each of the first
+three draws one `HED7037` warning when set — delete the element.
 
 ## Packaging
 
-Pack all six shipping packages (`Heddle`, `Heddle.Language`, `Heddle.Generator`,
+Pack all six shipping packages (`Heddle`, `Heddle.Language`, `Heddle.Build`,
 `Heddle.LanguageServices`, `Heddle.LanguageServer`, `Heddle.Tool`) by packing the whole solution,
 as CI does:
 
@@ -137,8 +186,11 @@ CI runs on **GitHub Actions**. All publishing uses Trusted Publishing (OIDC, no 
 tokens) and is skipped on fork pull requests.
 
 - **[.NET build](../.github/workflows/dotnet.yml)** — on every push and pull request to `main`,
-  restores, builds, and runs the test suite on Linux and Windows. Internal pull requests also
-  publish a `-beta.<run>` prerelease to **nuget.org**.
+  restores, builds, and runs the four test suites (Debug, each its own guarded step) on Linux and
+  Windows. Internal pull requests also publish a `-beta.<run>` prerelease to **nuget.org**.
+- **[Language server and Release legs](../.github/workflows/lsp.yml)** — builds the solution in Release
+  on Windows, runs all four suites in Release through the same guarded wrapper, and packs and
+  publishes the `heddle-lsp` tool.
 - **[Ace npm package](../.github/workflows/npm.yml)** — builds the custom Ace highlighter bundle;
   internal pull requests **stage** a `@multiarc/ace_heddle` pre-release on **npmjs.org** for
   maintainer review (`npm stage publish`).
@@ -153,10 +205,10 @@ tokens) and is skipped on fork pull requests.
 
 ## The integration sample gallery
 
-The repo-root [`samples/`](../samples/README.md) folder holds ten small, complete, runnable projects —
+The repo-root [`samples/`](../samples/README.md) folder holds eleven small, complete, runnable projects —
 one per supported way to integrate Heddle (SSR, definition libraries, dynamic models, sandboxed user
-templates, safe output, custom extensions, component libraries, build-time codegen, precompilation, and
-streaming). They double as the engine's end-to-end test suite: each captures deterministic output that CI
+templates, safe output, custom extensions, component libraries, build-time codegen, precompilation, a
+NativeAOT publish under strict load, and streaming). They double as the engine's end-to-end test suite: each captures deterministic output that CI
 compares against a committed golden, so a broken sample *is* a failed integration test.
 
 Run one interactively, or in the CI capture mode:

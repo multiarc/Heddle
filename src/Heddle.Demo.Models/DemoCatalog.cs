@@ -29,12 +29,9 @@ namespace Heddle.Demo.Models
         public object CreateInstance() => _factory();
     }
 
-    /// <summary>The model-set registry the demo page's picker binds to (phase 9 D5). v1 ships two sets.</summary>
+    /// <summary>The model-set registry the demo page's picker binds to. v1 ships two sets.</summary>
     public static class DemoCatalog
     {
-        // The blog starter: @model pins the root type (resolvable because the host registers this assembly via
-        // HeddleTemplate.Configure). Native expressions + Html profile only — no C# tier in the browser.
-        // Indented for readability — the extra whitespace it emits is insignificant in HTML output.
         private const string BlogStarter = """
             @using(){{Heddle.Demo.Models}}
             @model(){{Blog}}
@@ -51,7 +48,6 @@ namespace Heddle.Demo.Models
             </section>
             """;
 
-        // The article-card starter pairs an Article root with a <card> component definition (props + a slot).
         private const string ArticleCardStarter = """
             @using(){{Heddle.Demo.Models}}
             @model(){{Article}}

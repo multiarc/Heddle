@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Phase 9 D4 — the feature-switch substitution. When a trimmed publish sets the
+  The feature-switch substitution. When a trimmed publish sets the
   Heddle.CSharpTierEnabled feature to false (see RuntimeHostConfigurationOption in the WASM host),
   ILLink replaces HeddleFeatures.CSharpTierEnabled with a constant `false`. Every `if (!CSharpTierEnabled)`
   guard then becomes a constant-true early return, so the guarded Roslyn branches (ContextCompilation,

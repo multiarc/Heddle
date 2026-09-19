@@ -8,7 +8,7 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// The <c>@profile()</c> compile-time directive (phase 2 D2, D4, D13): both flip directions, the
+    /// The <c>@profile()</c> compile-time directive: both flip directions, the
     /// HED2001 unknown/empty/whitespace error, the HED2002 after-output warning (position + Fix + still
     /// applied), body-scoped isolation, and clean block removal (no residue where the directive stood).
     /// </summary>
@@ -115,7 +115,7 @@ namespace Heddle.Tests
         [Fact]
         public void BodyScopedFlipStaysInSubtree()
         {
-            // The flip inside the @if body affects only that subtree; the trailing @(V) keeps the Text default.
+            // Flip affects only the @if body; outside stays Text.
             var t = Compile("@if(Flag){{@profile(){{html}}[@(V)]}}[@(V)]", typeof(SubtreeModel), OutputProfile.Text);
             Assert.Equal("[&lt;i&gt;][<i>]", t.Generate(new SubtreeModel { Flag = true, V = "<i>" }));
         }

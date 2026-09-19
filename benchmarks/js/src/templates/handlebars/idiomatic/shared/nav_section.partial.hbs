@@ -1,0 +1,8 @@
+{{!-- idiomatic Handlebars implementation (Phase 4).
+     Patterns followed: https://handlebarsjs.com/guide/#simple-expressions,
+     https://handlebarsjs.com/guide/builtin-helpers.html (#if, #each),
+     https://handlebarsjs.com/guide/partials.html#partial-blocks (partial-block layout:
+     {{#> layout}} + {{> @partial-block}} at the body slot),
+     https://handlebarsjs.com/guide/partials.html (partials, partial contexts, partial parameters),
+     https://handlebarsjs.com/guide/installation/precompilation.html (precompiled execution). --}}
+<div class="nav-section">{{#if title_linked}}<span class="nav-title"><a href="{{{href}}}">{{{title}}}</a></span>{{else}}<span class="nav-title">{{{title}}}</span>{{/if}}<ul>{{#each links}}{{> nav_link}}{{/each}}</ul></div>

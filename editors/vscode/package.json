@@ -2,9 +2,25 @@
   "name": "heddle",
   "displayName": "Heddle Template Language",
   "description": "Language support for Heddle templates: completion, diagnostics, hover, and go-to-definition.",
-  "version": "2.0.0",
-  "publisher": "heddle",
-  "license": "MIT",
+  "version": "3.0.0",
+  "publisher": "multiarc",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/multiarc/Heddle.git",
+    "directory": "editors/vscode"
+  },
+  "homepage": "https://multiarc.github.io/Heddle/editor-support",
+  "bugs": {
+    "url": "https://github.com/multiarc/Heddle/issues"
+  },
+  "keywords": [
+    "heddle",
+    "template",
+    "templating",
+    "dotnet",
+    "language server"
+  ],
   "engines": {
     "vscode": "^1.91.0"
   },
@@ -53,8 +69,8 @@
         "heddle.compile.outputProfile": {
           "type": "string",
           "enum": [ "text", "html" ],
-          "default": "text",
-          "description": "Output profile the diagnostics compile against."
+          "default": "html",
+          "description": "Output profile the diagnostics compile against. Defaults to the engine's own default (html since 2.0)."
         },
         "heddle.compile.expressionMode": {
           "type": "string",
@@ -66,6 +82,17 @@
           "type": "string",
           "default": "",
           "description": "Template file name postfix (TemplateOptions.FileNamePostfix)."
+        },
+        "heddle.compile.trimDirectiveLines": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether whole-line directives swallow their line (TemplateOptions.TrimDirectiveLines)."
+        },
+        "heddle.compile.maxRecursionCount": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 100,
+          "description": "Compile-time recursion bound (TemplateOptions.MaxRecursionCount)."
         },
         "heddle.server.path": {
           "type": "string",

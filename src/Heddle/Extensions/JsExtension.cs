@@ -6,7 +6,7 @@ using Heddle.Data;
 namespace Heddle.Extensions
 {
     /// <summary>
-    /// <para>JavaScript string-literal context encoder (C2-R3). <c>@js(value)</c> escapes its value for the
+    /// <para>JavaScript string-literal context encoder. <c>@js(value)</c> escapes its value for the
     /// <i>contents</i> of a JS string literal — the author writes the surrounding quotes. Escapes <c>\</c>, <c>"</c>,
     /// <c>'</c>, backtick, U+000A, U+000D, U+2028, U+2029, <c>&lt;</c> (blocks <c>&lt;/script&gt;</c>), <c>&amp;</c>,
     /// and all C0 controls.</para>
