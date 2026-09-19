@@ -40,7 +40,39 @@
       <_HeddleProbePath>$(_HeddleDir)probe.json</_HeddleProbePath>
       <_HeddleStubsPath>$(_HeddleDir)stubs/Heddle.Generated.Stubs.g.cs</_HeddleStubsPath>
       <_HeddleResponsePath>$(_HeddleDir)compile.rsp</_HeddleResponsePath>
+      <_HeddleOptionsPath>$(_HeddleDir)options.txt</_HeddleOptionsPath>
     </PropertyGroup>
+  </Target>
+
+  <!-- Precompile="false" splits the items once for every host invocation, the stubs passes included:
+       an opted-out file is import-only (text for @<< replay; no compile, no stub, no entry point),
+       so the IDE can never see an entry point the real build omits. -->
+  <Target Name="_HeddleItems">
+    <ItemGroup>
+      <_HeddleCompileItem Include="@(HeddleTemplate)" Condition="'%(HeddleTemplate.Precompile)' != 'false'" />
+      <_HeddleImportItem Include="@(HeddleTemplate)" Condition="'%(HeddleTemplate.Precompile)' == 'false'" />
+    </ItemGroup>
+  </Target>
+
+  <!-- The option properties are compile inputs too. A value changed on the command line touches no
+       project file, so it is written to a file that changes only when a value does, and that file
+       joins _HeddleCompile's inputs; an unchanged rebuild still skips the compile. -->
+  <Target Name="_HeddleOptions"
+          DependsOnTargets="_HeddlePaths"
+          Condition="'$(DesignTimeBuild)' != 'true' and '$(BuildingProject)' == 'true' and '@(HeddleTemplate)' != ''">
+    <ItemGroup>
+      <_HeddleOptionLine Include="TemplateRoot=$(HeddleTemplateRoot)" />
+      <_HeddleOptionLine Include="OutputProfile=$(HeddleOutputProfile)" />
+      <_HeddleOptionLine Include="ExpressionMode=$(HeddleExpressionMode)" />
+      <_HeddleOptionLine Include="TrimDirectiveLines=$(HeddleTrimDirectiveLines)" />
+      <_HeddleOptionLine Include="MaxRecursionCount=$(HeddleMaxRecursionCount)" />
+      <_HeddleOptionLine Include="GeneratedNamespace=$(HeddleGeneratedNamespace)" />
+    </ItemGroup>
+    <MakeDir Directories="$(_HeddleDir)" />
+    <WriteLinesToFile File="$(_HeddleOptionsPath)" Lines="@(_HeddleOptionLine)" Overwrite="true" WriteOnlyWhenDifferent="true" />
+    <ItemGroup>
+      <FileWrites Include="$(_HeddleOptionsPath)" />
+    </ItemGroup>
   </Target>
 
   <!-- The implementation set the host binds over: project references' real outputs (not the
@@ -112,10 +144,11 @@
   <Target Name="_HeddleIntermediateCompile"
           AfterTargets="BeforeCompile"
           BeforeTargets="_HeddleCompile"
-          DependsOnTargets="_HeddlePaths;_HeddleProbe"
+          DependsOnTargets="_HeddlePaths;_HeddleItems;_HeddleProbe"
           Condition="'$(DesignTimeBuild)' != 'true' and '$(BuildingProject)' == 'true' and '$(_HeddleUnresolvedCount)' != '' and '$(_HeddleUnresolvedCount)' != '0' and '@(Compile)' != ''">
     <HeddleCompile
-        Templates="@(HeddleTemplate)"
+        Templates="@(_HeddleCompileItem)"
+        ImportOnly="@(_HeddleImportItem)"
         ProjectPath="$(MSBuildProjectFullPath)"
         TemplateRoot="$(HeddleTemplateRoot)"
         OutputProfile="$(HeddleOutputProfile)"
@@ -153,11 +186,12 @@
   <!-- Design-time builds get compiling stubs and nothing else: no engine compile, image load,
        artifact, source or stamp — so a following real build finds _HeddleCompile out of date. -->
   <Target Name="_HeddleDesignTimeStubs"
-          DependsOnTargets="_HeddlePaths"
+          DependsOnTargets="_HeddlePaths;_HeddleItems"
           BeforeTargets="CoreCompile"
           Condition="('$(DesignTimeBuild)' == 'true' or '$(BuildingProject)' != 'true') and '@(HeddleTemplate)' != ''">
     <HeddleCompile
-        Templates="@(HeddleTemplate)"
+        Templates="@(_HeddleCompileItem)"
+        ImportOnly="@(_HeddleImportItem)"
         ProjectPath="$(MSBuildProjectFullPath)"
         TemplateRoot="$(HeddleTemplateRoot)"
         OutputProfile="$(HeddleOutputProfile)"
@@ -211,14 +245,12 @@
        FileWrites; the source joins Compile before CoreCompile (live at the Csc task, unlike resources).
        The stubs pass writes none of these outputs. -->
   <Target Name="_HeddleCompile"
-          Inputs="@(HeddleTemplate);@(_HeddleImplementationImage);$(MSBuildAllProjects)"
+          Inputs="@(HeddleTemplate);@(_HeddleImplementationImage);$(MSBuildAllProjects);$(_HeddleOptionsPath)"
           Outputs="$(_HeddleArtifactPath);$(_HeddleSourcePath);$(_HeddleStampPath)"
           BeforeTargets="CoreCompile"
-          DependsOnTargets="_HeddlePaths;_HeddleCollectImages;_HeddleEngineReference;_HeddleProbe;_HeddleIntermediateCompile"
+          DependsOnTargets="_HeddlePaths;_HeddleItems;_HeddleOptions;_HeddleCollectImages;_HeddleEngineReference;_HeddleProbe;_HeddleIntermediateCompile"
           Condition="'$(DesignTimeBuild)' != 'true' and '$(BuildingProject)' == 'true' and '@(HeddleTemplate)' != ''">
     <ItemGroup>
-      <_HeddleCompileItem Include="@(HeddleTemplate)" Condition="'%(HeddleTemplate.Precompile)' != 'false'" />
-      <_HeddleImportItem Include="@(HeddleTemplate)" Condition="'%(HeddleTemplate.Precompile)' == 'false'" />
       <_HeddleImplementationImage Include="@(_HeddleIntermediateModel)" />
     </ItemGroup>
     <HeddleCompile

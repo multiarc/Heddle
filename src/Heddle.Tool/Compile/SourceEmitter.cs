@@ -23,6 +23,10 @@ namespace Heddle.Tool.Compile
             sb.Append("#pragma warning disable\n");
             sb.Append("using System;\n");
             sb.Append("using System.IO;\n");
+            // The two imports the engine's own C# class template always carries, so a printed
+            // embedded-C# site compiles in the consumer under the imports its runtime twin had.
+            sb.Append("using System.Reflection;\n");
+            sb.Append("using System.Runtime.CompilerServices;\n");
             sb.Append("using Heddle.Precompiled;\n");
             AppendCSharpUsings(sb, templates);
             sb.Append('\n');

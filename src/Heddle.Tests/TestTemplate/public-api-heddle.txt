@@ -1010,6 +1010,7 @@ TYPE Heddle.Precompiled.CompiledForm.CompiledTemplateRow
   PROP Heddle.Precompiled.CompiledForm.CompiledOptionsFingerprint Options {get;set;}
   PROP Heddle.Precompiled.CompiledForm.CompiledTypeRef ModelType {get;set;}
   PROP System.Boolean IsDynamic {get;set;}
+  PROP System.Boolean IsImportOnly {get;set;}
   PROP System.Boolean ModelTypeIsAmbient {get;set;}
   PROP System.Collections.Generic.IList<Heddle.Precompiled.CompiledForm.CompiledImport> Imports {get;set;}
   PROP System.Collections.Generic.IList<Heddle.Precompiled.PrecompiledRefusalSite> RefusalSites {get;set;}

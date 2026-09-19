@@ -256,11 +256,11 @@ namespace Heddle.Tests
 
         /// <summary>Registers artifact bytes through a dynamic marker assembly, the way the build's
         /// output registers: a [HeddleCompiledTemplates] marker naming an artifact opener.</summary>
-        internal static Assembly RegisterImage(byte[] image, string assemblyName)
+        internal static Assembly RegisterImage(byte[] image, string assemblyName, bool exactName = false)
         {
             HarnessMarker.Image = image;
             var assembly = AssemblyBuilder.DefineDynamicAssembly(
-                new AssemblyName(assemblyName + "_" + Guid.NewGuid().ToString("N")),
+                new AssemblyName(exactName ? assemblyName : assemblyName + "_" + Guid.NewGuid().ToString("N")),
                 AssemblyBuilderAccess.Run);
             var ctor = typeof(HeddleCompiledTemplatesAttribute).GetConstructor(
                 new[] { typeof(Type), typeof(int), typeof(string) });

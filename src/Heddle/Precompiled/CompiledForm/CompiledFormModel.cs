@@ -577,6 +577,12 @@ namespace Heddle.Precompiled.CompiledForm
 
         public string EntryPointTypeName { get; set; }
 
+        /// <summary>True for a <c>Precompile="false"</c> item. The row carries the template's raw text
+        /// (its root document has no elements) so every <c>@&lt;&lt;</c> that imports it replays from the
+        /// artifact, and nothing else: no compile, no sites, no entry point, and the registry never
+        /// serves it, so the template renders through the dynamic path.</summary>
+        public bool IsImportOnly { get; set; }
+
         public IList<CompiledImport> Imports { get; set; }
 
         public CompiledOptionsFingerprint Options { get; set; }

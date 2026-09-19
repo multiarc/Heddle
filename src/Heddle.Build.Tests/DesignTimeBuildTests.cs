@@ -13,9 +13,11 @@ namespace Heddle.Build.Tests
             using (var fixture = new MsBuildFixture())
             {
                 fixture.Write("templates/hello.heddle", "Hello, @(Name)!\n");
+                fixture.Write("templates/partial.heddle", "@% <greet>{{Hi}} %@\n");
                 string project = fixture.Write("app.csproj",
                     MsBuildFixture.ProjectXml("net10.0", string.Empty,
-                        "<HeddleTemplate Include=\"templates/hello.heddle\" />\n"));
+                        "<HeddleTemplate Include=\"templates/hello.heddle\" />\n" +
+                        "<HeddleTemplate Include=\"templates/partial.heddle\"><Precompile>false</Precompile></HeddleTemplate>\n"));
 
                 var designTime = fixture.Build(project, "/p:DesignTimeBuild=true");
                 designTime.AssertSuccess("design-time build");
@@ -23,8 +25,11 @@ namespace Heddle.Build.Tests
                 string[] stubs = Directory.GetFiles(fixture.Root, "Heddle.Generated.Stubs.g.cs", SearchOption.AllDirectories);
                 Assert.True(stubs.Length == 1, "expected one stubs file, found " + stubs.Length + ".");
                 string stubsText = File.ReadAllText(stubs[0]);
-                Assert.Contains("public static class", stubsText);
+                Assert.Contains("public static class Templates_Hello", stubsText);
                 Assert.Contains("throw new InvalidOperationException", stubsText);
+                // The opted-out item gets no stub either: the IDE never sees an entry point the real
+                // build omits.
+                Assert.DoesNotContain("Templates_Partial", stubsText);
                 Assert.Equal(0, Directory.GetFiles(fixture.Root, "Heddle.CompiledForm.bin", SearchOption.AllDirectories).Length);
                 Assert.Equal(0, Directory.GetFiles(fixture.Root, "Heddle.CompiledForm.g.cs", SearchOption.AllDirectories).Length);
                 Assert.Equal(0, Directory.GetFiles(fixture.Root, "stamp.txt", SearchOption.AllDirectories).Length);

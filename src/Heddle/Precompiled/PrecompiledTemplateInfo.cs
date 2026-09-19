@@ -59,9 +59,7 @@ namespace Heddle.Precompiled
             RefusalSites = row.RefusalSites != null
                 ? (IReadOnlyList<PrecompiledRefusalSite>)new List<PrecompiledRefusalSite>(row.RefusalSites).AsReadOnly()
                 : NoRefusals;
-            MemberRows = artifact.Members != null
-                ? (IReadOnlyList<CompiledMemberRow>)new List<CompiledMemberRow>(artifact.Members).AsReadOnly()
-                : NoMembers;
+            MemberRows = OwnedMemberRows(artifact, rowIndex);
         }
 
         public string Key { get; }
@@ -561,6 +559,29 @@ namespace Heddle.Precompiled
             }
 
             return converted;
+        }
+
+        /// <summary>The member rows this template's own member-accessor sites reference. The merged
+        /// artifact concatenates every template's rows, and a row another template recorded must not
+        /// decide this template's gauntlet verdict. A single-template artifact owns every row, and so
+        /// does a template in an artifact that carries no site table at all (hand-built rows).</summary>
+        private static IReadOnlyList<CompiledMemberRow> OwnedMemberRows(CompiledArtifact artifact, int rowIndex)
+        {
+            if (artifact.Members == null || artifact.Members.Count == 0)
+                return NoMembers;
+            if (artifact.Templates.Count == 1 || artifact.Sites == null || artifact.Sites.Count == 0)
+                return new List<CompiledMemberRow>(artifact.Members).AsReadOnly();
+            var owned = new List<CompiledMemberRow>();
+            var seen = new HashSet<int>();
+            foreach (var site in artifact.Sites)
+            {
+                if (site == null || site.TemplateIndex != rowIndex || site.Kind != CompiledSiteKind.MemberAccessor)
+                    continue;
+                if (site.PayloadRef < 0 || site.PayloadRef >= artifact.Members.Count || !seen.Add(site.PayloadRef))
+                    continue;
+                owned.Add(artifact.Members[site.PayloadRef]);
+            }
+            return owned.AsReadOnly();
         }
 
         /// <summary>Resolves the row's wrapper type name on the registering assembly only. Null when the row

@@ -140,6 +140,20 @@ namespace Heddle.Precompiled.CompiledForm
 
             private byte[] _current;
             private int _headerTemplateCount;
+            private int _depth;
+
+            /// <summary>One level of expression or chain nesting; past
+            /// <see cref="CompiledFormLimits.MaxNesting"/> the image is malformed.</summary>
+            private void Enter()
+            {
+                if (++_depth > CompiledFormLimits.MaxNesting)
+                    Malformed("Nesting exceeds " + CompiledFormLimits.MaxNesting + " levels.");
+            }
+
+            private void Leave()
+            {
+                _depth--;
+            }
             private readonly int[] _sectionOffsets = new int[SectionIds.RequiredCount + 1];
 
             private void Need(int count)
@@ -169,9 +183,14 @@ namespace Heddle.Precompiled.CompiledForm
                 while (true)
                 {
                     byte b = ReadByte();
-                    if (shift >= 64 && (b & 0x7F) != 0)
+                    int payload = b & 0x7F;
+                    // Ten bytes carry 70 payload bits and a ulong holds 64: the tenth byte (shift 63)
+                    // may carry only its low bit, and nothing may continue past it. C# masks the
+                    // shift count, so an unchecked later byte would fold into the low bits and a
+                    // malformed varint would decode as some other value instead of being refused.
+                    if (shift > 63 || (shift == 63 && payload > 1))
                         Malformed("A varint overflows.");
-                    value |= (ulong)(b & 0x7F) << shift;
+                    value |= (ulong)payload << shift;
                     if ((b & 0x80) == 0)
                         return value;
                     shift += 7;
@@ -504,6 +523,14 @@ namespace Heddle.Precompiled.CompiledForm
 
             private CompiledExpression ReadExpression()
             {
+                Enter();
+                var node = ReadExpressionCore();
+                Leave();
+                return node;
+            }
+
+            private CompiledExpression ReadExpressionCore()
+            {
                 byte kind = ReadByte();
                 if (kind > (byte)CompiledExprKind.MethodCall)
                     Malformed("An expression kind is out of range.");
@@ -631,6 +658,14 @@ namespace Heddle.Precompiled.CompiledForm
             }
 
             private CompiledChain ReadChain(CompiledArtifact artifact)
+            {
+                Enter();
+                var chain = ReadChainCore(artifact);
+                Leave();
+                return chain;
+            }
+
+            private CompiledChain ReadChainCore(CompiledArtifact artifact)
             {
                 var chain = new CompiledChain();
                 int items = ReadCount();
@@ -860,6 +895,7 @@ namespace Heddle.Precompiled.CompiledForm
                     template.ModelTypeIsAmbient = ReadBool();
                     template.IsDynamic = ReadBool();
                     template.EntryPointTypeName = ReadOptStringValue();
+                    template.IsImportOnly = ReadBool();
                     int imports = ReadCount();
                     for (int m = 0; m < imports; m++)
                     {

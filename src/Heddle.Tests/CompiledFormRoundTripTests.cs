@@ -177,5 +177,178 @@ namespace Heddle.Tests
             }
         }
 
+
+        /// <summary>Re-lays the container with one section's bytes replaced. The digest is not
+        /// recomputed: every structural check below fires before the digest is verified.</summary>
+        private static byte[] ReplaceSection(byte[] image, int id, byte[] blob)
+        {
+            int count = (int)System.BitConverter.ToUInt32(image, 8);
+            var ids = new System.Collections.Generic.List<int>();
+            var blobs = new System.Collections.Generic.List<byte[]>();
+            for (int i = 0; i < count; i++)
+            {
+                int entry = 12 + i * 10;
+                int sectionId = image[entry] | (image[entry + 1] << 8);
+                int offset = (int)System.BitConverter.ToUInt32(image, entry + 2);
+                int length = (int)System.BitConverter.ToUInt32(image, entry + 6);
+                var data = new byte[length];
+                System.Buffer.BlockCopy(image, offset, data, 0, length);
+                ids.Add(sectionId);
+                blobs.Add(sectionId == id ? blob : data);
+            }
+
+            var output = new System.Collections.Generic.List<byte>();
+            for (int i = 0; i < 12; i++)
+                output.Add(image[i]);
+            int cursor = 12 + count * 10;
+            for (int i = 0; i < count; i++)
+            {
+                output.Add((byte)ids[i]);
+                output.Add((byte)(ids[i] >> 8));
+                output.AddRange(System.BitConverter.GetBytes((uint)cursor));
+                output.AddRange(System.BitConverter.GetBytes((uint)blobs[i].Length));
+                cursor += blobs[i].Length;
+            }
+            foreach (var data in blobs)
+                output.AddRange(data);
+            return output.ToArray();
+        }
+
+        /// <summary>A varint whose tenth byte carries more than one bit overflows a ulong; before the
+        /// check the surplus bits were shifted away and the value decoded as something else.</summary>
+        [Fact]
+        public void VarintOverflowingAULongIsMalformed()
+        {
+            byte[] good = CompiledFormWriter.Write(CompiledFormHarness.MinimalArtifact());
+            var strings = new System.Collections.Generic.List<byte>();
+            for (int i = 0; i < 9; i++)
+                strings.Add(0x80);
+            strings.Add(0x7F);
+            var fault = Assert.Throws<InvalidDataException>(
+                () => CompiledFormReader.Read(ReplaceSection(good, SectionIds.Strings, strings.ToArray())));
+            Assert.Contains("varint overflows", fault.Message);
+        }
+
+        private static CompiledExpression Nested(int depth)
+        {
+            var node = new CompiledExpression { Kind = CompiledExprKind.This, Position = new CompiledPosition(0, 0) };
+            for (int i = 0; i < depth; i++)
+                node = new CompiledExpression
+                {
+                    Kind = CompiledExprKind.Unary,
+                    Position = new CompiledPosition(0, 0),
+                    Operator = CompiledExprOperator.Add,
+                    Operand = node
+                };
+            return node;
+        }
+
+        [Fact]
+        public void NestingAtTheBoundRoundTripsAndOneDeeperIsRefusedByTheWriter()
+        {
+            var artifact = CompiledFormHarness.MinimalArtifact();
+            artifact.Expressions.Add(new CompiledExpressionTree { Root = Nested(CompiledFormLimits.MaxNesting - 1) });
+            var back = CompiledFormReader.Read(CompiledFormWriter.Write(artifact));
+            int depth = 0;
+            for (var node = back.Expressions[0].Root; node.Kind == CompiledExprKind.Unary; node = node.Operand)
+                depth++;
+            Assert.Equal(CompiledFormLimits.MaxNesting - 1, depth);
+
+            var deeper = CompiledFormHarness.MinimalArtifact();
+            deeper.Expressions.Add(new CompiledExpressionTree { Root = Nested(CompiledFormLimits.MaxNesting) });
+            var fault = Assert.Throws<System.InvalidOperationException>(() => CompiledFormWriter.Write(deeper));
+            Assert.Contains("nesting exceeds", fault.Message);
+        }
+
+        /// <summary>The reader's own bound, reached through bytes the writer refuses to produce: a
+        /// unary chain one level past the limit is malformed, not a stack overflow.</summary>
+        [Fact]
+        public void NestingBeyondTheBoundIsMalformedAtLoad()
+        {
+            byte[] good = CompiledFormWriter.Write(CompiledFormHarness.MinimalArtifact());
+            var blob = new System.Collections.Generic.List<byte> { 1 };
+            for (int i = 0; i <= CompiledFormLimits.MaxNesting; i++)
+            {
+                blob.Add((byte)CompiledExprKind.Unary);
+                blob.Add(0);
+                blob.Add(0);
+                blob.Add((byte)CompiledExprOperator.Add);
+            }
+            blob.Add((byte)CompiledExprKind.This);
+            blob.Add(0);
+            blob.Add(0);
+            blob.Add(0);
+            blob.Add(0);
+            blob.Add(0);
+            blob.Add(0);
+            var fault = Assert.Throws<InvalidDataException>(
+                () => CompiledFormReader.Read(ReplaceSection(good, SectionIds.Expressions, blob.ToArray())));
+            Assert.Contains("Nesting exceeds", fault.Message);
+        }
+
+        [Fact]
+        public void ImportOnlyRowRoundTripsAndIsNotRegistered()
+        {
+            var artifact = CompiledFormHarness.MinimalArtifact();
+            artifact.Documents[0].RawText = "<greet>{{Hi}}";
+            var row = CompiledFormHarness.TemplateRow("importonly/partial.heddle");
+            row.IsImportOnly = true;
+            artifact.Templates.Add(row);
+            artifact.Templates.Add(CompiledFormHarness.TemplateRow("importonly/page.heddle"));
+            var back = CompiledFormReader.Read(CompiledFormWriter.Write(artifact));
+            Assert.True(back.Templates[0].IsImportOnly);
+            Assert.False(back.Templates[1].IsImportOnly);
+
+            CompiledFormHarness.RegisterArtifact(artifact, "HeddleTestAsm_ImportOnly");
+            Assert.False(PrecompiledTemplates.TryGet("importonly/partial.heddle", out _));
+            Assert.True(PrecompiledTemplates.TryGet("importonly/page.heddle", out _));
+        }
+
+        /// <summary>Idempotence is per assembly instance: registering the same assembly twice is a
+        /// no-op, while a different assembly with the same simple name is a real registration whose
+        /// duplicate key is diagnosed instead of the second assembly being dropped silently.</summary>
+        [Fact]
+        public void SameSimpleNameFromAnotherAssemblyIsNotSilentlySkipped()
+        {
+            var artifact = CompiledFormHarness.MinimalArtifact();
+            artifact.Templates.Add(CompiledFormHarness.TemplateRow("identity/one.heddle"));
+            byte[] image = CompiledFormWriter.Write(artifact);
+            var first = CompiledFormHarness.RegisterImage(image, "HeddleTestAsm_SameName", exactName: true);
+            PrecompiledTemplates.Register(first);
+            Assert.True(PrecompiledTemplates.TryGet("identity/one.heddle", out _));
+
+            var fault = Assert.Throws<PrecompiledRegistrationException>(
+                () => CompiledFormHarness.RegisterImage(image, "HeddleTestAsm_SameName", exactName: true));
+            Assert.Contains("identity/one.heddle", fault.Message);
+        }
+
+        /// <summary>The gauntlet checks the member rows a template's own sites reference, not the whole
+        /// merged table: a row another template recorded cannot fail this one.</summary>
+        [Fact]
+        public void MemberRowsBelongToTheTemplateWhoseSitesReferenceThem()
+        {
+            var artifact = CompiledFormHarness.MinimalArtifact();
+            artifact.Templates.Add(CompiledFormHarness.TemplateRow("owned/a.heddle"));
+            artifact.Templates.Add(CompiledFormHarness.TemplateRow("owned/b.heddle"));
+            artifact.Members.Add(new CompiledMemberRow
+            {
+                StartType = CompiledFormHarness.TypeRef(typeof(string)),
+                Segments = { "Length" },
+                Hops = { new CompiledMemberHop { DeclaringType = CompiledFormHarness.TypeRef(typeof(string)), MemberName = "Length", MemberType = CompiledFormHarness.TypeRef(typeof(int)) } }
+            });
+            artifact.Members.Add(new CompiledMemberRow
+            {
+                StartType = CompiledFormHarness.TypeRef("Nope.Missing", "NopeAssembly"),
+                Segments = { "Gone" },
+                Hops = { new CompiledMemberHop { DeclaringType = CompiledFormHarness.TypeRef("Nope.Missing", "NopeAssembly"), MemberName = "Gone", MemberType = CompiledFormHarness.TypeRef(typeof(int)) } }
+            });
+            artifact.Sites.Add(new CompiledSiteRow { TemplateIndex = 0, SiteOrdinal = 0, Kind = CompiledSiteKind.MemberAccessor, PayloadRef = 0 });
+            artifact.Sites.Add(new CompiledSiteRow { TemplateIndex = 1, SiteOrdinal = 0, Kind = CompiledSiteKind.MemberAccessor, PayloadRef = 1 });
+
+            var a = CompiledFormHarness.LoaderRow(artifact, 0);
+            var b = CompiledFormHarness.LoaderRow(artifact, 1);
+            Assert.Equal("Length", Assert.Single(a.MemberRows).Segments[0]);
+            Assert.Equal("Gone", Assert.Single(b.MemberRows).Segments[0]);
+        }
     }
 }

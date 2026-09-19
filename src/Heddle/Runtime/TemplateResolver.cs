@@ -206,7 +206,9 @@ namespace Heddle.Runtime {
                 // A miss, or a Fallback-policy gauntlet failure (an options fingerprint built Native cannot answer
                 // these arms' FullCSharp request), falls through to the unchanged cache/disk ladder.
                 if (PrecompiledTemplates.TryResolve(key, options, requestModelType, out var entry)) {
-                    cached = new HeddleTemplate(entry.Strategy, options.Encoder, options.RenderBudget,
+                    // The strategy for the request the gauntlet just validated: its function registry,
+                    // root path, recursion limit and strict-load setting, not the default shape.
+                    cached = new HeddleTemplate(entry.GetStrategy(options), options.Encoder, options.RenderBudget,
                         modelType: entry.ModelType);
                     searchedLocations = null;
                     relativePath = candidate;

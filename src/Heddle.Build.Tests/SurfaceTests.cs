@@ -1,4 +1,6 @@
 using System.IO;
+using System.Reflection;
+using Heddle.Precompiled;
 using Xunit;
 
 namespace Heddle.Build.Tests
@@ -39,35 +41,52 @@ namespace Heddle.Build.Tests
             }
         }
 
+        /// <summary>The opt-out contract: a <c>Precompile="false"</c> item is not compiled, emits no
+        /// entry point, and its row is import-only — the raw text for the <c>@&lt;&lt;</c> that imports
+        /// it, never a registry entry — so it renders through the dynamic path while the template
+        /// importing it still precompiles.</summary>
         [Fact]
-        public void PrecompileFalseEmitsRowWithoutWrapper()
+        public void PrecompileFalseIsAnImportOnlyRowWithoutWrapperOrRegistryEntry()
         {
             using (var fixture = new MsBuildFixture())
             {
-                fixture.Write("templates/hello.heddle", Template);
-                string project = fixture.Write("app.csproj",
+                fixture.Write("templates/partial.heddle", "@% <greet>{{Hi}} %@\n");
+                fixture.Write("templates/page.heddle", "@<<{{templates/partial.heddle}}@greet()\n");
+                string project = fixture.Write("importonly.csproj",
                     MsBuildFixture.ProjectXml("net10.0", string.Empty,
-                        "<HeddleTemplate Include=\"templates/hello.heddle\" />\n"));
+                        "<HeddleTemplate Include=\"templates/partial.heddle\" />\n" +
+                        "<HeddleTemplate Include=\"templates/page.heddle\" />\n"));
 
                 fixture.Build(project).AssertSuccess("baseline build");
                 var before = Heddle.Precompiled.CompiledForm.CompiledFormReader.Read(
                     File.ReadAllBytes(MsBuildFixture.Artifact(fixture.Root)));
-                Assert.Equal(1, before.Templates.Count);
-                Assert.Equal(1, CountWrappers(File.ReadAllText(MsBuildFixture.GeneratedSource(fixture.Root))));
+                Assert.Equal(2, before.Templates.Count);
+                Assert.All(before.Templates, row => Assert.False(row.IsImportOnly));
+                Assert.Equal(2, CountWrappers(File.ReadAllText(MsBuildFixture.GeneratedSource(fixture.Root))));
                 string stampBefore = File.ReadAllText(MsBuildFixture.Stamp(fixture.Root));
 
-                // Import-only rows load and serve (the row stays) but emit no entry-point wrapper.
-                fixture.Write("app.csproj",
+                fixture.Write("importonly.csproj",
                     MsBuildFixture.ProjectXml("net10.0", string.Empty,
-                        "<HeddleTemplate Include=\"templates/hello.heddle\"><Precompile>false</Precompile></HeddleTemplate>\n"));
+                        "<HeddleTemplate Include=\"templates/partial.heddle\"><Precompile>false</Precompile></HeddleTemplate>\n" +
+                        "<HeddleTemplate Include=\"templates/page.heddle\" />\n"));
                 fixture.Build(project).AssertSuccess("Precompile=false build");
                 var after = Heddle.Precompiled.CompiledForm.CompiledFormReader.Read(
                     File.ReadAllBytes(MsBuildFixture.Artifact(fixture.Root)));
-                Assert.Equal(1, after.Templates.Count);
-                Assert.Equal("templates/hello.heddle", after.Templates[0].Key);
-                Assert.Equal(0, CountWrappers(File.ReadAllText(MsBuildFixture.GeneratedSource(fixture.Root))));
+                Assert.Equal(2, after.Templates.Count);
+                Assert.Equal("templates/page.heddle", after.Templates[0].Key);
+                Assert.False(after.Templates[0].IsImportOnly);
+                Assert.Equal("templates/partial.heddle", after.Templates[1].Key);
+                Assert.True(after.Templates[1].IsImportOnly);
+                Assert.Equal("@% <greet>{{Hi}} %@\n", after.Documents[after.Templates[1].RootDocumentRef].RawText);
+                Assert.Empty(after.Documents[after.Templates[1].RootDocumentRef].Elements);
+                Assert.Equal(1, CountWrappers(File.ReadAllText(MsBuildFixture.GeneratedSource(fixture.Root))));
                 Assert.True(stampBefore != File.ReadAllText(MsBuildFixture.Stamp(fixture.Root)),
                     "Precompile=false left the stamp identical.");
+
+                // Registered like a deployed host's assembly: the page has an entry, the partial none.
+                PrecompiledTemplates.Register(Assembly.LoadFrom(MsBuildFixture.BuiltAssembly(fixture.Root, "importonly")));
+                Assert.True(PrecompiledTemplates.TryGet("templates/page.heddle", out _));
+                Assert.False(PrecompiledTemplates.TryGet("templates/partial.heddle", out _));
             }
         }
 

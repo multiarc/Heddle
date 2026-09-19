@@ -25,6 +25,7 @@ namespace Heddle.Precompiled
                 Dictionary<string, string> keyOwner,
                 Dictionary<string, string> shadow,
                 HashSet<string> assemblies,
+                HashSet<Assembly> instances,
                 Dictionary<string, PrecompiledTemplateInfo> byName,
                 Dictionary<string, string> nameOwner)
             {
@@ -32,6 +33,7 @@ namespace Heddle.Precompiled
                 KeyOwner = keyOwner;
                 Shadow = shadow;
                 Assemblies = assemblies;
+                Instances = instances;
                 ByName = byName;
                 NameOwner = nameOwner;
             }
@@ -40,6 +42,12 @@ namespace Heddle.Precompiled
             public Dictionary<string, string> KeyOwner { get; }
             public Dictionary<string, string> Shadow { get; }
             public HashSet<string> Assemblies { get; }
+
+            /// <summary>The <see cref="Assembly"/> instances registered so far, for idempotence. Identity,
+            /// not simple name: two assemblies sharing a simple name (versions, plugin load contexts) are
+            /// two registrations, and their duplicate keys are diagnosed instead of the second one being
+            /// dropped silently. <see cref="Assemblies"/> keeps the names for diagnostics.</summary>
+            public HashSet<Assembly> Instances { get; }
 
             /// <summary>The registered-name index — a <b>second</b> index rather than extra rows in
             /// <see cref="ByKey"/>, which is what makes key precedence structural. Invariant, enforced from both
@@ -61,6 +69,7 @@ namespace Heddle.Precompiled
             new Dictionary<string, string>(StringComparer.Ordinal),
             new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
             new HashSet<string>(StringComparer.Ordinal),
+            new HashSet<Assembly>(),
             new Dictionary<string, PrecompiledTemplateInfo>(StringComparer.Ordinal),
             new Dictionary<string, string>(StringComparer.Ordinal));
 
@@ -169,8 +178,8 @@ namespace Heddle.Precompiled
             lock (RegistrationLock)
             {
                 var current = _snapshot;
-                if (current.Assemblies.Contains(assemblyName))
-                    return; // idempotent per assembly
+                if (current.Instances.Contains(assembly))
+                    return; // idempotent per assembly instance
 
                 // A supported schema opens the artifact the marker names. Hand-written manifests went
                 // with the 2.x generator: a marker that names anything else is rejected whole.
@@ -278,8 +287,9 @@ namespace Heddle.Precompiled
                 }
 
                 var assemblies = new HashSet<string>(current.Assemblies, StringComparer.Ordinal) { assemblyName };
+                var instances = new HashSet<Assembly>(current.Instances) { assembly };
                 Volatile.Write(ref _snapshot,
-                    new Snapshot(byKey, keyOwner, shadow, assemblies, byName, nameOwner));
+                    new Snapshot(byKey, keyOwner, shadow, assemblies, instances, byName, nameOwner));
             }
 
             if (lostNames != null)
@@ -316,8 +326,13 @@ namespace Heddle.Precompiled
             var decoded = CompiledFormReader.Read(image);
             var rows = new List<PrecompiledTemplateInfo>(decoded.Templates.Count);
             for (int i = 0; i < decoded.Templates.Count; i++)
+            {
+                // An import-only row (Precompile="false") carries text for @<< replay and no entry.
+                if (decoded.Templates[i].IsImportOnly)
+                    continue;
                 rows.Add(new PrecompiledTemplateInfo(assembly, image, decoded, i,
                     artifactInstance as IPrecompiledSiteTable));
+            }
             return rows;
         }
 

@@ -608,9 +608,16 @@ namespace Heddle.Tool.Compile
             {
                 if (template.Key == null)
                     continue;
+                // A Precompile="false" item is not compiled: its own errors stay unreported by
+                // request, and its row carries only the text that @<< imports of it replay from.
+                if (template.Item.IsImportOnly)
+                {
+                    parts.Add(ImportOnlyPart(template, options, engineVersion));
+                    continue;
+                }
                 imports.Current = template.FullPath;
                 var single = CompileOne(request, template, imports, images, options, diagnostics,
-                    engineVersion, outcome);
+                    engineVersion, outcome, parts.Count);
                 if (single == null)
                     failed = true;
                 else
@@ -625,6 +632,47 @@ namespace Heddle.Tool.Compile
             outcome.Artifact = CompiledArtifactMerger.Merge(parts);
             PrintGeneratedSites(request, outcome, diagnostics);
             return outcome;
+        }
+
+        /// <summary>The row a <c>Precompile="false"</c> item contributes: key, registered name, content
+        /// hash and raw text (one document with no elements), so every <c>@&lt;&lt;</c> that imports it
+        /// replays from the artifact. No compile, no sites, no entry point; the registry skips the
+        /// row and the template renders through the dynamic path.</summary>
+        private static CompiledArtifact ImportOnlyPart(TemplateInput template, ResolvedOptions options,
+            string engineVersion)
+        {
+            var part = new CompiledArtifact
+            {
+                Header = new CompiledHeader
+                {
+                    EngineVersion = engineVersion,
+                    BuilderVersion = options.BuildVersion,
+                    ExpressionMode = options.ExpressionMode.ToString(),
+                    TrimDirectiveLines = options.TrimDirectiveLines,
+                    DefaultOutputProfile = options.OutputProfile.ToString()
+                }
+            };
+            part.Documents.Add(new CompiledDocument
+            {
+                RawText = template.Text ?? string.Empty,
+                ParseFacts = new CompiledParseFacts()
+            });
+            part.Templates.Add(new CompiledTemplateRow
+            {
+                Key = template.Key,
+                RegisteredName = template.RegisteredName,
+                ContentHash = template.ContentHash ?? string.Empty,
+                IsImportOnly = true,
+                Options = new CompiledOptionsFingerprint
+                {
+                    Profile = options.OutputProfile.ToString(),
+                    Mode = options.ExpressionMode.ToString(),
+                    Trim = options.TrimDirectiveLines
+                },
+                RootDocumentRef = 0,
+                SiteCount = 0
+            });
+            return part;
         }
 
         private sealed class ImportPair
@@ -644,7 +692,7 @@ namespace Heddle.Tool.Compile
 
         private static CompiledArtifact CompileOne(CompileRequest request, TemplateInput template,
             ImportPair imports, ImageLoadContext images, ResolvedOptions options,
-            DiagnosticWriter diagnostics, string engineVersion, CompileOutcome outcome)
+            DiagnosticWriter diagnostics, string engineVersion, CompileOutcome outcome, int templateIndex)
         {
             OutputProfile profile = options.OutputProfile;
             if (!string.IsNullOrEmpty(template.Item.OutputProfile))
@@ -804,9 +852,9 @@ namespace Heddle.Tool.Compile
                 return null;
             }
 
-            // Every compiled row emits its table arms and site methods (import-only rows load
-            // and serve but emit no entry-point wrapper); the printer runs post-merge, when every
-            // template index is final, and HED7031 reports from the merged rows then.
+            // Every compiled row emits its table arms, site methods and entry-point wrapper; the
+            // printer runs post-merge, when every template index is final, and HED7031 reports
+            // from the merged rows then. Import-only items never reach here (ImportOnlyPart).
             var emitted = new SourceEmitter.EmittedTemplate
             {
                 Key = template.Key,
@@ -815,7 +863,7 @@ namespace Heddle.Tool.Compile
                     ? "object"
                     : "global::" + modelType.FullName.Replace('+', '.'),
                 ContentHash = template.ContentHash ?? string.Empty,
-                EmitWrapper = !template.Item.IsImportOnly
+                EmitWrapper = true
             };
             int emittedIndex = outcome.Emitted.Count;
             outcome.Emitted.Add(emitted);
@@ -827,7 +875,7 @@ namespace Heddle.Tool.Compile
                 Members = single.Members != null ? single.Members.Count : 0,
                 Expressions = single.Expressions != null ? single.Expressions.Count : 0,
                 CSharp = single.CSharpSites != null ? single.CSharpSites.Count : 0,
-                TemplateIndex = outcome.PrintParts.Count,
+                TemplateIndex = templateIndex,
                 EmittedIndex = emittedIndex
             });
             return single;

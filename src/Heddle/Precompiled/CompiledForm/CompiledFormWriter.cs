@@ -529,7 +529,29 @@ namespace Heddle.Precompiled.CompiledForm
                 }
             }
 
+            private int _depth;
+
+            /// <summary>The writer refuses the nesting the reader would refuse, so every artifact the
+            /// build produced loads.</summary>
+            private void Enter()
+            {
+                Require(++_depth <= CompiledFormLimits.MaxNesting,
+                    "nesting exceeds " + CompiledFormLimits.MaxNesting + " levels.");
+            }
+
+            private void Leave()
+            {
+                _depth--;
+            }
+
             private void WriteExpression(CompiledExpression node)
+            {
+                Enter();
+                WriteExpressionCore(node);
+                Leave();
+            }
+
+            private void WriteExpressionCore(CompiledExpression node)
             {
                 Require(node != null, "An expression node is null.");
                 Require(node.Kind >= CompiledExprKind.Literal && node.Kind <= CompiledExprKind.MethodCall,
@@ -684,6 +706,13 @@ namespace Heddle.Precompiled.CompiledForm
             }
 
             private void WriteChain(CompiledChain chain, CompiledArtifact artifact)
+            {
+                Enter();
+                WriteChainCore(chain, artifact);
+                Leave();
+            }
+
+            private void WriteChainCore(CompiledChain chain, CompiledArtifact artifact)
             {
                 Require(chain.Items != null, "A chain item list is null.");
                 WriteCount(chain.Items.Count);
@@ -902,6 +931,7 @@ namespace Heddle.Precompiled.CompiledForm
                     WriteBool(template.ModelTypeIsAmbient);
                     WriteBool(template.IsDynamic);
                     WriteOptString(template.EntryPointTypeName);
+                    WriteBool(template.IsImportOnly);
                     Require(template.Imports != null, "Template imports are null.");
                     WriteCount(template.Imports.Count);
                     foreach (var import in template.Imports)

@@ -38,6 +38,35 @@ namespace Heddle.Build.Tests
             }
         }
 
+        /// <summary>An option changed on the command line touches no project file; the options
+        /// fingerprint file makes it a compile input, and an unchanged repeat is still up to date.</summary>
+        [Fact]
+        public void OptionChangedOnTheCommandLineRecompiles()
+        {
+            using (var fixture = new MsBuildFixture())
+            {
+                fixture.Write("templates/hello.heddle", "Hello, @(Name)!\n");
+                fixture.Write("Dummy.cs", "class Dummy { }\n");
+                string project = fixture.Write("app.csproj",
+                    MsBuildFixture.ProjectXml("net10.0", string.Empty,
+                        "<HeddleTemplate Include=\"templates/hello.heddle\" />\n"));
+
+                fixture.Build(project).AssertSuccess("baseline build");
+                string before = MsBuildFixture.Sha256File(MsBuildFixture.Artifact(fixture.Root));
+
+                var changed = fixture.Build(project, "/p:HeddleOutputProfile=Text");
+                changed.AssertSuccess("rebuild with a changed option");
+                Assert.DoesNotContain("Skipping target \"_HeddleCompile\"", changed.Output);
+                Assert.NotEqual(before, MsBuildFixture.Sha256File(MsBuildFixture.Artifact(fixture.Root)));
+
+                System.Threading.Thread.Sleep(1100);
+                File.SetLastWriteTimeUtc(Path.Combine(fixture.Root, "Dummy.cs"), System.DateTime.UtcNow);
+                var same = fixture.Build(project, "/p:HeddleOutputProfile=Text");
+                same.AssertSuccess("rebuild with the same option");
+                Assert.Contains("Skipping target \"_HeddleCompile\" because all output files are up-to-date", same.Output);
+            }
+        }
+
         [Fact]
         public void RebuiltModelWithSameIdentityKeepsTheArtifact()
         {

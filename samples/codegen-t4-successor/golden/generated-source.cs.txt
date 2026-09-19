@@ -2,6 +2,8 @@
 #pragma warning disable
 using System;
 using System.IO;
+using System.Reflection;
+using System.Runtime.CompilerServices;
 using Heddle.Precompiled;
 
 [assembly: HeddleCompiledTemplates(typeof(Heddle.Generated.HeddleArtifact), 4, "<version>")]
@@ -29,13 +31,6 @@ namespace Heddle.Generated
         public bool TryGetSite(string templateContentHash, int templateIndex, int siteOrdinal, out Delegate site)
         {
             site = null;
-            if (templateIndex == 0 && string.Equals(templateContentHash, "<digest>", System.StringComparison.Ordinal))
-            {
-                switch (siteOrdinal)
-                {
-                    default: site = null; return false;
-                }
-            }
             if (templateIndex == 1 && string.Equals(templateContentHash, "<digest>", System.StringComparison.Ordinal))
             {
                 switch (siteOrdinal)
