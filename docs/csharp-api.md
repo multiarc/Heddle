@@ -107,7 +107,7 @@ Behavior notes:
 string html = template.Generate(model);
 ```
 
-### Streaming: `Generate` into a sink
+### Streaming into a sink
 
 Alongside the string overload, `HeddleTemplate` renders into a sink with **no full‑output
 string materialization** — the structural allocation high‑throughput server‑side rendering
@@ -244,7 +244,7 @@ Controls where templates are read from and which features are enabled
 | `ExpressionMode` | `Native` | Selects the expression tier: `MemberPathsOnly`, `Native` (sandbox‑safe operators/functions — see [Native Expressions](native-expressions.md)), or `FullCSharp` (adds the inner‑`@` Roslyn tier). |
 | `Functions` | `null` (= `FunctionRegistry.Default`) | Functions callable from native expressions; see [Native Expressions](native-expressions.md#registered-functions). |
 | `OutputProfile` | `Html` | Selects whether the unnamed `@(...)` output HTML‑encodes by default: `Html` (bodiless `@(value)` encodes; `@raw` opts out) — the default — or `Text` (raw output; the 1.x‑compatibility setting). Inherited by bodies/partials/imports; also settable per template with [`@profile()`](built-in-extensions.md#profile). See [Output profiles](language-reference.md#output-profiles). Participates in `Equals`/`GetHashCode`. |
-| `TrimDirectiveLines` | `true` | When `true` (the default), a whole‑line directive that produces no output (`@using`, `@model`, `@profile(){{…}}`, `@% … %@` definitions, `@<<` imports, whole‑line comments, and any extension whose `InitStart` returns `null`) swallows its line — leading indentation, trailing spaces, and one line terminator. Inherited by child compiles. Set `false` to keep 1.x whitespace byte‑exact. Participates in `Equals`/`GetHashCode` (it changes rendered bytes, so it keys template caches). Compile‑time only. See [Whitespace trimming](language-reference.md#whitespace-trimming-). |
+| `TrimDirectiveLines` | `true` | When `true` (the default), a whole‑line directive that produces no output (`@using`, `@model`, `@profile(){{…}}`, `@% … %@` definitions, `@<<` imports, whole‑line comments, and any extension whose `InitStart` returns `null`) swallows its line — leading indentation, trailing spaces, and one line terminator. Inherited by child compiles. Set `false` to keep 1.x whitespace byte‑exact. Participates in `Equals`/`GetHashCode` (it changes rendered bytes, so it keys template caches). Compile‑time only. See [Whitespace trimming](language-reference.md#whitespace-trimming). |
 | `Encoder` | `null` (legacy `WebUtility.HtmlEncode`) | The output encoder used at HTML‑encoding sites — bare `@(value)` under `OutputProfile.Html` and `[EncodeOutput]` extensions. A `System.Text.Encodings.Web.TextEncoder`; `null` (the default) keeps the built‑in legacy path (`WebUtility.HtmlEncode`, byte‑identical to 2.0.0). Set `HtmlEncoder.Create(UnicodeRanges.All)` for a modern Unicode‑aware encoder, or supply a `JavaScriptEncoder`/`UrlEncoder`/custom `TextEncoder`. Not applied to `@raw`, raw blocks, literal text, or `OutputProfile.Text`. Participates in `Equals`/`GetHashCode` **by reference** (a different encoder instance renders different bytes, so it keys template caches). See [encoding contexts](built-in-extensions.md#encoding-contexts). |
 | `AllowCSharp` | `false` | **Obsolete** bridge over `ExpressionMode` (use `ExpressionMode` directly): `true` == `FullCSharp`. Enables embedded C# (`@( @expr )`, `@new`, LINQ, typed `@model()`). Setting `false` leaves `MemberPathsOnly` untouched, otherwise selects `Native`. Reads and writes keep working; new code sets `ExpressionMode`. |
 | `MaxRecursionCount` | `100` | Upper bound on definition recursion depth. |
@@ -333,7 +333,7 @@ bound zero‑output loops or in‑memory value accumulation. For a hard bound ag
 **Streaming caveat.** On the `TextWriter`/`IBufferWriter` sinks, whatever was written before the
 breach **stays written** — the engine is write‑through and the caller owns the sink. Treat
 `TemplateRenderBudgetException` as *abort the response*: stop, and do not treat the partial output as
-complete. (See also [Streaming](#streaming-generate-into-a-sink).)
+complete. (See also [Streaming](#streaming-into-a-sink).)
 
 ### Choosing the output profile per template
 
@@ -453,12 +453,12 @@ to descend into elements or swap model/chained values. See
   errors with positions. The parser first tries fast SLL prediction and falls back to full LL
   diagnostics on ambiguity, recording a warning when it does — that SLL→LL warning lands on
   `ParseContext.Warnings` (reachable via `CompileResult.Context.Warnings`), not
-  `CompileContext.CompileWarnings` (see [Architecture](architecture.md#2-parsing)).
+  `CompileContext.CompileWarnings` (see [Architecture](architecture.md#stage-2-parsing)).
 - **Render errors** surface as exceptions from `Generate`
   (`TemplateInitException`, `TemplateCompileException`, and
   `TemplateProcessingException` for a model‑type mismatch).
 
-## End‑to‑end example
+## End-to-end example
 
 ```csharp
 using System.Reflection;
@@ -483,7 +483,7 @@ string html = template.Generate(myBlog);
 
 ---
 
-## Build‑time pre‑compilation
+## Build-time pre-compilation
 
 Templates can be pre‑compiled into your assembly at build time so they are **looked up, not
 parsed and compiled** at run time — the Razor compiled‑views shape. The runtime types above are

@@ -30,7 +30,7 @@ public class Greeting { public string Name { get; set; } public int Count { get;
 | --- | --- |
 | `Heddle` | Core engine: parser host, compiler, runtime, built‑in extensions. |
 | `Heddle.Language` | ANTLR grammar + generated lexer/parser and editor assets. |
-| `Heddle.Build` | Build‑time host that pre‑compiles `.heddle` files into your assembly (MSBuild targets driving the out‑of‑process `heddle compile`). Replaces `Heddle.Generator` — see [Upgrading from 2.x](docs/precompilation.md#upgrading-from-2x). |
+| `Heddle.Build` | Build‑time host that pre‑compiles `.heddle` files into your assembly (MSBuild targets driving the out‑of‑process `heddle compile`). Replaces `Heddle.Generator` — see [Upgrading from 2.x](docs/precompilation.md#upgrading-from-version-2). |
 | `Heddle.LanguageServices` | Editor language‑service facade (completion, diagnostics, hover, go‑to‑definition) you can host yourself. |
 | `Heddle.LanguageServer` | LSP server for editors, shipped as a `dotnet tool` (`heddle-lsp`). |
 | `Heddle.Tool` | The `heddle` CLI — a `dotnet tool` for rendering templates and build‑time code generation (the T4 successor). |

@@ -1,4 +1,4 @@
-# Build‑Time Pre‑compilation
+# Build-Time Pre-compilation
 
 Heddle can pre‑compile your `.heddle` templates **at build time** into your application
 assembly — the Razor compiled‑views shape. A precompiled template is **looked up, not parsed
@@ -174,7 +174,7 @@ Assembly configuration is deliberately **not** in this table — it is not an op
 
 ---
 
-## Upgrading from 2.x
+## Upgrading from version 2
 
 1. **Swap the package.** Replace the `Heddle.Generator` reference with `Heddle.Build` ([Setup](#setup)).
    `<HeddleTemplate>` items, their metadata and the option properties carry over.
@@ -186,7 +186,7 @@ Assembly configuration is deliberately **not** in this table — it is not an op
 4. **Typed entry points.** A `Heddle.Generated.*` entry renders under `PrecompiledTemplates.DefaultOptions`
    and throws `PrecompiledMismatchException` when its own artifact fails validation: assign the options
    and call `Register` + `ValidateAll` at startup
-   ([Typed entry points](#typed-entry-points--the-recommended-host-api)).
+   ([Typed entry points](#typed-entry-points)).
 5. **Build machines need the .NET 10 SDK.** `heddle compile` runs on .NET 10 whatever the project
    targets. The build host is not the target runtime: a BCL member absent on the target framework is a
    load‑time gate fallback, not a build error — run `ValidateAll` on the target before serving.
@@ -217,7 +217,7 @@ Assembly configuration is deliberately **not** in this table — it is not an op
 
 ---
 
-## Typed entry points — the recommended host API
+## Typed entry points
 
 Each precompiled template emits a static class (`{HeddleGeneratedNamespace}.{SanitizedName}`,
 e.g. `views/home/index.heddle` → `Views_Home_Index`). Call it directly — compile‑checked
@@ -240,7 +240,7 @@ model‑less template** — the build host always emits an `object model` parame
 > to hear about once, rather than per bind, is the aggregate pass below: call
 > [`PrecompiledTemplates.ValidateAll`](#validating-everything-once-after-configuration) once at startup.
 
-## The registry — for dynamic call sites
+## The registry for dynamic call sites
 
 Templates identified by a runtime value (a path, a database key) resolve through the registry
 instead. Registration is repeatable and idempotent per assembly:
@@ -724,7 +724,7 @@ different compilation.
 
 ---
 
-## Build‑time diagnostics
+## Build-time diagnostics
 
 Each build‑time condition reports with an `HED7xxx` id. Template‑content conditions report at
 their `.heddle` position; file/key/option‑level conditions report without a source location:
@@ -787,7 +787,7 @@ silently under `HED7031`.
 each keeps its row above, and the number is never reused for another fact. Where the engine diagnoses
 the same fact, the build reports the engine's id.
 
-## The T4‑successor CLI
+## The T4-successor CLI
 
 The `heddle` CLI hosts the full dynamic engine — the T4‑successor codegen story. Installed as a
 `dotnet tool`, it renders a template against a JSON model:

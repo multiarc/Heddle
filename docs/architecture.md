@@ -3,7 +3,7 @@
 This page is for contributors who want to understand or modify the engine. It traces a
 template from text to rendered output and points at the types that do each job.
 
-## High‑level pipeline
+## High-level pipeline
 
 ```text
 Template text
@@ -42,7 +42,7 @@ class per template plus one static site method per printable site. At run time t
 artifact rows through `PrecompiledTemplateInfo`, serves printable sites from the table, and rebuilds
 declined sites from the recorded form. Nothing runs inside the compiler. See
 [Build‑Time Pre‑compilation](precompilation.md) and
-[Build integration](building.md#build-integration-heddlebuild).
+[Build integration](building.md#build-integration).
 
 ### Under the hood: form and gauntlet
 
@@ -58,7 +58,7 @@ stamps a content digest, and `CompiledFormFixtureTests` pins a stored real-build
 
 ---
 
-## 1. Lexing
+## Stage 1 lexing
 
 The lexer is generated from [HeddleLexer.g4](../src/Heddle.Language/HeddleLexer.g4) (which
 imports [CSharp.g4](../src/Heddle.Language/CSharp.g4) for C# tokens). It is **mode‑based**:
@@ -121,7 +121,7 @@ for the author‑facing view.
 
 ---
 
-## 2. Parsing
+## Stage 2 parsing
 
 The parser is generated from [HeddleParser.g4](../src/Heddle.Language/HeddleParser.g4). The
 top‑level rule is `heddle`; the interesting rules are `definition`, `outblock`, `chain`, `call`,
@@ -143,7 +143,7 @@ Syntax errors are gathered by
 
 ---
 
-## 3. Tree walking
+## Stage 3 tree walking
 
 A `ParseTreeWalker` drives
 [`HeddleMainListener`](../src/Heddle/Language/HeddleMainListener.cs), which builds the
@@ -153,7 +153,7 @@ imports, and the raw/text spans. This is the structured representation the compi
 
 ---
 
-## 4–5. Compilation
+## Stages 4 and 5 compilation
 
 [`HeddleCompiler`](../src/Heddle/Runtime/HeddleCompiler.cs) turns the parse context into an
 **execution‑ready document** ([`RuntimeDocument`](../src/Heddle/Runtime/RuntimeDocument.cs)):
@@ -193,7 +193,7 @@ document — not a single whole‑template Roslyn compile.
 
 ---
 
-## 6. Rendering
+## Stage 6 rendering
 
 [`HeddleTemplate.Generate`](../src/Heddle/HeddleTemplate.cs) creates a
 [`ScopeRenderer`](../src/Heddle/Data) and a root [`Scope`](../src/Heddle/Data/Scope.cs),
@@ -239,7 +239,7 @@ measures:
   override) renders through one pre‑built extension node per definition invocation — no per‑render
   lookup, activation, or buffer indirection — unlike Razor sections, whose layout/section binding
   adds indirection. See
-  [Language Reference → inheritance](language-reference.md#inheritance-and-override-childbase).
+  [Language Reference → inheritance](language-reference.md#inheritance-and-override-with-child-and-base).
 
 The trade‑off is **up‑front compilation**: the first compile runs ANTLR (parse), expression‑tree
 compilation (member accessors), and Roslyn (embedded C#), so it is not cheap — the model is
@@ -292,7 +292,7 @@ The project references `Antlr4.Runtime.Standard` 4.13.1 at run time. The `js/` a
 
 ---
 
-## Editor / tooling integrations
+## Editor and tooling integrations
 
 - **JavaScript parser** — `generate_js.cmd` produces a JS lexer/parser under `js/` from the
   same grammar (for in‑browser editing).

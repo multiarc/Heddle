@@ -17,7 +17,7 @@ The grammar is **HTML‑hosted**: it embeds `text.html.basic` for markup and `so
 inline C# (`@( @ … )`), then overlays the Heddle directives on top. Because it uses **standard
 TextMate scope names**, any color theme renders it without per‑theme configuration.
 
-## Token → scope mapping
+## Token to scope mapping
 
 The grammar mirrors the **v1 directive** token families the Ace highlighter assigns (the segment
 after the `heddle-*.` state prefix in the reference). Standard TextMate scopes are chosen so themes
@@ -65,7 +65,7 @@ A few known drifts between the two assets:
 - **`@@` is the literal‑`@` escape.** The TextMate grammar's rule that colors `@@` as a literal‑`@`
   escape is **correct**: `@@` in text (and in subtemplate bodies) emits a single literal `@`. The
   one exception is `@@` immediately followed by `*`, which is directive‑`@` + comment‑start
-  (`@*…*@`), not an escape — see the [language reference](language-reference.md#text-and-the--escape).
+  (`@*…*@`), not an escape — see the [language reference](language-reference.md#text-and-the-double-at-escape).
 
 ## Using the grammar
 

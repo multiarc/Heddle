@@ -1,4 +1,4 @@
-# Building & Testing
+# Building and Testing
 
 How to build the engine, run the tests, and produce the NuGet packages.
 
@@ -142,7 +142,7 @@ carries its own copy of the data, so no twin can drift from the engine it is com
 > benchmark is a representative, component‑heavy page where the compiled document's advantage
 > is most visible.
 
-## Build integration (`Heddle.Build`)
+## Build integration
 
 Precompilation runs out of process: the `Heddle.Build` targets collect `HeddleTemplate` items and
 scalar properties, serialize them into a response file, and invoke `heddle compile`. **Inputs** are

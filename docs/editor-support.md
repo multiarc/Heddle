@@ -157,7 +157,7 @@ types into two load contexts.
 cannot be discovered by scanning metadata; its calls draw an editor‑only "unknown function" even
 though your host resolves them. Export the function declaratively to share it.
 
-## No‑server fallback
+## No-server fallback
 
 VS Code applies semantic tokens *on top of* the TextMate grammar, so when the server is down or not
 installed the extension still colors `.heddle` files from the grammar — no configuration needed.

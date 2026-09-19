@@ -62,7 +62,7 @@ public interface IExtension : IDisposable
 > **Directive‑style extensions and `TrimDirectiveLines`.** An extension whose `InitStart`
 > returns `null` produces no output element and the compiler removes its block from the
 > document (the `@using`/`@model`/`@profile` pattern). Such blocks automatically participate in
-> [directive‑line trimming](language-reference.md#whitespace-trimming-): when
+> [directive‑line trimming](language-reference.md#whitespace-trimming): when
 > `TemplateOptions.TrimDirectiveLines` is on and the block occupies its line by itself, the
 > whole line is swallowed. Trimming keys on the removal mechanism, not on a name list, so no
 > registration or name list needs updating.
@@ -228,7 +228,7 @@ first‑match‑wins pickers.
   via the protected `GetInnerResult(in Scope)` / `RenderInnerResult(in Scope)` — the single seam
   that installs the body's frame. Custom extensions inherit this for free.
 
-### Example — a publisher/consumer pair (zebra striping)
+### Example of a publisher and consumer pair for zebra striping
 
 One `[ScopeChannel]` extension both reads the previous row parity and publishes the next, so a run
 of siblings alternates:
@@ -254,7 +254,7 @@ public class ZebraExtension : AbstractExtension
 
 `@zebra()@zebra()@zebra()` renders `evenoddeven`; inside a `@list` body each row starts fresh.
 
-### Example — a `BranchState` participant that drives a set
+### Example of a BranchState participant that drives a set
 
 `BranchState` and its reserved key are public, so a custom matcher can **satisfy** a branch set —
 publishing `new BranchState(true)` makes a following `@else` render nothing:
@@ -778,7 +778,7 @@ shapes helps you recognise where a custom extension is the right tool:
 - **Region collectors** — extensions like `@head(){{ … }}` or `@script(){{ … }}` that *capture*
   their body and emit it elsewhere in the document (the `<head>`, end‑of‑body scripts). These
   consume a subtemplate and defer its output; they pair naturally with a
-  [layout definition](language-reference.md#inheritance-and-override-childbase) that renders the
+  [layout definition](language-reference.md#inheritance-and-override-with-child-and-base) that renders the
   collected regions.
 - **Declarations** — extensions that configure compilation and emit nothing (like the built‑in
   [`using`](built-in-extensions.md#using) / [`model`](built-in-extensions.md#model)).

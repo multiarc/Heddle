@@ -15,27 +15,27 @@ runnable templates that exercise edge cases, see the test fixtures in
 
 1. [Mental model](#mental-model)
 2. [Symbol cheat sheet](#symbol-cheat-sheet)
-3. [Text and the `@` escape](#text-and-the--escape)
+3. [Text and the `@` escape](#text-and-the-double-at-escape)
 4. [Output blocks](#output-blocks)
 5. [Output profiles](#output-profiles)
-6. [Member expressions `@(A.B.C)`](#member-expressions-abc)
+6. [Member expressions `@(A.B.C)`](#member-expressions)
 7. [Root reference `@(::Member)`](#root-reference-member)
 8. [Context and data flow](#context-and-data-flow)
 9. [Embedded C# expressions](#embedded-c-expressions)
-10. [Definitions `@% … %@`](#definitions---)
-11. [Default output `-> chain`](#default-output---chain)
-12. [Type annotation `:: Type`](#type-annotation--type)
-13. [Props `<name(prop: Type = default)>`](#props-nameprop-type--default)
+10. [Definitions `@% … %@`](#definitions)
+11. [Default output `-> chain`](#default-output-chain)
+12. [Type annotation `:: Type`](#type-annotation)
+13. [Props `<name(prop: Type = default)>`](#props)
 14. [Parameterized slots `out:: Type`](#parameterized-slots-out-type)
-15. [Inheritance and override `<child:base>`](#inheritance-and-override-childbase)
-16. [Named content regions `<:name>`](#named-content-regions-name)
-17. [Subtemplates `{{ … }}`](#subtemplates---)
-18. [Chaining with `:`](#chaining-with-)
+15. [Inheritance and override `<child:base>`](#inheritance-and-override-with-child-and-base)
+16. [Named content regions `<:name>`](#named-content-regions)
+17. [Subtemplates `{{ … }}`](#subtemplates)
+18. [Chaining with `:`](#chaining-with-the-colon)
 19. [Recursion](#recursion)
-20. [Imports `@<<{{ … }}`](#imports---)
-21. [Comments `@* … *@`](#comments---)
-22. [Raw blocks `@{ … }@` and `@:`](#raw-blocks----and-)
-23. [Whitespace trimming `@\`](#whitespace-trimming-)
+20. [Imports `@<<{{ … }}`](#imports)
+21. [Comments `@* … *@`](#comments)
+22. [Raw blocks `@{ … }@` and `@:`](#raw-blocks)
+23. [Whitespace trimming `@\`](#whitespace-trimming)
 24. [How the lexer reads a template (modes)](#how-the-lexer-reads-a-template-modes)
 25. [Behavioral nuances summary](#behavioral-nuances-summary)
 
@@ -98,8 +98,8 @@ deliberate, and both are what make templates compose:
   when an inheriting definition narrows it with `:: Type`. This is closer to a **C++ template**
   than a C# generic: there are no type parameters or constraints — each use re‑substitutes the
   concrete model and is type‑checked on its own. Write the section once; every call site is its
-  own specialization. See [Type annotation](#type-annotation--type) and
-  [Inheritance](#inheritance-and-override-childbase).
+  own specialization. See [Type annotation](#type-annotation) and
+  [Inheritance](#inheritance-and-override-with-child-and-base).
 
 ---
 
@@ -128,7 +128,7 @@ deliberate, and both are what make templates compose:
 
 ---
 
-## Text and the `@` escape
+## Text and the double at escape
 
 Any character that is not part of a directive is literal text and is emitted unchanged.
 Unicode is fully supported — `<h1>Café — Привет!</h1>` renders as written.
@@ -145,7 +145,7 @@ greedily left to right (`@@@@` → `@@`; `@@@(Title)` → `@` followed by the va
 directive‑`@` + comment‑start (`@*…*@`). To output a literal `@*`, use a raw region (`@{@*}@`)
 or a raw line (`@:@*`).
 
-For bulk literal text, [raw regions](#raw-blocks----and-) remain the tool — the raw block
+For bulk literal text, [raw regions](#raw-blocks) remain the tool — the raw block
 `@{ … }@` or the raw line `@:` — which are emitted verbatim and never parsed (inside them `@@`
 stays two characters):
 
@@ -162,8 +162,8 @@ Those same raw regions are the way to emit a block of literal text that contains
 
 ## Output blocks
 
-An **output block** is `@` followed by a [chain](#chaining-with-) of one or more calls, with
-an optional [subtemplate](#subtemplates---):
+An **output block** is `@` followed by a [chain](#chaining-with-the-colon) of one or more calls, with
+an optional [subtemplate](#subtemplates):
 
 ```
 output =  @ chain [ {{ body }} ]
@@ -179,14 +179,14 @@ optional `{{ … }}` body. The parameter is one of:
 - **a native expression** — the built‑in expression tier, e.g. `@(Price * Qty)`, `@if(Count > 0)` (see [Native expressions](native-expressions.md));
 - **a C# expression** — introduced with an inner `@`, e.g. `@(@2026)`, `@list(@model.Articles.Where(a => a.IsFeatured))`;
 - **another chain** — nested calls;
-- **named prop arguments** — `@card(model, title: "Hi")` (see [Props](#props-nameprop-type--default));
+- **named prop arguments** — `@card(model, title: "Hi")` (see [Props](#props));
 - **empty** — `@()`, `@out()`, `@list(){{ … }}` — meaning "use the current value as‑is".
 
 When the extension name is omitted, the call uses the **empty extension**
 (`@(...)` is `@` + an unnamed call). The empty/`html` extensions simply stringify the
 current value — so `@(Title)` prints the title and `@()` prints the current value itself
 (handy inside a list of strings). See
-[Built‑in Extensions](built-in-extensions.md#empty--unnamed).
+[Built‑in Extensions](built-in-extensions.md#empty-or-unnamed).
 
 Examples:
 
@@ -197,7 +197,7 @@ Examples:
 @list(Articles){{ <li>@(Title)</li> }}  @* a call with a body, once per article *@
 ```
 
-### `@(expr){{ … }}` — the inline "with" block
+### The inline with block
 
 Give the **unnamed** call both a parameter *and* a body, and it renders the body with the
 current model set to `expr` — an inline way to "zoom in" on a value without declaring a
@@ -221,7 +221,7 @@ it pairs well with a C# expression — e.g. render markup for just the last item
 }}
 ```
 
-(Mechanically this is the [empty extension](built-in-extensions.md#empty--unnamed) with a body:
+(Mechanically this is the [empty extension](built-in-extensions.md#empty-or-unnamed) with a body:
 with a body it renders the body against its model; with no body it just stringifies the value.)
 
 ---
@@ -259,7 +259,7 @@ value is never double‑encoded by nesting. See
 
 ---
 
-## Member expressions `@(A.B.C)`
+## Member expressions
 
 ```
 member-path = [::] name ( . name )*
@@ -470,7 +470,7 @@ For anything between current and root, [pass it down explicitly](#passing-the-cu
 
 A **chained** value flows alongside the model, independently of it:
 
-- A [chain](#chaining-with-) `a():b()` runs `b` first and feeds its output to `a` (the
+- A [chain](#chaining-with-the-colon) `a():b()` runs `b` first and feeds its output to `a` (the
   leftmost call renders) as `a`'s chained input.
 - [`@list`](built-in-extensions.md#list) and [`@for`](built-in-extensions.md#for) expose the
   current **index** as the chained value.
@@ -543,7 +543,7 @@ see [`Scope`](csharp-api.md#scope-the-data-view-during-rendering).
 
 ---
 
-## Definitions `@% … %@`
+## Definitions
 
 A **definition block** declares one or more reusable named templates. Once declared, a
 definition is invoked like any extension: `@name()`.
@@ -590,7 +590,7 @@ that the card exposes through `@out()`.
 
 ---
 
-## Default output `-> chain`
+## Default output chain
 
 Most definitions are inert: they render only when you call them by name (`@name()`). Adding a
 `->` turns a definition into an **output** — it renders automatically at the **end of the
@@ -632,7 +632,7 @@ end.)
 
 ---
 
-## Type annotation `:: Type`
+## Type annotation
 
 A trailing `:: Type` strongly types a definition's model. The type name is resolved against
 the namespaces brought in by [`@using()`](built-in-extensions.md#using) (and the model
@@ -676,7 +676,7 @@ with **no `:: Type`** is *abstract* — it has no fixed model type. Its type is 
   reaches that call site — the current model (`@panel()`), the type of a member parameter
   (`@badge(Author)`), or the chained type. The *same* source is specialized per use site.
 - **When it's narrowed by inheritance.** An inheriting definition can pin the type with
-  `:: Type` (see [Inheritance](#inheritance-and-override-childbase)).
+  `:: Type` (see [Inheritance](#inheritance-and-override-with-child-and-base)).
 
 ```heddle
 @%
@@ -709,7 +709,7 @@ typed page, where it binds to that page's model. See
 
 ---
 
-## Props `<name(prop: Type = default)>`
+## Props
 
 Alongside its positional model, a definition can declare **typed named parameters — props —**
 in parentheses right after the name. A prop has a name, a type, and an **optional literal
@@ -811,7 +811,7 @@ than `out` before `::` — is **HED5016**.
 
 ---
 
-## Inheritance and override `<child:base>`
+## Inheritance and override with child and base
 
 A definition can inherit from another by name using `:`:
 
@@ -854,7 +854,7 @@ consequences:
 - If the base **is** typed, children may only narrow to assignable (more‑derived) types; a type
   fixed anywhere in the chain can't be widened or swapped for an incompatible one.
 
-**Props inherit too.** A child inherits every [prop](#props-nameprop-type--default) of its base
+**Props inherit too.** A child inherits every [prop](#props) of its base
 and may append new ones. Re‑declaring an inherited prop name is the sanctioned way to **change
 its default** — it keeps the base's slot position and replaces the default; the re‑declared type
 must be assignable to the inherited type (the same narrowing direction as the model), else
@@ -910,7 +910,7 @@ shape.) See [Architecture → Performance](architecture.md#performance-character
 
 ---
 
-## Named content regions `<:name>`
+## Named content regions
 
 A definition can expose **more than one overridable content region** — beyond the single
 `@out()` slot — by declaring inner definitions **marked public with a leading colon**:
@@ -975,7 +975,7 @@ Rules:
   (or default) — exactly like the default body it replaces.
 - **Narrowing.** An override may narrow the region's type with a trailing `:: Type`, in the
   assignable-only direction — the same rule as
-  [`<child:base>` narrowing](#inheritance-and-override-childbase), with the same
+  [`<child:base>` narrowing](#inheritance-and-override-with-child-and-base), with the same
   *"isn't assignable to base"* error when violated. An untyped override inherits the region's type.
 - **Visibility.** Overriding a **private** region from a call site is **HED5019**; declaring two
   **public** regions of one name in one component is **HED5020**. A `<x:x>` whose base **is** in
@@ -1005,7 +1005,7 @@ named regions are the component-scoped, visibility-gated evolution of it.
 
 ---
 
-## Subtemplates `{{ … }}`
+## Subtemplates
 
 A `{{ … }}` block is a full nested template. It appears as a definition body and as the
 inline body attached to a call.
@@ -1016,7 +1016,7 @@ inline body attached to a call.
 
 Because the body is itself a full template, subtemplates may contain text, output blocks,
 nested definitions, imports, and raw blocks — nested as deeply as you like within the compiler's
-depth limit (see [Imports](#imports---)). A call hands its subtemplate to
+depth limit (see [Imports](#imports)). A call hands its subtemplate to
 its extension; `@list(Articles){{ … }}`, for instance, renders its body once per element with
 the element as the current model:
 
@@ -1031,7 +1031,7 @@ the element as the current model:
 
 ---
 
-## Chaining with `:`
+## Chaining with the colon
 
 Calls in a chain are evaluated **right to left**, and the **leftmost** call renders the final
 output. Each call receives the output of the call to its *right* as its **chained** value,
@@ -1094,7 +1094,7 @@ is bounded by `TemplateOptions.MaxRecursionCount` (default **100**); see the
 
 ---
 
-## Imports `@<<{{ … }}`
+## Imports
 
 Heddle has one import spelling — `@<<{{ path }}`. `@import()` is not an import: any `@import` call
 site is a positioned **`HED4003`** error naming the replacements. For sharing definition libraries, use `@<<`; to embed another template's
@@ -1190,7 +1190,7 @@ files, or `@partial(){{ name }}` to embed another template's rendered output inl
 
 ---
 
-## Comments `@* … *@`
+## Comments
 
 Comments are removed during lexing (routed to a hidden channel) and never appear in output.
 
@@ -1211,7 +1211,7 @@ output), so they are safe to drop in anywhere.
 
 ---
 
-## Raw blocks `@{ … }@` and `@:`
+## Raw blocks
 
 Raw regions are emitted **verbatim** and are not parsed for directives.
 
@@ -1238,7 +1238,7 @@ call returns, so they compose with the rest of the syntax.
 
 ---
 
-## Whitespace trimming `@\`
+## Whitespace trimming
 
 `@\` followed by any run of whitespace is consumed and produces no output. Use it to keep
 templates readable while controlling the emitted whitespace — particularly at the end of a
@@ -1266,7 +1266,7 @@ newlines you write around directives appear in the output as written.
 > the stray newlines around directives don't matter. Reach for `@\` mainly in the declaration
 > preamble and when emitting whitespace‑sensitive text (plain text, `<pre>`, JSON, etc.).
 
-### `TemplateOptions.TrimDirectiveLines`
+### The TrimDirectiveLines option
 
 `@\` controls whitespace one directive at a time. When a whole *line* is nothing but a directive
 that produces no output, the option `TemplateOptions.TrimDirectiveLines` removes the need for
@@ -1324,7 +1324,7 @@ principal ones. Omitted are the four C#-string modes reached from embedded C# �
 You normally never think about modes — but they are the reason comments work everywhere,
 why C# expressions can contain arbitrary parentheses, and why whitespace handling differs
 slightly between a definition header and a body. For the full picture see
-[Architecture → Lexing](architecture.md#1-lexing).
+[Architecture → Lexing](architecture.md#stage-1-lexing).
 
 ---
 

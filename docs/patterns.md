@@ -1,4 +1,4 @@
-# Patterns & Recipes
+# Patterns and Recipes
 
 Short, practical idioms distilled from real production templates. Each recipe is a *problem →
 snippet → why*. For the formal rules behind them, follow the links into the
@@ -37,7 +37,7 @@ class Site        { public string Name { get; set; }  public string Host { get; 
 - [An abstract section inside a typed page](#an-abstract-section-inside-a-typed-page)
 - [A component library: typed props and a parameterized slot](#a-component-library-typed-props-and-a-parameterized-slot)
 - [Inject JSON and inline scripts](#inject-json-and-inline-scripts)
-- [Whitespace: when to bother with `@\`](#whitespace-when-to-bother-with-)
+- [Whitespace: when to bother with `@\`](#whitespace-and-when-to-bother-trimming)
 - [Custom extensions in practice](#custom-extensions-in-practice)
 - [Components with multiple content regions](#components-with-multiple-content-regions)
 - [Culture and localization](#culture-and-localization)
@@ -167,7 +167,7 @@ where it's used:
 ```
 
 **Why:** a definition is a reusable function — pass it a value, get a result. `@int()` formats
-the current (integer) model. See [Definitions](language-reference.md#definitions---).
+the current (integer) model. See [Definitions](language-reference.md#definitions).
 
 **Sharing a helper library across templates.** When several templates need the same helpers,
 put them in a definitions‑only file and pull it in with `@<<` — the composition import merges the
@@ -189,7 +189,7 @@ definitions into each template that includes it:
 
 `@<<` is the right tool here: it actually merges the definitions. A name already
 defined before the import is an error, so libraries compose rather than silently override. See
-[Imports](language-reference.md#imports---).
+[Imports](language-reference.md#imports).
 
 ---
 
@@ -229,11 +229,11 @@ reaches the whole root.
 %@
 ```
 
-**Why:** `-> (Article)` makes `layout` an [auto‑rendering output](language-reference.md#default-output---chain)
+**Why:** `-> (Article)` makes `layout` an [auto‑rendering output](language-reference.md#default-output-chain)
 whose working model is `root.Article` (so `@(Title)` is the article's), while `::Site…` still
 reaches the root `PageContext`. `@article_body()` is one of the page's section definitions.
 Because `layout` renders on its own, you do **not** call `@layout()` — doing so renders it twice,
-which the compiler flags as **HED4002** (see [Default output](language-reference.md#default-output---chain)).
+which the compiler flags as **HED4002** (see [Default output](language-reference.md#default-output-chain)).
 
 ---
 
@@ -301,7 +301,7 @@ markup once per option.
   `{{ <a …>@(Label)</a> }}` is compiled against `MenuOption` and rendered once per option with
   `@out(this)`.
 
-See [Props](language-reference.md#props-nameprop-type--default) and
+See [Props](language-reference.md#props) and
 [Parameterized slots](language-reference.md#parameterized-slots-out-type).
 
 ---
@@ -326,7 +326,7 @@ with untrusted text. See [Output profiles](built-in-extensions.md#output-profile
 
 ---
 
-## Whitespace: when to bother with `@\`
+## Whitespace and when to bother trimming
 
 **Problem:** decide where whitespace trimming actually matters.
 
@@ -353,7 +353,7 @@ If a host explicitly set `TrimDirectiveLines = false` (for 1.x byte‑identical 
 **Why:** Heddle is whitespace‑significant, but HTML collapses insignificant whitespace, so most
 markup doesn't need `@\`. Reserve `@\` for mid‑line control; use `TrimDirectiveLines` for the
 whole‑line preamble noise. See
-[Whitespace trimming](language-reference.md#whitespace-trimming-).
+[Whitespace trimming](language-reference.md#whitespace-trimming).
 
 ---
 
@@ -390,11 +390,11 @@ have two tools:
    ordinary `<name:name>` override in the call body. Call-scoped, visibility-gated
    (private regions cannot be overridden from a call site — **HED5019**), and the override body
    runs in the region's own context. See
-   [Named content regions](language-reference.md#named-content-regions-name).
+   [Named content regions](language-reference.md#named-content-regions).
 2. **Sibling definitions the caller overrides** (the pre-existing idiom below): reserve the single
    `@out()` slot for the main region, and expose each additional region as its own document-scope
    definition with default content that a call site replaces via a `<name:name>`
-   [override](language-reference.md#inheritance-and-override-childbase) — document-scoped
+   [override](language-reference.md#inheritance-and-override-with-child-and-base) — document-scoped
    (the override applies from that point onward, to every later call).
 
 The sibling recipe:
@@ -445,7 +445,7 @@ own default footer around the caller's `@out()` body — three independently sup
 one‑slot definition. Region overrides are the multi‑slot idiom here, **not** a workaround: they
 compose without coupling (the shell knows nothing about the page), stay statically type‑checked,
 and cost nothing at render time. See
-[composition without coupling](language-reference.md#inheritance-and-override-childbase).
+[composition without coupling](language-reference.md#inheritance-and-override-with-child-and-base).
 
 ---
 

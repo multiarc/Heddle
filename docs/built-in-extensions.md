@@ -1,4 +1,4 @@
-# Built‑in Extensions
+# Built-in Extensions
 
 Extensions are the verbs of Heddle: every `@name(...)` directive invokes an extension. This page
 documents the extensions bundled with the `Heddle` assembly. Each entry lists the name
@@ -241,7 +241,7 @@ non‑positive step known only at render throws. See [native expressions](native
 
 Calling a definition that carries a default output (`-> chain`) by name renders it **twice** — once
 where the call is, once at document end — and the compiler warns with **HED4002**. See
-[default output](language-reference.md#default-output---chain).
+[default output](language-reference.md#default-output-chain).
 
 The C# tier still works for computed models:
 
@@ -436,7 +436,7 @@ Every flagged site is silenced per‑site by switching to the matching encoder (
 
 ## Output and context
 
-### Empty / unnamed
+### Empty or unnamed
 [EmptyExtension.cs](../src/Heddle/Extensions/EmptyExtension.cs) · names: `""`, `raw`
 
 The extension with the empty name backs the unnamed call form `@(...)`. If it has a body it
@@ -502,7 +502,7 @@ chained data. This is how a definition surfaces the caller's inline content.
 
 `@out()` is the mechanism behind layouts: a `layout` definition wraps the page chrome around a
 central `@out()`, and each page supplies the content. See
-[Language Reference → composition](language-reference.md#inheritance-and-override-childbase).
+[Language Reference → composition](language-reference.md#inheritance-and-override-with-child-and-base).
 
 **Two modes.** `@out` has a second, *slot* mode. When the enclosing definition declares a
 [slot parameter](language-reference.md#parameterized-slots-out-type) (`out:: Type`), `@out(expr)`
@@ -587,13 +587,13 @@ For **static members** — `using static System.Math;` then `Max(a, b)` — the 
 nothing: `@using(){{static …}}` reaches that type's nested *types* only. Register a
 [function](custom-extensions.md) instead.
 
-### `import` — removed
+### The removed import extension
 [ImportExtension.cs](../src/Heddle/Extensions/Archived/ImportExtension.cs) · name: `import`
 
 `@import()` has been **removed**. The name is kept registered only as a tombstone so that any
-call site fails with a single positioned [`HED4003`](language-reference.md#imports---) error
+call site fails with a single positioned [`HED4003`](language-reference.md#imports) error
 naming its replacements, instead of a generic "unknown extension" error. Use
-[`@<<{{ path }}`](language-reference.md#imports---) to share definitions and layouts across
+[`@<<{{ path }}`](language-reference.md#imports) to share definitions and layouts across
 files, or [`@partial()`](#partial) to embed another template's rendered output inline.
 
 ### `profile`

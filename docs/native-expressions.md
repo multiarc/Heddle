@@ -13,7 +13,7 @@ compile to `System.Linq.Expressions` delegates and render with **zero Roslyn inv
 @(::Year - PublishedOn.Year < 1 ? "new" : "")
 ```
 
-Anything the [member tier](language-reference.md#member-expressions-abc) already accepts stays a
+Anything the [member tier](language-reference.md#member-expressions) already accepts stays a
 member path; an operator, a literal, or a multi‑argument function call is what makes a parameter a
 native expression. No new sigil is introduced.
 
@@ -77,7 +77,7 @@ carries the same verdict at build time.
 The `null` **literal** is separate from a `null`-valued `Nullable<T>`: `@(x < null)` and
 `@(3 == null)` are `HED1008`, exactly as C# rejects them.
 
-### Why there is no `?.`
+### Why there is no null-conditional operator
 
 Member hops are **already null‑safe**: a hop off a `null` reference yields `default(T)` of the
 property's type — `null` for reference types and `Nullable<T>`, the zero value for other value
@@ -101,7 +101,7 @@ The full C# literal set except verbatim/interpolated/raw strings:
 
 String interpolation is intentionally excluded — use `+` or the `format` function instead.
 
-## `this` — the current model
+## The this keyword is the current model
 
 `this` is the current scope's model, typed as the current scope type. It fills the one gap a bare
 member path can't: naming the model **itself** rather than something derived from it.
@@ -113,14 +113,14 @@ member path can't: naming the model **itself** rather than something derived fro
 - As an **operand or path root**, `this` is a typed operand and follows the same rule as any path:
   `this.Name`, `len(this)`, and `this == null` need a typed model (a `dynamic` scope reports
   **HED1004**). `this.<name>` is also the explicit escape for a model member a
-  [prop shadows](language-reference.md#props-nameprop-type--default).
+  [prop shadows](language-reference.md#props).
 
 `this` is a C# keyword, so it can never collide with a model member. It is expression‑tier, so it
 reports **HED1014** under `MemberPathsOnly`.
 
-## Native expressions as named‑argument values
+## Native expressions as named-argument values
 
-The value of a [prop named argument](language-reference.md#props-nameprop-type--default) is a native
+The value of a [prop named argument](language-reference.md#props) is a native
 expression — `@card(Article, style: Featured ? "wide" : "plain", tag: upper(Kind))`. Every construct
 on this page is allowed there (paths off the caller model, `::` root refs, operators, functions,
 `this`, literals). A named‑argument value is **not** a C# `@`‑tier expression and **not** a call
@@ -133,7 +133,7 @@ Native expressions can call functions the host has registered, plus a frozen set
 Registration is the **trust boundary**: anything registered is callable from template text, and
 nothing else is. There is no path from template text to arbitrary methods by name.
 
-### The default built‑ins
+### The default built-ins
 
 All are invariant‑culture, and all but `range` never throw at render (string‑returning ones map
 `null` input to `""`). `range` is the one sanctioned exception: a non‑positive step known only at
@@ -202,7 +202,7 @@ var options = new TemplateOptions { Functions = functions };
   demand.
 - `null` `TemplateOptions.Functions` means `FunctionRegistry.Default` (the frozen built‑ins).
 
-### Standalone vs. in‑expression calls
+### Standalone versus in-expression calls
 
 A standalone `@fn(x)` resolves in the order **definition → extension → registered function**. If a
 registered function name collides with an extension, the extension wins and a warning is emitted —

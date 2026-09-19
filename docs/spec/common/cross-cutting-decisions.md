@@ -23,7 +23,7 @@ and available to tooling (the LSP maps it to `Diagnostic.code`). IDs are allocat
 | `HED2xxx` | Output profiles & encoding — [built-in-extensions.md](../../built-in-extensions.md#html-encoding) |
 | `HED3xxx` | Branching / branch sets — [built-in-extensions.md](../../built-in-extensions.md#branch-sets) |
 | `HED4xxx` | Template semantics & ergonomics (double-render, `range`, deprecations) |
-| `HED5xxx` | Props & slots — [language-reference.md](../../language-reference.md#props-nameprop-type--default) |
+| `HED5xxx` | Props & slots — [language-reference.md](../../language-reference.md#props) |
 | `HED6xxx` | Tooling / LSP (reserved — tooling-only messages are not compile diagnostics) |
 | `HED7xxx` | Build-time generator (`HED70xx`) and precompiled runtime registration/fallback (`HED71xx`) — [precompilation.md](../../precompilation.md) |
 | `HED8xxx` | Streaming & sinks (reserved — sink APIs throw host errors, no compile diagnostics) |
@@ -562,7 +562,7 @@ documents are retired (2026-09-18) — full text: `git show f8a9497c:docs/spec/p
   and every `PrecompiledFallbackReason` stay as-is, `PrecompiledTemplateInfo.EntryPointType`/`RefusalSites`
   and the internal adapter constructor stay, and the whole `PrecompiledTemplates` /
   `PrecompiledValidationReport` / `PrecompiledFallbackEvent` surface stays. (P4-R3, P4-R5)
-- Migration is one entry: [precompilation.md](../../precompilation.md#upgrading-from-2x).
+- Migration is one entry: [precompilation.md](../../precompilation.md#upgrading-from-version-2).
   Class (a) is a no-op for consumers (nothing referenced the deleted names); class (b) deletes one
   attribute; class (c) deletes the one remedy its templates relied on. (P4-R8)
 
@@ -635,13 +635,13 @@ amendment E16 (folded into the program records above).
 | `HED3001`–`HED3005` | [built-in-extensions.md](../../built-in-extensions.md#branch-sets) | Branch sets (incl. the `HED3005` drift warning) |
 | `HED4001`–`HED4002` | [built-in-extensions.md](../../built-in-extensions.md) | Ergonomics (`range` step, double-render) |
 | `HED4005` | Shipped in 2.0.0; this registry row is the live normative home | `{{ x }}`-in-text misread lint (`LiquidStyleInterpolationMisread`) — warning; a bare `{{ identifier }}` / `{{ dotted.path }}` in literal text, suggesting `@(…)` |
-| `HED4003` | Shipped in 2.0.0 | `@import()` **removal error** — the legacy include is removed in 2.0.0; positioned at the call, severity error, naming `@<<`/`@partial`. The normative message/trigger/position live in [language-reference.md](../../language-reference.md#imports---) and the [2.0 release record](#release-records--as-shipped) (item 6) |
-| `HED4004` | [language-reference.md](../../language-reference.md#imports---) | `@<<` composition import nested inside a subtemplate (not top-level); import skipped, positioned at the `@<<` directive |
-| `HED4006` | [language-reference.md](../../language-reference.md#imports---) | `@<<` composition import cycle — an import reaches a document already being imported; the repeated import is skipped and the chain named, positioned at the `@<<` directive |
-| `HED4007` | [language-reference.md](../../language-reference.md#imports---) | Nesting too deep to build, reported instead of exhausting the stack. Two cases, both counted rather than measured so a template behaves the same on every host: expression, chain, or block nesting past the parse-depth bound, positioned at the document start; and `@<<` composition imports nested past the import-depth bound, positioned at the `@<<` directive that exceeded it, with that import skipped |
-| `HED4008` | [language-reference.md](../../language-reference.md#imports---) | `@<<` composition imports expanded past the per-parse total — an acyclic graph that reaches the same document from several places re-parses it once per path and multiplies out; the remaining imports are skipped and the overflow is described once, positioned at the `@<<` directive that hit the bound |
-| `HED4009` | [language-reference.md](../../language-reference.md#imports---) | `@<<` composition import naming a file that cannot be read — missing, unreadable, or a path the platform rejects; the import is skipped and the read failure described, positioned at the `@<<` directive. Before it, the read threw out of the tree walk, which is outside the parser's guard, so an editor analysing a buffer mid-rename published nothing at all |
-| `HED5001`–`HED5018` | [language-reference.md](../../language-reference.md#props-nameprop-type--default) | Props & slots |
+| `HED4003` | Shipped in 2.0.0 | `@import()` **removal error** — the legacy include is removed in 2.0.0; positioned at the call, severity error, naming `@<<`/`@partial`. The normative message/trigger/position live in [language-reference.md](../../language-reference.md#imports) and the [2.0 release record](#release-records--as-shipped) (item 6) |
+| `HED4004` | [language-reference.md](../../language-reference.md#imports) | `@<<` composition import nested inside a subtemplate (not top-level); import skipped, positioned at the `@<<` directive |
+| `HED4006` | [language-reference.md](../../language-reference.md#imports) | `@<<` composition import cycle — an import reaches a document already being imported; the repeated import is skipped and the chain named, positioned at the `@<<` directive |
+| `HED4007` | [language-reference.md](../../language-reference.md#imports) | Nesting too deep to build, reported instead of exhausting the stack. Two cases, both counted rather than measured so a template behaves the same on every host: expression, chain, or block nesting past the parse-depth bound, positioned at the document start; and `@<<` composition imports nested past the import-depth bound, positioned at the `@<<` directive that exceeded it, with that import skipped |
+| `HED4008` | [language-reference.md](../../language-reference.md#imports) | `@<<` composition imports expanded past the per-parse total — an acyclic graph that reaches the same document from several places re-parses it once per path and multiplies out; the remaining imports are skipped and the overflow is described once, positioned at the `@<<` directive that hit the bound |
+| `HED4009` | [language-reference.md](../../language-reference.md#imports) | `@<<` composition import naming a file that cannot be read — missing, unreadable, or a path the platform rejects; the import is skipped and the read failure described, positioned at the `@<<` directive. Before it, the read threw out of the tree walk, which is outside the parser's guard, so an editor analysing a buffer mid-rename published nothing at all |
+| `HED5001`–`HED5018` | [language-reference.md](../../language-reference.md#props) | Props & slots |
 | `HED5019`–`HED5020` | Shipped in 2.0.0; this registry row is the live normative home | Named content regions (compile errors, fire only on the public-region surface): `HED5019` `RegionNotPublic` (a call-body override targets a callee's **private** region); `HED5020` `DuplicateRegionDeclaration` (two public regions with the same name — raised by upgrading the id-less `EnterDef` duplicate error). A region-override narrowing mismatch reuses the pre-existing id-less `WalkValidateDefinitionType` error (no new id); a typed-override member error reuses `HED0001` |
 | `HED6xxx` | — reserved, none claimed | Tooling-only messages are not compile diagnostics |
 | `HED7001`–`HED7004` | [precompilation.md](../../precompilation.md) | Build-tier diagnostics: duplicate keys, case-only twins, unusable key metadata |

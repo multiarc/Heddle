@@ -8,7 +8,7 @@ engine from C#. If you only want to learn the template syntax, jump to the
 
 ::: tip Try it live
 Want to play before integrating? Open the
-<a href="demo.html" target="_blank" rel="noreferrer">live editor demo</a> — write Heddle in
+<a href="/demo.html" target="_blank" rel="noreferrer">live editor demo</a> — write Heddle in
 your browser with syntax highlighting and real-time parse-error checking. It syntax-checks
 immediately and, once the WebAssembly engine loads, live-renders your template (native tier)
 into a sandboxed iframe after the first clean analysis; syntax-only checking is the pre-WASM
@@ -32,7 +32,7 @@ Using the engine always follows the same shape:
 2. **Compile** — parse a template string or file into a `HeddleTemplate`.
 3. **Generate** — render the compiled template against a data object, as many times as you like.
 
-### 1. Register (declare your extensions)
+### Step 1 register and declare your extensions
 
 `HeddleTemplate.Register` reads one assembly's exported extensions. The built‑in extensions in the
 `Heddle` assembly are always present; register *your* assembly so the custom extensions you wrote are
@@ -49,7 +49,7 @@ HeddleTemplate.Register(typeof(Program).GetTypeInfo().Assembly);
 See [Writing Custom Extensions](custom-extensions.md) for how extensions are exported with
 `[assembly: ExportExtensions]`.
 
-### 2 & 3. Compile and generate an inline template
+### Steps 2 and 3 compile and generate an inline template
 
 ```csharp
 using Heddle;
@@ -114,7 +114,7 @@ using var template = new HeddleTemplate(new CompileContext(options));
 string html = template.Generate(myBlog);
 ```
 
-### Validate without committing (dry‑run compile)
+### Validate without committing (dry-run compile)
 
 `TryCompilation` parses and type‑checks a template but discards the compiled output. Use it
 for linting/CI checks where you only care whether a template *would* compile:
