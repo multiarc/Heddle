@@ -24,7 +24,7 @@
   <ItemGroup>
     <!-- The stored compiled-form fixture lives with the corpus (P4-R3); this suite keeps its byte
          round-trip facts over the same file. -->
-    <None Include="..\Heddle.Tests\TestTemplate\compiled-form-v4.bin" Link="TestData\compiled-form-v4.bin" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\Heddle.Tests\TestTemplate\compiled-form-v3.bin" Link="TestData\compiled-form-v3.bin" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <!-- The test-class inventory gate: this suite's classes, checked in and set-equality asserted. -->

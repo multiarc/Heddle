@@ -107,7 +107,6 @@ namespace Heddle.Tests
         [Theory]
         [InlineData(1)]
         [InlineData(2)]
-        [InlineData(3)]
         public void BelowCompiledFormSchemaThrowsWithoutRegistering(int schema)
         {
             var asm = BuildAssembly(OneRow("reg/one.heddle"), schema, CompatibleVersion,

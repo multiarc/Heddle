@@ -942,7 +942,7 @@ directions); the gauntlet's steps ✓ (`PrecompiledGauntletTests`); the compiled
 the dynamic tier on three sinks, three passes (in-memory, file-backed, staged with the staleness
 step) under `PrecompiledMismatchPolicy.Strict` and a fallback sentinel ✓ (`CompiledFormParityTests`,
 `FallbackGuard`); allocation no higher than the dynamic tier on every corpus row and sink ✓
-(`CompiledFormAllocationTests`); the stored `compiled-form-v4.bin` fixture registering and rendering
+(`CompiledFormAllocationTests`); the stored `compiled-form-v3.bin` fixture registering and rendering
 byte-identically ✓ (`CompiledFormFixtureTests`); a host-built assembly registering and rendering ✓
 (`HostBuiltArtifactTests`); the refusal classes ✓ (declared per corpus row in `CorpusIntent`, asserted
 by set equality, `CompiledFormHarness.ExpectRefusal` for a declared extra). The MSBuild

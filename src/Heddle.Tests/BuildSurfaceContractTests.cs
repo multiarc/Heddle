@@ -117,9 +117,8 @@ namespace Heddle.Tests
             Assert.True(PrecompiledSchema.IsSupported(PrecompiledSchema.CurrentSchemaVersion));
         }
 
-        /// <summary>The schema window restarted at the compiled form: exactly one readable shape, so
-        /// the window is a point. Schemas 1–2 are released 2.x shapes the engine refuses; 3 is an unreleased
-        /// number no artifact may carry.</summary>
+        /// <summary>The schema window is a point at the compiled form: exactly one readable shape.
+        /// Schemas 1–2 are the released 2.x manifest shapes, which the engine refuses.</summary>
         [Fact]
         public void SchemaConstantsPinTheCompiledFormWindow()
         {
@@ -131,9 +130,8 @@ namespace Heddle.Tests
             Assert.False(PrecompiledSchema.IsSupported(0));
             Assert.False(PrecompiledSchema.IsSupported(1));
             Assert.False(PrecompiledSchema.IsSupported(2));
-            Assert.False(PrecompiledSchema.IsSupported(3));
-            Assert.True(PrecompiledSchema.IsSupported(4));
-            Assert.False(PrecompiledSchema.IsSupported(5));
+            Assert.True(PrecompiledSchema.IsSupported(3));
+            Assert.False(PrecompiledSchema.IsSupported(4));
         }
 
         [Theory]

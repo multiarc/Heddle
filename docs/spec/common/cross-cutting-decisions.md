@@ -558,7 +558,7 @@ documents are retired (2026-09-18) — full text: `git show f8a9497c:docs/spec/p
 - The five retired 2.x MSBuild properties (`HeddleObserveEngine`, `HeddleNodeFallback`,
   `HeddleEmitUtf8Pieces`, `HeddleObserveIntermediatePath`, `HeddleObserveImplementationPath`) warn
   `HED7037` when set and are otherwise inert; the observe-path pair retires silently. (P4-R4)
-- Everything else keeps its phase 1–3 shape: schema 4 stays the only readable shape, `HED7101`–`HED7104`
+- Everything else keeps its phase 1–3 shape: schema 3 stays the only readable shape, `HED7101`–`HED7104`
   and every `PrecompiledFallbackReason` stay as-is, `PrecompiledTemplateInfo.EntryPointType`/`RefusalSites`
   and the internal adapter constructor stay, and the whole `PrecompiledTemplates` /
   `PrecompiledValidationReport` / `PrecompiledFallbackEvent` surface stays. (P4-R3, P4-R5)

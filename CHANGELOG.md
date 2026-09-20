@@ -20,15 +20,15 @@ window's ratification remain in
 
 ### Changed (breaking)
 
-- **Only schema 4 manifests are accepted, and every accepted manifest was built by this release.**
-  `PrecompiledSchema.MinSupportedSchemaVersion` and `MaxSupportedSchemaVersion` are both `4`, and a
-  manifest below 4 is not degraded — registration **throws** `PrecompiledRegistrationException`, because a
-  hand-written manifest row can claim any schema number while carrying none of the behaviour the
-  number promises, and a degrade path would bless it. 2.0.x manifests (schemas 1–2) and the never-released schema 3 are
-  therefore rejected outright, which also retires the question the 2.1 window left open: there is no
-  version of the old Roslyn generator whose output this engine runs.
+- **Only schema 3 manifests are accepted, and every accepted manifest was built by this release.**
+  `PrecompiledSchema.MinSupportedSchemaVersion` and `MaxSupportedSchemaVersion` are both `3`, and a
+  manifest outside that point is not degraded — registration **throws**
+  `PrecompiledRegistrationException`, because a hand-written manifest row can claim any schema number
+  while carrying none of the behaviour the number promises, and a degrade path would bless it. The 2.x
+  manifest shapes (schemas 1–2) are therefore rejected outright: no version of the old Roslyn
+  generator's output runs on this engine.
   **What to do:** rebuild with the 3.0 `Heddle.Build` package (or `heddle compile`), which emits
-  schema 4. `Heddle.Build` and `Heddle` are version-locked — pair the matching versions.
+  schema 3. `Heddle.Build` and `Heddle` are version-locked — pair the matching versions.
   **If you do not:** registration throws before any template renders; there is no dynamic-tier
   fallback for a rejected manifest, which is that throw's purpose. No compatibility shim.
 - **The Roslyn-generator tier is deleted: the `Heddle.Generator` package, its analyzer, and
@@ -450,23 +450,21 @@ window's ratification remain in
   indexes, and a body whose recorded text dropped the source's hidden tokens (a comment, a `@\`
   whitespace eater) is resolved against the document those positions are native to. Rendered bytes are
   unchanged on both tiers.
-- **A refused call inside an `@<<` composition import precompiles instead of failing the build.** A
-  composition import expands inline, so the imported file's calls compile into the importing document
-  and get no document of their own, while their positions stay absolute in the imported file — text
-  neither the owning document nor the root carries. The build refused the whole template for it,
-  reporting `HED7020` and asking for `Precompile="false"`. The parse now keeps the text it consumed at
-  each expansion, so the refused call's own source is cut from the file it was written in and recorded
-  like any other refusal; the loader recompiles it at load and both tiers render the same bytes. This
-  works whether the imported file is a template the build compiled or a shared partial that only ever
-  gets imported — the second is not a row of the artifact and is read from disk on both sides.
-  <br/>Two imports in one document each keep their own site, including the same file imported twice:
-  their calls carry positions into two different files, so which import a site came from is part of
-  what identifies it, and the recorded site position is the `@<<` block that composed it. That is also
-  the position the build reports and the position a fault inside the recompiled fragment is reported
-  at — an offset into a file the template does not contain is never published as a position in it,
-  including when the refused call sits in a body inside the imported file. `HED7020` stays the guard
-  for a refusal whose source no text carries at all, and locating a call in a file is now an exact
-  test rather than a search for its name.
+- **A refused call inside an `@<<` composition import precompiles.** A composition import expands
+  inline, so the imported file's calls compile into the importing document and get no document of
+  their own, while their positions stay absolute in the imported file. The parse keeps the text it
+  consumed at each expansion, so a refused call's own source is cut from the file it was written in
+  and recorded like any other refusal; the loader recompiles it at load and both tiers render the same
+  bytes. This holds whether the imported file is a template the build compiled or a shared partial
+  that only ever gets imported — the second is not a row of the artifact and is read from disk on
+  both sides.
+  <br/>Each item records the `@<<` block that composed its file, so two imports in one document — or
+  the same file imported twice — keep their own sites and their own bodies, which a position alone
+  cannot distinguish once both files expand into one document. That block is the position the build
+  reports for the site and the position a fault inside the recompiled fragment is reported at: an
+  offset into a file the template does not contain is never published as a position in it, including
+  when the refused call sits in a body inside the imported file. `HED7020` guards a refusal whose
+  source no text carries at all.
 
 ### Build and packaging
 

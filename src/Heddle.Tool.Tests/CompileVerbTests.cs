@@ -131,7 +131,7 @@ namespace Heddle.Tool.Tests
             Assert.Equal("hello.heddle", artifact.Templates[0].Key);
             Assert.Equal("static.heddle", artifact.Templates[1].Key);
             string source = File.ReadAllText(Out("gen.g.cs"));
-            Assert.Contains("[assembly: global::Heddle.Precompiled.HeddleCompiledTemplates(typeof(global::Heddle.Generated.HeddleArtifact), 4,",
+            Assert.Contains("[assembly: global::Heddle.Precompiled.HeddleCompiledTemplates(typeof(global::Heddle.Generated.HeddleArtifact), 3,",
                 source);
             Assert.Contains("public static class Hello", source);
             Assert.Contains("public static class Static", source);

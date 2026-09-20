@@ -60,8 +60,8 @@ once reconciled against the shipped source.
 
    > **Note (2026-09-18).** Since 3.0.0 the per-feature `PrecompiledSchema.<Feature>SchemaVersion` gates named
    > above no longer exist: the compiled form carries one number, `PrecompiledSchema.CompiledFormSchemaVersion`
-   > (4), and that number is the window (`MinSupportedSchemaVersion` = `MaxSupportedSchemaVersion` = 4). The
-   > additivity obligation stands unchanged — the stored-artifact fixture is `compiled-form-v4.bin`
+   > (3), and that number is the window (`MinSupportedSchemaVersion` = `MaxSupportedSchemaVersion` = 3). The
+   > additivity obligation stands unchanged — the stored-artifact fixture is `compiled-form-v3.bin`
    > (`CompiledFormFixtureTests`).
 
 ## Explicit not-window-gated rulings
@@ -392,7 +392,7 @@ The full 2.1 table (2.0.0 state and as-implemented text per item) is in git hist
 
 | # | Item (2.1 record) | Disposition | Where it lands in 3.0.0 |
 | --- | --- | --- | --- |
-| 1 | Precompiled manifest schema floor and window (Q8.2) | Superseded | Only schema 4 is read, and every accepted artifact was built by the 3.0 build; a lower schema **throws** `PrecompiledRegistrationException` at registration (CHANGELOG 3.0.0 § Changed (breaking)) |
+| 1 | Precompiled manifest schema floor and window (Q8.2) | Superseded | Only schema 3 is read, and every accepted artifact was built by the 3.0 build; a lower schema **throws** `PrecompiledRegistrationException` at registration (CHANGELOG 3.0.0 § Changed (breaking)) |
 | 2 | `<HeddleTemplate>` per-item metadata — `Key`, `Name`, `Precompile` live from a real project (Q8.12) | Ships as implemented | The `Heddle.Build` targets and the `heddle compile` response file ([precompilation.md](../../precompilation.md)) |
 | 3 | Generated `#line` file (Q8.12 fallout) | Superseded | The 2.x per-template generated classes are gone; the build host positions its diagnostics at the `.heddle` path |
 | 4 | Release-line statements (Q8.11) | Ships as implemented | One `<VersionPrefix>` in `Directory.Build.props`, gated by `VersionConsistencyTests`; the line is 3.0.0 |
@@ -424,34 +424,8 @@ The full 2.1 table (2.0.0 state and as-implemented text per item) is in git hist
 | 9 | Registry validation gains member-path and late-bound-function checks with must-surface reasons | — | `PrecompiledGauntlet`; `HED7101`–`HED7104` |
 | 10 | Spec records: `shared-source-architecture.md` reduced to what still governs; D4 superseded by a dated note; generator rules leave `.claude/rules` | — | Done on this tree |
 | 11 | Member resolution is decided by the **most-derived declaration** of a name: a `[Hidden]` override, a `[Hidden]`/non-public/`static` `new` property, or a field or method of that name makes the name not-found (`HED0001`) instead of binding the base class's visible property. A sandbox fix — the 2.x walk rendered a hidden override's value through virtual dispatch — and a narrowing: a template that reached a base member through such a derived type stops compiling | Expose the value under a name the derived type does not hide | `MemberPathWalk`; `HiddenMemberShadowingTests`; CHANGELOG 3.0.0 § Fixed; [patterns.md](../../patterns.md#exposing-models-to-untrusted-templates) |
-| 12 | The compiled form's serialization types are `internal`: the `Heddle.Precompiled.CompiledForm` model, `CompiledFormReader`, `CompiledFormWriter` and `TypeIdentityTable` (42 exported types) leave the public surface. They describe the artifact's wire shape, which is engine detail, not a supported contract; keeping them public froze every field of the format under [D2](cross-cutting-decisions.md#d2--breaking-changes-land-only-in-ratified-breaking-windows). The artifact's *contract* surface — `IHeddleCompiledArtifact`, `IPrecompiledSiteTable`, `HeddleCompiledTemplatesAttribute`, `PrecompiledTemplates` and its entries, events and exceptions — stays public | Nothing to do: no generated consumer named these types, and the `heddle compile` host reaches them through `InternalsVisibleTo` | CHANGELOG 3.0.0 § Changed (breaking); `public-api-heddle.txt` (189 → 147 exported types) |
-| 13 | `TemplateOptions.ValidateModelType` removed. The model-type check it once opted into is unconditional, so the property had become a settable no-op: a host that set it to `false` to opt **out** was getting validation anyway, with nothing to tell it so | Delete the assignment. There is nothing to re-enable — a model the template cannot accept is refused either way | CHANGELOG 3.0.0 § Changed (breaking); `HeddleTemplate`'s model-type guard |
-| 14 | **Withdrawn before the window shipped; nothing breaks.** The ruling recorded here was that a refused call inside an `@<<` composition import fails the build (`HED7020`, naming the call and its position) rather than record a fragment that cannot parse: the call's position is absolute in the *imported* file, which no recorded text carried. That limit is lifted. The parse keeps the text it consumed at each `@<<` expansion, the record cuts the refused call's own source out of the file it was written in, and the site is recorded at the import block — the only position in the importing template a reader can act on, and what tells two imports' sites apart when both expand into one document. Such a template precompiles, and the refused call materializes at load like any other refusal. `HED7020` remains the guard for a refusal whose source no text carries at all | None. A project that took the stopgap's remedy (`Precompile="false"` on the item, or moving the refused call out of the imported file) can drop it | CHANGELOG 3.0.0 § Fixed; `ImportSource`; `FormRecord.ResolveRefusals`; `FormCursor.BodyKey`; `RefusalFragmentParityTests`; corpus `refusal-import-page.heddle` |
-
-> **Note (2026-09-20) — item 14 was lifted the day it was recorded, and not where it was expected
-> to be.** The reading above guessed the route: the artifact carries every template's raw text keyed by
-> template key and registered name, so the imported file's text would be reachable once `ToArtifact`
-> stopped resolving refusals per template ahead of the merge. That route would not have held. An
-> `@<<` import resolves at load through `ImportMap.ReaderFor`, which falls back to **reading the file
-> from disk** when the spelling is in no map — so a shared partial that is only ever imported, never
-> rendered directly and never a build item, is not a row of the artifact at all, and a merge-time fix
-> would have missed exactly the commonest shape. The fix sits where the text was read instead: the
-> parse keeps what each expansion consumed (`ImportSource`, whose text the recording build alone
-> keeps), so each refusal is matched to its own import by construction rather than tried against
-> candidates, and no file is read a second time — a re-read could answer with a different byte
-> sequence than the one the positions were taken from. The marker rides the **chain** the parser
-> built, not the context it compiles under: an expansion isolates the importing context and copies the
-> importer's chains onto the copy before marking it, so a context read would claim the importer's own
-> `->` default chains for the imported file. The import closure with its SHA-256 per entry still
-> governs staleness, so a changed import is `StaleImport` as before.
->
-> **Residue.** The loader correlates a *body* by position and parsed template alone, and the artifact
-> — schema 4, whose shape a stored fixture pins — has no field to qualify that key by import. Two
-> imports can therefore put a bodied call at one offset of their own files and share a key. Every way
-> the two bodies can differ also differs in the parsed template, which keys them apart, so what does
-> share a key is two entries that serve the same text and the same typings; `RefusalFragmentParityTests`
-> pins both spellings byte-for-byte. Refusal sites are not exposed this way — their recorded position
-> is the import block, which is part of the key.
+| 12 | The compiled form's serialization types are `internal`: the `Heddle.Precompiled.CompiledForm` model, `CompiledFormReader`, `CompiledFormWriter` and `TypeIdentityTable` (42 exported types) are not on the public surface. They describe the artifact's wire shape, which is engine detail rather than a supported contract, and a public wire shape is frozen field by field under [D2](cross-cutting-decisions.md#d2--breaking-changes-land-only-in-ratified-breaking-windows). The artifact's *contract* surface — `IHeddleCompiledArtifact`, `IPrecompiledSiteTable`, `HeddleCompiledTemplatesAttribute`, `PrecompiledTemplates` and its entries, events and exceptions — is public | Nothing to do: no generated consumer names these types, and the `heddle compile` host reaches them through `InternalsVisibleTo` | CHANGELOG 3.0.0 § Changed (breaking); `public-api-heddle.txt` (189 → 147 exported types) |
+| 13 | `TemplateOptions.ValidateModelType` removed. Every top-level render validates the model against the compiled model type, unconditionally, so the property gated nothing: setting it to `false` did not opt out | Delete the assignment. There is nothing to re-enable — a model the template cannot accept is refused either way | CHANGELOG 3.0.0 § Changed (breaking); `HeddleTemplate`'s model-type guard |
 
 **Accepted residue, recorded rather than glossed.** Roslyn has no per-reference suppression for
 `CS8002` — the warning carries no source location and the `Csc` task takes only a project-wide disabled

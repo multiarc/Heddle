@@ -8,7 +8,7 @@ using Xunit;
 
 namespace Heddle.Tests
 {
-    /// <summary>The stored compiled-form fixture (P4-R3): <c>TestTemplate/compiled-form-v4.bin</c> is real
+    /// <summary>The stored compiled-form fixture (P4-R3): <c>TestTemplate/compiled-form-v3.bin</c> is real
     /// <c>heddle compile</c> output for <see cref="FixtureText"/> (key <c>fixture.heddle</c>, model
     /// <c>Heddle.Data.TemplateOptions</c>, profile Text, mode Native, directive lines trimmed). It registers
     /// through the marker path a deployed host uses and renders byte-identically to the text compile of the
@@ -37,8 +37,8 @@ namespace Heddle.Tests
 
         internal static byte[] FixtureBytes()
         {
-            var path = Path.Combine(TestCorpusIndex.CorpusDir, "compiled-form-v4.bin");
-            Assert.True(File.Exists(path), "Missing TestTemplate/compiled-form-v4.bin beside the corpus.");
+            var path = Path.Combine(TestCorpusIndex.CorpusDir, "compiled-form-v3.bin");
+            Assert.True(File.Exists(path), "Missing TestTemplate/compiled-form-v3.bin beside the corpus.");
             return File.ReadAllBytes(path);
         }
 

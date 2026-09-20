@@ -6,7 +6,7 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using Heddle.Precompiled;
 
-[assembly: global::Heddle.Precompiled.HeddleCompiledTemplates(typeof(global::Heddle.Generated.HeddleArtifact), 4, "<version>")]
+[assembly: global::Heddle.Precompiled.HeddleCompiledTemplates(typeof(global::Heddle.Generated.HeddleArtifact), 3, "<version>")]
 
 namespace Heddle.Generated
 {

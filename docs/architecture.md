@@ -48,13 +48,13 @@ declined sites from the recorded form. Nothing runs inside the compiler. See
 
 The compiled form (`src/Heddle/Precompiled/CompiledForm/`) is a versioned binary section layout —
 templates, documents, extensions, functions, members — written by `CompiledFormWriter` and read by
-`CompiledFormReader` (schema 4 is the only readable shape; the reader rejects anything else before
+`CompiledFormReader` (schema 3 is the only readable shape; the reader rejects anything else before
 any row is trusted). The run-time gauntlet (`PrecompiledGauntlet.Validate`) checks a row against the
 *live* request — options fingerprint, ambient model type, extension identities, function targets,
 member bindings, content staleness — and any failure degrades that template to the dynamic tier with
 a `PrecompiledFallbackEvent`. Regeneration is byte-exact by construction: `CompiledFormWriter`
 stamps a content digest, and `CompiledFormFixtureTests` pins a stored real-build artifact
-(`src/Heddle.Tests/TestTemplate/compiled-form-v4.bin`) byte-for-byte through read and re-encode, and registers and renders it against the text compile of the same fixture.
+(`src/Heddle.Tests/TestTemplate/compiled-form-v3.bin`) byte-for-byte through read and re-encode, and registers and renders it against the text compile of the same fixture.
 
 ---
 

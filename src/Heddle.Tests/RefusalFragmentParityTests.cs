@@ -494,19 +494,41 @@ namespace Heddle.Tests
                     SpoilItemTexts(nested);
         }
 
-        /// <summary>Two composition imports putting a bodied call at the same offset of their own files,
-        /// with the same parsed body and with different ones. The loader correlates a body by position and
-        /// template alone and the artifact has no room to qualify that key, so this is the shape where two
-        /// imports could in principle be confused for one another; what both rows assert is that neither
-        /// spelling changes a byte. A body that differs carries the difference in its parsed text too, so
-        /// it keys apart and never meets the other; a body that agrees keys together and the two entries
-        /// are the same answer. Two partials cut from one scaffold are the ordinary way to get here.</summary>
+        /// <summary>Two composition imports putting a bodied call at the same offset of their own files.
+        /// An import expands inline, so both items land in one document carrying positions that are offsets
+        /// into two different files; each item records the <c>@&lt;&lt;</c> block that composed it, and that
+        /// is what the loader correlates a body by, so the two never meet under one key. Both spellings
+        /// render byte for byte what the dynamic engine renders \u2014 bodies that read alike and bodies that
+        /// differ. Two partials cut from one scaffold are the ordinary way to share a position.</summary>
         [Fact]
-        public void TwoImportsWhoseBodiedCallsShareAPositionRenderIdenticallyOnBothTiers()
+        public void TwoImportsWhoseBodiedCallsShareAPositionKeepTheirOwnBodies()
         {
             const string plain = "[@list(Rows){{B}}]";
             const string commented = "[@list(Rows){{@*c*@B}}]";
             const string pageText = "A@<<{{body-one.heddle}}\nB@<<{{body-two.heddle}}\nC\n";
+            var agreeing = new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                { "body-one.heddle", plain },
+                { "body-two.heddle", plain }
+            };
+            WithImportsOnDisk(agreeing, rootPath =>
+            {
+                var artifact = Record("refusal-bodykey-same.heddle", pageText, rootPath);
+                var bodied = BodiedItems(artifact);
+                Assert.Equal(2, bodied.Count);
+                // One position in their own files; two anchors, each the import block that composed it.
+                Assert.Equal(bodied[0].Position.Start, bodied[1].Position.Start);
+                Assert.Equal(bodied[0].Position.Length, bodied[1].Position.Length);
+                Assert.Equal(
+                    new[]
+                    {
+                        pageText.IndexOf("@<<", StringComparison.Ordinal),
+                        pageText.LastIndexOf("@<<", StringComparison.Ordinal)
+                    },
+                    new SortedSet<int> { bodied[0].ImportAnchor, bodied[1].ImportAnchor }.ToArray());
+                AssertTierParity("refusal-bodykey-same.heddle", pageText, rootPath);
+            });
+
             var differing = new Dictionary<string, string>(StringComparer.Ordinal)
             {
                 { "body-one.heddle", plain },
@@ -514,14 +536,38 @@ namespace Heddle.Tests
             };
             WithImportsOnDisk(differing, rootPath =>
                 AssertTierParity("refusal-bodykey-differ.heddle", pageText, rootPath));
+        }
 
-            var agreeing = new Dictionary<string, string>(StringComparer.Ordinal)
+        /// <summary>Every recorded item that carries a body, in document and chain order.</summary>
+        private static List<CompiledItem> BodiedItems(CompiledArtifact artifact)
+        {
+            var found = new List<CompiledItem>();
+            foreach (var document in artifact.Documents)
             {
-                { "body-one.heddle", plain },
-                { "body-two.heddle", plain }
-            };
-            WithImportsOnDisk(agreeing, rootPath =>
-                AssertTierParity("refusal-bodykey-same.heddle", pageText, rootPath));
+                foreach (var element in document.Elements)
+                {
+                    if (!element.IsChain || element.Chain == null)
+                        continue;
+                    foreach (var item in element.Chain.Items)
+                        FindBodiedItems(item, found);
+                }
+
+                foreach (var removed in document.RemovedItems)
+                    FindBodiedItems(removed, found);
+            }
+
+            return found;
+        }
+
+        private static void FindBodiedItems(CompiledItem item, List<CompiledItem> found)
+        {
+            if (item == null)
+                return;
+            if (item.Body != null)
+                found.Add(item);
+            if (item.Parameter != null && item.Parameter.NestedChain != null)
+                foreach (var nested in item.Parameter.NestedChain.Items)
+                    FindBodiedItems(nested, found);
         }
 
         /// <summary>The locate step is a verdict, not a containment test. Staged by moving the refused

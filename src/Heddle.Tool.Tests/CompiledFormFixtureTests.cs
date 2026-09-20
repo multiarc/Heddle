@@ -8,7 +8,7 @@ using Xunit;
 namespace Heddle.Tool.Tests
 {
     /// <summary>
-    /// The stored firewall: <c>TestData/compiled-form-v4.bin</c> is real <c>heddle compile</c> output for a
+    /// The stored firewall: <c>TestData/compiled-form-v3.bin</c> is real <c>heddle compile</c> output for a
     /// fixture template exercising all four gauntlet-relevant sections — a template row, an extension row
     /// (<c>@if</c>), a function row (<c>upper</c>), and member rows (the model reads). The build that produced
     /// it: template text <c>Hello @(upper(TemplateName))!</c> + <c>@if(TrimDirectiveLines){{Shown:
@@ -20,8 +20,8 @@ namespace Heddle.Tool.Tests
     {
         private static byte[] FixtureBytes()
         {
-            var path = Path.Combine(AppContext.BaseDirectory, "TestData", "compiled-form-v4.bin");
-            Assert.True(File.Exists(path), "Missing TestData/compiled-form-v4.bin beside the test assembly.");
+            var path = Path.Combine(AppContext.BaseDirectory, "TestData", "compiled-form-v3.bin");
+            Assert.True(File.Exists(path), "Missing TestData/compiled-form-v3.bin beside the test assembly.");
             return File.ReadAllBytes(path);
         }
 
