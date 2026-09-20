@@ -9,7 +9,7 @@ using Xunit;
 
 namespace Heddle.Tests
 {
-    /// <summary>Typed entry points (P2-W2 exit criteria): a wrapper whose artifact fails validation
+    /// <summary>Typed entry points: a wrapper whose artifact fails validation
     /// throws <see cref="PrecompiledMismatchException"/>; with <see cref="PrecompiledTemplates.DefaultOptions"/>
     /// assigned, a late-bound function binds against its registry; two items in one assembly with
     /// different baked profiles render their own bytes while <c>TryResolve</c> keeps comparing the

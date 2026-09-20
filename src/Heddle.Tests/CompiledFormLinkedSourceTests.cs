@@ -9,7 +9,7 @@ using Xunit;
 
 namespace Heddle.Tests
 {
-    /// <summary>File-backed loading (P1-W9 exit criterion 4): artifact bytes and templates staged on
+    /// <summary>File-backed loading: artifact bytes and templates staged on
     /// disk load through file paths — not memory buffers — and render byte-identically, including a
     /// partial child and a composition import resolved from the staged directory.
     /// Serialized — the registry is process-global static state.</summary>

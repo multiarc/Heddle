@@ -7,7 +7,7 @@ using Xunit;
 
 namespace Heddle.Tests
 {
-    /// <summary>Late-bound function sites (P1-W9 exit criterion 3): a deferred call renders through the
+    /// <summary>Late-bound function sites: a deferred call renders through the
     /// materializing request's registry, a second registry triggers its own memoized compilation, and
     /// the default-registry strategy fails fast instead of rendering an empty string.
     /// Serialized — the registry is process-global static state.</summary>

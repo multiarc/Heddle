@@ -1,7 +1,8 @@
 namespace Heddle.Language
 {
     /// <summary>
-    /// Slot rules shared between runtime and emitter tiers: <see cref="HasOutValue"/>, <see cref="SlotTypeName"/>, and <see cref="HasSlot"/>.
+    /// The slot rules, stated once for the compile and render paths that both ask them:
+    /// <see cref="HasOutValue"/>, <see cref="SlotTypeName"/>, and <see cref="HasSlot"/>.
     /// </summary>
     internal static class SlotRules
     {

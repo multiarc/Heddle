@@ -7,7 +7,7 @@ namespace Heddle.Precompiled.CompiledForm
 {
     /// <summary>Encodes a compiled-form artifact to bytes. Stateless and thread-safe: all mutable state
     /// lives in one write. Serializing equal models yields identical bytes.</summary>
-    public static class CompiledFormWriter
+    internal static class CompiledFormWriter
     {
         /// <summary>Encodes <paramref name="artifact"/> to a complete artifact image.</summary>
         public static byte[] Write(CompiledArtifact artifact)
@@ -685,6 +685,7 @@ namespace Heddle.Precompiled.CompiledForm
             {
                 Require(item != null, "A removed item is null.");
                 WritePosition(item.Position);
+                WriteImportAnchor(item.ImportAnchor);
                 WriteOptString(item.ParameterTemplate);
                 WriteOptBody(item.Body, artifact);
                 WriteAltBodies(item.AltBodies, artifact);
@@ -726,6 +727,7 @@ namespace Heddle.Precompiled.CompiledForm
                 RequireIndex(item.ExtensionRef, artifact.Extensions.Count, "Extension");
                 WriteIndex(item.ExtensionRef);
                 WritePosition(item.Position);
+                WriteImportAnchor(item.ImportAnchor);
                 WriteTypeRef(item.ReturnType);
                 WriteOptString(item.ParameterTemplate);
                 WriteParameter(item.Parameter, artifact);
@@ -824,6 +826,15 @@ namespace Heddle.Precompiled.CompiledForm
                         WriteBool(parameter.PropDynamicRest);
                         break;
                 }
+            }
+
+            /// <summary>The item's import anchor: absent, or a non-negative offset into this template's
+            /// own text.</summary>
+            private void WriteImportAnchor(int anchor)
+            {
+                WriteBool(anchor >= 0);
+                if (anchor >= 0)
+                    WriteUVarint((uint)anchor);
             }
 
             private void WriteRefusalSource(CompiledRefusalSource refusal)

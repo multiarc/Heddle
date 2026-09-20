@@ -7,7 +7,7 @@ namespace Heddle.Precompiled.CompiledForm
     /// <summary>A type reference carried by the artifact: a named type, a constructed generic, an array,
     /// or the engine's dynamic type. Instances are immutable and compare by structure, so the writer interns
     /// them by identity in first-use order.</summary>
-    public abstract class CompiledTypeRef
+    internal abstract class CompiledTypeRef
     {
         /// <summary>The nominal form used wherever an identity is compared: the CLR full name and the
         /// assembly simple name, joined exactly as the runtime formats a live type.</summary>
@@ -16,7 +16,7 @@ namespace Heddle.Precompiled.CompiledForm
 
     /// <summary>A named type: CLR metadata full name (nested types joined with <c>+</c>, no type arguments),
     /// the assembly simple name, and whether the writer classified the assembly as a framework assembly.</summary>
-    public sealed class NamedTypeRef : CompiledTypeRef
+    internal sealed class NamedTypeRef : CompiledTypeRef
     {
         public NamedTypeRef(string fullName, string assemblySimpleName, bool isFramework)
         {
@@ -55,7 +55,7 @@ namespace Heddle.Precompiled.CompiledForm
 
     /// <summary>A constructed generic: the generic definition plus its ordered type arguments
     /// (<c>Nullable&lt;T&gt;</c> is the constructed generic it is).</summary>
-    public sealed class GenericTypeRef : CompiledTypeRef
+    internal sealed class GenericTypeRef : CompiledTypeRef
     {
         public GenericTypeRef(NamedTypeRef definition, IReadOnlyList<CompiledTypeRef> arguments)
         {
@@ -104,7 +104,7 @@ namespace Heddle.Precompiled.CompiledForm
     }
 
     /// <summary>An array: the element type plus the rank.</summary>
-    public sealed class ArrayTypeRef : CompiledTypeRef
+    internal sealed class ArrayTypeRef : CompiledTypeRef
     {
         public ArrayTypeRef(CompiledTypeRef element, int rank)
         {
@@ -136,7 +136,7 @@ namespace Heddle.Precompiled.CompiledForm
 
     /// <summary>The engine's dynamic type — a template typed <c>:: dynamic</c>, distinct from
     /// <c>System.Object</c>.</summary>
-    public sealed class DynamicTypeRef : CompiledTypeRef
+    internal sealed class DynamicTypeRef : CompiledTypeRef
     {
         public static readonly DynamicTypeRef Instance = new DynamicTypeRef();
 
@@ -153,7 +153,7 @@ namespace Heddle.Precompiled.CompiledForm
 
     /// <summary>Interns type references by structural identity in first-use order. One instance serves one
     /// artifact write, so the type table order is a pure function of the walked model.</summary>
-    public sealed class TypeIdentityTable
+    internal sealed class TypeIdentityTable
     {
         private readonly Dictionary<CompiledTypeRef, int> _indexByRef = new Dictionary<CompiledTypeRef, int>();
         private readonly List<CompiledTypeRef> _ordered = new List<CompiledTypeRef>();

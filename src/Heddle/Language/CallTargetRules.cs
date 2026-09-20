@@ -9,7 +9,7 @@ namespace Heddle.Language
         Extension,
         Function,
         /// <summary>A registered function whose call shape the function tier cannot accept — a chain parameter or
-        /// a C# expression. An error on both tiers rather than a fall-through.</summary>
+        /// a C# expression. An error rather than a fall-through.</summary>
         FunctionShapeUnsupported,
         Unknown
     }

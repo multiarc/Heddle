@@ -72,7 +72,7 @@ namespace Heddle.Runtime {
         /// <see cref="Data.TemplateOptions.ProvideLanguageFeatures"/> is true (created in the two root ctors,
         /// reference-copied through the private copy ctor so all child compiles share one). Recorded at the single
         /// body-compile funnel <c>HeddleCompiler.Compile</c>; null on production compiles (one null check per body,
-        /// zero allocation).
+        /// zero allocation). A refusal fragment records none: its offsets are its own, not the document's.
         /// </summary>
         internal ScopeMap ScopeMap { get; }
 
@@ -81,7 +81,8 @@ namespace Heddle.Runtime {
         /// exactly like <see cref="CompiledItems"/> — one compile, one cache. Keyed by a stable definition
         /// identity (name + declaration position) rather than the <see cref="DefinitionItem"/> instance, because
         /// context isolation copies definitions per body: two call sites of one definition therefore share the
-        /// same resolved <see cref="PropLayout"/> instance (the two-site invariant).
+        /// same resolved <see cref="PropLayout"/> instance (the two-site invariant). A refusal fragment takes its
+        /// own, because it parses its own text and its definition positions are not this document's.
         /// </summary>
         internal Dictionary<string, PropLayout> ResolvedPropLayouts { get; }
 
@@ -165,33 +166,64 @@ namespace Heddle.Runtime {
         /// through the child-context copy constructor so nested body compiles record into one form.</summary>
         internal FormRecord FormRecord { get; private set; }
 
-        private CompileContext(CompileContext context, string fileName = null, ExType modelType = null)
+        /// <summary>The context a recorded refusal fragment recompiles under at load: the enclosing compile's
+        /// place in the document, with the enclosing compile's own caches and build state left behind.
+        /// <paramref name="scopeType"/> is the scope the refused call site stood in.</summary>
+        internal static CompileContext ForRefusalFragment(CompileContext context, ExType scopeType)
+        {
+            return new CompileContext(context, modelType: scopeType, refusalFragment: true);
+        }
+
+        private CompileContext(CompileContext context, string fileName = null, ExType modelType = null,
+            bool refusalFragment = false)
         {
             if (context == null)
                 throw new ArgumentNullException(nameof(context));
-            _recordForm = context._recordForm;
-            FormRecord = context.FormRecord;
-            DeferUnboundFunctions = context.DeferUnboundFunctions;
+            // Two kinds of parent state meet here, and a refusal fragment keeps only the first.
+            //
+            // Where the compile SITS in the document is inherited by every child, the fragment included:
+            // the root type a '::' read resolves against, the prop layout and slot type of the definition
+            // body around it, the call's region fills, the reader an '@<<' import expands through, the
+            // controller, the options and the output profile. A fragment recompiles a call that stood
+            // exactly where the recorded one stood, and the dynamic tier compiles that same text under
+            // all of it — anything dropped here is a tier divergence.
+            //
+            // What the enclosing compile has already DECIDED is not inherited by a fragment. It binds for
+            // real at load, so it takes neither the form record nor unbound-function deferral, both of
+            // which are the build's and carry the build's possibly-deferred typings. It collects its own
+            // errors, warnings, compiled items and resolved layouts because it parses its own text and
+            // its positions stay fragment-local until the caller re-anchors them, and it records no scope
+            // map for the same reason: fragment offsets are not the outer document's coordinates.
+            _recordForm = !refusalFragment && context._recordForm;
+            FormRecord = refusalFragment ? null : context.FormRecord;
+            DeferUnboundFunctions = !refusalFragment && context.DeferUnboundFunctions;
             ImportReader = context.ImportReader;
             ImportIdentifier = context.ImportIdentifier;
             RootScopeType = context.RootScopeType;
-            CompiledItems = context.CompiledItems;
-            ResolvedPropLayouts = context.ResolvedPropLayouts;
-            CompileErrors = context.CompileErrors;
-            CompileWarnings = context.CompileWarnings;
+            CompiledItems = refusalFragment
+                ? new Dictionary<OutputItem, CompiledElement>()
+                : context.CompiledItems;
+            ResolvedPropLayouts = refusalFragment
+                ? new Dictionary<string, PropLayout>()
+                : context.ResolvedPropLayouts;
+            CompileErrors = refusalFragment ? new List<HeddleCompileError>() : context.CompileErrors;
+            CompileWarnings = refusalFragment ? new List<HeddleCompileWarning>() : context.CompileWarnings;
             ControllerName = context.ControllerName;
-            Options = new TemplateOptions(context.Options, fileName);
+            // The fragment is the same file under the same options, so it shares the instance rather than
+            // taking a renamed copy the way a partial or an import does.
+            Options = refusalFragment ? context.Options : new TemplateOptions(context.Options, fileName);
             ScopeType = modelType ?? context.ScopeType ?? typeof(object);
             OutputProfile = context.OutputProfile;
             ActivePropLayout = context.ActivePropLayout;
             SlotParameterType = context.SlotParameterType;
             RegionFillScope = context.RegionFillScope;
-            ResolvedRegionLayouts = context.ResolvedRegionLayouts;
-            ScopeMap = context.ScopeMap;
+            ResolvedRegionLayouts = refusalFragment
+                ? new Dictionary<string, RegionLayout>()
+                : context.ResolvedRegionLayouts;
+            ScopeMap = refusalFragment ? null : context.ScopeMap;
             _csharpContext = context._csharpContext;
             _memberAccessors = context.MemberAccessors;
         }
-
         private Dictionary<Parameters.MemberPathKey, System.Func<object, object>> _memberAccessors;
 
         /// <summary>The member-path accessors this compile has built, by the hops they read. An accessor is a pure

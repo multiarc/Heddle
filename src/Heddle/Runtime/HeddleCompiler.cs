@@ -1,12 +1,9 @@
 ﻿using System;
-using System.Diagnostics.CodeAnalysis;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
-using System.Runtime.CompilerServices;
 using System.Text;
-using Microsoft.CSharp.RuntimeBinder;
 using Heddle.Attributes;
 using Heddle.Core;
 using Heddle.Data;
@@ -20,7 +17,6 @@ using Heddle.Runtime.Expressions;
 using Heddle.Runtime.Parameters;
 using Heddle.Strings;
 using Heddle.Strings.Core;
-using Binder = Microsoft.CSharp.RuntimeBinder.Binder;
 
 namespace Heddle.Runtime
 {
@@ -127,7 +123,7 @@ namespace Heddle.Runtime
                     try
                     {
                         var compiledItem = CompileItem(item, compileScope, extensions.Context,
-                            ref returnTypeChainedPrevious);
+                            extensions.ImportSource, ref returnTypeChainedPrevious);
                         if (compiledItem != null)
                         {
                             MarkChainConsumer(compiledItem, item, hasProducerToRight);
@@ -172,7 +168,7 @@ namespace Heddle.Runtime
                     try
                     {
                         var compiledItem = CompileItem(item, compileScope, extensions.Context,
-                            ref returnTypeChainedPrevious);
+                            extensions.ImportSource, ref returnTypeChainedPrevious);
                         if (compiledItem != null)
                         {
                             MarkChainConsumer(compiledItem, item, hasProducerToRight);
@@ -272,14 +268,14 @@ namespace Heddle.Runtime
         }
 
         private static TemplateChain CompileParameterChain(IEnumerable<OutputItem> items, CompileScope compileContext,
-            ParseContext parseContext, ExType returnTypeChainedPrevious)
+            ParseContext parseContext, ImportSource import, ExType returnTypeChainedPrevious)
         {
             TemplateChain result = new TemplateChain();
             bool hasProducerToRight = false;
             foreach (var item in items.Reverse())
             {
-                var compiledItem = CompileItem(item, compileContext, parseContext, ref returnTypeChainedPrevious,
-                    chainParameter: true);
+                var compiledItem = CompileItem(item, compileContext, parseContext, import,
+                    ref returnTypeChainedPrevious, chainParameter: true);
                 if (compiledItem != null)
                 {
                     MarkChainConsumer(compiledItem, item, hasProducerToRight);
@@ -301,34 +297,54 @@ namespace Heddle.Runtime
                 definition.ReceivesChainedValue = true;
         }
 
+        /// <summary>The site key's import discriminator: where in <b>this</b> template the <c>@&lt;&lt;</c>
+        /// block that composed the item's file sits, or the item's own start when the template carries the
+        /// item itself. A composition import expands inline, so two imports' chains land in one document at
+        /// offsets into two different files and the position alone is not a key.</summary>
+        private static int ImportAnchor(ImportSource import, BlockPosition position) =>
+            import != null ? import.RootSite.StartIndex : position.StartIndex;
+
         // Nested producers in parameter chains forward raw output; only the enclosing leaf applies HTML redirect
         // to avoid double-encoding (e.g., @(upper(x)) → @() ← upper(x)).
         private static TemplateItem CompileItem
-        (OutputItem extensionItem, CompileScope compileScope, ParseContext parseContext,
+        (OutputItem extensionItem, CompileScope compileScope, ParseContext parseContext, ImportSource import,
             ref ExType returnTypeChainedPrevious, bool chainParameter = false)
         {
-            var record = compileScope.CompileContext.FormRecord;
-            if (record == null)
-                return CompileItemInner(extensionItem, compileScope, parseContext,
-                    ref returnTypeChainedPrevious, chainParameter);
-            record.BeginItem(extensionItem, extensionItem.Context ?? parseContext);
-            record.PushItem(extensionItem);
+            // The cursor carries the anchor for as long as this item compiles: the hook that asks for
+            // its body from inside that compile has only the item to name it by.
+            var cursor = compileScope.FormCursor ?? FormCursor.Current;
+            int savedAnchor = cursor == null ? -1
+                : cursor.EnterItem(ImportAnchor(import, extensionItem.Position));
             try
             {
-                var compiled = CompileItemInner(extensionItem, compileScope, parseContext,
-                    ref returnTypeChainedPrevious, chainParameter);
-                if (compiled != null)
-                    record.EndItem(extensionItem, compiled);
-                return compiled;
+                var record = compileScope.CompileContext.FormRecord;
+                if (record == null)
+                    return CompileItemInner(extensionItem, compileScope, parseContext, import,
+                        ref returnTypeChainedPrevious, chainParameter);
+                record.BeginItem(extensionItem, extensionItem.Context ?? parseContext, import);
+                record.PushItem(extensionItem);
+                try
+                {
+                    var compiled = CompileItemInner(extensionItem, compileScope, parseContext, import,
+                        ref returnTypeChainedPrevious, chainParameter);
+                    if (compiled != null)
+                        record.EndItem(extensionItem, compiled);
+                    return compiled;
+                }
+                finally
+                {
+                    record.PopItem();
+                }
             }
             finally
             {
-                record.PopItem();
+                if (cursor != null)
+                    cursor.ExitItem(savedAnchor);
             }
         }
 
         private static TemplateItem CompileItemInner
-        (OutputItem extensionItem, CompileScope compileScope, ParseContext parseContext,
+        (OutputItem extensionItem, CompileScope compileScope, ParseContext parseContext, ImportSource import,
             ref ExType returnTypeChainedPrevious, bool chainParameter = false)
         {
             if (compileScope.CompileContext.CompiledItems.TryGetValue(extensionItem, out var result))
@@ -347,11 +363,16 @@ namespace Heddle.Runtime
             // on the dynamic tier, where the slot and the ambient are both null.
             var refusalCursor = compileScope.FormCursor ?? FormCursor.Current;
             string refusalText;
+            BlockPosition refusalAnchor;
+            // An import expands inline, so two imports' sites land in one document under positions that
+            // are offsets into two different files. Which import the chain came from is what tells them
+            // apart; it is the same fact the record keyed the site under.
             if (refusalCursor != null && refusalCursor.TryGetRefusal(extensionItem.Position,
-                extensionItem.ParameterTemplate, out refusalText) && refusalText != null)
+                extensionItem.ParameterTemplate, ImportAnchor(import, extensionItem.Position),
+                out refusalText, out refusalAnchor) && refusalText != null)
             {
                 var fragment = CompileRefusalFragment(extensionItem, compileScope, refusalCursor,
-                    refusalText);
+                    refusalText, refusalAnchor);
                 if (fragment == null)
                     return null;
                 // The loader does not statically type refusal output (the recorded nominal would
@@ -416,7 +437,6 @@ namespace Heddle.Runtime
                 compileScope.Options.ExpressionMode != ExpressionMode.MemberPathsOnly)
             {
                 var functionRegistry = compileScope.Options.Functions ?? FunctionRegistry.Default;
-                // Shared with emitter's dispatch to ensure consistent precedence (extension beats function).
                 var callTarget = CallTargetRules.ResolveCallTarget(extensionItem.ExtensionName,
                     extensionItem.CallParameter, null, null,
                     TemplateFactory.Exists, functionRegistry.Contains);
@@ -598,7 +618,7 @@ namespace Heddle.Runtime
             else
             {
                 var callParameter = CompileParameterChain(extensionItem.CallParameter.ChainParameter, compileScope,
-                    parseContext, returnTypeChainedPrevious);
+                    parseContext, import, returnTypeChainedPrevious);
                 dataType = callParameter.RenderType;
                 result.CompiledItem.Parameter = new ChainedParameter(callParameter);
                 var chainRecord = compileScope.CompileContext.FormRecord;
@@ -625,24 +645,29 @@ namespace Heddle.Runtime
         }
 
         /// <summary>Compiles a recorded refusal source as an independent unit and wraps it in the
-        /// marker extension. The fragment owns its recompile: the scope shares the materialization's
-        /// options, output profile and C# context (same language, same usings) but owns fresh error,
+        /// marker extension. The fragment stands where the recorded call stood, so its context inherits
+        /// the enclosing compile's place in the document — root type, prop layout, slot type, region
+        /// fills, import reader, options and output profile — alongside the C# context (same language,
+        /// same usings); <see cref="CompileContext.ForRefusalFragment"/> says which parent state that is
+        /// and which the fragment must not take. The fragment still owns its recompile: fresh error,
         /// scope and item caches, and bodies compile from live text under a bypassing cursor frame —
         /// the recorded bodies carry the build's typings (possibly deferred), which a bound recompile
         /// must not inherit. Faults are re-anchored to outer coordinates — shifted home for a true
-        /// slice, pointed at the refused call site for a synthesized source — and routed to the outer
-        /// errors; a faulted fragment drops the item exactly like any hook failure. The cursor frame
-        /// is always exited.</summary>
+        /// slice, and otherwise pointed at <paramref name="faultAnchor"/>, which the record chose: the
+        /// refused call site for a source synthesized from a call this template carries, and the
+        /// <c>@&lt;&lt;</c> import block for a source sliced out of an imported file, whose own
+        /// coordinates belong to a file this template does not contain and would read here as a
+        /// position in it. Faults are routed to the outer errors; a faulted fragment drops the item
+        /// exactly like any hook failure. The cursor frame is always exited.</summary>
         private static TemplateItem CompileRefusalFragment(OutputItem extensionItem, CompileScope compileScope,
-            FormCursor cursor, string sourceText)
+            FormCursor cursor, string sourceText, BlockPosition faultAnchor)
         {
-            var baseContext = compileScope.CompileContext;
-            var fragmentContext = new CompileContext(baseContext.Options, compileScope.ScopeType);
-            fragmentContext.OutputProfile = baseContext.OutputProfile;
+            var fragmentContext = CompileContext.ForRefusalFragment(compileScope.CompileContext,
+                compileScope.ScopeType);
             var fragmentScope = new CompileScope(fragmentContext, compileScope.CSharpContext);
             fragmentScope.FormCursor = cursor;
             int sliceOffset = cursor.EnterRefusalFragment(extensionItem.Position,
-                extensionItem.ParameterTemplate, sourceText);
+                extensionItem.ParameterTemplate, sourceText, faultAnchor);
             bool translated = sliceOffset >= 0;
             try
             {
@@ -658,7 +683,7 @@ namespace Heddle.Runtime
                             error.Position = new BlockPosition(
                                 sliceOffset + error.Position.StartIndex, error.Position.Length);
                         else
-                            error.Position = extensionItem.Position;
+                            error.Position = faultAnchor;
                         error.LinePosition = null;
                         compileScope.CompileErrors.Add(error);
                     }
@@ -938,17 +963,6 @@ namespace Heddle.Runtime
             return new List<ExprNode> { new PathNode(callParameter.RootReference, segments, null, position) };
         }
 
-        [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "The dynamic tier is outside the AOT claim; reached only for dynamic scopes, which the printer declines and strict load refuses.")]
-        [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "The dynamic tier is outside the AOT claim; reached only for dynamic scopes, which the printer declines and strict load refuses.")]
-        private static CallSite<Func<CallSite, object, object>> CreateBinder(string model,
-            CSharpArgumentInfo[] csharpArgumentInfoArray)
-        {
-            return
-                CallSite<Func<CallSite, object, object>>.Create(Binder.GetMember(CSharpBinderFlags.None, model,
-                    typeof(IRuntimeParameter),
-                    csharpArgumentInfoArray));
-        }
-
         /// <summary>
         /// Emits HED2003 when a bodiless unnamed <c>@(...)</c> under Html profile has an <c>[EncodeOutput]</c> producer in the chain.
         /// </summary>
@@ -986,7 +1000,6 @@ namespace Heddle.Runtime
             bool hasBody = !string.IsNullOrEmpty(item.ParameterTemplate);
             if (!hasBody)
                 context.UnnamedOutputCompiled = true;
-            // Shared with emitter's AllocateEmptyExtension to ensure consistent carrier selection.
             OutputProfileRules.ResolveUnnamedCarrier(context.OutputProfile, hasBody, out var kind, out _);
             return OutputProfileRules.CarrierRegistryName(kind);
         }
@@ -1488,7 +1501,6 @@ namespace Heddle.Runtime
         {
             modelType ??= typeof(object);
             chainedType ??= typeof(object);
-            // Shared with emitter's DerivedRenderTypeLiteral to ensure consistent render type evaluation.
             var extensionType = extension.GetType();
             RenderType directRender = RenderTypeRules.Derive(
                 extensionType.IsHaveAttribute<EncodeOutputAttribute>(true),

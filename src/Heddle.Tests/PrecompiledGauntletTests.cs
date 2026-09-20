@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using Heddle.Data;
 using Heddle.Extensions;
+using Heddle.Native;
 using Heddle.Precompiled;
 using Heddle.Precompiled.CompiledForm;
 using Heddle.Runtime;
@@ -374,5 +375,173 @@ namespace Heddle.Tests
             var entry = Entry(TextNative, key: "nowhere/x.heddle", contentHash: "deadbeef");
             Assert.Null(Run(entry, new TemplateOptions { OutputProfile = OutputProfile.Text, TrimDirectiveLines = false, RootPath = "/nonexistent" }));
         }
+
+        /// <summary>A recorded option value that names no member is refused, never guessed at. Pins the
+        /// regression where <c>Enum.TryParse</c>'s failure wrote <c>default(TEnum)</c> over the seeded default,
+        /// so a row recording an unreadable profile silently became <see cref="OutputProfile.Text"/> — the one
+        /// profile that encodes nothing — and every unnamed expression in that template stopped being
+        /// HTML-encoded. The fingerprint keeps the build default and the gauntlet refuses the entry outright,
+        /// whichever profile the request asks for.</summary>
+        [Theory]
+        [InlineData("Htlm")]
+        [InlineData("0")]
+        [InlineData(" Html")]
+        public void ARecordedProfileThatNamesNoMemberIsRefused(string recorded)
+        {
+            var entry = EntryWithRecordedOptions(recorded, ExpressionMode.Native.ToString());
+
+            Assert.NotEqual(OutputProfile.Text, entry.OptionsFingerprint.Profile);
+            Assert.Equal(HeddleBuildOptions.DefaultOutputProfile, entry.OptionsFingerprint.Profile);
+
+            foreach (var requested in new[] { OutputProfile.Html, OutputProfile.Text })
+            {
+                var evt = Run(entry, new TemplateOptions { OutputProfile = requested, TrimDirectiveLines = false });
+                Assert.NotNull(evt);
+                Assert.Equal(PrecompiledFallbackReason.OptionsMismatch, evt.Value.Reason);
+                Assert.Equal("OutputProfile: manifest='" + recorded + "' names no profile; expected " +
+                    HeddleBuildOptions.ExpectedValues<OutputProfile>(), evt.Value.Detail);
+                Assert.Equal("HED7101", evt.Value.DiagnosticId);
+            }
+
+            // And it never materializes behind the gauntlet's back either.
+            Assert.Null(entry.GetStrategy(Match()));
+            Assert.True(entry.TryGetRequestFault(Match(), out var reason, out _));
+            Assert.Equal(PrecompiledFallbackReason.OptionsMismatch, reason);
+        }
+
+        /// <summary>The same guard on the expression mode, which carries no encoding decision but would
+        /// otherwise be guessed at the same way.</summary>
+        [Fact]
+        public void ARecordedExpressionModeThatNamesNoMemberIsRefused()
+        {
+            var entry = EntryWithRecordedOptions(OutputProfile.Html.ToString(), "Nativ");
+            Assert.Equal(HeddleBuildOptions.DefaultExpressionMode, entry.OptionsFingerprint.ExpressionMode);
+            var evt = Run(entry, new TemplateOptions { OutputProfile = OutputProfile.Html, TrimDirectiveLines = false });
+            Assert.NotNull(evt);
+            Assert.Equal(PrecompiledFallbackReason.OptionsMismatch, evt.Value.Reason);
+            Assert.Equal("ExpressionMode: manifest='Nativ' names no mode; expected " +
+                HeddleBuildOptions.ExpectedValues<ExpressionMode>(), evt.Value.Detail);
+        }
+
+        /// <summary>A value that is simply absent is still the build default and still passes — the guard
+        /// refuses what is present and unreadable, not what was never recorded.</summary>
+        [Fact]
+        public void AbsentRecordedOptionsStayTheBuildDefaults()
+        {
+            var entry = EntryWithRecordedOptions(null, string.Empty);
+            Assert.Equal(HeddleBuildOptions.DefaultOutputProfile, entry.OptionsFingerprint.Profile);
+            Assert.Equal(HeddleBuildOptions.DefaultExpressionMode, entry.OptionsFingerprint.ExpressionMode);
+            Assert.Null(Run(entry, new TemplateOptions
+            {
+                OutputProfile = HeddleBuildOptions.DefaultOutputProfile,
+                ExpressionMode = HeddleBuildOptions.DefaultExpressionMode,
+                TrimDirectiveLines = false
+            }));
+        }
+
+        private static PrecompiledTemplateInfo EntryWithRecordedOptions(string profile, string mode)
+        {
+            var artifact = CompiledFormHarness.MinimalArtifact();
+            var template = CompiledFormHarness.TemplateRow("views/x.heddle");
+            template.Options = new CompiledOptionsFingerprint { Profile = profile, Mode = mode, Trim = false };
+            artifact.Templates.Add(template);
+            return CompiledFormHarness.LoaderRow(artifact);
+        }
+
+        /// <summary>The verdict is a pure function of the row, the request's shape and the live type graph, so
+        /// it is computed once per shape and read back after: the checks walk every recorded member row through
+        /// the live member graph, and a hosted resolver runs them on every request for every view. Two shapes
+        /// get two runs; the same shape twice gets one.</summary>
+        [Fact]
+        public void APassIsComputedOncePerRequestShape()
+        {
+            var entry = Entry(TextNative, new[] { ExtensionRow("if", typeof(IfExtension)) });
+            var options = Match();
+
+            int before = PrecompiledGauntlet.OrderedRunCount;
+            Assert.Null(Run(entry, options));
+            Assert.Equal(before + 1, PrecompiledGauntlet.OrderedRunCount);
+
+            Assert.Null(Run(entry, options));
+            Assert.Null(Run(entry, Match()));
+            Assert.Equal(before + 1, PrecompiledGauntlet.OrderedRunCount);
+
+            // A different function registry is a different shape: the registry decides the function step.
+            var other = Match();
+            other.Functions = new FunctionRegistry();
+            Assert.Null(Run(entry, other));
+            Assert.Equal(before + 2, PrecompiledGauntlet.OrderedRunCount);
+        }
+
+        /// <summary>…and the memo is dropped when the engine's assembly set moves, because that is what can
+        /// change the live type graph the checks compared against.</summary>
+        [Fact]
+        public void APassIsRecomputedAfterAnAssemblyRegistration()
+        {
+            var entry = Entry(TextNative, new[] { ExtensionRow("if", typeof(IfExtension)) });
+            var options = Match();
+
+            Assert.Null(Run(entry, options));
+            int settled = PrecompiledGauntlet.OrderedRunCount;
+            Assert.Null(Run(entry, options));
+            Assert.Equal(settled, PrecompiledGauntlet.OrderedRunCount);
+
+            int generation = AssemblyHelper.Generation;
+            var registered = false;
+            try
+            {
+                AssemblyHelper.RegisterModelAssemblies(new[] { NewDynamicAssembly() });
+                registered = true;
+                Assert.NotEqual(generation, AssemblyHelper.Generation);
+
+                Assert.Null(Run(entry, options));
+                Assert.Equal(settled + 1, PrecompiledGauntlet.OrderedRunCount);
+            }
+            finally
+            {
+                if (registered)
+                    AssemblyHelper.UnregisterModelAssemblies();
+            }
+        }
+
+        /// <summary>The one shape that is never memoized: a request that asks for the staleness step asks for
+        /// the files to be read again, and an answer kept from the last request is the one thing that step must
+        /// not give. A pass here runs the checks every time, and notices the moment the file changes.</summary>
+        [Fact]
+        public void AFileChangeCheckingRequestIsNeverMemoized()
+        {
+            var root = Path.Combine(Path.GetTempPath(), "heddle-memo-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(root);
+            try
+            {
+                var file = Path.Combine(root, "x.heddle");
+                File.WriteAllText(file, "hello world");
+                var entry = Entry(TextNative, key: "x.heddle",
+                    contentHash: PrecompiledGauntlet.HashFile(file));
+                var options = new TemplateOptions
+                {
+                    OutputProfile = OutputProfile.Text,
+                    TrimDirectiveLines = false,
+                    RootPath = root,
+                    EnableFileChangeCheck = true
+                };
+
+                int before = PrecompiledGauntlet.OrderedRunCount;
+                Assert.Null(Run(entry, options));
+                Assert.Null(Run(entry, options));
+                Assert.Equal(before + 2, PrecompiledGauntlet.OrderedRunCount);
+
+                File.WriteAllText(file, "hello other world");
+                var evt = Run(entry, options);
+                Assert.NotNull(evt);
+                Assert.Equal(PrecompiledFallbackReason.StaleContent, evt.Value.Reason);
+            }
+            finally { try { Directory.Delete(root, true); } catch { } }
+        }
+
+        private static System.Reflection.Assembly NewDynamicAssembly() =>
+            System.Reflection.Emit.AssemblyBuilder.DefineDynamicAssembly(
+                new System.Reflection.AssemblyName("HeddleMemoProbe_" + Guid.NewGuid().ToString("N")),
+                System.Reflection.Emit.AssemblyBuilderAccess.Run);
     }
 }

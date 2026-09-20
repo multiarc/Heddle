@@ -1,43 +1,28 @@
 using System;
-using Heddle.Helpers;
-using Heddle.Language.Binding;
-using Heddle.Language.Expressions;
 using Heddle.Precompiled;
 
 namespace Heddle.Runtime.Expressions
 {
     /// <summary>
-    /// The <b>reflection</b> adapter of <see cref="ITypeFacts{TType}"/> — a thin veneer over
-    /// <see cref="Type"/>. It carries no corrections: reflection <em>is</em> the authority.
+    /// The handful of type-system facts the binding rules ask about a <see cref="Type"/>, stated once so the
+    /// null handling and the AQN spelling cannot fork between the callers.
     /// </summary>
-    internal sealed class ReflectionTypeFacts : ITypeFacts<Type>
+    internal static class ReflectionTypeFacts
     {
-        internal static readonly ReflectionTypeFacts Instance = new ReflectionTypeFacts();
-
-        private ReflectionTypeFacts() { }
-
-        public bool IsAssignableFrom(Type target, Type source) =>
+        /// <summary>The <b>CLR</b> relation <c>target.IsAssignableFrom(source)</c>, exactly, with an unresolved
+        /// side answering false rather than throwing.</summary>
+        public static bool IsAssignableFrom(Type target, Type source) =>
             target != null && source != null && target.IsAssignableFrom(source);
 
-        public bool TryGetNullableUnderlying(Type type, out Type underlying)
-        {
-            underlying = type == null ? null : Nullable.GetUnderlyingType(type);
-            return underlying != null;
-        }
-
-        public bool IsInterface(Type type) => type != null && type.IsInterface;
-
-        public bool IsValueType(Type type) => type != null && type.IsValueType;
-
-        public bool IsUsableAsPropType(Type type) =>
+        /// <summary>False for null/unresolved, open generics, pointers, and by-ref types.</summary>
+        public static bool IsUsableAsPropType(Type type) =>
             type != null && !type.ContainsGenericParameters && !type.IsPointer && !type.IsByRef;
 
-        public NumericKind GetNumericKind(Type type) => NumericTable.FromClrType(type);
+        /// <summary>The manifest identity string, through the shared <c>AqnFormatter</c>.</summary>
+        public static string FormatAqn(Type type) => ReflectionTypeIdentity.AqnSansVersion(type);
 
-        public bool IsObject(Type type) => type == typeof(object);
-
-        public string FormatAqn(Type type) => ReflectionTypeIdentity.AqnSansVersion(type);
-
-        public string Display(Type type) => type == null ? "<unknown>" : type.ToString();
+        /// <summary>A human-readable spelling for diagnostic text; an unresolved type still has to read as
+        /// something, so it reads as <c>&lt;unknown&gt;</c>.</summary>
+        public static string Display(Type type) => type == null ? "<unknown>" : type.ToString();
     }
 }

@@ -27,27 +27,34 @@ namespace Heddle.Runtime
         /// <summary>The cursor armed by the in-flight materialization on this thread, if any.</summary>
         internal static FormCursor Current => _current;
 
+        /// <summary>An item's correlation key inside one document. <c>Anchor</c> is what tells two
+        /// composition imports apart: they expand inline, so their chains land in this document carrying
+        /// positions that are offsets into two different files, and <c>Start</c> alone is not unique.
+        /// It is the <c>@&lt;&lt;</c> block's start for an imported item and <c>Start</c> itself for an
+        /// item this template carries, so an unimported document keys exactly as it did.</summary>
         private readonly struct BodyKey : IEquatable<BodyKey>
         {
             internal readonly int Start;
             internal readonly int Length;
+            internal readonly int Anchor;
             internal readonly string Template;
 
-            internal BodyKey(int start, int length, string template)
+            internal BodyKey(int start, int length, int anchor, string template)
             {
                 Start = start;
                 Length = length;
+                Anchor = anchor;
                 Template = template ?? string.Empty;
             }
 
             public bool Equals(BodyKey other) =>
-                Start == other.Start && Length == other.Length &&
+                Start == other.Start && Length == other.Length && Anchor == other.Anchor &&
                 string.Equals(Template, other.Template, StringComparison.Ordinal);
 
             public override bool Equals(object obj) => obj is BodyKey other && Equals(other);
 
             public override int GetHashCode() =>
-                ((Start * 397) ^ Length) * 397 ^ Template.GetHashCode();
+                (((Start * 397) ^ Length) * 397 ^ Anchor) * 397 ^ Template.GetHashCode();
         }
 
         private sealed class ServedBody
@@ -58,13 +65,23 @@ namespace Heddle.Runtime
             internal int DocumentRef;
         }
 
+        /// <summary>A recorded refusal source and the place in <b>this</b> template a fault in it is
+        /// reported at. The anchor is the item's own position for a call the template carries, and the
+        /// <c>@&lt;&lt;</c> import block for a call an imported file carries — whose own position is an
+        /// offset into a file this template does not contain, and would read as a position here.</summary>
+        private sealed class ServedRefusal
+        {
+            internal string SourceText;
+            internal BlockPosition Anchor;
+        }
+
         private readonly string _templateKey;
         private readonly List<Dictionary<BodyKey, ServedBody>> _documents =
             new List<Dictionary<BodyKey, ServedBody>>();
         private readonly Dictionary<string, int> _namedChildren =
             new Dictionary<string, int>(StringComparer.Ordinal);
-        private readonly List<Dictionary<BodyKey, string>> _refusals =
-            new List<Dictionary<BodyKey, string>>();
+        private readonly List<Dictionary<BodyKey, ServedRefusal>> _refusals =
+            new List<Dictionary<BodyKey, ServedRefusal>>();
 
         /// <summary>One open document frame. <c>Bypass</c> marks a refusal-fragment compile: the
         /// fragment owns its recompile, so bodies serve nothing and never throw — embedded bodies
@@ -72,11 +89,16 @@ namespace Heddle.Runtime
         /// build's typings, possibly deferred, which a bound recompile must not inherit). A bypass
         /// frame also records the refusal key it is serving, so the fragment's own top item cannot
         /// re-serve the same site into unbounded recursion; nested independent refusals still serve.
-        /// A null parameter template normalizes to empty: both mean "no template".</summary>
+        /// A null parameter template normalizes to empty: both mean "no template".
+        /// <para><c>IsRoot</c> marks a frame whose document is the text the open item positions are
+        /// absolute in — the row's root, or a named child's own root. Every body frame pushed over one
+        /// keeps those coordinates, so the nearest root frame is the document a position its own frame
+        /// cannot locate resolves against.</para></summary>
         private struct Frame
         {
             internal int DocumentRef;
             internal bool Bypass;
+            internal bool IsRoot;
             internal bool ServesRefusal;
             internal int ServedStart;
             internal int ServedLength;
@@ -84,6 +106,7 @@ namespace Heddle.Runtime
         }
 
         private readonly Stack<Frame> _open = new Stack<Frame>();
+        private int _itemAnchor = -1;
         private readonly Dictionary<BodyKey, ServedBody> _empty =
             new Dictionary<BodyKey, ServedBody>();
         private IList<CompiledDocument> _shaped = new List<CompiledDocument>();
@@ -106,7 +129,7 @@ namespace Heddle.Runtime
             for (int d = 0; d < artifact.Documents.Count; d++)
             {
                 var map = new Dictionary<BodyKey, ServedBody>();
-                var refusals = new Dictionary<BodyKey, string>();
+                var refusals = new Dictionary<BodyKey, ServedRefusal>();
                 var document = artifact.Documents[d];
                 if (document != null)
                 {
@@ -152,29 +175,40 @@ namespace Heddle.Runtime
         /// under the call's). Every body is also reachable under its own raw text. First writer wins on
         /// collision, as before.</summary>
         private static void AddItem(CompiledItem item, Dictionary<BodyKey, ServedBody> map,
-            Dictionary<BodyKey, string> refusals)
+            Dictionary<BodyKey, ServedRefusal> refusals)
         {
             if (item == null || item.Position == null)
                 return;
-            var key = new BodyKey(item.Position.Start, item.Position.Length,
+            var refusal = item.Parameter != null &&
+                item.Parameter.Kind == CompiledParameterKind.RefusalSite ? item.Parameter.Refusal : null;
+            // The '@<<' block that composed the item's file, or the item's own start when this template
+            // carries it — so an unimported document keys exactly as a position alone keyed it, and two
+            // imports whose items sit at one offset of their own files stop being one key.
+            int anchor = item.ImportAnchor >= 0 ? item.ImportAnchor : item.Position.Start;
+            var key = new BodyKey(item.Position.Start, item.Position.Length, anchor,
                 item.ParameterTemplate ?? string.Empty);
             if (item.Body != null)
-                Serve(map, item.Position, item.ParameterTemplate, item.Body);
+                Serve(map, item.Position, anchor, item.ParameterTemplate, item.Body);
             if (item.AltBodies != null)
                 foreach (var alt in item.AltBodies)
                     if (alt != null && alt.Body != null)
-                        Serve(map, item.Position, alt.Template, alt.Body);
+                        Serve(map, item.Position, anchor, alt.Template, alt.Body);
 
-            if (item.Parameter != null &&
-                item.Parameter.Kind == CompiledParameterKind.RefusalSite &&
-                item.Parameter.Refusal != null &&
-                item.Parameter.Refusal.SourceText != null &&
-                !refusals.ContainsKey(key))
-                refusals.Add(key, item.Parameter.Refusal.SourceText);
+            if (refusal != null && refusal.SourceText != null && !refusals.ContainsKey(key))
+            {
+                var recorded = refusal.Position;
+                refusals.Add(key, new ServedRefusal
+                {
+                    SourceText = refusal.SourceText,
+                    Anchor = recorded != null
+                        ? new BlockPosition(recorded.Start, recorded.Length)
+                        : new BlockPosition(item.Position.Start, item.Position.Length)
+                });
+            }
         }
 
         private static void Serve(Dictionary<BodyKey, ServedBody> map, CompiledPosition position,
-            string template, CompiledBody body)
+            int anchor, string template, CompiledBody body)
         {
             var served = new ServedBody
             {
@@ -183,12 +217,33 @@ namespace Heddle.Runtime
                 ChainedType = body.ChainedType,
                 DocumentRef = body.CompiledDocumentRef ?? -1
             };
-            var key = new BodyKey(position.Start, position.Length, template ?? string.Empty);
+            // First writer wins. A definition body compiles once per call site, so one key legitimately
+            // meets several recorded bodies of the same call; which of those the loader serves is settled
+            // by the frame it serves under, not by the key. Two different files cannot meet here at all:
+            // the anchor names the import that composed each one.
+            var key = new BodyKey(position.Start, position.Length, anchor, template ?? string.Empty);
             if (!map.ContainsKey(key))
                 map.Add(key, served);
-            var alias = new BodyKey(position.Start, position.Length, served.RawText);
+            var alias = new BodyKey(position.Start, position.Length, anchor, served.RawText);
             if (!alias.Equals(key) && !map.ContainsKey(alias))
                 map.Add(alias, served);
+        }
+
+        /// <summary>Declares which item's compile is in flight, by the <c>@&lt;&lt;</c> block that composed
+        /// its file (or its own start). A hook asks for its body from inside its own compile and has only
+        /// the item to name it by, while two imports can put a bodied call at one offset of their own
+        /// files; the anchor is the part of the key the hook cannot supply. Returns the previous value for
+        /// the caller to restore — a body's own items set and restore their own.</summary>
+        internal int EnterItem(int anchor)
+        {
+            int saved = _itemAnchor;
+            _itemAnchor = anchor;
+            return saved;
+        }
+
+        internal void ExitItem(int saved)
+        {
+            _itemAnchor = saved;
         }
 
         /// <summary>Opens an unaffiliated file fallback: a child the artifact does not carry, compiled
@@ -204,12 +259,12 @@ namespace Heddle.Runtime
         internal void EnterRoot(int documentRef)
         {
             _open.Clear();
-            Push(documentRef);
+            Push(documentRef, true);
         }
 
-        private void Push(int documentRef)
+        private void Push(int documentRef, bool isRoot = false)
         {
-            _open.Push(new Frame { DocumentRef = documentRef });
+            _open.Push(new Frame { DocumentRef = documentRef, IsRoot = isRoot });
         }
 
         private Frame TopFrame()
@@ -245,7 +300,8 @@ namespace Heddle.Runtime
                 return false;
             }
             ServedBody served;
-            if (!Top().TryGetValue(new BodyKey(position.StartIndex, position.Length,
+            int anchor = _itemAnchor >= 0 ? _itemAnchor : position.StartIndex;
+            if (!Top().TryGetValue(new BodyKey(position.StartIndex, position.Length, anchor,
                 parameterTemplate ?? string.Empty), out served))
                 throw new InvalidOperationException("Cannot materialize '" + _templateKey +
                     "': the artifact carries no recorded body for the item at " +
@@ -269,10 +325,15 @@ namespace Heddle.Runtime
         /// open document, if the build refused it. Returns false for ordinary items, for items under a
         /// fragment frame whose coordinates cannot match (fragment-local positions never equal the
         /// recorded outer keys — nested items compile normally), and for a site an enclosing fragment
-        /// frame is already serving (its own top item re-matching would recurse without bound).</summary>
-        internal bool TryGetRefusal(BlockPosition position, string parameterTemplate, out string sourceText)
+        /// frame is already serving (its own top item re-matching would recurse without bound).
+        /// <paramref name="faultAnchor"/> is where a fault inside the fragment is reported when the
+        /// fragment's source is not a slice of any open text: the item's own position for a site this
+        /// template carries, and the <c>@&lt;&lt;</c> import block for a site an imported file carries.</summary>
+        internal bool TryGetRefusal(BlockPosition position, string parameterTemplate, int importAnchor,
+            out string sourceText, out BlockPosition faultAnchor)
         {
             sourceText = null;
+            faultAnchor = position;
             var frame = TopFrame();
             if (frame.DocumentRef < 0 || frame.DocumentRef >= _refusals.Count)
                 return false;
@@ -285,24 +346,44 @@ namespace Heddle.Runtime
                     open.ServedLength == position.Length &&
                     string.Equals(open.ServedTemplate, template, StringComparison.Ordinal))
                     return false;
-            return _refusals[frame.DocumentRef].TryGetValue(
-                new BodyKey(position.StartIndex, position.Length, template), out sourceText);
+            ServedRefusal served;
+            if (!_refusals[frame.DocumentRef].TryGetValue(
+                new BodyKey(position.StartIndex, position.Length, importAnchor, template), out served))
+                return false;
+            sourceText = served.SourceText;
+            faultAnchor = served.Anchor;
+            return true;
         }
 
         /// <summary>Opens the frame a refusal-fragment compile runs under. The frame always bypasses
         /// body serving (the fragment owns its recompile); the return is the source-text offset the
-        /// fragment maps to, or -1 when <paramref name="sourceText"/> is not a true slice. A rebuilt
-        /// source restores the call's leading <c>@</c> (item spans exclude it), so the item's own start
-        /// is tried second after the <c>@</c> position. Balanced by <see cref="ExitBody"/>.</summary>
+        /// fragment maps to, or -1 when <paramref name="sourceText"/> is not a true slice. The open
+        /// document is tried first and the root its coordinates belong to second, mirroring the two
+        /// passes the record sliced the source in: a nested body's recorded text drops the hidden tokens
+        /// (comments, whitespace eaters) its span has, so a call past one of them translates to the wrong
+        /// index there and is locatable only in the root text. A source the build sliced out of an
+        /// <c>@&lt;&lt;</c> import is in neither, and is deliberately left untranslated: the offset it
+        /// would map to is an offset into a file this template does not carry, so a fault in the fragment
+        /// is anchored at the import block instead. Balanced by <see cref="ExitBody"/>.</summary>
         internal int EnterRefusalFragment(BlockPosition itemPosition, string parameterTemplate,
-            string sourceText)
+            string sourceText, BlockPosition faultAnchor)
         {
             var frame = TopFrame();
             int offset = -1;
-            if (!frame.Bypass && frame.DocumentRef >= 0 && frame.DocumentRef < _shaped.Count &&
-                _shaped[frame.DocumentRef] != null && sourceText != null)
-                offset = TrueSliceOffset(SourceText(_shaped[frame.DocumentRef]),
-                    itemPosition.StartIndex, sourceText);
+            // A source the build sliced out of an '@<<' import is never translated, even when a recorded
+            // body happens to carry it: that body's text is a span of the IMPORTED file, so the offset it
+            // yields is an offset into a file this template does not contain, and publishing it would name
+            // a place here that has nothing to do with the fault. The anchor differing from the item's own
+            // position is exactly the record saying the item's coordinates are not this template's.
+            bool imported = faultAnchor.StartIndex != itemPosition.StartIndex ||
+                faultAnchor.Length != itemPosition.Length;
+            if (!frame.Bypass && sourceText != null && !imported)
+            {
+                offset = TrueSliceOffset(frame.DocumentRef, itemPosition.StartIndex, sourceText);
+                if (offset < 0)
+                    offset = TrueSliceOffset(RootRef(), itemPosition.StartIndex, sourceText);
+            }
+
             _open.Push(new Frame
             {
                 DocumentRef = frame.DocumentRef,
@@ -315,12 +396,36 @@ namespace Heddle.Runtime
             return offset;
         }
 
-        private static int TrueSliceOffset(string shaped, int start, string sourceText)
+        /// <summary>The innermost open document the current item positions are absolute in.</summary>
+        private int RootRef()
         {
-            if (shaped != null && IsTrueSlice(shaped, start, sourceText))
+            foreach (var open in _open)
+                if (open.IsRoot)
+                    return open.DocumentRef;
+            return -1;
+        }
+
+        /// <summary>Where <paramref name="sourceText"/> begins in the coordinates
+        /// <paramref name="start"/> is stated in, or -1 when the document at
+        /// <paramref name="documentRef"/> does not carry it there. An item position is absolute in the
+        /// text the parser ran over while a nested body's recorded text is only that body's span of it,
+        /// so the position is translated into the document's own coordinates to index it and translated
+        /// back to answer. A rebuilt source restores the call's leading <c>@</c> (item spans exclude it),
+        /// so the item's own start is tried second after the <c>@</c> position.</summary>
+        private int TrueSliceOffset(int documentRef, int start, string sourceText)
+        {
+            if (_shaped == null || documentRef < 0 || documentRef >= _shaped.Count ||
+                _shaped[documentRef] == null)
+                return -1;
+            var document = _shaped[documentRef];
+            string shaped = SourceText(document);
+            int local = start - (document.ParseFacts != null ? document.ParseFacts.Offset : 0);
+            if (local < 0)
+                return -1;
+            if (IsTrueSlice(shaped, local, sourceText))
                 return start;
-            if (start > 0 && shaped != null && start - 1 + sourceText.Length <= shaped.Length &&
-                shaped[start - 1] == '@' && IsTrueSlice(shaped, start - 1, sourceText))
+            if (local > 0 && local - 1 + sourceText.Length <= shaped.Length &&
+                shaped[local - 1] == '@' && IsTrueSlice(shaped, local - 1, sourceText))
                 return start - 1;
             return -1;
         }
@@ -349,7 +454,8 @@ namespace Heddle.Runtime
             if (_shaped == null || documentRef < 0 || documentRef >= _shaped.Count ||
                 _shaped[documentRef] == null)
                 return false;
-            Push(documentRef);
+            // The child's text is parsed fresh, so its own items are absolute in it, not in the parent.
+            Push(documentRef, true);
             shapedText = SourceText(_shaped[documentRef]);
             return true;
         }

@@ -251,7 +251,8 @@ namespace Heddle.Data
             return Locals.TryGet(key, out value);
         }
 
-        /// <summary>Silent no-op when no frame exists.</summary>
+        /// <summary>Zero-boxing branch-slot write. Silent no-op when no frame exists, which is safe because a
+        /// frameless body provably has no reader.</summary>
         internal void PublishBranch(in BranchState state)
         {
             Locals?.SetBranch(state);

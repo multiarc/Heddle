@@ -232,10 +232,9 @@ namespace Heddle.Tests
             Assert.Equal(HopForm.Direct, MemberHopRule.Form(true, false));
         }
 
-        // P3-R5's consumer-assembly claim is covered by the AOT sample's assemblies.txt gate (a host
-        // rendering only printed C# templates loads no Microsoft.CodeAnalysis type). An in-test version
-        // cannot assert the same fact: harness artifacts are data-only by construction, so their C# sites
-        // always compile through Roslyn at load. A printer-driven in-test version returns with the P3-W2
-        // C# printer.
+        // The consumer-assembly claim — a host rendering only printed C# templates loads no
+        // Microsoft.CodeAnalysis type — is covered by the AOT sample's assemblies.txt gate. An in-test
+        // version cannot assert the same fact: harness artifacts are data-only by construction, so their
+        // C# sites always compile through Roslyn at load.
     }
 }

@@ -60,8 +60,7 @@ namespace Heddle.Data
         /// <summary>The stable <c>HEDxxxx</c> id.</summary>
         public string Id { get; }
 
-        /// <summary>Short noun phrase naming the fault — what a Roslyn descriptor or an editor listing shows
-        /// beside the id.</summary>
+        /// <summary>Short noun phrase naming the fault — what an editor listing shows beside the id.</summary>
         public string Title { get; }
 
         /// <summary>The severity the id carries wherever it is reported. Severity is a property of the
@@ -116,9 +115,7 @@ namespace Heddle.Data
                 PropFault.DefaultNotConvertible
             };
 
-            /// <summary>The dynamic tier's diagnostic id for a fault class. The build tier maps every fault to the
-            /// single <c>HED7017</c> row (its message names the fault), which is why the two vocabularies needed
-            /// unifying rather than re-numbering.</summary>
+            /// <summary>The runtime diagnostic id a fault class is reported under.</summary>
             public static string RuntimeDiagnosticId(PropFault fault)
             {
                 switch (fault)

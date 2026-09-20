@@ -24,6 +24,7 @@ namespace Heddle.Benchmarks.Dotnet
     ///   bench-internal    Heddle-internal suites (props, branching, language-service metadata).
     ///   bench-cold        cold parse/compile sidebar.
     ///   bench-startup     the cold-start row: fresh-process compile vs register+bind+first render.
+    ///   bench-resolve     steady-state view resolution: repeat GetTemplate on each tier.
     ///
     /// Every bench verb passes its remaining arguments straight to BenchmarkDotNet, so a master
     /// runner selects one suite per step and layers the measurement budget on top:
@@ -54,6 +55,7 @@ namespace Heddle.Benchmarks.Dotnet
                     // Named inline: BenchRunner's per-verb type sets are its own reviewable surface, and the
                     // startup suite is one type owned by the P3-R8 slice.
                     "bench-startup" => BenchRunner.Run("bench-startup", new[] { typeof(StartupBenchmarks) }, rest),
+                    "bench-resolve" => BenchRunner.Run("bench-resolve", BenchRunner.ResolveTypes, rest),
                     "--help" or "-h" or "help" => Usage(0),
                     _ => Usage(2, $"unknown verb '{verb}'"),
                 };
@@ -236,6 +238,7 @@ namespace Heddle.Benchmarks.Dotnet
             w.WriteLine("  bench-techniques     Heddle's six render techniques against each other");
             w.WriteLine("  bench-cold           cold parse/compile, per engine");
             w.WriteLine("  bench-startup        cold start: compile vs register+bind+first render");
+            w.WriteLine("  bench-resolve        steady-state view resolution: repeat GetTemplate per tier");
             w.WriteLine("  bench-internal       props, branching, language-service metadata");
             w.WriteLine("");
             w.WriteLine("Every bench verb forwards its remaining args to BenchmarkDotNet, e.g.");

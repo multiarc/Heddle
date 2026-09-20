@@ -153,25 +153,16 @@ namespace Heddle.Runtime.Expressions
         }
 
         /// <summary>The shared eligibility record for one reflected method — the reflection adapter of
-        /// <see cref="ExportedMethodFacts"/>. <c>ParameterTypeKeys</c> uses <c>Type.FullName</c>, which is <b>not</b>
-        /// the spelling the symbol side produces — a constructed generic is
-        /// <c>List`1[[System.Int32, …]]</c> here and <c>System.Collections.Generic.List&lt;int&gt;</c> there. What
-        /// has to agree is not the text but which pairs of types the key tells apart, because
-        /// <see cref="ExportRules.SameSignature"/> decides how many overloads a container exports on each side and
-        /// the manifest compares the counts. This side is the one that can see less, so the symbol side is written
-        /// to lose the same distinctions: tuple element names, which are not in metadata, and <c>dynamic</c>, which
-        /// is <see cref="object"/> here.</summary>
+        /// <see cref="ExportedMethodFacts"/>.</summary>
         internal static ExportedMethodFacts DescribeMethod(MethodInfo method)
         {
             var parameters = method.GetParameters();
-            var keys = new string[parameters.Length];
             bool byRefOrPointer = false;
             for (int i = 0; i < parameters.Length; i++)
             {
                 var type = parameters[i].ParameterType;
                 if (type.IsByRef || type.IsPointer)
                     byRefOrPointer = true;
-                keys[i] = type.FullName ?? type.Name;
             }
 
             return new ExportedMethodFacts
@@ -182,8 +173,7 @@ namespace Heddle.Runtime.Expressions
                 IsOpenGeneric = method.ContainsGenericParameters,
                 ReturnsVoid = method.ReturnType == typeof(void),
                 HasByRefOrPointerParameter = byRefOrPointer,
-                IsSpecialName = method.IsSpecialName,
-                ParameterTypeKeys = keys
+                IsSpecialName = method.IsSpecialName
             };
         }
 

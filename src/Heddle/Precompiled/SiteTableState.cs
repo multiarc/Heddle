@@ -52,19 +52,11 @@ namespace Heddle.Precompiled
                 records = Array.Empty<CompiledSiteRow>();
             if (artifact == null)
                 throw new ArgumentNullException(nameof(artifact));
-            // Only this template's rows: the table key is the site id (content hash, template
-            // index, ordinal), so asking with this template's id for another template's row
-            // addresses a different site — whose delegate carries the wrong shape. The loader
-            // rebuilds those from data instead; twin matching stays within the template, where
-            // the build de-duplicated them.
-            if (records.Count != 0)
-            {
-                var owned = new List<CompiledSiteRow>(records.Count);
-                foreach (var record in records)
-                    if (record == null || record.TemplateIndex == templateIndex)
-                        owned.Add(record);
-                records = owned;
-            }
+            // Only this template's rows, grouped once per artifact by the loader: the table key is the
+            // site id (content hash, template index, ordinal), so asking with this template's id for
+            // another template's row addresses a different site — whose delegate carries the wrong
+            // shape. The loader rebuilds those from data instead; twin matching stays within the
+            // template, where the build de-duplicated them.
             if (table == null || !useTable)
                 return new SiteTableState(null, key, contentHash, templateIndex, strict, records, artifact,
                     false, new Delegate[records.Count]);

@@ -53,8 +53,6 @@ namespace Heddle.LanguageServices.Tests
                 "fails materialization instead of compiling a site at load; analysis compiles, never materializes precompiled entries.",
             [nameof(TemplateOptions.RenderBudget)] =
                 "per-render resource limits, object-valued; no lint depends on them.",
-            [nameof(TemplateOptions.ValidateModelType)] =
-                "render-time failure handling for wrong-typed data; analysis has no data.",
             [nameof(TemplateOptions.Encoder)] =
                 "render-time output encoding, object-valued (a TextEncoder); it changes rendered bytes, never a compile diagnostic.",
             ["AllowCSharp"] =

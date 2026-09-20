@@ -11,6 +11,11 @@ namespace Heddle.Language {
             _positionStamp = ParseContext.IsolatingAsOf;
             CreatedAt = toIsolate.CreatedAt;
             Context = newContext;
+            // The copy keeps the file the SOURCE chain was written in, never the copying context's. An
+            // '@<<' expansion isolates the importer's context and copies the importer's chains onto the
+            // copy before stamping it, so reading the copying context here would mark a chain the
+            // importer wrote as imported — and its items are positioned in the importer's text.
+            ImportSource = toIsolate.ImportSource;
         }
 
         public OutputChain(ParseContext context)
@@ -18,9 +23,15 @@ namespace Heddle.Language {
             Context = context;
             Chain = new List<OutputItem>();
             CreatedAt = _positionStamp = ParseContext.CurrentIsolationStamp;
+            ImportSource = context?.ImportSource;
         }
 
         public ParseContext Context { get; set; }
+
+        /// <summary>The <c>@&lt;&lt;</c> composition import this chain was written in, or null for a chain
+        /// the document itself carries. Taken at construction from the context being parsed, so it names
+        /// the file the chain's item positions are absolute in whatever is done to the chain afterwards.</summary>
+        internal ImportSource ImportSource { get; set; }
 
         public List<OutputItem> Chain { get; set; }
 

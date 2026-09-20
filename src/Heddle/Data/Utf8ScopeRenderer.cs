@@ -76,7 +76,9 @@ namespace Heddle.Data
 
         private void RenderChunked(ReadOnlySpan<char> chars)
         {
-            // Stateful Encoder prevents surrogate-pair corruption at boundaries; state resets per Render call.
+            // The stateful Encoder is the only correct chunking tool: converting slices independently corrupts any
+            // surrogate pair straddling a boundary. Each iteration passes the whole remaining tail with flush: true,
+            // so only the iteration consuming the true end of input acts on flush and no state outlives the loop.
             _encoder = _encoder ?? Encoding.UTF8.GetEncoder();
 #if NET8_0_OR_GREATER
             while (true)

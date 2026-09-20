@@ -1,11 +1,11 @@
 "use strict";
 
 /*
- * WS4 beautify goldens + WS9 smoke tests.
+ * Beautify goldens + smoke tests.
  *
  * Proves `ext/beautify.js` loads, runs against a Heddle-tokenized EditSession,
  * and is idempotent (format twice == format once). The golden fixtures below
- * assert the Heddle-specific formatting from WS4 §5:
+ * assert the Heddle-specific formatting:
  *   - `@if/@elif/@else` chain spacing after `}}`
  *   - native-expression operator / bracket / comma spacing inside `@(…)`
  *   - prop-declaration header `name: type = default` layout
@@ -31,7 +31,7 @@ test("beautify module exposes beautify() and formatOptions", () => {
 
 test("formatOptions declares the Heddle option schema", () => {
     const mod = getBeautifyModule();
-    // WS4 task 3: the Heddle-specific keys must be present on the exported object.
+    // The Heddle-specific keys must be present on the exported object.
     assert.strictEqual(typeof mod.formatOptions.lineBreaksAfterCommasInCurlyBlock, "boolean");
     assert.strictEqual(typeof mod.formatOptions.maxLineLength, "number");
     assert.strictEqual(typeof mod.formatOptions.breakLongPropLists, "boolean");
@@ -55,12 +55,12 @@ test("beautify is idempotent (format twice == format once)", () => {
 });
 
 // ---------------------------------------------------------------------------
-// WS4 golden fixtures (before -> after) + idempotency
+// Golden fixtures (before -> after) + idempotency
 // ---------------------------------------------------------------------------
 
 /**
  * Assert `beautify(before) === after` and that formatting is idempotent
- * (`beautify(after) === after`). The idempotency check is the WS4 DoD gate.
+ * (`beautify(after) === after`).
  */
 function golden(before, after) {
     const once = beautify(before);
@@ -122,7 +122,7 @@ test("golden: strings and @*...*@ comments preserved verbatim", () => {
 });
 
 // ---------------------------------------------------------------------------
-// WS4 formatOptions: long-list breaking, read fresh each invocation
+// formatOptions: long-list breaking, read fresh each invocation
 // ---------------------------------------------------------------------------
 
 /** Run `fn` with a temporary patch of `exports.formatOptions`, always restoring. */
@@ -173,7 +173,7 @@ test("formatOptions read fresh: breakLongPropLists=false disables breaking", () 
 
 
 // ---------------------------------------------------------------------------
-// Phase 2 + Phase 7 (post-2.0): the beautifier must reproduce `@@` escapes and
+// The beautifier must reproduce `@@` escapes and
 // region headers verbatim and stay idempotent on them.
 // ---------------------------------------------------------------------------
 

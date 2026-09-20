@@ -5,7 +5,7 @@ using Heddle.Data;
 namespace Heddle.Language
 {
     /// <summary>A drained front-end diagnostic in host-neutral shape: identity, text, fix, severity, and span.
-    /// Host policy (re-anchoring, path rendering, Roslyn mapping) stays with the host.</summary>
+    /// Host policy (re-anchoring, path rendering) stays with the host.</summary>
     internal readonly struct HeddleDiagnosticEntry
     {
         internal HeddleDiagnosticEntry(HeddleCompileError source)

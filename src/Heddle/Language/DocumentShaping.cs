@@ -6,12 +6,11 @@ using Heddle.Strings.Core;
 namespace Heddle.Language
 {
     /// <summary>
-    /// Single implementation of all byte-affecting document shaping, shared by runtime compile
-    /// and build-time shaper to prevent offset-arithmetic drift. Pass ordering (via
+    /// Single implementation of all byte-affecting document shaping. Pass ordering (via
     /// <see cref="ShiftBySkippedTokens"/>, <see cref="TrimHiddenRemnantLines"/>,
     /// <see cref="RemoveDefinitions"/>, <see cref="ReplaceRawOutput"/>, <see cref="StripBranchSets"/>,
-    /// <see cref="RemoveEmptyItem"/>) must be preserved. Constraint: netstandard2.0-clean, no Roslyn
-    /// types, no <c>unsafe</c>.
+    /// <see cref="RemoveEmptyItem"/>) must be preserved, or the offset arithmetic drifts.
+    /// Constraint: netstandard2.0-clean, no <c>unsafe</c>.
     /// </summary>
     internal static class DocumentShaping
     {
@@ -297,8 +296,8 @@ namespace Heddle.Language
             }
         }
 
-        /// <summary>Branch classification shared by both backends; defined once here to prevent
-        /// silent mismatches. Independent of <c>BranchRole</c> to keep this file Roslyn-free.</summary>
+        /// <summary>Branch classification for <see cref="StripBranchSets"/>, supplied by the caller so the strip
+        /// machine does not depend on the <c>[BranchRole]</c> attribute.</summary>
         internal enum BranchKind
         {
             Other,
@@ -417,7 +416,7 @@ namespace Heddle.Language
             }
         }
 
-        /// <summary>Byte-parity static-piece segmentation walk shared by runtime and emitter.
+        /// <summary>Static-piece segmentation walk.
         /// Walks elements in document order, emitting literals between them. <paramref name="onElement"/>
         /// returns false to abandon walk (mid-walk degrade); method propagates this as false return.</summary>
         internal static bool SlicePieces<T>(IEnumerable<T> elements, Func<T, BlockPosition> position,

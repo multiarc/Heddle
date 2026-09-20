@@ -134,6 +134,13 @@ namespace Heddle.Precompiled.CompiledForm
         internal List<string> Namespaces;
         internal int Depth;
         internal string SourceText;
+
+        /// <summary>The <c>@&lt;&lt;</c> import this refusal's item was written in, or null for a call the
+        /// template itself carries. Set, the item's own position is an offset into
+        /// <see cref="ImportSource.Text"/> and <see cref="Position"/> is the import block instead — the
+        /// only position in this template the site can be reported at, and the key that tells this
+        /// import's sites from another import's in the same document.</summary>
+        internal ImportSource Import;
     }
 
     internal sealed class FormBody
@@ -241,6 +248,12 @@ namespace Heddle.Precompiled.CompiledForm
         internal FormProps Props;
 
         internal FormDefLink DefLink;
+
+        /// <summary>The <c>@&lt;&lt;</c> import this item was parsed from, or null for an item the
+        /// template itself carries. Taken from the chain the item belongs to, which captured it when the
+        /// parser built the chain — not from the context it compiles under, which an expansion can mark
+        /// after the fact.</summary>
+        internal ImportSource Import;
     }
 
     internal sealed class FormElement
@@ -550,12 +563,13 @@ namespace Heddle.Precompiled.CompiledForm
             return -1;
         }
 
-        internal FormItem BeginItem(OutputItem item, ParseContext context)
+        internal FormItem BeginItem(OutputItem item, ParseContext context, ImportSource import)
         {
             FormItem form;
             if (!_items.TryGetValue(item, out form))
             {
                 form = new FormItem(item.Position, item.ParameterTemplate);
+                form.Import = import;
                 foreach (var key in context.DefinitionsBlock.Names())
                     form.VisibleDefKeys.Add(key);
                 _items.Add(item, form);
@@ -703,17 +717,24 @@ namespace Heddle.Precompiled.CompiledForm
         {
             if (item == null)
                 return -1;
+            FormItem noted;
+            var import = _items.TryGetValue(item, out noted) ? noted.Import : null;
             var data = new FormRefusalData
             {
                 Item = item,
                 Class = refusalClass,
                 Detail = detail ?? string.Empty,
-                Position = item.Position,
+                // A call an import carried has no position of its own in this template — its own is an
+                // offset into a file this template does not contain. The import block stands in for it:
+                // the line the remedy is applied to, the place a fault in the recompiled fragment is
+                // reported, and the key that separates this import's sites from another import's.
+                Position = import != null ? import.RootSite : item.Position,
                 ModelType = modelType,
                 ChainedType = chainedType,
                 RootType = rootType,
                 Namespaces = namespaces ?? new List<string>(),
-                Depth = _depth
+                Depth = _depth,
+                Import = import
             };
             _refusals.Add(data);
             return _refusals.Count - 1;
@@ -920,53 +941,131 @@ namespace Heddle.Precompiled.CompiledForm
         {
             // Slice the raw text: item positions are raw coordinates, and the loader re-parses the
             // raw text, so the slice is both correctly located and itself parseable (shaped text has
-            // collapsed escapes and removed definitions).
+            // collapsed escapes and removed definitions). Item positions are absolute in the text the
+            // parser ran over, while a nested body's raw text is only that body's span of it, so the
+            // position is translated into the document's own coordinates before it indexes anything.
             string raw = document.RawText ?? string.Empty;
             foreach (var refusal in _refusals)
             {
                 if (refusal.SourceText != null || refusal.Depth != _depth)
                     continue;
-                refusal.SourceText = SliceRefusal(raw, refusal);
+                // A call written in an '@<<' import is positioned in the imported file, which this
+                // document is not: its own text is the only one those coordinates index, so it answers
+                // first and the document below is not consulted for it at all.
+                refusal.SourceText = SliceFromImport(refusal) ??
+                    SliceRefusal(raw, document.Facts.Offset, refusal);
             }
         }
 
-        private string SliceRefusal(string shaped, FormRefusalData refusal)
+        /// <summary>The refused call's source out of the <c>@&lt;&lt;</c> import that carried it, or null
+        /// when the call was not imported (or the import's text does not hold it where the position says).
+        /// The text is the one the parse consumed, kept by the parser at the expansion that produced this
+        /// item's chains, so no candidate is guessed at and no file is read a second time — which could
+        /// answer with a different byte sequence than the one the positions were taken from. Positions in
+        /// an imported file are absolute in it, because an import composes only at a document's top level,
+        /// where the parse offset is zero.
+        /// <para>The marker is the verdict, not a hint: it is captured on the chain the parser built,
+        /// inside the file that was being parsed, so it cannot name a file the chain was not written in.
+        /// Null here means the template carries the call itself.</para></summary>
+        private string SliceFromImport(FormRefusalData refusal)
         {
-            string body = null;
-            string name = string.Empty;
-            if (refusal.Item != null)
-            {
-                name = refusal.Item.ExtensionName ?? string.Empty;
-                FormItem form;
-                if (_items.TryGetValue(refusal.Item, out form))
-                    body = form.ParameterTemplate;
-                int start = refusal.Item.Position.StartIndex;
-                int length = refusal.Item.Position.Length;
-                if (start >= 0 && length > 0 && start + length <= shaped.Length)
-                {
-                    string slice = shaped.Substring(start, length);
-                    bool covers = !string.IsNullOrEmpty(body) ? slice.Contains(body) :
-                        slice.Contains(name);
-                    if (covers)
-                        // Item spans exclude the call's leading '@', so the slice alone never
-                        // parses back to the call — restore it (a span that already includes it
-                        // keeps its own).
-                        return slice.StartsWith("@", StringComparison.Ordinal) ? slice : "@" + slice;
-                    // Item spans cover the call (name plus data); a bodied item's body abuts after
-                    // the span, so the slice alone never contains it. Rebuild the full call-site
-                    // source from the sliced call plus the recorded body — without the data part the
-                    // fragment would not even parse (a bare `@list{{...}}` names no data).
-                    if (!string.IsNullOrEmpty(body) && slice.Contains(name))
-                    {
-                        string head = slice.StartsWith("@", StringComparison.Ordinal) ? slice : "@" + slice;
-                        return head + "{{" + body + "}}";
-                    }
-                }
-            }
+            if (refusal.Import == null || refusal.Import.Text == null)
+                return null;
+            return SliceRefusal(refusal.Import.Text, 0, refusal);
+        }
 
-            if (!string.IsNullOrEmpty(body))
-                return "@" + name + "{{" + body + "}}";
-            return "@" + name;
+        /// <summary>The import pass for refusals no document pass reached: a refusal whose own document
+        /// never ended is never offered <see cref="ResolveRefusals"/>, and an import-written call is
+        /// locatable without one.</summary>
+        private void ResolveRefusalsInImports()
+        {
+            foreach (var refusal in _refusals)
+            {
+                if (refusal.SourceText != null)
+                    continue;
+                refusal.SourceText = SliceFromImport(refusal);
+            }
+        }
+
+        /// <summary>Drops the imported files' texts once every refusal has been sliced. Nothing below reads
+        /// them, and an item under an import holds its marker whether or not it was refused, so a partial
+        /// expanded many times would otherwise pin a copy of itself for as long as the host keeps the
+        /// record — which it does, past this call, for the per-site build diagnostics.</summary>
+        private void ReleaseImportTexts()
+        {
+            foreach (var form in _items.Values)
+                for (var import = form.Import; import != null; import = import.Outer)
+                    import.Text = null;
+            foreach (var refusal in _refusals)
+                for (var import = refusal.Import; import != null; import = import.Outer)
+                    import.Text = null;
+        }
+
+        /// <summary>The last word on a refusal no document could slice. A body's raw text is what the
+        /// parser hands back for its span, which drops the hidden tokens (comments, whitespace eaters)
+        /// the source has, so a position past one of them translates to the wrong index and the slice
+        /// fails its own check above. The root document is the text those positions are native to, so
+        /// it resolves what is left; a call written in an '@&lt;&lt;' import is native to neither, and is
+        /// resolved before this pass out of the import's own text. What survives all three names text
+        /// nothing in this compile carries, and stays null — which <see cref="ToArtifact"/> refuses
+        /// rather than recording a fragment that cannot parse.</summary>
+        private void ResolveRefusalsAtRoot()
+        {
+            var root = _documents[_rootDocument];
+            string raw = root.RawText ?? string.Empty;
+            foreach (var refusal in _refusals)
+            {
+                if (refusal.SourceText != null)
+                    continue;
+                refusal.SourceText = SliceRefusal(raw, root.Facts.Offset, refusal);
+            }
+        }
+
+        /// <summary>The refused call's own source, or null when <paramref name="raw"/> does not carry it.
+        /// A fragment the record cannot locate is never guessed at: a name without its data parameter does
+        /// not parse, so recording one would only move the failure to the consumer's load.</summary>
+        private string SliceRefusal(string raw, int offset, FormRefusalData refusal)
+        {
+            if (refusal.Item == null)
+                return null;
+            string name = refusal.Item.ExtensionName ?? string.Empty;
+            string body = null;
+            FormItem form;
+            if (_items.TryGetValue(refusal.Item, out form))
+                body = form.ParameterTemplate;
+            int start = refusal.Item.Position.StartIndex - offset;
+            int length = refusal.Item.Position.Length;
+            if (start < 0 || length <= 0 || start + length > raw.Length)
+                return null;
+            string slice = raw.Substring(start, length);
+            // Item spans exclude the call's leading '@', so the slice alone never parses back to the
+            // call — restore it (a span that already includes it keeps its own).
+            string head = slice.StartsWith("@", StringComparison.Ordinal) ? slice : "@" + slice;
+            if (!HeadsCall(head, name))
+                return null;
+            if (string.IsNullOrEmpty(body))
+                return head;
+            // Item spans cover the call (name plus data); a bodied item's body abuts after the span, so
+            // the slice usually stops before it. Rebuild the full call-site source from the sliced call
+            // plus the recorded body — without the data part the fragment would not even parse (a bare
+            // `@list{{...}}` names no data) — unless the span already carries the body.
+            string tail = "{{" + body + "}}";
+            return head.EndsWith(tail, StringComparison.Ordinal) ? head : head + tail;
+        }
+
+        /// <summary>Whether <paramref name="head"/> is the call site of <paramref name="name"/> rather
+        /// than a byte range that merely mentions it. The span is the call, so the name sits at its head,
+        /// followed by the data parentheses; the unnamed carrier has no name and starts at the
+        /// parenthesis. This is a verdict and has to be: it decides which file a fragment is cut out of
+        /// and which line is published as the site, and a containment test let an unrelated span of an
+        /// imported file stand in for a call the importing template wrote.</summary>
+        private static bool HeadsCall(string head, string name)
+        {
+            int after = 1 + name.Length;
+            if (head.Length <= after ||
+                string.CompareOrdinal(head, 1, name, 0, name.Length) != 0)
+                return false;
+            return head[after] == '(';
         }
 
         internal int GetDocIndex(RuntimeDocument runtime)
@@ -1081,6 +1180,21 @@ namespace Heddle.Precompiled.CompiledForm
         private static InvalidOperationException Refuse(string what) =>
             new InvalidOperationException("Cannot encode the compiled form: " + what + ".");
 
+        /// <summary>The refusal whose source no recorded text carries. Named, positioned and refused here,
+        /// because the alternative is an artifact carrying a fragment that cannot parse — one the build
+        /// cannot see fail and the consumer's load can only report as a syntax error in text nobody wrote.
+        /// <para>Every source of template text a compile reads is now offered to the passes above — the
+        /// owning document, the root, and the file of an <c>@&lt;&lt;</c> import — so what reaches here is
+        /// a call the passes located text for and could not recognise in it: the span does not contain the
+        /// call's own name (or its body, when it has one), which the <see cref="SliceRefusal"/> check
+        /// refuses rather than record a slice of the wrong thing.</para></summary>
+        private static InvalidOperationException UnresolvedRefusal(FormRefusalData refusal) =>
+            Refuse("the refused call '@" +
+                (refusal.Item != null ? refusal.Item.ExtensionName ?? string.Empty : string.Empty) +
+                "' at " + refusal.Position + " has no recordable source: no recorded document, and no " +
+                "'@<<' import this compile expanded, carries the call where its position says, so the " +
+                "loader would have nothing to rebuild the call from");
+
         internal CompiledArtifact ToArtifact(string engineVersion, string builderVersion, string key,
             string contentHash, string registeredName, string entryPointTypeName, ExType modelType,
             bool modelTypeIsAmbient, bool isDynamic, string profile, string mode, bool trim)
@@ -1091,6 +1205,9 @@ namespace Heddle.Precompiled.CompiledForm
                 throw new ArgumentNullException(nameof(builderVersion));
             if (_rootDocument < 0)
                 throw Refuse("no root document was recorded");
+            ResolveRefusalsInImports();
+            ResolveRefusalsAtRoot();
+            ReleaseImportTexts();
             var artifact = new CompiledArtifact
             {
                 Header = new CompiledHeader
@@ -1663,6 +1780,7 @@ namespace Heddle.Precompiled.CompiledForm
             {
                 ExtensionRef = -1,
                 Position = ToPosition(form.Position),
+                ImportAnchor = ImportAnchorOf(form),
                 ParameterTemplate = form.ParameterTemplate
             };
             ConvertBodies(form, converted);
@@ -1728,6 +1846,7 @@ namespace Heddle.Precompiled.CompiledForm
             {
                 ExtensionRef = form.ExtensionRef,
                 Position = ToPosition(form.Position),
+                ImportAnchor = ImportAnchorOf(form),
                 ReturnType = ToTypeRef(form.ReturnType),
                 ParameterTemplate = form.ParameterTemplate,
                 Parameter = ConvertParam(form)
@@ -1749,6 +1868,13 @@ namespace Heddle.Precompiled.CompiledForm
 
             return converted;
         }
+
+        /// <summary>Where in this template the <c>@&lt;&lt;</c> block that composed the item's file sits,
+        /// or -1 when the template carries the item itself. The loader correlates by position, and an
+        /// imported item's position is an offset into a file this template does not contain, so two
+        /// imports would otherwise put two items under one key.</summary>
+        private static int ImportAnchorOf(FormItem form) =>
+            form.Import != null ? form.Import.RootSite.StartIndex : -1;
 
         private int EnsureCallerDocument(int callerDocument)
         {
@@ -1866,8 +1992,7 @@ namespace Heddle.Precompiled.CompiledForm
                     throw Refuse("a class-(c) refusal at " + form.Position + " names no refusal site");
                 var data = _refusals[refusal.RefusalIndex];
                 if (data.SourceText == null)
-                    throw Refuse("a class-(c) refusal at " + form.Position +
-                        " was never resolved against its document");
+                    throw UnresolvedRefusal(data);
                 var refusalParameter = new CompiledParameter
                 {
                     Kind = CompiledParameterKind.RefusalSite,
@@ -1991,7 +2116,7 @@ namespace Heddle.Precompiled.CompiledForm
             {
                 var refusal = _refusals[i];
                 if (refusal.SourceText == null)
-                    throw Refuse("a class-(c) refusal was never resolved against its document");
+                    throw UnresolvedRefusal(refusal);
                 row.RefusalSites.Add(new PrecompiledRefusalSite(i, refusal.Class, refusal.Detail,
                     refusal.Position.StartIndex, refusal.Position.Length));
             }

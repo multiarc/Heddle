@@ -52,19 +52,14 @@ namespace Heddle.Data {
         public bool PrecompiledStrictLoad { get; set; }
 
         /// <summary>Output encoder at HTML-encoding sites. <c>null</c> selects the legacy built-in path; supply a
-        /// <see cref="System.Text.Encodings.Web.TextEncoder"/> for modern contract. Participates in cache key
-        /// by reference; thread-safe implementations are required.</summary>
+        /// <see cref="System.Text.Encodings.Web.TextEncoder"/> for modern contract. Applies to encoding sites
+        /// only — never to <see cref="Data.OutputProfile.Text"/> bare output, <c>@raw</c>, raw blocks, or literal
+        /// text. Participates in cache key by reference; thread-safe implementations are required.</summary>
         public System.Text.Encodings.Web.TextEncoder Encoder { get; set; }
 
         /// <summary>Per-render resource limits (output, ops, time). <c>null</c> (default) is unlimited with zero cost.
         /// Absent from cache keys — does not affect compiled structure or bytes of successful renders.</summary>
         public RenderBudget RenderBudget { get; set; }
-
-        /// <summary>No longer read: the model-type check it once opted into is always on — every top-level render
-        /// validates the model against the compiled model type and throws
-        /// <see cref="Heddle.Exceptions.TemplateProcessingException"/> on mismatch. Retained so existing code keeps
-        /// compiling. Absent from cache keys.</summary>
-        public bool ValidateModelType { get; set; }
 
         public TemplateOptions() : this((string) null)
         {
@@ -99,7 +94,6 @@ namespace Heddle.Data {
             PrecompiledMismatchPolicy = value.PrecompiledMismatchPolicy;
             Encoder = value.Encoder;
             RenderBudget = value.RenderBudget;   // Copied, but not part of Equals/GetHashCode or the fingerprint.
-            ValidateModelType = value.ValidateModelType;   // Copied, but not part of Equals/GetHashCode or the fingerprint.
             PrecompiledStrictLoad = value.PrecompiledStrictLoad;   // Copied, but not part of Equals/GetHashCode or the fingerprint.
         }
 

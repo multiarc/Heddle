@@ -27,7 +27,8 @@ namespace Heddle.Language
                 RootPath = options.RootPath,
                 ProvideLanguageFeatures = options.ProvideLanguageFeatures,
                 ImportReader = compileContext.ImportReader,
-                ImportIdentifier = compileContext.ImportIdentifier
+                ImportIdentifier = compileContext.ImportIdentifier,
+                CaptureImportSource = compileContext.FormRecord != null
             };
         }
 

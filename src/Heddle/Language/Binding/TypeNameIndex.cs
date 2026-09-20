@@ -1,10 +1,11 @@
 using System;
 using System.Collections.Generic;
+using Heddle.Helpers;
 
 namespace Heddle.Language.Binding
 {
     /// <summary>
-    /// The one type-name resolution ladder, run by both tiers over their own <see cref="ITypeNameMaps{TType}"/>.
+    /// The one type-name resolution ladder, run over the published <see cref="ITypeNameMaps"/> snapshot.
     /// <para>Order is C#'s, and each arm's position is load-bearing: <c>global::</c> first, being a qualifier no
     /// index key carries and one C# reads past every alias; then an alias claiming the <b>head</b> of the spelling,
     /// because that is the order C# reads a namespace-or-type-name in — the scope's alias directives, then the
@@ -13,10 +14,9 @@ namespace Heddle.Language.Binding
     /// differently and are not interchangeable; and last a <c>using static</c> target's nested types, which C# puts
     /// in the same bucket as an imported namespace's types — the index is a superset of that bucket, so moving the
     /// arm forward would narrow rather than reorder.</para>
-    /// <para>Ambiguity is decided here too, and deliberately: it is where two independent implementations of this
-    /// ladder would most plausibly disagree. A tie no import settles is the error C# reports as CS0104 — the
-    /// runtime's "the type name is ambigous" throw and the build tier's <c>HED7023</c> — never a pick by
-    /// declaration order, assembly-scan order or reference order.</para>
+    /// <para>Ambiguity is decided here too, and deliberately. A tie no import settles is the error C# reports as
+    /// CS0104 — the runtime's "the type name is ambigous" throw — never a pick by declaration order,
+    /// assembly-scan order or reference order.</para>
     /// <para>Generic arity is not this file's business: the shared <see cref="TypeSpelling"/> grammar rewrites
     /// <c>Ns.Outer&lt;int&gt;.Inner</c> into the backtick definition name <c>Ns.Outer`1.Inner</c> before a name
     /// reaches here, so the index is asked for the name it actually keys.</para>
@@ -27,10 +27,9 @@ namespace Heddle.Language.Binding
 
         /// <summary>Resolves one simple name — no type arguments, no array suffix, no tuple — against
         /// <paramref name="maps"/> and the collected <c>@using</c> bodies. <paramref name="fault"/> tells an
-        /// unresolved name from an ambiguous one, which is the difference between two diagnostics on both tiers.</summary>
-        internal static bool TryResolve<TType>(string name, IReadOnlyList<string> imports,
-            ITypeNameMaps<TType> maps, out TType type, out TypeSpellingFault fault)
-            where TType : class
+        /// unresolved name from an ambiguous one, which is the difference between two diagnostics.</summary>
+        internal static bool TryResolve(string name, IReadOnlyList<string> imports,
+            ITypeNameMaps maps, out Type type, out TypeSpellingFault fault)
         {
             type = null;
             fault = TypeSpellingFault.Unresolved;
@@ -87,9 +86,8 @@ namespace Heddle.Language.Binding
         /// <summary>The name-index arms. Kept apart from the directive arms so each can be ordered against the
         /// index on its own: the <c>static</c> arm still fires only where these had no answer, while the alias arm
         /// is reached before them.</summary>
-        private static bool TryResolveIndexed<TType>(string name, IReadOnlyList<string> imports,
-            ITypeNameMaps<TType> maps, out TType type, out TypeSpellingFault fault)
-            where TType : class
+        private static bool TryResolveIndexed(string name, IReadOnlyList<string> imports,
+            ITypeNameMaps maps, out Type type, out TypeSpellingFault fault)
         {
             type = null;
 
@@ -131,7 +129,7 @@ namespace Heddle.Language.Binding
             // an alias directive both bind ahead of it: `@using(){{ int = Ns.T }}` names a type the C# compiler
             // would reach as `@int`, and the ladder that answered `System.Int32` there was resolving a spelling the
             // directive had already claimed.
-            if (maps.TryResolveKeyword(name, out type))
+            if (CSharpTypeNames.TryGetType(name, out type))
             {
                 fault = TypeSpellingFault.None;
                 return true;
@@ -152,11 +150,11 @@ namespace Heddle.Language.Binding
 
             // A short-name tie is settled by whether a candidate's own namespace was imported, and by nothing else:
             // an unsettled tie is the ambiguity error, never the first candidate the scan happened to reach.
-            TType single = null;
+            Type single = null;
             var matches = 0;
             foreach (var candidate in candidates)
             {
-                var ns = maps.NamespaceOf(candidate);
+                var ns = candidate.Namespace;
                 if (ns == null || !Contains(imports, ns))
                     continue;
                 matches++;
@@ -186,12 +184,11 @@ namespace Heddle.Language.Binding
         /// <para>A namespace <b>alias</b> is the opposite case and does not come through here: <c>using X = A;</c>
         /// names the namespace itself, so <c>X.Sub.Deep</c> binds — see <see cref="TryResolveThroughAlias"/>.</para>
         /// </summary>
-        private static bool TryResolveThroughImports<TType>(string name, IReadOnlyList<string> imports,
-            ITypeNameMaps<TType> maps, out TType type, out TypeSpellingFault fault)
-            where TType : class
+        private static bool TryResolveThroughImports(string name, IReadOnlyList<string> imports,
+            ITypeNameMaps maps, out Type type, out TypeSpellingFault fault)
         {
             type = null;
-            TType declared = null;
+            Type declared = null;
             for (var i = 0; i < imports.Count; i++)
             {
                 var import = imports[i];
@@ -200,10 +197,10 @@ namespace Heddle.Language.Binding
 
                 foreach (var candidate in candidates)
                 {
-                    if (!string.Equals(maps.NamespaceOf(candidate), import, StringComparison.Ordinal))
+                    if (!string.Equals(candidate.Namespace, import, StringComparison.Ordinal))
                         continue;
                     // The same type reached twice (a duplicate import) is no tie; two distinct types are.
-                    if (declared != null && !maps.SameType(declared, candidate))
+                    if (declared != null && declared != candidate)
                     {
                         fault = TypeSpellingFault.Ambiguous;
                         return false;
@@ -228,9 +225,8 @@ namespace Heddle.Language.Binding
         /// The second key is how a type with no namespace is stored: the index writes
         /// <c>Namespace + "." + name</c> and the namespace is null for it, so its key carries a leading dot that no
         /// spelling has.</summary>
-        private static bool TryLookupQualified<TType>(string name, ITypeNameMaps<TType> maps, out TType type,
+        private static bool TryLookupQualified(string name, ITypeNameMaps maps, out Type type,
             out bool ambiguous)
-            where TType : class
         {
             ambiguous = false;
             type = null;
@@ -256,9 +252,8 @@ namespace Heddle.Language.Binding
         /// (<c>X = Outer</c>, <c>X.Inner</c>) — the index keys a nested type under its dotted chain, so the last two
         /// are the same lookup.
         /// </summary>
-        private static bool TryResolveThroughAlias<TType>(string name, UsingDirectives directives,
-            ITypeNameMaps<TType> maps, out TType type, out bool ambiguous)
-            where TType : class
+        private static bool TryResolveThroughAlias(string name, UsingDirectives directives,
+            ITypeNameMaps maps, out Type type, out bool ambiguous)
         {
             type = null;
             ambiguous = false;
@@ -274,7 +269,7 @@ namespace Heddle.Language.Binding
             if (dot < 0)
             {
                 // `using X = int;` is a legal alias, and the keyword is the one spelling the index does not carry.
-                if (maps.TryResolveKeyword(qualified, out type))
+                if (CSharpTypeNames.TryGetType(qualified, out type))
                     return true;
             }
             else
@@ -291,9 +286,8 @@ namespace Heddle.Language.Binding
         /// contributing the same name is the ambiguity C# reports as CS0104, not a pick.
         /// <para>Static <b>member</b> access is a different question and is not asked here.</para>
         /// </summary>
-        private static bool TryResolveThroughStaticImport<TType>(string name, UsingDirectives directives,
-            ITypeNameMaps<TType> maps, out TType type, out bool ambiguous)
-            where TType : class
+        private static bool TryResolveThroughStaticImport(string name, UsingDirectives directives,
+            ITypeNameMaps maps, out Type type, out bool ambiguous)
         {
             type = null;
             ambiguous = false;

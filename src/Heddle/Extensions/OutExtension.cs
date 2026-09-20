@@ -112,7 +112,9 @@ namespace Heddle.Extensions
 
             if (!InnerExist)
             {
-                // Static-only body is inert, so emit chained value; stringify non-strings to avoid silent drops.
+                // A static-only body is inert, so emit ONLY the chained value: without this return, control falls
+                // through to RenderInnerResult and ALSO emits the inert body, rendering both. Stringify a
+                // non-string, which a plain 'as string' would silently drop.
                 var chained = scope.ChainedData;
                 scope.Renderer.Render(chained is string chainedString ? chainedString : chained?.ToString());
                 return;
@@ -122,8 +124,8 @@ namespace Heddle.Extensions
             RenderInnerResult(innerScope);
         }
 
-        /// <summary>The canonical five-way test lives in the shared <see cref="SlotRules"/> so the build tier and the
-        /// runtime cannot drift apart; this stays as the extension's own vocabulary.</summary>
+        /// <summary>The canonical five-way test lives in <see cref="SlotRules"/>; this stays as the extension's
+        /// own vocabulary.</summary>
         private static bool HasOutValue(CallParameter callParameter) => SlotRules.HasOutValue(callParameter);
     }
 }

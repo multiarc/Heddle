@@ -3,8 +3,8 @@ using System;
 namespace Heddle.Data
 {
     /// <summary>The unnamed carrier a bodiless/bodied <c>@(…)</c> resolves to. The
-    /// registry name is the wire form both tiers use — the runtime asks <c>TemplateFactory</c> for it, the
-    /// build records it in the manifest binding row — so the mapping to a name lives here, once.</summary>
+    /// registry name is the wire form — the runtime asks <c>TemplateFactory</c> for it, the compiled artifact
+    /// records it in an extension row — so the mapping to a name lives here, once.</summary>
     public enum UnnamedCarrierKind
     {
         /// <summary>The raw empty carrier (registry name <c>""</c> → <c>EmptyExtension</c>).</summary>
@@ -14,9 +14,8 @@ namespace Heddle.Data
         EmptyHtml
     }
 
-    /// <summary>The two encoding-deciding output-profile rules shared across tiers: how <c>@profile(){{…}}</c>
-    /// parses and which unnamed carrier a given profile binds. Per-side plumbing (runtime mutates context
-    /// lineage; emitter uses per-chain maps) follows documented conventions.</summary>
+    /// <summary>The two encoding-deciding output-profile rules: how <c>@profile(){{…}}</c> parses and which
+    /// unnamed carrier a given profile binds.</summary>
     public static class OutputProfileRules
     {
         /// <summary>The <c>text</c> spelling <see cref="TryParseProfile"/> accepts (ordinal, case-insensitive).</summary>
@@ -25,7 +24,7 @@ namespace Heddle.Data
         /// <summary>The <c>html</c> spelling <see cref="TryParseProfile"/> accepts (ordinal, case-insensitive).</summary>
         public const string HtmlProfileName = "html";
 
-        /// <summary>The valid-values fragment both tiers' unknown-profile messages quote.</summary>
+        /// <summary>The valid-values fragment the runtime's and the editor's unknown-profile messages quote.</summary>
         public const string ValidProfileValues = TextProfileName + ", " + HtmlProfileName;
 
         /// <summary>
@@ -106,8 +105,8 @@ namespace Heddle.Data
         }
 
         /// <summary>The registry name of an unnamed carrier kind — <c>"html"</c> or the empty string. This is the
-        /// string <c>TemplateFactory.Create</c> resolves and the manifest binding row records, so the two tiers
-        /// cannot spell it differently.</summary>
+        /// string <c>TemplateFactory.Create</c> resolves and the compiled artifact's extension row records, so
+        /// the live registry and the artifact cannot spell it differently.</summary>
         public static string CarrierRegistryName(UnnamedCarrierKind kind)
             => kind == UnnamedCarrierKind.EmptyHtml ? HtmlProfileName : string.Empty;
     }

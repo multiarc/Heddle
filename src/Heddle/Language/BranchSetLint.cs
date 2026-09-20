@@ -7,12 +7,8 @@ namespace Heddle.Language
     /// <summary>
     /// The branch-set diagnostics carried by <see cref="DocumentShaping.StripBranchSets"/>'s event stream —
     /// stripped interleaved text, the orphan state machine, and the ignored-terminal-condition and
-    /// missing-scope-channel checks. It lives beside the strip machine rather than in either compiler so the
-    /// two tiers raise these from one implementation over one event order, instead of each deciding the same
-    /// conditions for itself.
-    /// <para>Everything it reads is parse data plus one predicate about the extension type, so the build tier
-    /// answers it from Roslyn symbols and the run tier from reflection, and the text, fix and position are the
-    /// same object on both.</para>
+    /// missing-scope-channel checks. It lives beside the strip machine rather than in the compiler so these are
+    /// decided over the strip's own event order, which is the only place their sequence is observable.
     /// </summary>
     internal sealed class BranchSetLint : DocumentShaping.IBranchStripObserver
     {

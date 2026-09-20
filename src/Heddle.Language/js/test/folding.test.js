@@ -1,7 +1,7 @@
 "use strict";
 
 /*
- * WS7 folding fixtures: confirm `{{`/`}}` and `@%`/`%@` fold widgets still
+ * Folding fixtures: confirm `{{`/`}}` and `@%`/`%@` fold widgets still
  * pair after the v2 tokenizer changes, and that generic-type `<`/`>` never
  * produce fold widgets.
  *

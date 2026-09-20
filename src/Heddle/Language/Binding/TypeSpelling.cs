@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -22,34 +23,35 @@ namespace Heddle.Language.Binding
         ArityMismatch
     }
 
-    /// <summary>The per-tier type universe the shared spelling parser closes over.</summary>
-    internal interface ITypeLookup<TType>
+    /// <summary>The type universe the spelling parser closes over: the caller's import scope and failure
+    /// reporting, and the loader/construction operations the parser itself stays clear of.</summary>
+    internal interface ITypeLookup
     {
         /// <summary>Resolves a non-generic, non-array, non-tuple name — a C# keyword alias, a dotted full name, or
         /// a bare short name — applying the imports and the ambiguity rule. <paramref name="backtickArity"/> is the
         /// declared arity when the spelling carried type arguments (<c>0</c> otherwise), so the lookup can ask for
         /// <c>Ns.C`1</c> rather than <c>Ns.C</c>.</summary>
-        bool TryResolveSimple(string name, int backtickArity, out TType type, out TypeSpellingFault fault);
+        bool TryResolveSimple(string name, int backtickArity, out Type type, out TypeSpellingFault fault);
 
-        TType MakeArray(TType elementType);
+        Type MakeArray(Type elementType);
 
         /// <summary>Closes <paramref name="definition"/> over <paramref name="arguments"/>; false when the arity
         /// does not match.</summary>
-        bool TryMakeGeneric(TType definition, IReadOnlyList<TType> arguments, out TType constructed);
+        bool TryMakeGeneric(Type definition, IReadOnlyList<Type> arguments, out Type constructed);
 
         /// <summary>The <c>System.ValueTuple`n</c> definition for a tuple spelling, or false when unavailable.</summary>
-        bool TryGetValueTupleDefinition(int arity, out TType definition);
+        bool TryGetValueTupleDefinition(int arity, out Type definition);
     }
 
-    /// <summary>Reflection-free type-spelling parser shared across tiers. Handles dotted chains with type
-    /// arguments (<c>Ns.Outer&lt;int&gt;.Inner&lt;string&gt;</c>), array suffixes (<c>[]</c>), and tuple
+    /// <summary>Type-spelling parser that owns the grammar and none of the type universe. Handles dotted chains
+    /// with type arguments (<c>Ns.Outer&lt;int&gt;.Inner&lt;string&gt;</c>), array suffixes (<c>[]</c>), and tuple
     /// spellings as <c>System.ValueTuple</c>.</summary>
     internal static class TypeSpelling
     {
-        internal static bool TryResolve<TType>(string spelling, ITypeLookup<TType> lookup, out TType type,
+        internal static bool TryResolve(string spelling, ITypeLookup lookup, out Type type,
             out TypeSpellingFault fault)
         {
-            type = default;
+            type = null;
             fault = TypeSpellingFault.None;
             if (lookup == null || spelling == null)
             {
@@ -107,11 +109,11 @@ namespace Heddle.Language.Binding
             return TryClose(argumentSpellings, definition, lookup, out type, out fault);
         }
 
-        private static bool TryClose<TType>(IReadOnlyList<string> argumentSpellings, TType definition,
-            ITypeLookup<TType> lookup, out TType type, out TypeSpellingFault fault)
+        private static bool TryClose(IReadOnlyList<string> argumentSpellings, Type definition,
+            ITypeLookup lookup, out Type type, out TypeSpellingFault fault)
         {
-            type = default;
-            var arguments = new TType[argumentSpellings.Count];
+            type = null;
+            var arguments = new Type[argumentSpellings.Count];
             for (int i = 0; i < argumentSpellings.Count; i++)
             {
                 if (!TryResolve(argumentSpellings[i], lookup, out arguments[i], out fault))

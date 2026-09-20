@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-
 namespace Heddle.Language.Binding
 {
     /// <summary>Why the runtime refuses to register an exported method. <see cref="None"/> means eligible.</summary>
@@ -27,14 +25,8 @@ namespace Heddle.Language.Binding
         public bool ReturnsVoid;
         public bool HasByRefOrPointerParameter;
 
-        /// <summary>Reflection's <c>MethodInfo.IsSpecialName</c>. The Roslyn adapter maps
-        /// <c>MethodKind != Ordinary</c> onto this — a close but not identical relation, documented at the adapter
-        /// (a user-defined operator is <c>MethodKind.UserDefinedOperator</c> <i>and</i> special-name, but an
-        /// ordinary method can never be special-name, so the mapping is conservative in the safe direction).</summary>
+        /// <summary>Reflection's <c>MethodInfo.IsSpecialName</c>.</summary>
         public bool IsSpecialName;
-
-        /// <summary>Parameter-type keys for signature identity. Equal keys mean same signature, causing replacement not overload.</summary>
-        public IReadOnlyList<string> ParameterTypeKeys;
     }
 
     /// <summary>
@@ -46,8 +38,7 @@ namespace Heddle.Language.Binding
     {
         /// <summary>Container eligibility: a public static class. Reflection spells "static class" as
         /// <c>IsClass &amp;&amp; IsAbstract &amp;&amp; IsSealed</c> and "public" as
-        /// <c>IsPublic || IsNestedPublic</c> — a <b>nested</b> public container is legal, which the symbol side
-        /// must accept too.</summary>
+        /// <c>IsPublic || IsNestedPublic</c> — a <b>nested</b> public container is legal.</summary>
         internal static bool IsContainerEligible(bool isStaticClass, bool isPublicOrNestedPublic) =>
             isStaticClass && isPublicOrNestedPublic;
 
@@ -56,8 +47,8 @@ namespace Heddle.Language.Binding
             facts.IsPublic && facts.IsStatic && !facts.IsSpecialName;
 
         /// <summary>Per-method eligibility. The runtime raises <c>ArgumentException</c> for each of these; the
-        /// build must exclude exactly the same methods from its manifest counts, which alone fixes the standing
-        /// overload-count gauntlet failure.</summary>
+        /// build must exclude exactly the same methods from its manifest overload counts, or the gauntlet
+        /// reports a count mismatch at load.</summary>
         internal static ExportRejection Evaluate(in ExportedMethodFacts facts)
         {
             if (!facts.IsStatic)
@@ -106,19 +97,5 @@ namespace Heddle.Language.Binding
         /// tier's <c>HED7021</c> say the same thing about the same host wiring mistake.</summary>
         internal static string ContainerIneligibleMessage(string containerFullName) =>
             "[ExportFunctions] container '" + containerFullName + "' must be a public static class.";
-
-        /// <summary>Signature identity for the replace-on-identical rule. Keys are compared only <b>within</b> a
-        /// tier (each tier merges its own registrations), so the two sides need consistent spellings, not
-        /// identical ones — the reflection side uses <c>Type.FullName</c>, the symbol side its non-aliased
-        /// fully-qualified display.</summary>
-        internal static bool SameSignature(IReadOnlyList<string> a, IReadOnlyList<string> b)
-        {
-            if (a == null || b == null || a.Count != b.Count)
-                return false;
-            for (int i = 0; i < a.Count; i++)
-                if (!string.Equals(a[i], b[i], System.StringComparison.Ordinal))
-                    return false;
-            return true;
-        }
     }
 }

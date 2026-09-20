@@ -18,7 +18,7 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>Shared build/record/register/materialize/compare pipeline for the compiled-form parity
-    /// suite (P1-W9). Every test class in this suite runs the same steps the engine's own dynamic tier
+    /// suite. Every test class in this suite runs the same steps the engine's own dynamic tier
     /// runs, then byte-compares: text compile with form recording and unbound-function deferral, artifact
     /// write/read round-trip, marker-assembly registration, gauntlet validation, request-scoped
     /// materialization, and a three-sink render (string, writer, UTF-8) against a dynamic reference.</summary>
@@ -244,8 +244,8 @@ namespace Heddle.Tests
         {
             var image = CompiledFormWriter.Write(artifact);
             var back = CompiledFormReader.Read(image);
-            return new PrecompiledTemplateInfo(typeof(CompiledFormHarness).Assembly, image, back, rowIndex,
-                null);
+            return new PrecompiledTemplateInfo(typeof(CompiledFormHarness).Assembly,
+                new LoadedArtifact(back), rowIndex, null);
         }
 
         /// <summary>Registers an artifact's rows through a dynamic marker assembly and returns it, for the

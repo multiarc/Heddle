@@ -8,9 +8,6 @@ namespace Heddle.Tests
     /// <summary>
     /// Conformance gate for the shared <see cref="AqnFormatter"/>: for every shape in the corpus the
     /// reflection adapter's output must be byte-equal to live <c>Type.FullName + ", " + assembly simple name</c>.
-    /// <para>This is the pin the build tier's Roslyn adapter is then held to — the two sides no longer produce the
-    /// identity string with unrelated formatters, so a nested type can no longer be <c>Ns.Outer.Inner</c> on one
-    /// tier and <c>Ns.Outer+Inner</c> on the other.</para>
     /// </summary>
     public class AqnFormatterConformanceTests
     {

@@ -3,8 +3,7 @@ using System.Text;
 namespace Heddle.Language.Expressions
 {
     /// <summary>
-    /// Unified C# string/char literal escape table with lone-surrogate guard. Output is byte-identical
-    /// to the previous <c>PieceWriter.Escape</c> for inputs without lone surrogates.
+    /// Unified C# string/char literal escape table with lone-surrogate guard.
     /// </summary>
     internal static class CSharpEscape
     {
@@ -19,8 +18,8 @@ namespace Heddle.Language.Expressions
                 char c = value[i];
                 if (char.IsHighSurrogate(c) && i + 1 < value.Length && char.IsLowSurrogate(value[i + 1]))
                 {
-                    // A well-formed pair is one code point: emit both units verbatim so the "…"u8 twin encodes the
-                    // identical text.
+                    // A well-formed pair is one code point: emit both units verbatim; only a lone surrogate is
+                    // escaped below.
                     sb.Append(c).Append(value[i + 1]);
                     i++;
                     continue;

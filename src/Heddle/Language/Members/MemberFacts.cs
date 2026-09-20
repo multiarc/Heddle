@@ -12,9 +12,8 @@ namespace Heddle.Language.Members
     }
 
     /// <summary>
-    /// Everything the member-tier visibility policy needs to know about one property — and nothing else. The fact
-    /// sources are per-side adapters; this struct is the only shape <see cref="MemberVisibility"/> ever sees, which
-    /// is what makes a divergent policy structurally impossible once both adapters feed it.
+    /// Everything the member-tier visibility policy needs to know about one property — and nothing else. It is the
+    /// only shape <see cref="MemberVisibility"/> ever sees, so a fact source cannot slip a policy decision past it.
     /// </summary>
     internal readonly struct MemberFacts
     {

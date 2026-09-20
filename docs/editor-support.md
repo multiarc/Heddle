@@ -87,7 +87,6 @@ against the parity test's own exclusion set, so it cannot quietly fall out of da
 | `Data` | Render input (the model instance); analysis compiles, never renders. |
 | `Encoder` | Render‑time output encoding, object‑valued; changes rendered bytes, never a diagnostic. |
 | `RenderBudget` | Per‑render resource limits, object‑valued; no lint depends on them. |
-| `ValidateModelType` | Not read — the render‑time model‑type check is always on; analysis has no data anyway. |
 | `PrecompiledMismatchPolicy` | Selects run‑tier fallback vs throw; the analyzer never consults the precompiled registry. |
 | `PrecompiledStrictLoad` | Fails materialization instead of compiling a site at load; analysis compiles, never materializes precompiled entries. |
 | `EnableFileChangeCheck` | The runtime's file watcher; the editor owns document versioning itself. |

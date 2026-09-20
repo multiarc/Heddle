@@ -42,6 +42,7 @@ namespace Heddle.Language {
             ImporterSatisfiableErrors = parentContext?.ImporterSatisfiableErrors ??
                                         new HashSet<HeddleCompileError>();
             ImportOrigin = parentContext?.ImportOrigin;
+            ImportSource = parentContext?.ImportSource;
         }
 
         /// <summary>The absolute document-space UTF-16 offset this context's tokens are keyed from.</summary>
@@ -54,6 +55,14 @@ namespace Heddle.Language {
         /// context carrying this marker are re-anchored to the import site by the LSP facade.
         /// </summary>
         internal ImportOrigin ImportOrigin { get; set; }
+
+        /// <summary>
+        /// The <c>@&lt;&lt;</c> import whose text this context's positions are absolute in, or <c>null</c>
+        /// outside an import and whenever <see cref="ParserSettings.CaptureImportSource"/> is off. Inherited
+        /// by reference through the ctor, so a body or definition context nested inside an imported file
+        /// names the same file its enclosing chains do.
+        /// </summary>
+        internal ImportSource ImportSource { get; set; }
 
         /// <summary>
         /// The stable identity of a caller-content context across isolation copies. Each

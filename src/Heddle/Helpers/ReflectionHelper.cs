@@ -201,11 +201,11 @@ namespace Heddle.Helpers
         }
 
         /// <summary>
-        /// The reflection tier's <see cref="ITypeNameMaps{TType}"/>: one published snapshot of the two name maps,
-        /// plus the two arms that belong to the type universe rather than to the ladder — the C# predefined-type
-        /// aliases, and the assembly-qualified spelling the CLR loader resolves for itself.
+        /// The <see cref="ITypeNameMaps"/> snapshot the ladder consumes: the two name maps published together,
+        /// plus the arm that belongs to the type universe rather than to the ladder — the assembly-qualified
+        /// spelling the CLR loader resolves for itself.
         /// </summary>
-        private sealed class ReflectionNameMaps : ITypeNameMaps<Type>
+        private sealed class ReflectionNameMaps : ITypeNameMaps
         {
             private readonly NameMaps _maps;
 
@@ -225,17 +225,8 @@ namespace Heddle.Helpers
                 return found;
             }
 
-            public string NamespaceOf(Type type) => type.Namespace;
-
-            public bool SameType(Type left, Type right) => left == right;
-
-            // The alias table lives in CSharpTypeNames — single source for parse direction here,
-            // display direction in signature/hover text, and build tier's symbol-side adapter.
-            public bool TryResolveKeyword(string name, out Type type) => CSharpTypeNames.TryGetType(name, out type);
-
             /// <summary>The CLR's own resolution of an assembly-qualified spelling, over the assemblies the host
-            /// has loaded. The build tier answers the same question against a compilation's references instead,
-            /// which is why this arm is the seam's and not the ladder's.</summary>
+            /// has loaded — a loader question, not a ladder one, which is why this arm is the seam's.</summary>
             [UnconditionalSuppressMessage("Trimming", "IL2057", Justification = "Resolves an identity the engine recorded itself over registered/loaded assemblies; a trimmed publish resolves only what it kept, and a miss reads as unresolved (a diagnostic or gauntlet mismatch), never a crash.")]
             public bool TryResolveAssemblyQualified(string spelling, out Type type)
             {
@@ -258,11 +249,6 @@ namespace Heddle.Helpers
                 return type != null;
             }
         }
-
-        /// <summary>The published maps in the shape the shared ladder consumes them. The build tier runs that same
-        /// ladder over its own maps, and the only way to hold the two answers against each other is to have both
-        /// seams in one process; nothing on a compile or render path calls this.</summary>
-        internal static ITypeNameMaps<Type> NameMapsSnapshot() => new ReflectionNameMaps(CurrentMaps());
 
         private static InvalidOperationException ResolveSimpleError(string typeName, ICollection<string> imports,
             bool ambiguous)
@@ -363,12 +349,11 @@ namespace Heddle.Helpers
         }
 
         /// <summary>
-        /// The reflection type universe as the shared parser sees it. Simple-name resolution is the shared
-        /// <see cref="TypeNameIndex"/> ladder run over <see cref="ReflectionNameMaps"/>, so the build tier resolves
-        /// <c>@model Foo</c> by the same arms in the same order; its fault is turned into the reflection tier's
-        /// exception here rather than thrown through the parser, so the parser stays exception-free for both tiers.
+        /// The reflection type universe as the spelling parser sees it. Simple-name resolution is the
+        /// <see cref="TypeNameIndex"/> ladder run over <see cref="ReflectionNameMaps"/>; its fault is turned into
+        /// this tier's exception here rather than thrown through the parser, so the parser stays exception-free.
         /// </summary>
-        private sealed class ReflectionTypeLookup : ITypeLookup<Type>
+        private sealed class ReflectionTypeLookup : ITypeLookup
         {
             private readonly ICollection<string> _imports;
 

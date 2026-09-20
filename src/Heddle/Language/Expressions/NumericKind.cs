@@ -5,8 +5,7 @@ namespace Heddle.Language.Expressions
     /// <summary>
     /// The twelve numeric primitives the native tier promotes over, plus <see cref="None"/> for "not a numeric
     /// primitive". Keying conversion tables on this enum instead of <see cref="Type"/> or Roslyn's
-    /// <c>SpecialType</c> makes the operator-legality and overload-rank rules expressible in one Roslyn-free file —
-    /// fact sources stay per-side adapters while the lattice is shared.
+    /// <c>SpecialType</c> makes the operator-legality and overload-rank rules expressible in one Roslyn-free file.
     /// </summary>
     internal enum NumericKind
     {

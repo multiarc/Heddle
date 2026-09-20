@@ -11,6 +11,9 @@ namespace Heddle.Tests
     /// Analysis only: pins quantified claims about adopting C#'s betterness schema (how many ambiguous calls would bind,
     /// how many would bind to a different overload). Betterness: P1 is better than P2 when P1 is an exact match or when a
     /// P1→P2 conversion exists with no P2→P1 — the "closest target wins" property Heddle's flat rank lacks.
+    /// <para>The lattice is enumerated as <see cref="NumericKind"/> because that is the alphabet the betterness
+    /// transcription below is written in; the flat side is evaluated by the shipped <see cref="OverloadRank"/>
+    /// over the CLR types those kinds stand for, so the side being quantified is the one that ships.</para>
     /// </summary>
     public class OverloadBetternessEvaluationTests
     {
@@ -25,21 +28,25 @@ namespace Heddle.Tests
             NumericKind.Double, NumericKind.Decimal,
         };
 
-        private sealed class KindRankModel : IRankModel<NumericKind>
+        /// <summary>The CLR type each enumerated kind stands for — the twelve numeric primitives.</summary>
+        private static Type ClrTypeOf(NumericKind kind)
         {
-            public static readonly KindRankModel Instance = new KindRankModel();
-            public bool AreSame(NumericKind a, NumericKind b) => a == b;
-            public bool IsObject(NumericKind type) => false;
-            public bool IsValueType(NumericKind type) => true;
-
-            public bool TryGetNullableUnderlying(NumericKind type, out NumericKind underlying)
+            switch (kind)
             {
-                underlying = NumericKind.None;
-                return false;
+                case NumericKind.SByte: return typeof(sbyte);
+                case NumericKind.Byte: return typeof(byte);
+                case NumericKind.Int16: return typeof(short);
+                case NumericKind.UInt16: return typeof(ushort);
+                case NumericKind.Int32: return typeof(int);
+                case NumericKind.UInt32: return typeof(uint);
+                case NumericKind.Int64: return typeof(long);
+                case NumericKind.UInt64: return typeof(ulong);
+                case NumericKind.Char: return typeof(char);
+                case NumericKind.Single: return typeof(float);
+                case NumericKind.Double: return typeof(double);
+                case NumericKind.Decimal: return typeof(decimal);
+                default: throw new ArgumentOutOfRangeException(nameof(kind));
             }
-
-            public NumericKind KindOf(NumericKind type) => type;
-            public bool IsReferenceAssignable(NumericKind from, NumericKind to) => false;
         }
 
         /// <summary>The numeric-parameter signatures of one built-in name, in table order. Names whose overloads are
@@ -146,10 +153,10 @@ namespace Heddle.Tests
         private static int FlatWinner(List<NumericKind[]> signatures, NumericKind[] args)
         {
             var candidates = signatures
-                .Select(s => new RankCandidate<NumericKind>(s, false, NumericKind.None))
+                .Select(s => new RankCandidate(Array.ConvertAll(s, ClrTypeOf), false, null))
                 .ToArray();
-            var rankArgs = args.Select(RankArgument<NumericKind>.Of).ToArray();
-            var binding = OverloadRank.Bind(KindRankModel.Instance, candidates, rankArgs);
+            var rankArgs = args.Select(k => RankArgument.Of(ClrTypeOf(k))).ToArray();
+            var binding = OverloadRank.Bind(candidates, rankArgs);
             switch (binding.Outcome)
             {
                 case BindOutcome.Bound: return binding.Index;

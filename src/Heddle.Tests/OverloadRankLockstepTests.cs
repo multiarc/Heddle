@@ -92,23 +92,6 @@ namespace Heddle.Tests
             return strictlyBetter;
         }
 
-        private sealed class TypeRankModel : IRankModel<Type>
-        {
-            public static readonly TypeRankModel Instance = new TypeRankModel();
-            public bool AreSame(Type a, Type b) => a == b;
-            public bool IsObject(Type type) => type == typeof(object);
-            public bool IsValueType(Type type) => type.IsValueType;
-
-            public bool TryGetNullableUnderlying(Type type, out Type underlying)
-            {
-                underlying = Nullable.GetUnderlyingType(type);
-                return underlying != null;
-            }
-
-            public NumericKind KindOf(Type type) => NumericTable.FromClrType(type);
-            public bool IsReferenceAssignable(Type from, Type to) => to.IsAssignableFrom(from);
-        }
-
         [Fact]
         public void ConversionRank_MatchesTheLegacyBody_Exhaustively()
         {
@@ -116,13 +99,13 @@ namespace Heddle.Tests
             foreach (var parameter in Matrix)
             {
                 Assert.Equal(LegacyConversionRank(arg, false, parameter),
-                    OverloadRank.ConversionRank(TypeRankModel.Instance, RankArgument<Type>.Of(arg), parameter));
+                    OverloadRank.ConversionRank(RankArgument.Of(arg), parameter));
             }
 
             foreach (var parameter in Matrix)
             {
                 Assert.Equal(LegacyConversionRank(null, true, parameter),
-                    OverloadRank.ConversionRank(TypeRankModel.Instance, RankArgument<Type>.Null(), parameter));
+                    OverloadRank.ConversionRank(RankArgument.Null(), parameter));
             }
         }
 
@@ -131,13 +114,13 @@ namespace Heddle.Tests
         {
             // The property C# betterness does *not* have, and the reason the build cannot delegate selection.
             Assert.Equal(OverloadRank.Widening,
-                OverloadRank.ConversionRank(TypeRankModel.Instance, RankArgument<Type>.Of(typeof(int)), typeof(long)));
+                OverloadRank.ConversionRank(RankArgument.Of(typeof(int)), typeof(long)));
             Assert.Equal(OverloadRank.Widening,
-                OverloadRank.ConversionRank(TypeRankModel.Instance, RankArgument<Type>.Of(typeof(int)), typeof(decimal)));
+                OverloadRank.ConversionRank(RankArgument.Of(typeof(int)), typeof(decimal)));
             Assert.Equal(OverloadRank.Exact,
-                OverloadRank.ConversionRank(TypeRankModel.Instance, RankArgument<Type>.Of(typeof(int)), typeof(int)));
+                OverloadRank.ConversionRank(RankArgument.Of(typeof(int)), typeof(int)));
             Assert.Equal(OverloadRank.Boxing,
-                OverloadRank.ConversionRank(TypeRankModel.Instance, RankArgument<Type>.Of(typeof(int)), typeof(object)));
+                OverloadRank.ConversionRank(RankArgument.Of(typeof(int)), typeof(object)));
         }
 
         [Fact]
@@ -152,10 +135,10 @@ namespace Heddle.Tests
                 Assert.Equal(LegacyDominates(a, b), OverloadRank.Dominates(a, b));
         }
 
-        private static RankCandidate<Type> Candidate(params Type[] parameters) =>
-            new RankCandidate<Type>(parameters, false, null);
+        private static RankCandidate Candidate(params Type[] parameters) =>
+            new RankCandidate(parameters, false, null);
 
-        private static readonly RankCandidate<Type>[] MinCandidates =
+        private static readonly RankCandidate[] MinCandidates =
         {
             Candidate(typeof(int), typeof(int)),
             Candidate(typeof(long), typeof(long)),
@@ -166,8 +149,8 @@ namespace Heddle.Tests
         [Fact]
         public void Min_IntInt_ResolvesUniquely()
         {
-            var binding = OverloadRank.Bind(TypeRankModel.Instance, MinCandidates,
-                new[] { RankArgument<Type>.Of(typeof(int)), RankArgument<Type>.Of(typeof(int)) });
+            var binding = OverloadRank.Bind(MinCandidates,
+                new[] { RankArgument.Of(typeof(int)), RankArgument.Of(typeof(int)) });
             Assert.Equal(BindOutcome.Bound, binding.Outcome);
             Assert.Equal(0, binding.Index);
         }
@@ -178,8 +161,8 @@ namespace Heddle.Tests
             // (long,long), (double,double) and (decimal,decimal) all rank (1,1); C# betterness would pick
             // Min(long,long) and render. The build reports HED1013 here instead, which is what makes the two tiers
             // agree.
-            var binding = OverloadRank.Bind(TypeRankModel.Instance, MinCandidates,
-                new[] { RankArgument<Type>.Of(typeof(int)), RankArgument<Type>.Of(typeof(uint)) });
+            var binding = OverloadRank.Bind(MinCandidates,
+                new[] { RankArgument.Of(typeof(int)), RankArgument.Of(typeof(uint)) });
             Assert.Equal(BindOutcome.Ambiguous, binding.Outcome);
         }
 
@@ -188,20 +171,20 @@ namespace Heddle.Tests
         {
             var candidates = new[]
             {
-                new RankCandidate<Type>(new[] { typeof(object), typeof(string) }, false, null),
-                new RankCandidate<Type>(new[] { typeof(string), typeof(object[]) }, true, typeof(object)),
+                new RankCandidate(new[] { typeof(object), typeof(string) }, false, null),
+                new RankCandidate(new[] { typeof(string), typeof(object[]) }, true, typeof(object)),
             };
 
             // format(value, fmt) — the fixed form wins outright, no expansion.
-            var fixedForm = OverloadRank.Bind(TypeRankModel.Instance, candidates,
-                new[] { RankArgument<Type>.Of(typeof(string)), RankArgument<Type>.Of(typeof(string)) });
+            var fixedForm = OverloadRank.Bind(candidates,
+                new[] { RankArgument.Of(typeof(string)), RankArgument.Of(typeof(string)) });
             Assert.Equal(BindOutcome.Bound, fixedForm.Outcome);
             Assert.Equal(0, fixedForm.Index);
             Assert.False(fixedForm.Expanded);
 
             // format(fmt, a, b) — nothing applies unexpanded, so the params tier binds.
-            var expanded = OverloadRank.Bind(TypeRankModel.Instance, candidates,
-                new[] { RankArgument<Type>.Of(typeof(string)), RankArgument<Type>.Of(typeof(int)), RankArgument<Type>.Of(typeof(int)) });
+            var expanded = OverloadRank.Bind(candidates,
+                new[] { RankArgument.Of(typeof(string)), RankArgument.Of(typeof(int)), RankArgument.Of(typeof(int)) });
             Assert.Equal(BindOutcome.Bound, expanded.Outcome);
             Assert.Equal(1, expanded.Index);
             Assert.True(expanded.Expanded);

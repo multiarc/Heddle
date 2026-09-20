@@ -50,8 +50,7 @@ namespace Heddle.Language.Binding
         /// name, or the whole of a simple one.
         /// <para>C# resolves that head through the scope's alias directives before it consults the namespaces the
         /// scope imports, and once an alias claims the head the binding <b>commits</b>: a target that names nothing
-        /// is an error, not a fallback to an import. Both tiers ask this one question, so neither can drift from
-        /// the other on where the alias arm sits.</para>
+        /// is an error, not a fallback to an import.</para>
         /// </summary>
         internal bool ClaimsHead(string spelling)
         {

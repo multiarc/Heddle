@@ -13,22 +13,22 @@ namespace Heddle.Tests
     /// </summary>
     public class PropLayoutCoreReflectionTests
     {
-        private sealed class RecordingSink : IPropLayoutSink<Type>
+        private sealed class RecordingSink : IPropLayoutSink
         {
             internal readonly List<PropFault> Faults = new List<PropFault>();
             internal readonly List<string> Names = new List<string>();
             internal readonly List<string> Messages = new List<string>();
 
-            public void Fault(PropFault fault, PropDeclaration<Type> declaration, Type relatedType,
+            public void Fault(PropFault fault, PropDeclaration declaration, Type relatedType,
                 string relatedDisplay)
             {
                 Faults.Add(fault);
                 Names.Add(declaration.Name);
                 Messages.Add(HeddleDiagnosticCatalog.PropFaults.Message(fault, declaration.Name,
-                    "extension 'probe'", ReflectionTypeFacts.Instance.Display(declaration.Type), relatedDisplay));
+                    "extension 'probe'", ReflectionTypeFacts.Display(declaration.Type), relatedDisplay));
             }
 
-            public bool TryConvertDefault(PropDeclaration<Type> declaration, Type targetType, out object converted,
+            public bool TryConvertDefault(PropDeclaration declaration, Type targetType, out object converted,
                 out string sourceDisplay)
             {
                 sourceDisplay = declaration.DefaultValue?.GetType().Name ?? "null";
@@ -37,9 +37,9 @@ namespace Heddle.Tests
             }
         }
 
-        private static PropDeclaration<Type> Decl(string name, Type type, int level = 0, bool hasDefault = false,
+        private static PropDeclaration Decl(string name, Type type, int level = 0, bool hasDefault = false,
             object defaultValue = null) =>
-            new PropDeclaration<Type>
+            new PropDeclaration
             {
                 Name = name, Type = type, Level = level, HasDefault = hasDefault, DefaultValue = defaultValue
             };
@@ -53,7 +53,7 @@ namespace Heddle.Tests
                 Decl("a", typeof(int), level: 0),
                 Decl("b", typeof(string), level: 0),
                 Decl("c", typeof(object), level: 1),
-            }, ReflectionTypeFacts.Instance, sink, out var faulted);
+            }, sink, out var faulted);
 
             Assert.False(faulted);
             Assert.Empty(sink.Faults);
@@ -70,7 +70,7 @@ namespace Heddle.Tests
                 Decl("a", typeof(object), level: 0, hasDefault: true, defaultValue: "base"),
                 Decl("b", typeof(int), level: 0),
                 Decl("a", typeof(string), level: 1, hasDefault: true, defaultValue: "derived"),
-            }, ReflectionTypeFacts.Instance, sink, out var faulted);
+            }, sink, out var faulted);
 
             Assert.False(faulted);
             Assert.Equal(new[] { "a", "b" }, slots.ConvertAll(s => s.Name));
@@ -90,7 +90,7 @@ namespace Heddle.Tests
                 Decl("out", typeof(int)),       // reserved
                 Decl(null, typeof(int)),        // name invalid
                 Decl("b", typeof(int)),         // still resolved AFTER three faults
-            }, ReflectionTypeFacts.Instance, sink, out var faulted);
+            }, sink, out var faulted);
 
             Assert.True(faulted);
             Assert.Equal(
@@ -111,7 +111,7 @@ namespace Heddle.Tests
             {
                 Decl("out", typeof(int)),
                 Decl("out", typeof(List<>)),
-            }, ReflectionTypeFacts.Instance, sink, out _);
+            }, sink, out _);
 
             Assert.Equal(new[] { PropFault.NameReserved, PropFault.NameReserved }, sink.Faults);
         }
@@ -122,7 +122,7 @@ namespace Heddle.Tests
         public void UnusableTypesAreRejected(Type type)
         {
             var sink = new RecordingSink();
-            PropLayoutCore.Build(new[] { Decl("a", type) }, ReflectionTypeFacts.Instance, sink, out var faulted);
+            PropLayoutCore.Build(new[] { Decl("a", type) }, sink, out var faulted);
 
             Assert.True(faulted);
             Assert.Equal(new[] { PropFault.TypeUnusable }, sink.Faults);
@@ -138,7 +138,7 @@ namespace Heddle.Tests
                 Decl("a", typeof(int).MakeByRefType()),
                 Decl("b", typeof(int).MakePointerType()),
                 Decl("c", typeof(List<>).MakeGenericType(typeof(List<>).GetGenericArguments()[0])),
-            }, ReflectionTypeFacts.Instance, sink, out var faulted);
+            }, sink, out var faulted);
 
             Assert.True(faulted);
             Assert.Equal(new[] { PropFault.TypeUnusable, PropFault.TypeUnusable, PropFault.TypeUnusable },
@@ -153,7 +153,7 @@ namespace Heddle.Tests
             {
                 Decl("a", typeof(string), level: 0),
                 Decl("a", typeof(object), level: 1),
-            }, ReflectionTypeFacts.Instance, sink, out var faulted);
+            }, sink, out var faulted);
 
             Assert.True(faulted);
             Assert.Equal(new[] { PropFault.RedeclarationNotAssignable }, sink.Faults);

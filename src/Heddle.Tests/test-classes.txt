@@ -56,7 +56,6 @@ Heddle.Tests.DoubleRenderWarningTests
 Heddle.Tests.DynamicMemberTests
 Heddle.Tests.EmbeddedCSharpNamesPinTests
 Heddle.Tests.EncoderOptionTests
-Heddle.Tests.ExportBookkeepingTests
 Heddle.Tests.ExpressionModeTests
 Heddle.Tests.ExtensionParametersTests
 Heddle.Tests.ExtensionRegistrationPrecedenceTests
@@ -116,7 +115,6 @@ Heddle.Tests.OverloadBetternessEvaluationTests
 Heddle.Tests.OverloadRankLockstepTests
 Heddle.Tests.ParseSnapshotTests
 Heddle.Tests.ParserSettingsSeamTests
-Heddle.Tests.ParticipantScanLockstepTests
 Heddle.Tests.PrecompiledFallbackCarrierTests
 Heddle.Tests.PrecompiledGauntletTests
 Heddle.Tests.PrecompiledMismatchPolicyTests
@@ -142,6 +140,7 @@ Heddle.Tests.PublicApiSurfaceTests
 Heddle.Tests.RangeFunctionTests
 Heddle.Tests.RangeTypeTests
 Heddle.Tests.ReflectionHelperTest
+Heddle.Tests.RefusalFragmentParityTests
 Heddle.Tests.RegionFillResolverTests
 Heddle.Tests.RegionTests
 Heddle.Tests.RegisteredNameLookupTests
@@ -166,7 +165,6 @@ Heddle.Tests.TemplateFactoryRegistrationTests
 Heddle.Tests.TemplateKeyNormalizationTests
 Heddle.Tests.TemplateOptionsCompletenessTests
 Heddle.Tests.TemplateOptionsFullPathTests
-Heddle.Tests.TemplateOptionsValidateModelTypeTests
 Heddle.Tests.TemplateResolverProfileTests
 Heddle.Tests.TestClassInventoryTests
 Heddle.Tests.TrimDirectiveLinesTests

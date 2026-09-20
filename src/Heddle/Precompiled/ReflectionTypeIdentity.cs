@@ -4,8 +4,8 @@ using System.Collections.Generic;
 namespace Heddle.Precompiled
 {
     /// <summary>
-    /// The <b>reflection</b> adapter of <see cref="AqnFormatter"/> — the run-tier half of the manifest
-    /// identity contract. Decomposes a <see cref="Type"/> into the namespace / nesting-chain / assembly-simple-name
+    /// The <b>reflection</b> adapter of <see cref="AqnFormatter"/>.
+    /// Decomposes a <see cref="Type"/> into the namespace / nesting-chain / assembly-simple-name
     /// triple the shared formatter joins; the build host resolves the same identity over the assemblies it
     /// binds, so the two spellings can no longer drift.
     /// </summary>

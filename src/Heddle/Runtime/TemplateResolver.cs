@@ -195,47 +195,59 @@ namespace Heddle.Runtime {
             if (viewName == null) throw new ArgumentNullException(nameof(viewName));
             if (controllerName == null) throw new ArgumentNullException(nameof(controllerName));
             if (locations == null) throw new ArgumentNullException(nameof(locations));
-            List<string> searched = new List<string>();
             relativePath = null;
-            foreach (var path in locations) {
-                var candidate = string.Format(path, viewName, controllerName);
+            // One substitution and one combine per location, reused by all three tiers. Each pass used to
+            // re-run both, so a four-location partial formatted twelve strings to probe four places.
+            var candidates = new string[locations.Length];
+            var fullPaths = new string[locations.Length];
+            for (int i = 0; i < locations.Length; i++) {
+                candidates[i] = string.Format(locations[i], viewName, controllerName);
+                fullPaths[i] = Path.Combine(_rootPath, candidates[i]);
+            }
+            for (int i = 0; i < candidates.Length; i++) {
                 // Candidate path uses the same shared TemplateKey normalization as the build.
-                if (!TemplateKey.TryNormalize(candidate, out var key))
+                if (!TemplateKey.TryNormalize(candidates[i], out var key))
                     continue;
-                var options = requestOptions ?? HostedOptions(candidate, profile, trim);
+                // Membership first: a location the registry never heard of — which is every location of
+                // every view in a host that precompiles nothing — must not cost an options instance.
+                if (!PrecompiledTemplates.CouldResolve(key))
+                    continue;
+                var options = requestOptions ?? HostedOptions(candidates[i], profile, trim);
                 // A miss, or a Fallback-policy gauntlet failure (an options fingerprint built Native cannot answer
                 // these arms' FullCSharp request), falls through to the unchanged cache/disk ladder.
-                if (PrecompiledTemplates.TryResolve(key, options, requestModelType, out var entry)) {
+                if (PrecompiledTemplates.TryResolveNormalized(key, options, requestModelType, out var entry)) {
                     // The strategy for the request the gauntlet just validated: its function registry,
                     // root path, recursion limit and strict-load setting, not the default shape.
+                    // Deliberately NOT added to TemplatesCache: that cache keys on path, profile and
+                    // trimming, and a precompiled entry's strategy also varies by the request's function
+                    // registry, paths, recursion limit and strict-load flag — two request shapes sharing
+                    // one cached template would serve one shape's body to the other. The repeat cost is
+                    // held down instead, by the entry's own per-shape memos.
                     cached = new HeddleTemplate(entry.GetStrategy(options), options.Encoder, options.RenderBudget,
                         modelType: entry.ModelType);
                     searchedLocations = null;
-                    relativePath = candidate;
-                    return Path.Combine(_rootPath, candidate);
+                    relativePath = candidates[i];
+                    return fullPaths[i];
                 }
             }
-            foreach (var path in locations) {
-                var candidate = string.Format(path, viewName, controllerName);
-                var fullPath = Path.Combine(_rootPath, candidate);
-                if (TemplatesCache.TryGetValue(CacheKey(fullPath, profile, trim), out cached)) {
+            for (int i = 0; i < fullPaths.Length; i++) {
+                if (TemplatesCache.TryGetValue(CacheKey(fullPaths[i], profile, trim), out cached)) {
                     searchedLocations = null;
-                    relativePath = candidate;
-                    return fullPath;
+                    relativePath = candidates[i];
+                    return fullPaths[i];
                 }
             }
-            foreach (var path in locations) {
-                var candidate = string.Format(path, viewName, controllerName);
-                var fullPath = Path.Combine(_rootPath, candidate);
-                if (File.Exists(fullPath)) {
+            List<string> searched = new List<string>();
+            for (int i = 0; i < fullPaths.Length; i++) {
+                if (File.Exists(fullPaths[i])) {
                     cached = null;
                     searchedLocations = null;
-                    relativePath = candidate;
-                    return fullPath;
+                    relativePath = candidates[i];
+                    return fullPaths[i];
                 }
                 // The path that was probed, not the pattern it came from: the un-substituted form reported
                 // `views/{1}/{0}/index.heddle` as a location nobody had looked in.
-                searched.Add(fullPath);
+                searched.Add(fullPaths[i]);
             }
             cached = null;
             searchedLocations = searched;
@@ -277,6 +289,11 @@ namespace Heddle.Runtime {
             out HeddleTemplate result)
         {
             result = null;
+            // Membership before options: with no manifest registered this is a normalization and a
+            // dictionary probe, and the synthesized options a caller-less request would need are never built.
+            if (!TemplateKey.TryNormalize(viewName, out var key) || !PrecompiledTemplates.CouldResolve(key))
+                return false;
+
             var options = context?.Options ?? new TemplateOptions(Path.ChangeExtension(viewName, null))
             {
                 EnableFileChangeCheck = _checkFileChange,
@@ -286,7 +303,7 @@ namespace Heddle.Runtime {
                 TrimDirectiveLines = trim,
             };
 
-            if (!PrecompiledTemplates.TryResolve(viewName, options, RequestModelType(context), out var entry))
+            if (!PrecompiledTemplates.TryResolveNormalized(key, options, RequestModelType(context), out var entry))
                 return false;
 
             // Carry the request's output encoder and render budget onto the precompiled-adapter render (the

@@ -1,6 +1,6 @@
 /*
  * Node module-customization hooks (registered via module.register) that let the
- * WS5 harness load the Heddle ANTLR parse pipeline under node:test.
+ * test harness load the Heddle ANTLR parse pipeline under node:test.
  *
  * WHY THIS EXISTS
  * ---------------

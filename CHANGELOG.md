@@ -141,6 +141,34 @@ window's ratification remain in
   `NodeFallbackProperty`, `ObserveEngineProperty`, `ObserveImplementationPathProperty`,
   `ObserveIntermediatePathProperty`. `PublicApiSurfaceTests` pins the surface that remains.
 
+- **The stored compiled form's own types are internal.** The 42 types under
+  `Heddle.Precompiled.CompiledForm` that describe the binary artifact — the row model
+  (`CompiledArtifact` and every `Compiled*` row, kind and enum), the type-identity table
+  (`CompiledTypeRef`, `NamedTypeRef`, `GenericTypeRef`, `ArrayTypeRef`, `DynamicTypeRef`,
+  `TypeIdentityTable`) and the codec (`CompiledFormReader`, `CompiledFormWriter`) — are no longer
+  exported. They are a serialization format's shape, not a seam: nothing outside this assembly needs
+  to construct or read one, the build host reaches them through the existing `InternalsVisibleTo`
+  grant, and `Heddle.Build` does not reference `Heddle.dll` at all. What stays public is the contract
+  a host and a generated artifact class actually name: `IHeddleCompiledArtifact`,
+  `IPrecompiledSiteTable`, `HeddleCompiledTemplatesAttribute`, `PrecompiledTemplates` and its
+  entries, events, fingerprints and exceptions.
+  **What to do:** nothing, unless you decoded an artifact yourself. **If you did:** there is no
+  supported replacement — the artifact is an implementation detail of the pair of versions that wrote
+  and read it, and `heddle compile` is the supported way to produce one.
+
+- **`TemplateOptions.ValidateModelType` is removed.** The model-type check it once opted into became
+  unconditional (see the render-fault item under *Fixed*), leaving a settable property nothing read.
+  That is worse than no property at all: a host that set it to `false` to opt **out** of the check was
+  told nothing and got the check anyway. Removal turns that silent no-op into a compile error at the
+  one line that has to change.
+  **What to do:** delete the assignment. There is no replacement and nothing to re-enable — every
+  top-level `Generate`/`Render` validates the model against the template's compiled model type and
+  throws `TemplateProcessingException` on a mismatch, in every build configuration, whatever the
+  property used to say. A `null` model stays legal, the recursive path is untouched, and a
+  precompiled-adapter template without a compile-time model type still skips the check.
+  **If you do not:** the host does not compile. Nothing about rendering changes either way, because
+  the property had stopped selecting anything.
+
 ### Added
 
 - **Native expressions precompile from the engine's own bound tree.** Where 2.x re-derived each
@@ -349,7 +377,8 @@ window's ratification remain in
   accessor's cast and escape as a raw `InvalidCastException`, which is not the shape any other render
   fault has. A `null` model stays legal, the recursive path is untouched, and the precompiled adapter —
   which has no compile-time model type to check against — skips the check as it always has.
-  `TemplateOptions.ValidateModelType` is left in place but no longer read; removing it would be a break.
+  `TemplateOptions.ValidateModelType`, which used to opt into the check, is removed — see *Changed
+  (breaking)*.
 - **The build tier no longer precompiles a body the engine refuses to render.** A body containing a
   branch terminal with no opener (a bare `@else` continuation) precompiled while the engine rejects it —
   the shared branch scan's error arm was never wired to the emitter. The emitter now declines the body
@@ -372,6 +401,72 @@ window's ratification remain in
   The value is now read off the assembly rather than hand-maintained.
 - **`HED7004`'s message** names the offending metadata and the reason, covering an unusable or
   already-taken `Name` as well as a malformed `Key`.
+- **An artifact recording an unreadable option value is refused instead of silently losing HTML
+  encoding.** A row's `OutputProfile` and `ExpressionMode` were read with `Enum.TryParse`, which
+  writes `default(TEnum)` into its output when it fails — so a value that was present but named no
+  member did not leave the seeded default in place, it became member zero. For `OutputProfile` that
+  is `Text`, which encodes nothing, and every unnamed `@(...)` in that template stopped being
+  HTML-encoded. Such a value is now refused through the gauntlet as
+  `PrecompiledFallbackReason.OptionsMismatch`, naming the value and the members it could have been;
+  the entry falls back to the dynamic tier (or throws under `PrecompiledMismatchPolicy.Strict`) and
+  never materializes. A value that is simply absent is still the build default, as before.
+- **Repeat resolution of a precompiled view no longer re-runs the whole validation walk, and an
+  artifact is decoded once rather than once per template.** A hosted resolve ran the per-request
+  gauntlet on every request: for each recorded member row it walked the whole `AppDomain` assembly
+  list and took an `AssemblyName` off every assembly to resolve one start type, rebuilt each bound
+  extension's `[Prop]` layout reflectively, and built a diagnostic path string that only a failure
+  reads. The verdict is now memoized per entry, per request shape and per engine assembly generation,
+  and dropped when that generation moves; resolved type identities and prop-layout fingerprints are
+  kept alongside. Separately, every template of an assembly shares one merged artifact, and each row
+  re-decoded that whole artifact — every string, type, document, definition and expression tree — to
+  materialize itself; it is now decoded once per image and shared, with the per-template site index
+  and the import map built once instead of scanned per template, and the digest verified by hashing
+  the image in place rather than over a full copy of it. Measured on this repo's benchmark artifact:
+  repeat resolution of a registered view falls from 106.3 µs and 135,846 B per call to 259 ns and
+  336 B, the hosted `View` probe ladder from 476 ns and 2,608 B to 273 ns and 1,848 B, and cold
+  register-bind-first-render allocation from 445 KB to 338 KB. Rendered bytes are unchanged on both
+  tiers.
+- **A refused site is recompiled at load under the context it actually sits in.** When the build
+  cannot precompile one call — an extension declaring `[PrecompileUnsupported]`, a consumer over an
+  unbindable call — it records that call's source and the loader recompiles it. The recompile was given
+  a bare context built from the options and the current scope alone, so the fragment lost the document
+  root a `::` read resolves against (it was overwritten with the scope the call sits in), the prop
+  layout and slot type of the definition body around it, the call's region fills, the reader an `@<<`
+  import expands through, and the compile's shared member-accessor cache. It now inherits its place in
+  the document exactly as every other nested compile does, and still inherits none of what the build
+  decided — no form record, no unbound-function deferral, its own error, warning, item and layout
+  caches, and no scope map, because its positions are fragment-local until the enclosing compile
+  re-anchors them. Rendered bytes are unchanged on both tiers.
+- **A refused site nested inside a body is recorded as the source it actually is, so it precompiles
+  instead of costing the whole template.** The build records a refused call's source by slicing the
+  enclosing document's raw text, but an item's position is absolute in the text the parser ran over
+  while a nested body's raw text is only that body's span of it — a `@list` element body, an `@if`
+  body, a definition body. The two agree only at a document's top level, which is where every fixture
+  that exercised a refusal happened to put one. Anywhere else the slice fell outside the text and the
+  recorded source degraded to the call's name with no data parameter, which parses nowhere: the
+  load-time recompile failed, the whole template faulted with
+  `PrecompiledFallbackReason.ExtensionInitCompileError` and rendered through the dynamic tier — or, on
+  a strict-load host, threw. The position is now translated into the coordinates of the text it
+  indexes, and a body whose recorded text dropped the source's hidden tokens (a comment, a `@\`
+  whitespace eater) is resolved against the document those positions are native to. Rendered bytes are
+  unchanged on both tiers.
+- **A refused call inside an `@<<` composition import precompiles instead of failing the build.** A
+  composition import expands inline, so the imported file's calls compile into the importing document
+  and get no document of their own, while their positions stay absolute in the imported file — text
+  neither the owning document nor the root carries. The build refused the whole template for it,
+  reporting `HED7020` and asking for `Precompile="false"`. The parse now keeps the text it consumed at
+  each expansion, so the refused call's own source is cut from the file it was written in and recorded
+  like any other refusal; the loader recompiles it at load and both tiers render the same bytes. This
+  works whether the imported file is a template the build compiled or a shared partial that only ever
+  gets imported — the second is not a row of the artifact and is read from disk on both sides.
+  <br/>Two imports in one document each keep their own site, including the same file imported twice:
+  their calls carry positions into two different files, so which import a site came from is part of
+  what identifies it, and the recorded site position is the `@<<` block that composed it. That is also
+  the position the build reports and the position a fault inside the recompiled fragment is reported
+  at — an offset into a file the template does not contain is never published as a position in it,
+  including when the refused call sits in a body inside the imported file. `HED7020` stays the guard
+  for a refusal whose source no text carries at all, and locating a call in a file is now an exact
+  test rather than a search for its name.
 
 ### Build and packaging
 

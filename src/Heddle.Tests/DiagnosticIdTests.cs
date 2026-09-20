@@ -72,7 +72,7 @@ namespace Heddle.Tests
                 "HED7008", "HED7009", "HED7010", "HED7011", "HED7012", "HED7013", "HED7014",
                 "HED7015", "HED7016", "HED7017", "HED7018", "HED7019", "HED7020", "HED7021", "HED7022",
                 "HED7023", "HED7024", "HED7025", "HED7028", "HED7030",
-                // HED7031: the emitter declined to precompile and the build host now says so. Before it, the
+                // HED7031: the build declined to precompile a template and now says so. Before it, the
                 // decline was silent -- no source, no manifest row, no diagnostic -- so a template could
                 // render dynamically forever while the project believed it was precompiled.
                 "HED7031",
@@ -88,7 +88,7 @@ namespace Heddle.Tests
                 "HED7035",
                 // HED7036: an implementation image the build must bind over could not be loaded.
                 "HED7036",
-                // HED7037: a retired MSBuild property is set; it is ignored (warned in phase 4).
+                // HED7037: a retired MSBuild property is set; it is ignored, and the build warns.
                 "HED7037",
                 // HED7038: the build's intermediate model compile failed; follows the compiler's own errors.
                 "HED7038",

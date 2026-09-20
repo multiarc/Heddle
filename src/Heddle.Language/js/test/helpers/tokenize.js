@@ -1,13 +1,13 @@
 "use strict";
 
 /*
- * Highlight tokenizer helper (WS2 verification surface).
+ * Highlight tokenizer helper.
  *
  * Loads the Heddle Ace highlight rules, builds a real Ace `Tokenizer` from
  * them exactly the way the Ace runtime does, and exposes helpers to tokenize
  * a line (or a multi-line document, threading the tokenizer state across
  * lines) into a flat `{ type, value }[]` stream. The `type` is the Ace token
- * class that WS2 fixtures assert on.
+ * class the highlight fixtures assert on.
  */
 
 const { requireHeddleModule, requireAceModule } = require("./ace-loader");

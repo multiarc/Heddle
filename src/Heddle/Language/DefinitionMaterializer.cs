@@ -1,7 +1,7 @@
 namespace Heddle.Language
 {
     /// <summary>
-    /// Single source of the layered <see cref="DefinitionItem"/> for matched region fills, consumed by both backends.
+    /// Single source of the layered <see cref="DefinitionItem"/> for matched region fills.
     /// Uses composition instead of <see cref="DefinitionItem.OverrideWith"/> to preserve ModelType and region flags.
     /// </summary>
     internal static class DefinitionMaterializer

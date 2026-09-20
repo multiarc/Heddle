@@ -102,7 +102,7 @@ namespace Heddle.Runtime {
             return resultTree;
         }
 
-        /// <summary>Segments document into static pieces and processors; shared with emitter so <c>P0..Pn</c> constants match.</summary>
+        /// <summary>Segments document into static pieces and processors.</summary>
         private static DataProcessor[] GetDocumentPieces(ICollection<IDataProcessor> processors, string document)
         {
             List<DataProcessor> optimized = new List<DataProcessor>();

@@ -1,7 +1,7 @@
 "use strict";
 
 /*
- * Completions + snippets helper (WS6 verification surface).
+ * Completions + snippets helper.
  *
  * Loads `js/src/mode/heddle_completions.js` and `js/src/snippets/heddle.snippets.js`
  * and exposes helpers to (a) read the raw extension lists the completer offers,

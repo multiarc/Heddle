@@ -143,8 +143,7 @@ namespace Heddle.Tests
             }));
         }
 
-        /// <summary>The shared verdict table pins the rule alongside its behavior, including the build-tier-only
-        /// <see cref="ExtensionRegistrationVerdict.KeepIncumbent"/> relaxation the runtime never reaches.</summary>
+        /// <summary>The shared verdict table pins the rule alongside its behavior.</summary>
         [Fact]
         public void TheSharedVerdictTableIsTheRuntimesRule()
         {
@@ -156,12 +155,6 @@ namespace Heddle.Tests
                 ExtensionRegistrationRules.Resolve(true, false, true));
             Assert.Equal(ExtensionRegistrationVerdict.Conflict,
                 ExtensionRegistrationRules.Resolve(true, false, false));
-
-            // ResolveForBuild differs on one input to make the build tier order-insensitive over inheritance.
-            Assert.Equal(ExtensionRegistrationVerdict.KeepIncumbent,
-                ExtensionRegistrationRules.ResolveForBuild(true, false, false, true));
-            Assert.Equal(ExtensionRegistrationVerdict.Conflict,
-                ExtensionRegistrationRules.ResolveForBuild(true, false, false, false));
         }
 
         /// <summary>The ordering key both tiers sort candidates by before offering them.</summary>

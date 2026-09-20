@@ -238,7 +238,6 @@ namespace Heddle.Runtime {
                         next[type.Name] = type.Type;
                         break;
                     default:
-                        // Resolve never returns KeepIncumbent in this context.
                         throw new TemplateOverrideException(
                             $"Cannot override <{type.Name}> Extension, <{type.Type}> is not inherited from <{incumbent}>");
                 }

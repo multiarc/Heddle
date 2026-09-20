@@ -7,7 +7,7 @@ using Xunit;
 
 namespace Heddle.Tests
 {
-    /// <summary>Full-corpus parity (P1-W9 exit criterion 1): every intent row builds, round-trips,
+    /// <summary>Full-corpus parity: every intent row builds, round-trips,
     /// registers, validates, materializes and renders byte-identically to the dynamic tier across all
     /// three sinks. Engine-error rows assert the build fails; unresolvable late-bound rows assert both
     /// tiers refuse the same way; resolve-only rows assert materialization without rendering.

@@ -10,7 +10,7 @@ using Xunit;
 
 namespace Heddle.Tests
 {
-    /// <summary>Artifact round-trip (P1-W9 exit criterion 2): write/read/write is byte-deterministic,
+    /// <summary>Artifact round-trip: write/read/write is byte-deterministic,
     /// refusal sets survive the trip exactly, and every document carries the raw text the loader parses
     /// (empty only for synthesized fragment documents, which the loader never parses).
     /// Serialized — the registry is process-global static state.</summary>

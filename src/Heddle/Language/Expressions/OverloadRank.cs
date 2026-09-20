@@ -1,31 +1,12 @@
+using System;
 using System.Collections.Generic;
 
 namespace Heddle.Language.Expressions
 {
-    /// <summary>The type-system facts the shared overload ranker needs, implemented over reflected
-    /// <c>Type</c>s.</summary>
-    internal interface IRankModel<TType>
-    {
-        bool AreSame(TType a, TType b);
-
-        bool IsObject(TType type);
-
-        bool IsValueType(TType type);
-
-        bool TryGetNullableUnderlying(TType type, out TType underlying);
-
-        NumericKind KindOf(TType type);
-
-        /// <summary>Reference conversion source → target (the <c>IsAssignableFrom</c> arm). A model that cannot
-        /// decide this must answer false: under-ranking makes the build decline, over-ranking would make it print
-        /// an overload the runtime does not pick.</summary>
-        bool IsReferenceAssignable(TType from, TType to);
-    }
-
     /// <summary>One argument as the ranker sees it: a type, or the untyped <c>null</c> literal.</summary>
-    internal readonly struct RankArgument<TType>
+    internal readonly struct RankArgument
     {
-        private RankArgument(bool isNullLiteral, TType type)
+        private RankArgument(bool isNullLiteral, Type type)
         {
             IsNullLiteral = isNullLiteral;
             Type = type;
@@ -33,28 +14,28 @@ namespace Heddle.Language.Expressions
 
         public bool IsNullLiteral { get; }
 
-        public TType Type { get; }
+        public Type Type { get; }
 
-        public static RankArgument<TType> Of(TType type) => new RankArgument<TType>(false, type);
+        public static RankArgument Of(Type type) => new RankArgument(false, type);
 
-        public static RankArgument<TType> Null() => new RankArgument<TType>(true, default);
+        public static RankArgument Null() => new RankArgument(true, null);
     }
 
     /// <summary>One candidate signature.</summary>
-    internal readonly struct RankCandidate<TType>
+    internal readonly struct RankCandidate
     {
-        public RankCandidate(IReadOnlyList<TType> parameterTypes, bool hasParamsArray, TType paramsElementType)
+        public RankCandidate(IReadOnlyList<Type> parameterTypes, bool hasParamsArray, Type paramsElementType)
         {
             ParameterTypes = parameterTypes;
             HasParamsArray = hasParamsArray;
             ParamsElementType = paramsElementType;
         }
 
-        public IReadOnlyList<TType> ParameterTypes { get; }
+        public IReadOnlyList<Type> ParameterTypes { get; }
 
         public bool HasParamsArray { get; }
 
-        public TType ParamsElementType { get; }
+        public Type ParamsElementType { get; }
     }
 
     internal enum BindOutcome
@@ -96,32 +77,32 @@ namespace Heddle.Language.Expressions
         public const int NoConversion = -1;
 
         /// <summary>Conversion rank: exact = 0, widening/reference/lifting = 1, boxing to object = 2; -1 = none.</summary>
-        public static int ConversionRank<TType>(IRankModel<TType> model, in RankArgument<TType> argument,
-            TType parameterType)
+        public static int ConversionRank(in RankArgument argument, Type parameterType)
         {
             if (argument.IsNullLiteral)
             {
-                return !model.IsValueType(parameterType) || model.TryGetNullableUnderlying(parameterType, out _)
+                return !parameterType.IsValueType || Nullable.GetUnderlyingType(parameterType) != null
                     ? Widening
                     : NoConversion;
             }
 
             var argType = argument.Type;
-            if (model.AreSame(argType, parameterType))
+            if (argType == parameterType)
                 return Exact;
-            if (model.IsObject(parameterType))
+            if (parameterType == typeof(object))
                 return Boxing;
-            if (NumericTable.IsImplicit(model.KindOf(argType), model.KindOf(parameterType)))
+            if (NumericTable.IsImplicit(NumericTable.FromClrType(argType), NumericTable.FromClrType(parameterType)))
                 return Widening;
-            if (!model.IsValueType(argType) && model.IsReferenceAssignable(argType, parameterType))
+            if (!argType.IsValueType && parameterType.IsAssignableFrom(argType))
                 return Widening;
-            if (model.IsValueType(argType) && model.TryGetNullableUnderlying(parameterType, out var lifted) &&
-                model.AreSame(lifted, argType))
+            if (argType.IsValueType && Nullable.GetUnderlyingType(parameterType) == argType)
                 return Widening;
-            if (model.TryGetNullableUnderlying(argType, out var argUnderlying) &&
-                model.TryGetNullableUnderlying(parameterType, out var paramUnderlying) &&
-                (model.AreSame(argUnderlying, paramUnderlying) ||
-                 NumericTable.IsImplicit(model.KindOf(argUnderlying), model.KindOf(paramUnderlying))))
+            var argUnderlying = Nullable.GetUnderlyingType(argType);
+            var paramUnderlying = Nullable.GetUnderlyingType(parameterType);
+            if (argUnderlying != null && paramUnderlying != null &&
+                (argUnderlying == paramUnderlying ||
+                 NumericTable.IsImplicit(NumericTable.FromClrType(argUnderlying),
+                     NumericTable.FromClrType(paramUnderlying))))
                 return Widening;
             return NoConversion;
         }
@@ -142,8 +123,8 @@ namespace Heddle.Language.Expressions
         }
 
         /// <summary>The per-candidate rank vector, or false when the candidate is not applicable at all.</summary>
-        public static bool TryRank<TType>(IRankModel<TType> model, in RankCandidate<TType> candidate,
-            IReadOnlyList<RankArgument<TType>> args, bool expanded, out int[] ranks)
+        public static bool TryRank(in RankCandidate candidate, IReadOnlyList<RankArgument> args, bool expanded,
+            out int[] ranks)
         {
             ranks = null;
             if (!expanded)
@@ -153,7 +134,7 @@ namespace Heddle.Language.Expressions
                 var result = new int[args.Count];
                 for (int i = 0; i < args.Count; i++)
                 {
-                    int rank = ConversionRank(model, args[i], candidate.ParameterTypes[i]);
+                    int rank = ConversionRank(args[i], candidate.ParameterTypes[i]);
                     if (rank < 0)
                         return false;
                     result[i] = rank;
@@ -171,7 +152,7 @@ namespace Heddle.Language.Expressions
             var vector = new int[args.Count];
             for (int i = 0; i < fixedCount; i++)
             {
-                int rank = ConversionRank(model, args[i], candidate.ParameterTypes[i]);
+                int rank = ConversionRank(args[i], candidate.ParameterTypes[i]);
                 if (rank < 0)
                     return false;
                 vector[i] = rank;
@@ -179,7 +160,7 @@ namespace Heddle.Language.Expressions
 
             for (int i = fixedCount; i < args.Count; i++)
             {
-                int rank = ConversionRank(model, args[i], candidate.ParamsElementType);
+                int rank = ConversionRank(args[i], candidate.ParamsElementType);
                 if (rank < 0)
                     return false;
                 vector[i] = rank + 1;   // expanded params ranked slightly worse than a fixed match
@@ -190,22 +171,21 @@ namespace Heddle.Language.Expressions
         }
 
         /// <summary>The two-tier bind: normal form first, params-expanded only if nothing was applicable.</summary>
-        public static RankBinding Bind<TType>(IRankModel<TType> model, IReadOnlyList<RankCandidate<TType>> candidates,
-            IReadOnlyList<RankArgument<TType>> args)
+        public static RankBinding Bind(IReadOnlyList<RankCandidate> candidates, IReadOnlyList<RankArgument> args)
         {
-            var binding = BindTier(model, candidates, args, expanded: false);
+            var binding = BindTier(candidates, args, expanded: false);
             if (binding.Outcome != BindOutcome.None)
                 return binding;
-            return BindTier(model, candidates, args, expanded: true);
+            return BindTier(candidates, args, expanded: true);
         }
 
-        private static RankBinding BindTier<TType>(IRankModel<TType> model,
-            IReadOnlyList<RankCandidate<TType>> candidates, IReadOnlyList<RankArgument<TType>> args, bool expanded)
+        private static RankBinding BindTier(IReadOnlyList<RankCandidate> candidates,
+            IReadOnlyList<RankArgument> args, bool expanded)
         {
             var applicable = new List<(int index, int[] ranks)>();
             for (int i = 0; i < candidates.Count; i++)
             {
-                if (TryRank(model, candidates[i], args, expanded, out var ranks))
+                if (TryRank(candidates[i], args, expanded, out var ranks))
                     applicable.Add((i, ranks));
             }
 

@@ -299,9 +299,9 @@ namespace Heddle.Precompiled
             }
         }
 
-        /// <summary>Opens the artifact a supported marker names, decodes its sections into one
-        /// loader-constructed <see cref="PrecompiledTemplateInfo"/> per template row, and keeps the artifact
-        /// bytes on each row for materialization. Rows carry no strategy yet: <see cref="Entries"/> reports
+        /// <summary>Opens the artifact a supported marker names, decodes its sections <b>once</b> into one
+        /// loader-constructed <see cref="PrecompiledTemplateInfo"/> per template row, and shares that decoded
+        /// graph across the rows for materialization. Rows carry no strategy yet: <see cref="Entries"/> reports
         /// them before any render, and <see cref="PrecompiledTemplateInfo.Strategy"/> materializes on first
         /// read. A structurally defective image surfaces from <see cref="Register"/> as
         /// <see cref="PrecompiledRegistrationException"/> naming the assembly.</summary>
@@ -323,14 +323,15 @@ namespace Heddle.Precompiled
                 }
             }
 
-            var decoded = CompiledFormReader.Read(image);
-            var rows = new List<PrecompiledTemplateInfo>(decoded.Templates.Count);
-            for (int i = 0; i < decoded.Templates.Count; i++)
+            var loaded = new LoadedArtifact(CompiledFormReader.Read(image));
+            var templates = loaded.Artifact.Templates;
+            var rows = new List<PrecompiledTemplateInfo>(templates.Count);
+            for (int i = 0; i < templates.Count; i++)
             {
                 // An import-only row (Precompile="false") carries text for @<< replay and no entry.
-                if (decoded.Templates[i].IsImportOnly)
+                if (templates[i].IsImportOnly)
                     continue;
-                rows.Add(new PrecompiledTemplateInfo(assembly, image, decoded, i,
+                rows.Add(new PrecompiledTemplateInfo(assembly, loaded, i,
                     artifactInstance as IPrecompiledSiteTable));
             }
             return rows;
@@ -356,7 +357,14 @@ namespace Heddle.Precompiled
             entry = null;
             if (!TemplateKey.TryNormalize(key, out var normalized))
                 return false;
+            return TryGetNormalized(normalized, out entry);
+        }
 
+        /// <summary>The lookup for a caller that already holds the normalized spelling. Normalization splits and
+        /// rejoins the path, so a caller that just produced the key does not pay for it a second time.</summary>
+        internal static bool TryGetNormalized(string normalized, out PrecompiledTemplateInfo entry)
+        {
+            entry = null;
             var snapshot = Volatile.Read(ref _snapshot);
             if (snapshot.ByKey.TryGetValue(normalized, out entry))
                 return true;
@@ -463,7 +471,33 @@ namespace Heddle.Precompiled
             entry = null;
             if (options == null)
                 throw new ArgumentNullException(nameof(options));
-            if (!TryGet(key, out var found))
+            if (!TemplateKey.TryNormalize(key, out var normalized))
+                return false;
+            return TryResolveNormalized(normalized, options, requestModelType, out entry);
+        }
+
+        /// <summary>Whether a normalized spelling could resolve at all — a membership test over the published
+        /// snapshot and nothing else. A resolver probing several candidate locations asks this before it builds
+        /// the request's <see cref="TemplateOptions"/>, so a location the registry never heard of costs a
+        /// dictionary probe instead of an options instance. The shadow index is consulted too, so a case-only
+        /// miss still reaches <see cref="TryResolveNormalized"/> and still reports <c>HED7103</c>.</summary>
+        internal static bool CouldResolve(string normalized)
+        {
+            if (normalized == null)
+                return false;
+            var snapshot = Volatile.Read(ref _snapshot);
+            return snapshot.ByKey.ContainsKey(normalized) || snapshot.ByName.ContainsKey(normalized) ||
+                snapshot.Shadow.ContainsKey(normalized);
+        }
+
+        /// <summary>The resolve for a caller that already holds the normalized spelling.</summary>
+        internal static bool TryResolveNormalized(string normalized, TemplateOptions options,
+            Type requestModelType, out PrecompiledTemplateInfo entry)
+        {
+            entry = null;
+            if (options == null)
+                throw new ArgumentNullException(nameof(options));
+            if (!TryGetNormalized(normalized, out var found))
                 return false;
 
             var failure = PrecompiledGauntlet.Validate(found, options, BindingResolver, requestModelType);

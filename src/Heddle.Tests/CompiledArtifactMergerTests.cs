@@ -54,6 +54,39 @@ namespace Heddle.Tests
             }
         }
 
+        /// <summary>The merged image decodes once and every row materializes off that one graph — including a
+        /// row materializing a second time under a second request shape, over a graph a previous materialization
+        /// has already walked. Nothing on that path writes to the graph, so every pass must still produce the
+        /// corpus bytes; a shared object that turned out to carry per-materialization state would show up here
+        /// as the second shape rendering differently from the first.</summary>
+        [Fact]
+        public void OneDecodeServesEveryRowAndEveryRequestShape()
+        {
+            PrecompiledTemplates.ResetForTests();
+            string rootPath = TestCorpusIndex.CorpusDir;
+            var rows = new[] { Find("at-escape.heddle"), Find("brace-misread.heddle") };
+            var merged = MergeSingles(rows, rootPath);
+            CompiledFormHarness.RegisterImage(CompiledFormWriter.Write(merged),
+                "HeddleTestAsm_SharedDecode" + Guid.NewGuid().ToString("N"));
+            foreach (var row in rows)
+            {
+                var first = CompiledFormHarness.RequestOptions(row, rootPath);
+                var second = CompiledFormHarness.RequestOptions(row, rootPath);
+                // A second shape over the same entry: the recursion limit is a compile input, so this
+                // materializes again rather than reading the first pass's memo.
+                second.MaxRecursionCount = first.MaxRecursionCount + 1;
+                PrecompiledTemplateInfo entry;
+                Assert.True(PrecompiledTemplates.TryResolve(row.Name, first, out entry) && entry != null,
+                    "TryResolve refused merged row " + row.Name + ".");
+                var firstStrategy = entry.GetStrategy(first);
+                var secondStrategy = entry.GetStrategy(second);
+                Assert.NotNull(firstStrategy);
+                Assert.NotNull(secondStrategy);
+                CompiledFormHarness.AssertThreeSinkParity(row, firstStrategy, rootPath);
+                CompiledFormHarness.AssertThreeSinkParity(row, secondStrategy, rootPath);
+            }
+        }
+
         [Fact]
         public void MergedArtifactRebasesEveryIndexTable()
         {

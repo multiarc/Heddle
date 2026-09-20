@@ -8,10 +8,8 @@ namespace Heddle.Tests
 {
     /// <summary>
     /// The corpus's custom-extension population for the compiled-form gates. These are the extensions the
-    /// <c>ext-*</c> fixtures call: their hook bodies are verbatim copies of the generator integration
-    /// suite's fixtures (same <c>ExtensionName</c>, same <c>[PrecompileUnsupported]</c> sentence, same
-    /// <c>InitStart</c>/<c>ProcessData</c>/<c>RenderData</c> bodies), so the build-tier classification the
-    /// gates assert observes the real hook paths under their real call names.
+    /// <c>ext-*</c> fixtures call, carrying real <c>InitStart</c>/<c>ProcessData</c>/<c>RenderData</c> bodies
+    /// under their real call names, so the build-tier classification the gates assert observes the real hook paths.
     /// <para>Registered via <see cref="TemplateFactory.AddExtensions"/> like <c>BranchTestExtensions</c>,
     /// not by assembly scan: the registry is process-wide, and an assembly attribute would take these
     /// names for every suite in the process.</para>
@@ -30,6 +28,7 @@ namespace Heddle.Tests
                 Add("hooked", typeof(CorpusHookedExtension));
                 Add("bellow", typeof(CorpusBellowExtension));
                 Add("scanner", typeof(CorpusScannerExtension));
+                Add("shroud", typeof(CorpusShroudExtension));
                 _registered = true;
             }
         }
@@ -116,6 +115,28 @@ namespace Heddle.Tests
         public override void RenderData(in Scope scope)
         {
             scope.Renderer.Render((string) ProcessData(scope));
+        }
+    }
+
+    /// <summary>The bodied twin of <see cref="CorpusScannerExtension"/>: the same author declaration that a
+    /// static initializer cannot reproduce its hook, but it renders its own body under the caller's scope (the
+    /// always-true <c>@if</c> shape). A refusal site needs a body that reaches the output before what the
+    /// recompiled fragment resolves inside that body — an <c>@&lt;&lt;</c> import, a root-rooted read — can be
+    /// byte-compared against the dynamic tier at all.</summary>
+    [ExtensionName("shroud")]
+    [PrecompileUnsupported("reads the enclosing document through InitContext.ParseContext")]
+    public sealed class CorpusShroudExtension : AbstractExtension
+    {
+        public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType, ExType parent)
+        {
+            return base.InitStart(initContext, parent, chainedType, null);
+        }
+
+        public override object ProcessData(in Scope scope) => GetInnerResult(scope.Parent());
+
+        public override void RenderData(in Scope scope)
+        {
+            RenderInnerResult(scope.Parent());
         }
     }
 }

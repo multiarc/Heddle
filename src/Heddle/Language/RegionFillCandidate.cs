@@ -21,7 +21,8 @@ namespace Heddle.Language
         /// <summary>The overridden region name (the shared <c>x</c> of <c>&lt;x:x&gt;</c>).</summary>
         internal string Name { get; }
 
-        /// <summary>The parsed override item carrying the override body.</summary>
+        /// <summary>The parsed override item carrying the override body — its <c>Context</c> is attached at
+        /// <c>ExitSubtemplate</c>, after this candidate is captured.</summary>
         internal DefinitionItem Item { get; }
 
         /// <summary>The optional narrowing <c>:: Type</c> declared on the override, or <c>null</c> to inherit the
@@ -34,7 +35,8 @@ namespace Heddle.Language
         /// <summary>The base-not-found error emitted at parse; retraction removes it from both CompileContext and Origin.</summary>
         internal HeddleCompileError Error { get; }
 
-        /// <summary>The caller-content context this candidate was parsed in; used to match at call sites.</summary>
+        /// <summary>The caller-content context identity this candidate was parsed in
+        /// (<see cref="ParseContext.OriginIdentity"/>, stable across isolation copies); used to match at call sites.</summary>
         internal ParseContext Origin { get; }
 
         /// <summary>True once HED5019 has been raised for this candidate; fires once per candidate across all call sites.</summary>

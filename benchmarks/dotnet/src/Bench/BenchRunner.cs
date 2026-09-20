@@ -55,6 +55,10 @@ namespace Heddle.Benchmarks.Dotnet.Bench
 
         public static Type[] ColdTypes => new[] { typeof(ColdCompileBenchmarks), typeof(DefinitionScalingBenchmarks) };
 
+        /// <summary>Steady-state view resolution — the per-request half of the cold-start story, which
+        /// <see cref="StartupBenchmarks"/> deliberately does not measure.</summary>
+        public static Type[] ResolveTypes => new[] { typeof(ResolverBenchmarks) };
+
         /// <summary>Runs one verb's types. Returns the process exit code.</summary>
         public static int Run(string verb, Type[] types, string[] args)
         {

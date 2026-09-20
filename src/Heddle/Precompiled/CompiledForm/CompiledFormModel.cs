@@ -5,7 +5,7 @@ namespace Heddle.Precompiled.CompiledForm
 {
     /// <summary>A template position: absolute start offset and length, in UTF-16 code units of the
     /// template's decoded text.</summary>
-    public sealed class CompiledPosition
+    internal sealed class CompiledPosition
     {
         public CompiledPosition(int start, int length)
         {
@@ -20,7 +20,7 @@ namespace Heddle.Precompiled.CompiledForm
 
     /// <summary>The artifact header: the compile's declared inputs plus the template count the writer
     /// checks against the template rows.</summary>
-    public sealed class CompiledHeader
+    internal sealed class CompiledHeader
     {
         public string EngineVersion { get; set; } = string.Empty;
 
@@ -35,7 +35,7 @@ namespace Heddle.Precompiled.CompiledForm
 
     /// <summary>One extension identity: the registry name, the extension type, and the prop-layout
     /// fingerprint string when the extension declares props.</summary>
-    public sealed class CompiledExtensionRow
+    internal sealed class CompiledExtensionRow
     {
         public string RegistryName { get; set; } = string.Empty;
 
@@ -46,7 +46,7 @@ namespace Heddle.Precompiled.CompiledForm
 
     /// <summary>One function binding row: the name, the bound target type, or no target for a call the
     /// build registry could not bind, plus the overload count the build saw.</summary>
-    public sealed class CompiledFunctionRow
+    internal sealed class CompiledFunctionRow
     {
         public string Name { get; set; } = string.Empty;
 
@@ -57,7 +57,7 @@ namespace Heddle.Precompiled.CompiledForm
 
     /// <summary>One hop of a member path: the declaring type and member type the build bound, or neither
     /// for a hop the engine classifies dynamic.</summary>
-    public sealed class CompiledMemberHop
+    internal sealed class CompiledMemberHop
     {
         public CompiledTypeRef DeclaringType { get; set; }
 
@@ -67,7 +67,7 @@ namespace Heddle.Precompiled.CompiledForm
     }
 
     /// <summary>One member path: the start type, the segment names, and one identity per segment.</summary>
-    public sealed class CompiledMemberRow
+    internal sealed class CompiledMemberRow
     {
         public CompiledMemberRow()
         {
@@ -83,7 +83,7 @@ namespace Heddle.Precompiled.CompiledForm
     }
 
     /// <summary>The closed native-expression node vocabulary.</summary>
-    public enum CompiledExprKind
+    internal enum CompiledExprKind
     {
         Literal,
         This,
@@ -98,7 +98,7 @@ namespace Heddle.Precompiled.CompiledForm
 
     /// <summary>The operators representable in a stored expression tree. Binary and unary flavors share
     /// the enum; the carrying node disambiguates them.</summary>
-    public enum CompiledExprOperator
+    internal enum CompiledExprOperator
     {
         Add,
         Subtract,
@@ -126,7 +126,7 @@ namespace Heddle.Precompiled.CompiledForm
     }
 
     /// <summary>The typed value of a literal node.</summary>
-    public enum CompiledLiteralKind
+    internal enum CompiledLiteralKind
     {
         Null,
         Int64,
@@ -140,7 +140,7 @@ namespace Heddle.Precompiled.CompiledForm
     }
 
     /// <summary>One literal value. Only the field matching <see cref="Kind"/> is encoded.</summary>
-    public sealed class CompiledLiteral
+    internal sealed class CompiledLiteral
     {
         public CompiledLiteralKind Kind { get; set; }
 
@@ -163,7 +163,7 @@ namespace Heddle.Precompiled.CompiledForm
 
     /// <summary>One node of a stored expression tree. Only the fields matching <see cref="Kind"/>
     /// are encoded.</summary>
-    public sealed class CompiledExpression
+    internal sealed class CompiledExpression
     {
         public CompiledExpression()
         {
@@ -204,7 +204,7 @@ namespace Heddle.Precompiled.CompiledForm
 
     /// <summary>One stored expression tree: the root node, the scope types the build compiled it
     /// against, and whether it contains a call the build left for the load registry.</summary>
-    public sealed class CompiledExpressionTree
+    internal sealed class CompiledExpressionTree
     {
         public CompiledExpression Root { get; set; }
 
@@ -219,7 +219,7 @@ namespace Heddle.Precompiled.CompiledForm
 
     /// <summary>One embedded C# site: the source text, the namespace imports, the scope types, and
     /// the position. Carried as data; compiled through the engine's C# tier at load.</summary>
-    public sealed class CompiledCSharpSite
+    internal sealed class CompiledCSharpSite
     {
         public CompiledCSharpSite()
         {
@@ -241,7 +241,7 @@ namespace Heddle.Precompiled.CompiledForm
 
     /// <summary>The parse facts of one document: the facts the text path hands template creation and every
     /// compile the document triggers, so the loader synthesizes the same parse context.</summary>
-    public sealed class CompiledParseFacts
+    internal sealed class CompiledParseFacts
     {
         public CompiledParseFacts()
         {
@@ -257,7 +257,7 @@ namespace Heddle.Precompiled.CompiledForm
     }
 
     /// <summary>The parameter kinds a chain item can carry.</summary>
-    public enum CompiledParameterKind
+    internal enum CompiledParameterKind
     {
         None,
         Constant,
@@ -274,7 +274,7 @@ namespace Heddle.Precompiled.CompiledForm
     }
 
     /// <summary>A refusal site's source: the text rebuilt at load plus the compile context the build saw.</summary>
-    public sealed class CompiledRefusalSource
+    internal sealed class CompiledRefusalSource
     {
         public CompiledRefusalSource()
         {
@@ -297,7 +297,7 @@ namespace Heddle.Precompiled.CompiledForm
     }
 
     /// <summary>One item parameter. Only the fields matching <see cref="Kind"/> are encoded.</summary>
-    public sealed class CompiledParameter
+    internal sealed class CompiledParameter
     {
         public CompiledParameter()
         {
@@ -347,7 +347,7 @@ namespace Heddle.Precompiled.CompiledForm
 
     /// <summary>One dynamic prop slot: the slot index, the expression computing it, and the conversion
     /// target type.</summary>
-    public sealed class CompiledDynamicSlot
+    internal sealed class CompiledDynamicSlot
     {
         public int SlotIndex { get; set; }
 
@@ -358,7 +358,7 @@ namespace Heddle.Precompiled.CompiledForm
 
     /// <summary>An item's props: the frozen prototype (a null entry marks a dynamic slot) plus the plan
     /// for each dynamic slot.</summary>
-    public sealed class CompiledProps
+    internal sealed class CompiledProps
     {
         public CompiledProps()
         {
@@ -373,7 +373,7 @@ namespace Heddle.Precompiled.CompiledForm
 
     /// <summary>A body handed to an extension compile: the raw and shaped text, the data and chained types
     /// the hook handed the compile, and the compiled document when the engine compiled it to processors.</summary>
-    public sealed class CompiledBody
+    internal sealed class CompiledBody
     {
         public string RawText { get; set; } = string.Empty;
 
@@ -388,7 +388,7 @@ namespace Heddle.Precompiled.CompiledForm
 
     /// <summary>One chain item: the extension, the position, the return type, the parameter template text,
     /// the parameter, and the optional body, caller content and props.</summary>
-    public sealed class CompiledItem
+    internal sealed class CompiledItem
     {
         public CompiledItem()
         {
@@ -414,10 +414,16 @@ namespace Heddle.Precompiled.CompiledForm
         public IList<CompiledAltBody> AltBodies { get; set; }
 
         public CompiledProps Props { get; set; }
+
+        /// <summary>Where in this template the <c>@&lt;&lt;</c> composition import that composed this item's
+        /// file sits, or <c>-1</c> for an item the template carries itself. An import expands inline, so two
+        /// imports' items land in one document carrying positions that are offsets into two different
+        /// files; the loader correlates an item by position, so without this they would be one key.</summary>
+        public int ImportAnchor { get; set; } = -1;
     }
 
     /// <summary>One alternate requested template and the body compiled for it.</summary>
-    public sealed class CompiledAltBody
+    internal sealed class CompiledAltBody
     {
         public string Template { get; set; } = string.Empty;
 
@@ -425,7 +431,7 @@ namespace Heddle.Precompiled.CompiledForm
     }
 
     /// <summary>One chain: the ordered items the compiler visited.</summary>
-    public sealed class CompiledChain
+    internal sealed class CompiledChain
     {
         public CompiledChain()
         {
@@ -436,7 +442,7 @@ namespace Heddle.Precompiled.CompiledForm
     }
 
     /// <summary>One document element: either a static piece or a chain.</summary>
-    public sealed class CompiledElement
+    internal sealed class CompiledElement
     {
         public bool IsChain { get; set; }
 
@@ -447,7 +453,7 @@ namespace Heddle.Precompiled.CompiledForm
 
     /// <summary>One shaped document: the shaped text, the locals flag, the parse facts, and the
     /// element list.</summary>
-    public sealed class CompiledDocument
+    internal sealed class CompiledDocument
     {
         public CompiledDocument()
         {
@@ -478,7 +484,7 @@ namespace Heddle.Precompiled.CompiledForm
 
     /// <summary>One prop declaration of a definition: the name, the slot index and type, and the
     /// default value when one is declared.</summary>
-    public sealed class CompiledPropDecl
+    internal sealed class CompiledPropDecl
     {
         public string Name { get; set; } = string.Empty;
 
@@ -490,7 +496,7 @@ namespace Heddle.Precompiled.CompiledForm
     }
 
     /// <summary>One region fill: the region name and the filling document.</summary>
-    public sealed class CompiledRegionFill
+    internal sealed class CompiledRegionFill
     {
         public string RegionName { get; set; } = string.Empty;
 
@@ -500,7 +506,7 @@ namespace Heddle.Precompiled.CompiledForm
     /// <summary>One definition and region layout: the name, the base chain, the model type spelling and
     /// its resolved reference, the parameter template text, the prop declarations, the slot type, the
     /// region declarations and fills, and the position.</summary>
-    public sealed class CompiledDefinition
+    internal sealed class CompiledDefinition
     {
         public CompiledDefinition()
         {
@@ -531,7 +537,7 @@ namespace Heddle.Precompiled.CompiledForm
     }
 
     /// <summary>One template import: the key and the content hash the build saw.</summary>
-    public sealed class CompiledImport
+    internal sealed class CompiledImport
     {
         public string Key { get; set; } = string.Empty;
 
@@ -540,7 +546,7 @@ namespace Heddle.Precompiled.CompiledForm
 
     /// <summary>One template's options fingerprint: the output profile, the expression mode, and the
     /// trim flag.</summary>
-    public sealed class CompiledOptionsFingerprint
+    internal sealed class CompiledOptionsFingerprint
     {
         public string Profile { get; set; }
 
@@ -552,7 +558,7 @@ namespace Heddle.Precompiled.CompiledForm
     /// <summary>One template row: the key, the content hash, the model type, the entry point, the
     /// imports, the fingerprint, the referenced rows, the root document, the definitions, the site
     /// count, and the refusal sites.</summary>
-    public sealed class CompiledTemplateRow
+    internal sealed class CompiledTemplateRow
     {
         public CompiledTemplateRow()
         {
@@ -603,7 +609,7 @@ namespace Heddle.Precompiled.CompiledForm
     }
 
     /// <summary>The site kinds: every delegate-bearing site of a template.</summary>
-    public enum CompiledSiteKind
+    internal enum CompiledSiteKind
     {
         MemberAccessor,
         NativeExpression,
@@ -614,7 +620,7 @@ namespace Heddle.Precompiled.CompiledForm
 
     /// <summary>One site-table row: the template index, the site ordinal in the template's fixed walk,
     /// the kind, and the payload row the kind implies (member, expression, C# site, or refusal document).</summary>
-    public sealed class CompiledSiteRow
+    internal sealed class CompiledSiteRow
     {
         public int TemplateIndex { get; set; }
 
@@ -628,7 +634,7 @@ namespace Heddle.Precompiled.CompiledForm
     /// <summary>One compiled-form artifact: the header plus every section's rows. The string and type
     /// tables are derived by the writer in first-use order of a fixed walk, so equal models encode to
     /// identical bytes.</summary>
-    public sealed class CompiledArtifact
+    internal sealed class CompiledArtifact
     {
         public CompiledArtifact()
         {

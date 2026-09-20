@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using Heddle.Data;
 using Heddle.Precompiled.CompiledForm;
@@ -23,25 +24,24 @@ namespace Heddle.Precompiled
         private static readonly IReadOnlyList<CompiledMemberRow> NoMembers =
             Array.Empty<CompiledMemberRow>();
 
-        /// <summary>The loader constructor: one row decoded from a compiled-form artifact. Takes no strategy;
-        /// <see cref="Strategy"/> materializes on first read over the kept artifact bytes and is memoized, and a
-        /// materialization fault is memoized with it. Type identities resolve nominally against assemblies
-        /// already loaded — nothing is loaded here.</summary>
-        internal PrecompiledTemplateInfo(Assembly registeringAssembly, byte[] artifactImage,
-            CompiledArtifact artifact, int rowIndex, IPrecompiledSiteTable siteTable = null)
+        /// <summary>The loader constructor: one row of an artifact decoded once and shared by every row
+        /// that came out of the same image. Takes no strategy; <see cref="Strategy"/> materializes on first
+        /// read over that shared graph and is memoized, and a materialization fault is memoized with it.
+        /// Type identities resolve nominally against assemblies already loaded — nothing is loaded here.</summary>
+        internal PrecompiledTemplateInfo(Assembly registeringAssembly, LoadedArtifact loaded, int rowIndex,
+            IPrecompiledSiteTable siteTable = null)
         {
             if (registeringAssembly == null)
                 throw new ArgumentNullException(nameof(registeringAssembly));
-            if (artifactImage == null)
-                throw new ArgumentNullException(nameof(artifactImage));
-            if (artifact == null)
-                throw new ArgumentNullException(nameof(artifact));
+            if (loaded == null)
+                throw new ArgumentNullException(nameof(loaded));
+            var artifact = loaded.Artifact;
             if (artifact.Templates == null || rowIndex < 0 || rowIndex >= artifact.Templates.Count ||
                 artifact.Templates[rowIndex] == null)
                 throw new ArgumentOutOfRangeException(nameof(rowIndex));
             var row = artifact.Templates[rowIndex];
 
-            _artifactImage = artifactImage;
+            _loaded = loaded;
             _rowIndex = rowIndex;
             _siteTable = siteTable;
 
@@ -55,13 +55,13 @@ namespace Heddle.Precompiled
             IsDynamic = row.IsDynamic;
             ContentHash = row.ContentHash ?? string.Empty;
             Imports = ToImports(row.Imports);
-            OptionsFingerprint = ToFingerprint(row.Options);
+            OptionsFingerprint = ToFingerprint(row.Options, out _optionsFault);
             ExtensionBindings = ToExtensionBindings(artifact, row.ExtensionRefs);
             FunctionBindings = ToFunctionBindings(artifact, row.FunctionRefs);
             RefusalSites = row.RefusalSites != null
                 ? (IReadOnlyList<PrecompiledRefusalSite>)new List<PrecompiledRefusalSite>(row.RefusalSites).AsReadOnly()
                 : NoRefusals;
-            MemberRows = OwnedMemberRows(artifact, rowIndex);
+            MemberRows = OwnedMemberRows(artifact, loaded.SitesFor(rowIndex), rowIndex);
         }
 
         public string Key { get; }
@@ -138,6 +138,11 @@ namespace Heddle.Precompiled
         internal IProcessStrategy GetStrategy(TemplateOptions request)
         {
             var shape = RequestShape.For(request);
+            IProcessStrategy memoized;
+            // Copy-on-write publication, so a resolution that only reads an already-materialized shape —
+            // which is every resolution after the first — takes no monitor.
+            if (Volatile.Read(ref _requestStrategies).TryGetValue(shape, out memoized))
+                return memoized;
             lock (_materializeLock)
             {
                 IProcessStrategy strategy;
@@ -163,7 +168,9 @@ namespace Heddle.Precompiled
                     fault = e;
                     strategy = null;
                 }
-                _requestStrategies.Add(shape, strategy);
+                var updated = new Dictionary<RequestShape, IProcessStrategy>(_requestStrategies);
+                updated.Add(shape, strategy);
+                Volatile.Write(ref _requestStrategies, updated);
                 _requestFaults.Remove(shape);
                 if (fault != null)
                     _requestFaults.Add(shape, fault);
@@ -234,21 +241,71 @@ namespace Heddle.Precompiled
             }
         }
 
-        private readonly byte[] _artifactImage;
+        private readonly LoadedArtifact _loaded;
         private readonly int _rowIndex;
         private readonly IPrecompiledSiteTable _siteTable;
         private readonly CompiledTypeRef _modelTypeRef;
         private readonly string _modelTypeNominal;
+        private readonly string _optionsFault;
         private Type _modelType;
 
         private readonly object _materializeLock = new object();
         private bool _materialized;
         private PrecompiledFallbackReason? _materializationReason;
         private string _materializationDetail;
-        private readonly Dictionary<RequestShape, IProcessStrategy> _requestStrategies =
+        private Dictionary<RequestShape, IProcessStrategy> _requestStrategies =
             new Dictionary<RequestShape, IProcessStrategy>();
         private readonly Dictionary<RequestShape, MaterializationFaultException> _requestFaults =
             new Dictionary<RequestShape, MaterializationFaultException>();
+
+        private readonly object _verdictLock = new object();
+        private GauntletVerdicts _verdicts;
+
+        /// <summary>The detail a present-but-unreadable recorded option left behind, or null when the row's
+        /// options read cleanly. The gauntlet's options step reports it before it compares anything, so an
+        /// unreadable value is refused rather than standing in for a default the row never asked for.</summary>
+        internal string OptionsFault => _optionsFault;
+
+        /// <summary>The request shapes whose gauntlet run passed, and the assembly generation they passed at.
+        /// Immutable once published; a generation move replaces the whole instance rather than clearing it, so
+        /// a reader either sees a verdict set that is current or sees one it rejects outright.</summary>
+        private sealed class GauntletVerdicts
+        {
+            internal GauntletVerdicts(int generation, HashSet<PrecompiledGauntlet.Shape> passed)
+            {
+                Generation = generation;
+                Passed = passed;
+            }
+
+            internal int Generation { get; }
+
+            internal HashSet<PrecompiledGauntlet.Shape> Passed { get; }
+        }
+
+        /// <summary>Whether the ordered checks already passed for this shape at this generation. The verdict is
+        /// a pure function of the row, the shape and the live type graph, and the graph only moves when the
+        /// engine's assembly set does — which is what the generation counts.</summary>
+        internal bool GauntletPassed(in PrecompiledGauntlet.Shape shape)
+        {
+            var verdicts = Volatile.Read(ref _verdicts);
+            return verdicts != null && verdicts.Generation == shape.Generation && verdicts.Passed.Contains(shape);
+        }
+
+        /// <summary>Records a pass. Only passes are memoized: a failure costs the dynamic tier's own compile,
+        /// which dwarfs the checks, and several failure modes (an unresolved model type, an unresolved member
+        /// start type) are waiting on an assembly load that need not move the generation to happen.</summary>
+        internal void RecordGauntletPass(in PrecompiledGauntlet.Shape shape)
+        {
+            lock (_verdictLock)
+            {
+                var current = Volatile.Read(ref _verdicts);
+                var passed = current != null && current.Generation == shape.Generation
+                    ? new HashSet<PrecompiledGauntlet.Shape>(current.Passed)
+                    : new HashSet<PrecompiledGauntlet.Shape>();
+                passed.Add(shape);
+                Volatile.Write(ref _verdicts, new GauntletVerdicts(shape.Generation, passed));
+            }
+        }
 
         private sealed class MaterializationFaultException : Exception
         {
@@ -272,25 +329,37 @@ namespace Heddle.Precompiled
         /// IO resolves under, the recursion limit hooks read, and the parse-shaping flags. Output
         /// profile, expression mode and directive trimming ride the row fingerprint instead — the
         /// gauntlet enforces their equality before any strategy is read.</summary>
-        private sealed class RequestShape : IEquatable<RequestShape>
+        private readonly struct RequestShape : IEquatable<RequestShape>
         {
             internal static RequestShape For(TemplateOptions request)
             {
                 if (request == null)
-                    return new RequestShape { IsNull = true };
-                return new RequestShape
-                {
-                    Functions = request.Functions,
-                    RootPath = request.RootPath,
-                    FileNamePostfix = request.FileNamePostfix,
-                    MaxRecursionCount = request.MaxRecursionCount,
-                    EnableFileChangeCheck = request.EnableFileChangeCheck,
-                    ProvideLanguageFeatures = request.ProvideLanguageFeatures,
+                    return new RequestShape(true, null, null, null, 0, false, false, false);
+                return new RequestShape(false,
+                    request.Functions,
+                    request.RootPath,
+                    request.FileNamePostfix,
+                    request.MaxRecursionCount,
+                    request.EnableFileChangeCheck,
+                    request.ProvideLanguageFeatures,
                     // Strict materialization throws where a lax one succeeds: different
                     // outcomes memoize under different shapes, or a lax render would
                     // silently disarm a later strict bind of the same entry.
-                    PrecompiledStrictLoad = request.PrecompiledStrictLoad
-                };
+                    request.PrecompiledStrictLoad);
+            }
+
+            private RequestShape(bool isNull, object functions, string rootPath, string fileNamePostfix,
+                int maxRecursionCount, bool enableFileChangeCheck, bool provideLanguageFeatures,
+                bool precompiledStrictLoad)
+            {
+                IsNull = isNull;
+                Functions = functions;
+                RootPath = rootPath;
+                FileNamePostfix = fileNamePostfix;
+                MaxRecursionCount = maxRecursionCount;
+                EnableFileChangeCheck = enableFileChangeCheck;
+                ProvideLanguageFeatures = provideLanguageFeatures;
+                PrecompiledStrictLoad = precompiledStrictLoad;
             }
 
             /// <summary>True for the null request only: an options instance carrying defaults is its
@@ -298,21 +367,17 @@ namespace Heddle.Precompiled
             /// differently from a null request's blank slate.</summary>
             internal bool IsDefault => IsNull;
 
-            private bool IsNull;
-            private object Functions;
-            private string RootPath;
-            private string FileNamePostfix;
-            private int MaxRecursionCount;
-            private bool EnableFileChangeCheck;
-            private bool ProvideLanguageFeatures;
-            private bool PrecompiledStrictLoad;
+            private readonly bool IsNull;
+            private readonly object Functions;
+            private readonly string RootPath;
+            private readonly string FileNamePostfix;
+            private readonly int MaxRecursionCount;
+            private readonly bool EnableFileChangeCheck;
+            private readonly bool ProvideLanguageFeatures;
+            private readonly bool PrecompiledStrictLoad;
 
             public bool Equals(RequestShape other)
             {
-                if (ReferenceEquals(other, null))
-                    return false;
-                if (ReferenceEquals(this, other))
-                    return true;
                 if (IsNull || other.IsNull)
                     return IsNull && other.IsNull;
                 return ReferenceEquals(Functions, other.Functions) &&
@@ -324,7 +389,7 @@ namespace Heddle.Precompiled
                     PrecompiledStrictLoad == other.PrecompiledStrictLoad;
             }
 
-            public override bool Equals(object obj) => Equals(obj as RequestShape);
+            public override bool Equals(object obj) => obj is RequestShape other && Equals(other);
 
             public override int GetHashCode()
             {
@@ -348,17 +413,7 @@ namespace Heddle.Precompiled
         /// <see cref="MaterializationFaultException"/> in gauntlet taxonomy, never a raw exception.</summary>
         private IProcessStrategy MaterializeNow(TemplateOptions request)
         {
-            CompiledArtifact artifact;
-            try
-            {
-                artifact = CompiledFormReader.Read(_artifactImage);
-            }
-            catch (Exception e)
-            {
-                throw Fault(PrecompiledFallbackReason.ExtensionInitCompileError,
-                    "Template '" + Key + "' has an unreadable artifact image: " + e.GetType().Name + ": " +
-                    e.Message);
-            }
+            var artifact = _loaded.Artifact;
 
             if (artifact.Templates == null || _rowIndex < 0 || _rowIndex >= artifact.Templates.Count ||
                 artifact.Templates[_rowIndex] == null)
@@ -370,8 +425,13 @@ namespace Heddle.Precompiled
                 row.RefusalSites.Count > 0)
                 throw new PrecompiledStrictLoadException(Key, row.RefusalSites[0].SiteOrdinal, "RefusalSite");
 
+            // The gauntlet refuses an unreadable recorded option before it reaches here; a direct
+            // strategy read has no gauntlet in front of it, so the refusal is repeated.
+            if (_optionsFault != null)
+                throw Fault(PrecompiledFallbackReason.OptionsMismatch, _optionsFault);
+
             var options = new TemplateOptions(row.Key);
-            var fingerprint = ToFingerprint(row.Options);
+            var fingerprint = OptionsFingerprint;
             options.OutputProfile = fingerprint.Profile;
             options.ExpressionMode = fingerprint.ExpressionMode;
             options.TrimDirectiveLines = fingerprint.TrimDirectiveLines;
@@ -403,13 +463,13 @@ namespace Heddle.Precompiled
                 // The load re-parse expands composition imports from the same spellings the build
                 // saw: every row's key and registered name serves its recorded root text, anything
                 // else reads off disk. A named import the artifact does not carry stays a file read.
-                var importContents = ArtifactImportContents(artifact);
+                var importContents = _loaded.ImportContents;
                 context.ImportReader = ImportMap.ReaderFor(importContents, options.RootPath);
                 context.ImportIdentifier = ImportMap.IdentifierFor(importContents, options.RootPath);
                 scope = new CompileScope(context);
                 scope.SiteTableState = SiteTableState.Create(_siteTable, Heddle.Runtime.HeddleFeatures.UseGeneratedSites,
                     Key, row.ContentHash ?? string.Empty, _rowIndex, options.PrecompiledStrictLoad,
-                    artifact.Sites, artifact);
+                    _loaded.SitesFor(_rowIndex), artifact);
                 document = HeddleCompiler.Materialize(artifact, row, scope);
             }
             catch (PrecompiledStrictLoadException)
@@ -429,29 +489,6 @@ namespace Heddle.Precompiled
             if (scope.CompileErrors.Count != 0)
                 throw ClassifyCompileErrors(Key, scope.CompileErrors);
 
-            IReadOnlyDictionary<string, string> ArtifactImportContents(CompiledArtifact image)
-            {
-                var contents = new Dictionary<string, string>(StringComparer.Ordinal);
-                if (image.Templates == null || image.Documents == null)
-                    return contents;
-                foreach (var template in image.Templates)
-                {
-                    if (template == null || template.RootDocumentRef < 0 ||
-                        template.RootDocumentRef >= image.Documents.Count)
-                        continue;
-                    var document = image.Documents[template.RootDocumentRef];
-                    string text = document?.RawText;
-                    if (string.IsNullOrEmpty(text))
-                        continue;
-                    if (!string.IsNullOrEmpty(template.Key) && !contents.ContainsKey(template.Key))
-                        contents.Add(template.Key, text);
-                    if (!string.IsNullOrEmpty(template.RegisteredName) &&
-                        !contents.ContainsKey(template.RegisteredName))
-                        contents.Add(template.RegisteredName, text);
-                }
-
-                return contents;
-            }
             if (document == null || document.Strategy == null)
                 throw Fault(PrecompiledFallbackReason.ExtensionInitCompileError,
                     "Template '" + Key + "' materialized to no strategy.");
@@ -536,17 +573,35 @@ namespace Heddle.Precompiled
             return converted;
         }
 
-        private static PrecompiledOptionsFingerprint ToFingerprint(CompiledOptionsFingerprint options)
+        /// <summary>Reads a row's recorded options. A missing value is the build's default; a value that is
+        /// present and names no member is <b>refused</b> through <paramref name="fault"/> rather than guessed
+        /// at, because the guess <c>Enum.TryParse</c> writes on failure is the zero member — which for
+        /// <see cref="OutputProfile"/> is the one that encodes nothing. The refused row keeps the seeded
+        /// defaults so nothing downstream reads a zero it never recorded, and the gauntlet's options step
+        /// turns the fault into an <see cref="PrecompiledFallbackReason.OptionsMismatch"/> before it compares
+        /// anything.</summary>
+        private static PrecompiledOptionsFingerprint ToFingerprint(CompiledOptionsFingerprint options,
+            out string fault)
         {
+            fault = null;
             var profile = HeddleBuildOptions.DefaultOutputProfile;
             var mode = HeddleBuildOptions.DefaultExpressionMode;
             var trim = HeddleBuildOptions.DefaultTrimDirectiveLines;
             if (options != null)
             {
-                if (!string.IsNullOrEmpty(options.Profile))
-                    Enum.TryParse(options.Profile, out profile);
-                if (!string.IsNullOrEmpty(options.Mode))
-                    Enum.TryParse(options.Mode, out mode);
+                if (!HeddleBuildOptions.TryReadEnum(options.Profile, profile, out profile))
+                {
+                    profile = HeddleBuildOptions.DefaultOutputProfile;
+                    fault = "OutputProfile: manifest='" + options.Profile + "' names no profile; expected " +
+                        HeddleBuildOptions.ExpectedValues<OutputProfile>();
+                }
+                else if (!HeddleBuildOptions.TryReadEnum(options.Mode, mode, out mode))
+                {
+                    mode = HeddleBuildOptions.DefaultExpressionMode;
+                    fault = "ExpressionMode: manifest='" + options.Mode + "' names no mode; expected " +
+                        HeddleBuildOptions.ExpectedValues<ExpressionMode>();
+                }
+
                 trim = options.Trim;
             }
 
@@ -590,7 +645,8 @@ namespace Heddle.Precompiled
         /// artifact concatenates every template's rows, and a row another template recorded must not
         /// decide this template's gauntlet verdict. A single-template artifact owns every row, and so
         /// does a template in an artifact that carries no site table at all (hand-built rows).</summary>
-        private static IReadOnlyList<CompiledMemberRow> OwnedMemberRows(CompiledArtifact artifact, int rowIndex)
+        private static IReadOnlyList<CompiledMemberRow> OwnedMemberRows(CompiledArtifact artifact,
+            IList<CompiledSiteRow> ownedSites, int rowIndex)
         {
             if (artifact.Members == null || artifact.Members.Count == 0)
                 return NoMembers;
@@ -598,7 +654,7 @@ namespace Heddle.Precompiled
                 return new List<CompiledMemberRow>(artifact.Members).AsReadOnly();
             var owned = new List<CompiledMemberRow>();
             var seen = new HashSet<int>();
-            foreach (var site in artifact.Sites)
+            foreach (var site in ownedSites)
             {
                 if (site == null || site.TemplateIndex != rowIndex || site.Kind != CompiledSiteKind.MemberAccessor)
                     continue;
@@ -674,6 +730,44 @@ namespace Heddle.Precompiled
             return null;
         }
 
+        /// <summary>The same resolution, memoized per recorded reference. A resolved type stays resolved — the
+        /// default load context never gives an assembly back — so only successes are kept, and a reference that
+        /// resolves to nothing is tried again on the next read, exactly as <see cref="ModelType"/> retries.
+        /// The table is weak on the reference, which belongs to a decoded artifact, so a registry reset lets
+        /// both go.</summary>
+        internal static Type FindLoadedTypeCached(CompiledTypeRef typeRef)
+        {
+            if (typeRef == null || typeRef is DynamicTypeRef)
+                return null;
+            ResolvedType box;
+            if (ResolvedTypes.TryGetValue(typeRef, out box))
+            {
+                var kept = Volatile.Read(ref box.Type);
+                if (kept != null)
+                    return kept;
+            }
+            else
+            {
+                box = ResolvedTypes.GetValue(typeRef, NewResolvedType);
+            }
+
+            var resolved = FindLoadedType(typeRef);
+            if (resolved != null)
+                Volatile.Write(ref box.Type, resolved);
+            return resolved;
+        }
+
+        private sealed class ResolvedType
+        {
+            internal Type Type;
+        }
+
+        private static readonly ConditionalWeakTable<CompiledTypeRef, ResolvedType> ResolvedTypes =
+            new ConditionalWeakTable<CompiledTypeRef, ResolvedType>();
+
+        private static readonly ConditionalWeakTable<CompiledTypeRef, ResolvedType>.CreateValueCallback
+            NewResolvedType = _ => new ResolvedType();
+
         [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Resolves an identity the engine recorded itself over registered/loaded assemblies; a trimmed publish resolves only what it kept, and a miss reads as unresolved (a diagnostic or gauntlet mismatch), never a crash.")]
         private static Type FindLoadedNamedType(string fullName, string assemblySimpleName, bool isFramework)
         {
@@ -734,6 +828,104 @@ namespace Heddle.Precompiled
             }
 
             return null;
+        }
+    }
+
+    /// <summary>One artifact image, decoded <b>once</b> and shared by every row registered from it, together
+    /// with the per-artifact indexes each materialization would otherwise rebuild.
+    /// <para>An assembly ships one merged artifact for all of its templates, so decoding per row meant decoding
+    /// every template's strings, types, documents, definitions and expression trees once per template and again
+    /// per request shape. Nothing in the materialization path writes to the graph — the form cursor, the site
+    /// table state and the form compiler only read it — so one decode serves them all, concurrently included.</para>
+    /// <para>Held by strong reference rather than weakly: the registry has no un-register, the raw image it
+    /// replaces was held for the same lifetime, and a reclaimed graph would only be decoded again by the next
+    /// request shape.</para></summary>
+    internal sealed class LoadedArtifact
+    {
+        private static readonly CompiledSiteRow[] NoSites = Array.Empty<CompiledSiteRow>();
+
+        private readonly IList<CompiledSiteRow>[] _sitesByTemplate;
+
+        internal LoadedArtifact(CompiledArtifact artifact)
+        {
+            if (artifact == null)
+                throw new ArgumentNullException(nameof(artifact));
+            Artifact = artifact;
+            _sitesByTemplate = GroupSites(artifact);
+            ImportContents = BuildImportContents(artifact);
+        }
+
+        internal CompiledArtifact Artifact { get; }
+
+        /// <summary>The root text every row of this artifact serves to a composition import, by key and by
+        /// registered name. One map per artifact: it describes the artifact, not the request.</summary>
+        internal IReadOnlyDictionary<string, string> ImportContents { get; }
+
+        /// <summary>The site rows belonging to one template, in artifact order. Grouped once, because the
+        /// merged artifact concatenates every template's rows and scanning all of them per template is
+        /// quadratic across an assembly.</summary>
+        internal IList<CompiledSiteRow> SitesFor(int templateIndex) =>
+            templateIndex >= 0 && templateIndex < _sitesByTemplate.Length
+                ? _sitesByTemplate[templateIndex]
+                : NoSites;
+
+        private static IList<CompiledSiteRow>[] GroupSites(CompiledArtifact artifact)
+        {
+            int templates = artifact.Templates != null ? artifact.Templates.Count : 0;
+            var groups = new IList<CompiledSiteRow>[templates];
+            var sites = artifact.Sites;
+            if (sites == null || sites.Count == 0)
+            {
+                for (int i = 0; i < templates; i++)
+                    groups[i] = NoSites;
+                return groups;
+            }
+
+            var lists = new List<CompiledSiteRow>[templates];
+            foreach (var site in sites)
+            {
+                // A null row carries no template index, so it stays in every group — the ordinal-indexed
+                // consumption state downstream is built over exactly the list it is handed.
+                if (site == null)
+                {
+                    for (int i = 0; i < templates; i++)
+                        (lists[i] ?? (lists[i] = new List<CompiledSiteRow>())).Add(null);
+                    continue;
+                }
+
+                int index = site.TemplateIndex;
+                if (index < 0 || index >= templates)
+                    continue;
+                (lists[index] ?? (lists[index] = new List<CompiledSiteRow>())).Add(site);
+            }
+
+            for (int i = 0; i < templates; i++)
+                groups[i] = (IList<CompiledSiteRow>)lists[i] ?? NoSites;
+            return groups;
+        }
+
+        private static IReadOnlyDictionary<string, string> BuildImportContents(CompiledArtifact artifact)
+        {
+            var contents = new Dictionary<string, string>(StringComparer.Ordinal);
+            if (artifact.Templates == null || artifact.Documents == null)
+                return contents;
+            foreach (var template in artifact.Templates)
+            {
+                if (template == null || template.RootDocumentRef < 0 ||
+                    template.RootDocumentRef >= artifact.Documents.Count)
+                    continue;
+                var document = artifact.Documents[template.RootDocumentRef];
+                string text = document?.RawText;
+                if (string.IsNullOrEmpty(text))
+                    continue;
+                if (!string.IsNullOrEmpty(template.Key) && !contents.ContainsKey(template.Key))
+                    contents.Add(template.Key, text);
+                if (!string.IsNullOrEmpty(template.RegisteredName) &&
+                    !contents.ContainsKey(template.RegisteredName))
+                    contents.Add(template.RegisteredName, text);
+            }
+
+            return contents;
         }
     }
 }

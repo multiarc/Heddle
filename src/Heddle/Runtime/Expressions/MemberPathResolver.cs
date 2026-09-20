@@ -58,42 +58,6 @@ namespace Heddle.Runtime.Expressions
             new MemberPathResolution(MemberPathResolutionKind.Failed, null, null, index, message);
     }
 
-    /// <summary>
-    /// Reflection adapter for member walk. <see cref="BaseInterfaces"/> returns nothing (surfacing them would be a breaking change),
-    /// and non-public base members stay invisible per <see cref="MemberVisibility"/>.
-    /// </summary>
-    internal sealed class ReflectionTypeModel : ITypeModel<Type, PropertyInfo>
-    {
-        public static readonly ReflectionTypeModel Instance = new ReflectionTypeModel();
-
-        private ReflectionTypeModel() { }
-
-        public bool IsDynamic(Type type) => false;   // dynamic-ness is an ExType fact, decided before the walk
-
-        [UnconditionalSuppressMessage("Trimming", "IL2070", Justification = "Reflection over a model type; model types reach the engine through [HeddleModelAssembly]/typeof parameters annotated DynamicallyAccessedMemberTypes.All, which keeps their members through a trimmed publish.")]
-        public IEnumerable<PropertyInfo> DeclaredProperties(Type type, string name)
-        {
-            foreach (var property in type.GetProperties(MemberPathResolver.DeclaredBindingFlags))
-            {
-                if (string.Equals(property.Name, name, StringComparison.Ordinal))
-                    yield return property;
-            }
-        }
-
-        public bool DeclaresNonPropertyMember(Type type, string name) =>
-            MemberPathResolver.DeclaresNonPropertyMember(type, name);
-
-        public MemberFacts FactsOf(PropertyInfo member) => MemberPathResolver.FactsOf(member);
-
-        public Type TypeOf(PropertyInfo member) => member.PropertyType;
-
-        public Type BaseOf(Type type) => type.BaseType;
-
-        public bool IsInterface(Type type) => type.IsInterface;
-
-        public IEnumerable<Type> BaseInterfaces(Type type) => Array.Empty<Type>();
-    }
-
     internal static class MemberPathResolver
     {
         internal const BindingFlags MemberBindingFlags =
@@ -117,8 +81,7 @@ namespace Heddle.Runtime.Expressions
                 if (currentType.IsDynamic)
                     return MemberPathResolution.DynamicHop(properties, i);
 
-                if (!MemberPathWalk.TryFind(ReflectionTypeModel.Instance, currentType.Type, segments[i],
-                        out var dataProperty))
+                if (!MemberPathWalk.TryFind(currentType.Type, segments[i], out var dataProperty))
                 {
                     return MemberPathResolution.Failed(i,
                         $"Property {segments[i]} not found in Type [{currentType}]");

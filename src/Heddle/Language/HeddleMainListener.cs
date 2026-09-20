@@ -385,6 +385,15 @@ namespace Heddle.Language {
                 }
 
                 var isolatedContext = CurrentParseContext.IsolateContextWithTree();
+                // The imported chains compile into this document and never get one of their own, while
+                // their positions stay absolute in the text just read. Every tier marks them, because a
+                // position alone no longer tells two imports' sites apart once both expand into one
+                // document; only the recording build keeps the text, which is what it slices a refused
+                // call's own source out of.
+                isolatedContext.ImportSource = new ImportSource(
+                    _settings.CaptureImportSource ? document : null,
+                    CurrentParseContext.GetAbsoluteBlockPosition(context),
+                    CurrentParseContext.ImportSource);
                 var preImportNames = markProvenance
                     ? new HashSet<string>(isolatedContext.DefinitionsBlock.Names())
                     : null;

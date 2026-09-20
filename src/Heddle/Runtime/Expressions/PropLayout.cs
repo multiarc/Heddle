@@ -6,6 +6,7 @@ using Heddle.Helpers;
 using Heddle.Language;
 using Heddle.Language.Binding;
 using Heddle.Strings.Core;
+using CorePropDeclaration = Heddle.Language.Binding.PropDeclaration;
 
 namespace Heddle.Runtime.Expressions
 {
@@ -56,8 +57,7 @@ namespace Heddle.Runtime.Expressions
                 return;
             // The member walk, not Type.GetProperty: that throws AmbiguousMatchException on a new-shadowed
             // name and would warn about a member the walk itself refuses to bind.
-            if (!Heddle.Language.Members.MemberPathWalk.TryFind(ReflectionTypeModel.Instance, scopeType.Type, name,
-                    out _))
+            if (!Heddle.Language.Members.MemberPathWalk.TryFind(scopeType.Type, name, out _))
                 return;
             compileScope.CompileWarnings.Add(
                 Heddle.Language.CompileWarningFactory.PropShadowsModelMember(name, scopeType.Type.ToString(),
@@ -79,21 +79,20 @@ namespace Heddle.Runtime.Expressions
             if (extensionType == null || !DeclaresExtensionParameters(extensionType))
                 return null;
 
-            var slots = PropLayoutCore.Build(ReadDeclarations(extensionType), ReflectionTypeFacts.Instance,
-                DiscardingSink.Instance, out _);
-            return PropLayoutCore.Fingerprint(slots, ReflectionTypeFacts.Instance);
+            var slots = PropLayoutCore.Build(ReadDeclarations(extensionType), DiscardingSink.Instance, out _);
+            return PropLayoutCore.Fingerprint(slots);
         }
 
-        private sealed class DiscardingSink : IPropLayoutSink<Type>
+        private sealed class DiscardingSink : IPropLayoutSink
         {
             internal static readonly DiscardingSink Instance = new DiscardingSink();
 
-            public void Fault(PropFault fault, PropDeclaration<Type> declaration, Type relatedType,
+            public void Fault(PropFault fault, CorePropDeclaration declaration, Type relatedType,
                 string relatedDisplay)
             {
             }
 
-            public bool TryConvertDefault(PropDeclaration<Type> declaration, Type targetType, out object converted,
+            public bool TryConvertDefault(CorePropDeclaration declaration, Type targetType, out object converted,
                 out string sourceDisplay)
             {
                 sourceDisplay = null;
@@ -125,7 +124,7 @@ namespace Heddle.Runtime.Expressions
             // Both sides use the shared core to prevent divergence.
             var declarations = ReadDeclarations(extensionType);
             var sink = new ReflectionPropSink(compileScope, ownerDisplay, ownerCallPosition);
-            var built = PropLayoutCore.Build(declarations, ReflectionTypeFacts.Instance, sink, out _);
+            var built = PropLayoutCore.Build(declarations, sink, out _);
 
             var slots = new List<PropSlot>(built.Count);
             var byName = new Dictionary<string, PropSlot>(StringComparer.Ordinal);
@@ -148,23 +147,23 @@ namespace Heddle.Runtime.Expressions
         }
 
         /// <summary>The reflection side's layer walk: the base-type chain outermost (deepest base) first, stopping
-        /// <b>at</b> <c>typeof(object)</c> (<see cref="PropLayoutCore.StopsAtObject"/>). <c>[Prop]</c> is
+        /// <b>at</b> <c>typeof(object)</c>, which is never a layer of its own. <c>[Prop]</c> is
         /// <c>Inherited = true</c>, so a subclass layers its own declarations over its base's exactly as a derived
         /// definition does — which is why each layer is read with <c>inherit: false</c>.</summary>
-        private static List<PropDeclaration<Type>> ReadDeclarations(Type extensionType)
+        private static List<CorePropDeclaration> ReadDeclarations(Type extensionType)
         {
             var layers = new List<Type>();
             for (var t = extensionType; t != null && t != typeof(object); t = t.BaseType)
                 layers.Add(t);
             layers.Reverse();
 
-            var declarations = new List<PropDeclaration<Type>>();
+            var declarations = new List<CorePropDeclaration>();
             for (int level = 0; level < layers.Count; level++)
             {
                 var attrs = layers[level].GetCustomAttributes(typeof(Attributes.PropAttribute), inherit: false);
                 foreach (Attributes.PropAttribute attr in attrs)
                 {
-                    declarations.Add(new PropDeclaration<Type>
+                    declarations.Add(new CorePropDeclaration
                     {
                         Name = attr.Name,
                         Type = attr.Type,
@@ -181,7 +180,7 @@ namespace Heddle.Runtime.Expressions
         /// <summary>The dynamic tier's fault sink: every fault class maps to its shipped <c>HED50xx</c> id and the
         /// shared message text (<c>HeddleDiagnosticCatalog.PropFaults</c>), positioned at the first call site —
         /// the extension's attribute source is C# and has no template position.</summary>
-        private sealed class ReflectionPropSink : IPropLayoutSink<Type>
+        private sealed class ReflectionPropSink : IPropLayoutSink
         {
             private readonly CompileScope _compileScope;
             private readonly string _ownerDisplay;
@@ -194,16 +193,16 @@ namespace Heddle.Runtime.Expressions
                 _position = position;
             }
 
-            public void Fault(PropFault fault, PropDeclaration<Type> declaration, Type relatedType,
+            public void Fault(PropFault fault, CorePropDeclaration declaration, Type relatedType,
                 string relatedDisplay)
             {
                 var message = HeddleDiagnosticCatalog.PropFaults.Message(fault, declaration.Name, _ownerDisplay,
-                    ReflectionTypeFacts.Instance.Display(declaration.Type), relatedDisplay);
+                    ReflectionTypeFacts.Display(declaration.Type), relatedDisplay);
                 _compileScope.CompileErrors.Add(
                     message.ToError(_position, HeddleDiagnosticCatalog.PropFaults.RuntimeDiagnosticId(fault)));
             }
 
-            public bool TryConvertDefault(PropDeclaration<Type> declaration, Type targetType, out object converted,
+            public bool TryConvertDefault(CorePropDeclaration declaration, Type targetType, out object converted,
                 out string sourceDisplay)
             {
                 bool isNull = declaration.DefaultValue == null;
@@ -285,7 +284,8 @@ namespace Heddle.Runtime.Expressions
             return new PropLayout(slots, byName);
         }
 
-        private static void ApplyDefault(PropDeclaration decl, ExType type, PropSlot slot, CompileScope compileScope)
+        private static void ApplyDefault(Heddle.Language.PropDeclaration decl, ExType type, PropSlot slot,
+            CompileScope compileScope)
         {
             ApplyDefaultCore(decl.Name, decl.HasDefault, decl.DefaultValue, type, slot, decl.Position, compileScope);
         }

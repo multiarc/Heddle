@@ -1,4 +1,4 @@
-namespace Heddle.Language.Binding
+namespace Heddle.Tests
 {
     /// <summary>One conformance row: <c>target.IsAssignableFrom(source)</c> must equal <see cref="Expected"/> on
     /// both tiers.</summary>
@@ -23,9 +23,10 @@ namespace Heddle.Language.Binding
     }
 
     /// <summary>
-    /// The shared assignability conformance corpus. One data source; the reflection-side driver in
-    /// <c>Heddle.Tests</c> is the surviving consumer (the symbol-side driver went with the deleted 2.x
-    /// generator suite).
+    /// The assignability conformance corpus. One data source, read by
+    /// <see cref="AssignabilityCorpusReflectionTests"/>, its only surviving driver (the symbol-side driver
+    /// went with the deleted 2.x generator suite, which is why the corpus lives in this suite rather than in
+    /// the engine assembly it used to be shared from).
     /// <para>The relation itself cannot be shared (it <em>is</em> the type graph); what this corpus pins is the
     /// <b>CLR's</b> answer, including the two nullable rows where Roslyn's conversion classification and the CLR
     /// disagree in opposite directions, and the variance / <c>ValueTuple</c> rows the research named as the

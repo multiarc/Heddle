@@ -8,7 +8,7 @@ using Xunit;
 
 namespace Heddle.Tests
 {
-    /// <summary>Artifact structural markers (P1-W9): the schema version is the compiled-form schema the
+    /// <summary>Artifact structural markers: the schema version is the compiled-form schema the
     /// engine reads, the recorded engine version echoes the build input, every document section decodes,
     /// and the content hash matches the bytes the row built from.
     /// Serialized — the registry is process-global static state.</summary>
@@ -33,7 +33,7 @@ namespace Heddle.Tests
         [Fact]
         public void SchemaVersionIsTheCompiledFormSchema()
         {
-            Assert.Equal(4, PrecompiledSchema.CompiledFormSchemaVersion);
+            Assert.Equal(3, PrecompiledSchema.CompiledFormSchemaVersion);
             Assert.True(PrecompiledSchema.IsSupported(PrecompiledSchema.CompiledFormSchemaVersion),
                 "The engine should read the schema it writes.");
         }

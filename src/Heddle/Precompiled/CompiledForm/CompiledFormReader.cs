@@ -9,7 +9,7 @@ namespace Heddle.Precompiled.CompiledForm
     /// structural defect — bad magic, an unsupported schema, a broken section table, a digest mismatch
     /// or a truncated section — reports as <see cref="InvalidDataException"/>; the registration layer
     /// maps that to its own fault. Unknown section ids are skipped by length.</summary>
-    public static class CompiledFormReader
+    internal static class CompiledFormReader
     {
         /// <summary>Decodes a complete artifact image.</summary>
         public static CompiledArtifact Read(byte[] image)
@@ -683,6 +683,7 @@ namespace Heddle.Precompiled.CompiledForm
                 {
                     ExtensionRef = ReadSized(),
                     Position = ReadPosition(),
+                    ImportAnchor = ReadImportAnchor(),
                     ReturnType = ReadTypeRefValue(),
                     ParameterTemplate = ReadOptStringValue()
                 };
@@ -693,6 +694,9 @@ namespace Heddle.Precompiled.CompiledForm
                     item.Props = ReadProps();
                 return item;
             }
+
+            /// <summary>The item's import anchor, or -1 when the template carries the item itself.</summary>
+            private int ReadImportAnchor() => ReadBool() ? ReadSized() : -1;
 
             private void ReadAltBodiesInto(CompiledItem item)
             {
@@ -728,6 +732,7 @@ namespace Heddle.Precompiled.CompiledForm
                 var item = new CompiledItem
                 {
                     Position = ReadPosition(),
+                    ImportAnchor = ReadImportAnchor(),
                     ParameterTemplate = ReadOptStringValue(),
                     Body = ReadOptBody()
                 };
@@ -1089,6 +1094,12 @@ namespace Heddle.Precompiled.CompiledForm
                     Malformed("A " + what + " index is out of range.");
             }
 
+            /// <summary>Verifies the stored digest and returns it as the artifact's identity string.
+            /// <para>Hashed in place: the image is fed to the hash in three blocks — everything before the
+            /// digest field, 32 shared zero bytes standing in for it, and everything after — rather than over a
+            /// zeroed copy of the whole image, which allocated a second copy of the artifact on every decode.
+            /// The identity comes from the stored bytes, which is what it is; the comparison below is what makes
+            /// them trustworthy.</para></summary>
             private string VerifyDigest(byte[][] blobs)
             {
                 var headerBlob = blobs[SectionIds.Header];
@@ -1097,19 +1108,24 @@ namespace Heddle.Precompiled.CompiledForm
                 var stored = new byte[32];
                 Buffer.BlockCopy(headerBlob, headerBlob.Length - 32, stored, 0, 32);
 
-                var copy = new byte[_image.Length];
-                Buffer.BlockCopy(_image, 0, copy, 0, _image.Length);
                 int digestOffset = _sectionOffsets[SectionIds.Header] + headerBlob.Length - 32;
-                for (int i = 0; i < 32; i++)
-                    copy[digestOffset + i] = 0;
+                int tailOffset = digestOffset + 32;
                 byte[] actual;
                 using (var sha = SHA256.Create())
-                    actual = sha.ComputeHash(copy);
+                {
+                    sha.TransformBlock(_image, 0, digestOffset, null, 0);
+                    sha.TransformBlock(ZeroedDigest, 0, ZeroedDigest.Length, null, 0);
+                    sha.TransformFinalBlock(_image, tailOffset, _image.Length - tailOffset);
+                    actual = sha.Hash;
+                }
                 for (int i = 0; i < 32; i++)
                     if (stored[i] != actual[i])
                         Malformed("The artifact digest does not match its bytes.");
-                return ContentHash.ToHex(actual);
+                return ContentHash.ToHex(stored);
             }
+
+            /// <summary>The 32 zero bytes the digest field is hashed as. Shared and never written to.</summary>
+            private static readonly byte[] ZeroedDigest = new byte[32];
         }
     }
 }

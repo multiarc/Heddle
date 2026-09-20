@@ -41,6 +41,18 @@ namespace Heddle.Language
         /// </summary>
         public Func<string, string> ImportIdentifier { get; set; }
 
+        /// <summary>
+        /// Whether each expanded <c>@&lt;&lt;</c> import's <see cref="ImportSource"/> also keeps the text the
+        /// parse consumed. The marker itself is built on every tier — two imports expanding into one
+        /// document give their chains positions in two different files, so which import a chain came from
+        /// is what tells their sites apart — but only the recording build needs the file's <b>text</b>, to
+        /// slice a refused call's own source out of it. Off everywhere else, where the text is dead the
+        /// moment the parse has consumed it.
+        /// <para>Internal rather than public: only the recording compile sets it, through the
+        /// <c>CompileContext</c> adapter in the same assembly, and one consumer does not earn a seam.</para>
+        /// </summary>
+        internal bool CaptureImportSource { get; set; }
+
         /// <summary>Reads the content of an <c>@&lt;&lt;</c> import, through <see cref="ImportReader"/> when set and
         /// through the default file read otherwise (the pre-seam behavior).</summary>
         internal string ReadImport(string importPath)

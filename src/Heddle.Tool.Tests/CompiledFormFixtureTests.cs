@@ -30,7 +30,7 @@ namespace Heddle.Tool.Tests
         {
             // The point window: exactly one readable shape. The reader itself rejects anything else,
             // so reaching the assertions below IS the version proof; the literal pins the point.
-            Assert.Equal(4, PrecompiledSchema.CompiledFormSchemaVersion);
+            Assert.Equal(3, PrecompiledSchema.CompiledFormSchemaVersion);
             var artifact = CompiledFormReader.Read(FixtureBytes());
             Assert.NotNull(artifact);
         }

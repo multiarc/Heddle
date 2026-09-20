@@ -29,6 +29,10 @@ namespace Heddle.Tests
                 ["expr-functions.heddle"] = typeof(NativeExpressionGoldenTests.FunctionsModel),
                 ["context-lint-corpus.heddle"] = typeof(HtmlContextLintTests.LintModel),
                 ["def-default-body-accessor.heddle"] = typeof(HtmlContextLintTests.LintModel),
+                ["refusal-fragment-body.heddle"] = typeof(RefusalParityRoot),
+                ["refusal-nested-body.heddle"] = typeof(RefusalParityRoot),
+                ["refusal-import-lib.heddle"] = typeof(RefusalParityRoot),
+                ["refusal-import-page.heddle"] = typeof(RefusalParityRoot),
                 ["recursion.heddle"] = null,
                 ["dynamic-recursion.heddle"] = null,
             };

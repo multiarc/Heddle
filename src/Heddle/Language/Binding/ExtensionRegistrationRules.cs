@@ -11,21 +11,15 @@ namespace Heddle.Language.Binding
         /// type is assignable from the candidate — i.e. the candidate is the more derived of the two).</summary>
         Replace,
 
-        /// <summary>The incumbent is already the more derived of the two, so it stays. Build-tier only: the
-        /// runtime reaches this state only by enumerating the pair in the opposite order, where it produces
-        /// <see cref="Replace"/>; see <see cref="ExtensionRegistrationRules.ResolveForBuild"/>.</summary>
-        KeepIncumbent,
-
         /// <summary>Two unrelated types claim the same name — the runtime throws
-        /// <c>TemplateOverrideException</c>; the build tier degrades the call to dynamic with a recorded reason
-        /// (a host wiring error must not become a build failure the runtime would only hit at first render).</summary>
+        /// <c>TemplateOverrideException</c>.</summary>
         Conflict
     }
 
-    /// <summary>The extension-registration precedence rule for both tiers.</summary>
+    /// <summary>The extension-registration precedence rule.</summary>
     internal static class ExtensionRegistrationRules
     {
-        /// <summary>The runtime's verdict, verbatim. Never returns <see cref="ExtensionRegistrationVerdict.KeepIncumbent"/>.</summary>
+        /// <summary>The registration verdict for one candidate offered under a name.</summary>
         internal static ExtensionRegistrationVerdict Resolve(bool hasIncumbent, bool candidateReplaces,
             bool incumbentAssignableFromCandidate)
         {
@@ -36,22 +30,9 @@ namespace Heddle.Language.Binding
             return ExtensionRegistrationVerdict.Conflict;
         }
 
-        /// <summary>
-        /// The build tier's verdict: order-insensitive over inheritance (keep the more derived type regardless of enumeration order)
-        /// to match runtime behavior; genuinely unrelated claimants still conflict.
-        /// </summary>
-        internal static ExtensionRegistrationVerdict ResolveForBuild(bool hasIncumbent, bool candidateReplaces,
-            bool incumbentAssignableFromCandidate, bool candidateAssignableFromIncumbent)
-        {
-            var verdict = Resolve(hasIncumbent, candidateReplaces, incumbentAssignableFromCandidate);
-            if (verdict == ExtensionRegistrationVerdict.Conflict && candidateAssignableFromIncumbent)
-                return ExtensionRegistrationVerdict.KeepIncumbent;
-            return verdict;
-        }
-
         /// <summary>The runtime's pre-registration ordering key (<c>TemplateFactory.LoadExtensions</c>): candidates
         /// sort by whether any inherited <c>[DataType]</c> names an interface, then by the same test over
-        /// <c>[ChainedType]</c> — <c>false</c> first, stably. Expressed as a small integer so both tiers can sort
+        /// <c>[ChainedType]</c> — <c>false</c> first, stably. Expressed as a small integer so every caller sorts
         /// by the same expression.</summary>
         internal static int OrderingKey(bool hasInterfaceDataType, bool hasInterfaceChainedType)
         {

@@ -1,9 +1,9 @@
 namespace Heddle.Data
 {
     /// <summary>
-    /// The <c>[EncodeOutput]</c>/<c>[NotEncode]</c> truth table, written once. The two tiers read the attributes differently (reflection with inheritance on the run tier, symbols on
-    /// the build tier) but the <em>decision</em> over the resulting pair of bools is one two-line function, and it
-    /// carries the same blast radius as the profile rules: a divergence here is unencoded output on one tier.
+    /// The <c>[EncodeOutput]</c>/<c>[NotEncode]</c> truth table, written once: the <em>decision</em> over the
+    /// pair of bools is one two-line function. It carries the same blast radius as the profile rules — a
+    /// divergence here is unencoded output.
     /// </summary>
     public static class RenderTypeRules
     {

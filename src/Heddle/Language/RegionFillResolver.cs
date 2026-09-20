@@ -3,10 +3,9 @@ using System.Collections.Generic;
 
 namespace Heddle.Language
 {
-    /// <summary>The per-candidate outcome of the region-fill matching rule. The
-    /// <em>decision</em> is shared; the <em>reactions</em> are each tier's own — the runtime retracts and
-    /// raises HED5019, the build reports the same error at the override's position — which is why this is
-    /// a verdict rather than a bool.</summary>
+    /// <summary>The per-candidate outcome of the region-fill matching rule. The <em>decision</em> lives in the
+    /// resolver; the <em>reaction</em> — retract the error, raise HED5019, materialize the fill — is the
+    /// caller's, which is why this is a verdict rather than a bool.</summary>
     internal enum RegionFillVerdict
     {
         /// <summary>A public region matched and its region default was found; the fill is materialized.</summary>
@@ -27,10 +26,9 @@ namespace Heddle.Language
     internal delegate bool TryLookupRegion(string name, out bool isPublic);
 
     /// <summary>
-    /// <para>The call-site region-fill matching rule, written once. Both backends
-    /// already shared the materialization leaf (<see cref="DefinitionMaterializer"/>); this is the four-step
-    /// decision <em>around</em> it that they duplicated with different table representations: origin-identity
-    /// filter → region lookup → public gate → region-default fetch → materialize.</para>
+    /// <para>The call-site region-fill matching rule, written once: the four-step decision around the
+    /// materialization leaf (<see cref="DefinitionMaterializer"/>) — origin-identity filter → region lookup →
+    /// public gate → region-default fetch → materialize.</para>
     /// <para>The lookup is only consulted for candidates that pass the origin filter, so a caller may resolve its
     /// region table lazily inside <paramref name="lookup"/> (the runtime does, keeping its
     /// resolve-only-on-first-origin-match behavior).</para>

@@ -1,18 +1,18 @@
 using System;
 using System.Collections.Generic;
 using Heddle.Helpers;
-using Heddle.Language.Binding;
 using Heddle.Runtime.Expressions;
 using Xunit;
 
 namespace Heddle.Tests
 {
     /// <summary>
-    /// The <b>reflection-side</b> driver of the shared assignability conformance corpus. It proves
+    /// The <b>reflection-side</b> driver of the assignability conformance corpus. It proves
     /// two things: that every committed expectation equals the live CLR relation (so the corpus is generated data,
-    /// not belief), and that the reflection <see cref="ITypeFacts{TType}"/> adapter answers it row for row.
+    /// not belief), and that the engine's own <see cref="ReflectionTypeFacts"/> helper answers it row for row.
     /// <para>The deleted 2.x generator suite carried a symbol-side driver over the same file; this suite is the
-    /// surviving driver. Corrupting one row turns it red — that is the point.</para>
+    /// surviving driver, so <see cref="AssignabilityCorpus"/> lives here beside it. Corrupting one row turns it
+    /// red — that is the point.</para>
     /// </summary>
     public class AssignabilityCorpusReflectionTests
     {
@@ -59,10 +59,9 @@ namespace Heddle.Tests
 
         [Theory]
         [MemberData(nameof(Rows))]
-        public void ReflectionAdapterMatchesTheCorpus(string source, string target, bool expected, string family)
+        public void ReflectionTypeFactsMatchTheCorpus(string source, string target, bool expected, string family)
         {
-            ITypeFacts<Type> facts = ReflectionTypeFacts.Instance;
-            Assert.True(facts.IsAssignableFrom(Resolve(target), Resolve(source))
+            Assert.True(ReflectionTypeFacts.IsAssignableFrom(Resolve(target), Resolve(source))
                         == ExpectedOnThisRuntime(source, target, expected),
                 $"{family}: {source} -> {target}");
         }

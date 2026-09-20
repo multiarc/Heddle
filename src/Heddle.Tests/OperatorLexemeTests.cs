@@ -87,7 +87,8 @@ namespace Heddle.Tests
             foreach (var pair in LegacyRuntimeSymbol)
                 Assert.Equal(pair.Value, OperatorLexeme.ForBinary(pair.Key));
 
-            // Contract: BinarySymbol(unary) must return null so emitter refuses impossible nodes like Negate in binary position.
+            // Contract: ForBinary(a unary operator) must return null, so a caller cannot spell an impossible node
+            // like Negate in binary position.
             foreach (var pair in LegacyUnaryLexeme)
                 Assert.Null(OperatorLexeme.ForBinary(pair.Key));
         }

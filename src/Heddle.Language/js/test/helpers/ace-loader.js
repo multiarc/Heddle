@@ -1,7 +1,7 @@
 "use strict";
 
 /*
- * Ace-module loader shim for the WS9 JS test harness.
+ * Ace-module loader shim for the JS test harness.
  *
  * WHY THIS EXISTS
  * ---------------
@@ -20,11 +20,11 @@
  * Ace checkout (pinned to v1.32.6) so the relative requires resolve. We do not
  * want to run that whole webpack bundle just to unit-test the artifacts.
  *
- * CHOSEN APPROACH  (option (a)+(c) from the WS9 brief)
- * ---------------------------------------------------
+ * CHOSEN APPROACH
+ * ---------------
  * Add a real dev dependency on `ace-code@1.32.6` - the npm package that ships
  * Ace's `src/` modules and is version-locked to the SAME Ace pin the bundle
- * uses (D-C). Then install a tiny `Module._resolveFilename` hook that ONLY
+ * uses. Then install a tiny `Module._resolveFilename` hook that ONLY
  * fires when a file located under `js/src/**` asks for a relative module that
  * Node cannot resolve natively. In that case we remap the request into
  * `ace-code/src/**`, preserving the mirrored directory layout (js/src mirrors

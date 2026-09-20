@@ -10,7 +10,7 @@ using Xunit;
 
 namespace Heddle.Tests
 {
-    /// <summary>Gate binding matrix (P1-W9): the checks the gauntlet runs before any strategy is read —
+    /// <summary>Gate binding matrix: the checks the gauntlet runs before any strategy is read —
     /// definition calls skip the extension registry, dynamic-attribute members compare by erasure,
     /// unregistered late-bound names report UnsupportedFunction, and stale fingerprints refuse.
     /// Serialized — the registry is process-global static state.</summary>

@@ -5,6 +5,7 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Threading;
 using Heddle.Data;
 using Heddle.Helpers;
 using Heddle.Precompiled.CompiledForm;
@@ -30,6 +31,93 @@ namespace Heddle.Precompiled
         internal static PrecompiledFallbackEvent? Validate(PrecompiledTemplateInfo entry, TemplateOptions options,
             Func<PrecompiledExtensionBinding, Type, bool> bindingResolver, Type requestModelType = null)
         {
+            var shape = Shape.For(options, bindingResolver, requestModelType, typed: false);
+            if (shape.IsMemoizable && entry.GauntletPassed(shape))
+                return null;
+            var verdict = RunOrdered(entry, options, bindingResolver, requestModelType);
+            if (verdict == null && shape.IsMemoizable)
+                entry.RecordGauntletPass(shape);
+            return verdict;
+        }
+
+        /// <summary>The gauntlet's inputs that decide a verdict, and the assembly generation the live type graph
+        /// was at when it did. Everything a check reads is here by value or by reference identity: the row is the
+        /// entry's own, the options' compared fields, the request's model type, the integration's matcher and the
+        /// function registry instance.
+        /// <para>A shape whose request asks for the staleness step is <b>not</b> memoizable: that step exists to
+        /// read the files again, and an answer kept from the last request is the one thing it must never give.</para>
+        /// </summary>
+        internal readonly struct Shape : IEquatable<Shape>
+        {
+            internal static Shape For(TemplateOptions options,
+                Func<PrecompiledExtensionBinding, Type, bool> bindingResolver, Type requestModelType, bool typed)
+            {
+                return new Shape(options.OutputProfile, options.ExpressionMode, options.TrimDirectiveLines,
+                    requestModelType, options.Functions, bindingResolver, typed,
+                    !options.EnableFileChangeCheck, Heddle.Native.AssemblyHelper.Generation);
+            }
+
+            private Shape(OutputProfile profile, ExpressionMode mode, bool trim, Type requestModelType,
+                object functions, object bindingResolver, bool typed, bool memoizable, int generation)
+            {
+                _profile = profile;
+                _mode = mode;
+                _trim = trim;
+                _requestModelType = requestModelType;
+                _functions = functions;
+                _bindingResolver = bindingResolver;
+                _typed = typed;
+                IsMemoizable = memoizable;
+                Generation = generation;
+            }
+
+            private readonly OutputProfile _profile;
+            private readonly ExpressionMode _mode;
+            private readonly bool _trim;
+            private readonly Type _requestModelType;
+            private readonly object _functions;
+            private readonly object _bindingResolver;
+            private readonly bool _typed;
+
+            internal bool IsMemoizable { get; }
+
+            internal int Generation { get; }
+
+            public bool Equals(Shape other) =>
+                _profile == other._profile && _mode == other._mode && _trim == other._trim &&
+                _typed == other._typed && Generation == other.Generation &&
+                ReferenceEquals(_requestModelType, other._requestModelType) &&
+                ReferenceEquals(_functions, other._functions) &&
+                ReferenceEquals(_bindingResolver, other._bindingResolver);
+
+            public override bool Equals(object obj) => obj is Shape other && Equals(other);
+
+            public override int GetHashCode()
+            {
+                int hash = Generation;
+                hash = (hash * 397) ^ (int)_profile;
+                hash = (hash * 397) ^ (int)_mode;
+                hash = (hash * 397) ^ (_trim ? 1 : 0);
+                hash = (hash * 397) ^ (_typed ? 1 : 0);
+                hash = (hash * 397) ^ (_requestModelType != null ? _requestModelType.GetHashCode() : 0);
+                hash = (hash * 397) ^ (_functions != null ?
+                    RuntimeHelpers.GetHashCode(_functions) : 0);
+                hash = (hash * 397) ^ (_bindingResolver != null ?
+                    RuntimeHelpers.GetHashCode(_bindingResolver) : 0);
+                return hash;
+            }
+        }
+
+        /// <summary>How many times the ordered checks have actually run, as opposed to being answered from an
+        /// entry's memo. Test-visible only; nothing in the engine reads it.</summary>
+        internal static int OrderedRunCount => Volatile.Read(ref _orderedRunCount);
+
+        private static int _orderedRunCount;
+
+        private static PrecompiledFallbackEvent? RunOrdered(PrecompiledTemplateInfo entry, TemplateOptions options,
+            Func<PrecompiledExtensionBinding, Type, bool> bindingResolver, Type requestModelType)
+        {
+            Interlocked.Increment(ref _orderedRunCount);
             var optionsFailure = CheckOptions(entry, options);
             if (optionsFailure != null)
                 return optionsFailure;
@@ -67,6 +155,20 @@ namespace Heddle.Precompiled
             TemplateOptions options,
             Func<PrecompiledExtensionBinding, Type, bool> bindingResolver, Type modelType)
         {
+            var shape = Shape.For(options, bindingResolver, modelType, typed: true);
+            if (shape.IsMemoizable && entry.GauntletPassed(shape))
+                return null;
+            var verdict = RunOrderedTyped(entry, options, bindingResolver, modelType);
+            if (verdict == null && shape.IsMemoizable)
+                entry.RecordGauntletPass(shape);
+            return verdict;
+        }
+
+        private static PrecompiledFallbackEvent? RunOrderedTyped(PrecompiledTemplateInfo entry,
+            TemplateOptions options,
+            Func<PrecompiledExtensionBinding, Type, bool> bindingResolver, Type modelType)
+        {
+            Interlocked.Increment(ref _orderedRunCount);
             var optionsFailure = CheckTypedOptions(entry, options);
             if (optionsFailure != null)
                 return optionsFailure;
@@ -100,6 +202,8 @@ namespace Heddle.Precompiled
         private static PrecompiledFallbackEvent? CheckTypedOptions(PrecompiledTemplateInfo entry,
             TemplateOptions options)
         {
+            if (entry.OptionsFault != null)
+                return Fail(entry.Key, PrecompiledFallbackReason.OptionsMismatch, entry.OptionsFault);
             var fp = entry.OptionsFingerprint;
             if (fp.ExpressionMode != options.ExpressionMode)
                 return Fail(entry.Key, PrecompiledFallbackReason.OptionsMismatch,
@@ -112,6 +216,8 @@ namespace Heddle.Precompiled
 
         private static PrecompiledFallbackEvent? CheckOptions(PrecompiledTemplateInfo entry, TemplateOptions options)
         {
+            if (entry.OptionsFault != null)
+                return Fail(entry.Key, PrecompiledFallbackReason.OptionsMismatch, entry.OptionsFault);
             var fp = entry.OptionsFingerprint;
             if (fp.Profile != options.OutputProfile)
                 return Fail(entry.Key, PrecompiledFallbackReason.OptionsMismatch,
@@ -155,16 +261,13 @@ namespace Heddle.Precompiled
         private static PrecompiledFallbackEvent? CheckExtensions(PrecompiledTemplateInfo entry,
             Func<PrecompiledExtensionBinding, Type, bool> bindingResolver)
         {
-            string definitionCarrier = null;
             foreach (var binding in entry.ExtensionBindings)
             {
                 // A definition call (in-document or composition-imported) records the definition
                 // carrier, not a registry extension: it binds against the template's own declarations,
                 // which ship inside the artifact and resolve from text at load. The extension registry
                 // can neither provide nor contradict it, so there is nothing to compare.
-                if (definitionCarrier == null)
-                    definitionCarrier = AqnSansVersion(typeof(Heddle.Core.DefinitionBaseExtension));
-                if (string.Equals(binding.ExtensionTypeName, definitionCarrier, StringComparison.Ordinal))
+                if (string.Equals(binding.ExtensionTypeName, DefinitionCarrier, StringComparison.Ordinal))
                     continue;
                 if (!TemplateFactory.TryGetExtensionType(binding.Name, out var liveType))
                     return Fail(entry.Key, PrecompiledFallbackReason.ExtensionBindingMismatch,
@@ -181,7 +284,7 @@ namespace Heddle.Precompiled
                 // can gain/reorder slots while keeping AQN, so validate the fingerprint.
                 if (!string.IsNullOrEmpty(binding.PropLayoutFingerprint))
                 {
-                    var liveFingerprint = PropLayout.Fingerprint(liveType);
+                    var liveFingerprint = CachedPropLayoutFingerprint(liveType);
                     if (!string.Equals(binding.PropLayoutFingerprint, liveFingerprint, StringComparison.Ordinal))
                         return Fail(entry.Key, PrecompiledFallbackReason.ExtensionBindingMismatch,
                             $"Extension '{binding.Name}': prop layout manifest={binding.PropLayoutFingerprint} " +
@@ -191,6 +294,40 @@ namespace Heddle.Precompiled
 
             return null;
         }
+
+        /// <summary>The carrier a definition call records. One identity string for the process: it names a type
+        /// this assembly ships, so it cannot change between calls.</summary>
+        private static readonly string DefinitionCarrier =
+            AqnSansVersion(typeof(Heddle.Core.DefinitionBaseExtension));
+
+        private sealed class PropFingerprint
+        {
+            internal string Value;
+        }
+
+        /// <summary>A live extension type's <c>[Prop]</c> layout fingerprint, kept per type. Rebuilding it
+        /// reflects over every declaration on the type and its bases, and the answer is a pure function of the
+        /// type — which, once loaded, does not change. Weak on the type so nothing is pinned.</summary>
+        private static string CachedPropLayoutFingerprint(Type liveType)
+        {
+            if (liveType == null)
+                return null;
+            PropFingerprint box;
+            if (!PropFingerprints.TryGetValue(liveType, out box))
+                box = PropFingerprints.GetValue(liveType, NewPropFingerprint);
+            var value = Volatile.Read(ref box.Value);
+            if (value != null)
+                return value.Length == 0 ? null : value;
+            value = PropLayout.Fingerprint(liveType);
+            Volatile.Write(ref box.Value, value ?? string.Empty);
+            return value;
+        }
+
+        private static readonly ConditionalWeakTable<Type, PropFingerprint> PropFingerprints =
+            new ConditionalWeakTable<Type, PropFingerprint>();
+
+        private static readonly ConditionalWeakTable<Type, PropFingerprint>.CreateValueCallback
+            NewPropFingerprint = _ => new PropFingerprint();
 
         internal static bool DefaultBindingMatch(PrecompiledExtensionBinding binding, Type liveType)
         {
@@ -246,7 +383,7 @@ namespace Heddle.Precompiled
             }
             else
             {
-                var resolved = PrecompiledTemplateInfo.FindLoadedType(row.StartType);
+                var resolved = PrecompiledTemplateInfo.FindLoadedTypeCached(row.StartType);
                 if (resolved == null)
                     return Fail(key, PrecompiledFallbackReason.MemberBindingMismatch,
                         "Type '" + row.StartType.Nominal() + "': manifest=" +
@@ -257,14 +394,13 @@ namespace Heddle.Precompiled
             var segments = new string[row.Segments.Count];
             for (int i = 0; i < segments.Length; i++)
                 segments[i] = row.Segments[i] ?? string.Empty;
-            var path = row.StartType.Nominal() + "." + string.Join(".", segments);
 
             var resolution = MemberPathResolver.TryResolve(start, segments);
             if (resolution == null || resolution.Kind == MemberPathResolutionKind.Failed)
             {
                 var index = resolution != null ? resolution.Index : 0;
                 return Fail(key, PrecompiledFallbackReason.MemberBindingMismatch,
-                    "Member '" + path + "': manifest=" + RecordedMemberNominal(row, index) +
+                    "Member '" + MemberPath(row, segments) + "': manifest=" + RecordedMemberNominal(row, index) +
                     " live=<unresolved>");
             }
 
@@ -278,7 +414,7 @@ namespace Heddle.Precompiled
                 {
                     if (h >= hopCount)
                         break;
-                    var detail = CompareHop(hops[h], path, segments[h],
+                    var detail = CompareHop(hops[h], row, segments, h,
                         properties[h].Item1, properties[h].Item2);
                     if (detail != null)
                         return Fail(key, PrecompiledFallbackReason.MemberBindingMismatch, detail);
@@ -288,8 +424,8 @@ namespace Heddle.Precompiled
                 {
                     if (HasRecordedIdentity(hops[h]))
                         return Fail(key, PrecompiledFallbackReason.MemberBindingMismatch,
-                            "Member '" + path + "': manifest=" + RecordedMemberNominal(row, h) +
-                            " live=<dynamic>");
+                            "Member '" + MemberPath(row, segments) + "': manifest=" +
+                            RecordedMemberNominal(row, h) + " live=<dynamic>");
                 }
 
                 return null;
@@ -297,7 +433,7 @@ namespace Heddle.Precompiled
 
             if (properties == null || properties.Count != segments.Length)
                 return Fail(key, PrecompiledFallbackReason.MemberBindingMismatch,
-                    "Member '" + path + "': manifest=" +
+                    "Member '" + MemberPath(row, segments) + "': manifest=" +
                     RecordedMemberNominal(row, properties != null ? properties.Count : 0) +
                     " live=<unresolved>");
 
@@ -305,7 +441,7 @@ namespace Heddle.Precompiled
             {
                 if (h >= hopCount)
                     break;
-                var detail = CompareHop(hops[h], path, segments[h],
+                var detail = CompareHop(hops[h], row, segments, h,
                     properties[h].Item1, properties[h].Item2);
                 if (detail != null)
                     return Fail(key, PrecompiledFallbackReason.MemberBindingMismatch, detail);
@@ -313,6 +449,12 @@ namespace Heddle.Precompiled
 
             return null;
         }
+
+        /// <summary>The diagnostic spelling of a recorded member path. Built where a failure is being reported
+        /// and nowhere else: every recorded row of every resolved entry passes through the walk above, and the
+        /// string only ever appears in a detail no passing row produces.</summary>
+        private static string MemberPath(CompiledMemberRow row, string[] segments) =>
+            row.StartType.Nominal() + "." + string.Join(".", segments);
 
         /// <summary>Compares one recorded hop against the live walk's answer for the same segment: the recorded
         /// name must be the walked segment, the recorded declaring type must match the receiver in type-ref form,
@@ -322,16 +464,17 @@ namespace Heddle.Precompiled
         /// member type: a recorded concrete type matches a live member whose erased <c>PropertyType</c> is the
         /// same (the loader compiles against the live member, attribute and all), and a recorded dynamic matches
         /// a live member carrying the attribute.</summary>
-        private static string CompareHop(CompiledMemberHop hop, string path,
-            string segment, Type liveDeclaring, PropertyInfo liveProperty)
+        private static string CompareHop(CompiledMemberHop hop, CompiledMemberRow row,
+            string[] segments, int index, Type liveDeclaring, PropertyInfo liveProperty)
         {
             if (hop == null)
                 return null;
+            var segment = segments[index];
             if (hop.MemberName != null && !string.Equals(hop.MemberName, segment, StringComparison.Ordinal))
-                return "Member '" + path + "': manifest=" + NominalOrUnknown(hop.MemberType) +
+                return "Member '" + MemberPath(row, segments) + "': manifest=" + NominalOrUnknown(hop.MemberType) +
                     " live=<unresolved>";
             if (hop.DeclaringType != null && !TypeRefMatches(hop.DeclaringType, liveDeclaring))
-                return "Member '" + path + "': manifest=" + hop.DeclaringType.Nominal() +
+                return "Member '" + MemberPath(row, segments) + "': manifest=" + hop.DeclaringType.Nominal() +
                     " live=" + AqnSansVersion(liveDeclaring);
             if (hop.MemberType != null)
             {
@@ -342,12 +485,12 @@ namespace Heddle.Precompiled
                 if (recordedDynamic)
                 {
                     if (!liveDynamic)
-                        return "Member '" + path + "': manifest=<dynamic>" +
+                        return "Member '" + MemberPath(row, segments) + "': manifest=<dynamic>" +
                             " live=" + (liveErase != null ? AqnSansVersion(liveErase) : AqnFormatter.Unknown);
                 }
                 else if (!TypeRefMatches(hop.MemberType, liveErase))
                 {
-                    return "Member '" + path + "': manifest=" + hop.MemberType.Nominal() +
+                    return "Member '" + MemberPath(row, segments) + "': manifest=" + hop.MemberType.Nominal() +
                         " live=" + (liveErase != null ? AqnSansVersion(liveErase) : AqnFormatter.Unknown);
                 }
             }

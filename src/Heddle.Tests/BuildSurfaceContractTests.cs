@@ -117,16 +117,16 @@ namespace Heddle.Tests
             Assert.True(PrecompiledSchema.IsSupported(PrecompiledSchema.CurrentSchemaVersion));
         }
 
-        /// <summary>The schema window restarted at the compiled form (phase 1): exactly one readable shape, so
+        /// <summary>The schema window restarted at the compiled form: exactly one readable shape, so
         /// the window is a point. Schemas 1–2 are released 2.x shapes the engine refuses; 3 is an unreleased
         /// number no artifact may carry.</summary>
         [Fact]
         public void SchemaConstantsPinTheCompiledFormWindow()
         {
-            Assert.Equal(4, PrecompiledSchema.CompiledFormSchemaVersion);
-            Assert.Equal(4, PrecompiledSchema.MinSupportedSchemaVersion);
-            Assert.Equal(4, PrecompiledSchema.MaxSupportedSchemaVersion);
-            Assert.Equal(4, PrecompiledSchema.CurrentSchemaVersion);
+            Assert.Equal(3, PrecompiledSchema.CompiledFormSchemaVersion);
+            Assert.Equal(3, PrecompiledSchema.MinSupportedSchemaVersion);
+            Assert.Equal(3, PrecompiledSchema.MaxSupportedSchemaVersion);
+            Assert.Equal(3, PrecompiledSchema.CurrentSchemaVersion);
 
             Assert.False(PrecompiledSchema.IsSupported(0));
             Assert.False(PrecompiledSchema.IsSupported(1));

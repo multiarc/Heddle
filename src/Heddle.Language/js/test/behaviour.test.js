@@ -1,7 +1,7 @@
 "use strict";
 
 /*
- * WS7 behaviour fixtures: bracket auto-close / skip-over.
+ * Behaviour fixtures: bracket auto-close / skip-over.
  *
  * Drives the Heddle bracket behaviour callbacks (`mode/behaviour/heddle.js`)
  * directly against a real Ace EditSession + a mock editor (see

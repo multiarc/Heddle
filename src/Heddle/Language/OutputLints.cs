@@ -10,8 +10,7 @@ namespace Heddle.Language
     /// <summary>
     /// The two warning-only document scans that read nothing but the working document, the parse spans and the
     /// effective output profile: the misread-brace lint and the HTML-context encoder lint. Neither needs a runtime
-    /// type, an extension instance or an expression tree, which is why both tiers can run them and why they live
-    /// here rather than in either compiler.
+    /// type, an extension instance or an expression tree, which is why they live here rather than in the compiler.
     /// <para>Both are strictly advisory — they never change a byte and never refuse a template.</para>
     /// </summary>
     internal static class OutputLints

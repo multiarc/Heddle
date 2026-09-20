@@ -535,59 +535,31 @@ namespace Heddle.Runtime.Expressions
             return Expression.Invoke(Expression.Constant(chosen.Target, chosen.Target.GetType()), finalArgs);
         }
 
-        /// <summary>
-        /// The reflection fact source for the shared overload ranker. The rank logic itself —
-        /// <c>ConversionRank</c>/<c>TryRank</c>/<c>Dominates</c> and the Pareto tier bind — now lives once in
-        /// <see cref="OverloadRank"/>, where the build consults the identical rule instead of
-        /// delegating overload selection to the consumer's C# compiler.
-        /// </summary>
-        private sealed class ReflectionRankModel : IRankModel<Type>
-        {
-            public static readonly ReflectionRankModel Instance = new ReflectionRankModel();
+        private static RankArgument ToRankArgument(Expression arg) =>
+            IsNullLiteral(arg) ? RankArgument.Null() : RankArgument.Of(arg.Type);
 
-            public bool AreSame(Type a, Type b) => a == b;
-
-            public bool IsObject(Type type) => type == typeof(object);
-
-            public bool IsValueType(Type type) => type.IsValueType;
-
-            public bool TryGetNullableUnderlying(Type type, out Type underlying)
-            {
-                underlying = Nullable.GetUnderlyingType(type);
-                return underlying != null;
-            }
-
-            public NumericKind KindOf(Type type) => NumericTable.FromClrType(type);
-
-            public bool IsReferenceAssignable(Type from, Type to) => to.IsAssignableFrom(from);
-        }
-
-        private static RankArgument<Type> ToRankArgument(Expression arg) =>
-            IsNullLiteral(arg) ? RankArgument<Type>.Null() : RankArgument<Type>.Of(arg.Type);
-
-        private static RankCandidate<Type> ToRankCandidate(FunctionEntry entry) =>
-            new RankCandidate<Type>(entry.ParameterTypes, entry.HasParamsArray, entry.ParamsElementType);
+        private static RankCandidate ToRankCandidate(FunctionEntry entry) =>
+            new RankCandidate(entry.ParameterTypes, entry.HasParamsArray, entry.ParamsElementType);
 
         private static BindOutcome BindOverload(IReadOnlyList<FunctionEntry> overloads, Expression[] args,
             out FunctionEntry chosen, out bool expanded)
         {
-            var rankArgs = new RankArgument<Type>[args.Length];
+            var rankArgs = new RankArgument[args.Length];
             for (int i = 0; i < args.Length; i++)
                 rankArgs[i] = ToRankArgument(args[i]);
             return BindOverload(overloads, rankArgs, out chosen, out expanded);
         }
 
-        /// <summary>The rank-argument form of the bind, shared with the precompiled tier's late-bound call site
-        /// so both tiers select the SAME overload through the SAME <see cref="OverloadRank"/> tiers over the same
-        /// reflection rank model.</summary>
+        /// <summary>The rank-argument form of the bind, so overload selection always goes through
+        /// <see cref="OverloadRank"/>'s tiers.</summary>
         internal static BindOutcome BindOverload(IReadOnlyList<FunctionEntry> overloads,
-            IReadOnlyList<RankArgument<Type>> rankArgs, out FunctionEntry chosen, out bool expanded)
+            IReadOnlyList<RankArgument> rankArgs, out FunctionEntry chosen, out bool expanded)
         {
-            var candidates = new RankCandidate<Type>[overloads.Count];
+            var candidates = new RankCandidate[overloads.Count];
             for (int i = 0; i < overloads.Count; i++)
                 candidates[i] = ToRankCandidate(overloads[i]);
 
-            var binding = OverloadRank.Bind(ReflectionRankModel.Instance, candidates, rankArgs);
+            var binding = OverloadRank.Bind(candidates, rankArgs);
             expanded = binding.Expanded;
             chosen = binding.Outcome == BindOutcome.Bound ? overloads[binding.Index] : null;
             return binding.Outcome;
@@ -596,7 +568,7 @@ namespace Heddle.Runtime.Expressions
         /// <summary>Conversion rank: exact = 0, widening/reference/lifting = 1, boxing to object = 2; -1 = none.</summary>
         private static int ConversionRank(Expression arg, Type parameterType)
         {
-            return OverloadRank.ConversionRank(ReflectionRankModel.Instance, ToRankArgument(arg), parameterType);
+            return OverloadRank.ConversionRank(ToRankArgument(arg), parameterType);
         }
 
         private static bool IsConvertibleTo(Expression arg, Type parameterType)
@@ -821,8 +793,7 @@ namespace Heddle.Runtime.Expressions
                 // HED1018: an integral or decimal division/modulo over CONSTANT operands with a zero divisor can
                 // only ever throw, so it fails the compile instead of arming a render-time DivideByZeroException.
                 // Scoped exactly the way C# scopes CS0020 — the whole expression constant, floating point excluded
-                // (1.0/0 folds to Infinity), a runtime divisor left to throw at render — and to what the build
-                // tier's ConstantFolding refuses, so the two tiers keep one verdict for one expression.
+                // (1.0/0 folds to Infinity), a runtime divisor left to throw at render.
                 if ((node.Operator == ExprOperator.Divide || node.Operator == ExprOperator.Modulo) &&
                     (NumericPromotion.IsIntegral(promoted) || promoted == typeof(decimal)) &&
                     IsConstantSubtree(node.Left) && IsConstantSubtree(node.Right) && DivisorIsZero(r, promoted))
@@ -846,9 +817,9 @@ namespace Heddle.Runtime.Expressions
             }
         }
 
-        /// <summary>Whether the node is a constant expression in C#'s sense — the same closure the build tier's
-        /// <c>ConstantFolding</c> walks: literals composed by unary, binary and conditional operators. Paths,
-        /// props and function calls are never constant, whatever they would evaluate to.</summary>
+        /// <summary>Whether the node is a constant expression in C#'s sense: literals composed by unary, binary
+        /// and conditional operators. Paths, props and function calls are never constant, whatever they would
+        /// evaluate to.</summary>
         private static bool IsConstantSubtree(ExprNode node)
         {
             switch (node)

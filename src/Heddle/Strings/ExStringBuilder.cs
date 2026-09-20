@@ -25,7 +25,9 @@ namespace Heddle.Strings {
         }
 
         static ExStringBuilder() {
-            // Defensively bind to FastAllocateString for zero-cost allocation; may not be available on all runtimes (AOT, trimmed, interpreted).
+            // Defensively bind to FastAllocateString for zero-cost allocation; may not be available on all runtimes
+            // (AOT, trimmed, interpreted). Match on name + single parameter only: that parameter is int on ≤net8
+            // and nint on net10+.
             Allocate bound = null;
             try
             {
