@@ -213,27 +213,72 @@ namespace Heddle.Runtime {
                 // Built on a copy and published at the end, so a rejected registration leaves the live registry
                 // untouched rather than half-applied.
                 var next = new Dictionary<string, Type>(_registry, StringComparer.Ordinal);
-                foreach (var type in toAdd.OrderBy(ext => ext.Replace))
+                Merge(next, toAdd);
+                Volatile.Write(ref _registry, next);
+            }
+        }
+
+        private static void Merge(Dictionary<string, Type> next, IEnumerable<ExtensionType> toAdd)
+        {
+            foreach (var type in toAdd.OrderBy(ext => ext.Replace))
+            {
+                if (type.Type == null || type.Name == null )
+                    throw new ArgumentException();
+
+                bool hasIncumbent = next.TryGetValue(type.Name, out var incumbent);
+                var verdict = ExtensionRegistrationRules.Resolve(hasIncumbent, type.Replace,
+                    hasIncumbent && incumbent.IsAssignableFrom(type.Type));
+
+                switch (verdict)
                 {
-                    if (type.Type == null || type.Name == null )
-                        throw new ArgumentException();
+                    case ExtensionRegistrationVerdict.Register:
+                        next.Add(type.Name, type.Type);
+                        break;
+                    case ExtensionRegistrationVerdict.Replace:
+                        next[type.Name] = type.Type;
+                        break;
+                    default:
+                        // Resolve never returns KeepIncumbent in this context.
+                        throw new TemplateOverrideException(
+                            $"Cannot override <{type.Name}> Extension, <{type.Type}> is not inherited from <{incumbent}>");
+                }
+            }
+        }
 
-                    bool hasIncumbent = next.TryGetValue(type.Name, out var incumbent);
-                    var verdict = ExtensionRegistrationRules.Resolve(hasIncumbent, type.Replace,
-                        hasIncumbent && incumbent.IsAssignableFrom(type.Type));
+        /// <summary>A copy of the registry as it stands — the base a tooling process layers a workspace's
+        /// exports over with <see cref="PublishLayers"/>.</summary>
+        internal static IReadOnlyDictionary<string, Type> CaptureRegistry()
+        {
+            return new Dictionary<string, Type>(Volatile.Read(ref _registry), StringComparer.Ordinal);
+        }
 
-                    switch (verdict)
+        /// <summary>Replaces the registry with <paramref name="baseline"/> plus each layer in order, in one
+        /// publication — how a language server swaps one workspace's exported extensions for another's without a
+        /// moment in which neither is registered, and without the previous workspace's names lingering. A layer
+        /// the registration rules reject is left out whole and reported through <paramref name="rejected"/>.
+        /// Only for a process that owns every registration made after the baseline was captured.</summary>
+        internal static void PublishLayers(IReadOnlyDictionary<string, Type> baseline,
+            IEnumerable<IReadOnlyList<ExtensionType>> layers, Action<IReadOnlyList<ExtensionType>, Exception> rejected)
+        {
+            if (baseline == null) throw new ArgumentNullException(nameof(baseline));
+            if (layers == null) throw new ArgumentNullException(nameof(layers));
+
+            lock (RegistrationLock)
+            {
+                var next = new Dictionary<string, Type>(StringComparer.Ordinal);
+                foreach (var pair in baseline)
+                    next.Add(pair.Key, pair.Value);
+                foreach (var layer in layers)
+                {
+                    var attempt = new Dictionary<string, Type>(next, StringComparer.Ordinal);
+                    try
                     {
-                        case ExtensionRegistrationVerdict.Register:
-                            next.Add(type.Name, type.Type);
-                            break;
-                        case ExtensionRegistrationVerdict.Replace:
-                            next[type.Name] = type.Type;
-                            break;
-                        default:
-                            // Resolve never returns KeepIncumbent in this context.
-                            throw new TemplateOverrideException(
-                                $"Cannot override <{type.Name}> Extension, <{type.Type}> is not inherited from <{incumbent}>");
+                        Merge(attempt, layer);
+                        next = attempt;
+                    }
+                    catch (Exception e) when (e is TemplateOverrideException || e is ArgumentException)
+                    {
+                        rejected?.Invoke(layer, e);
                     }
                 }
 

@@ -52,6 +52,98 @@ namespace Heddle.LanguageServices.Tests
             Assert.Equal(4, analysis.Diagnostics.Count(d => d.Id == "HED0001"));
         }
 
+        /// <summary>The document itself is a scope: its model is the <c>@model</c> type. Pins the omission where
+        /// only call bodies were scopes, so an expression written at the top level of a document was offered
+        /// functions and keywords but none of its model's members.</summary>
+        [Theory]
+        [InlineData("@model(){{Corpus.Blog}}\n@(§)")]
+        [InlineData("@model(){{Corpus.Blog}}\n@(§")]
+        [InlineData("@model(){{Corpus.Blog}}\n<h1>@(Title)</h1> @(§) tail")]
+        [InlineData("@model(){{Corpus.Blog}}\n@list(Articles){{ @(Title) }}\n@(§)")]
+        [InlineData("@(§)\n@model(){{Corpus.Blog}}")]
+        [InlineData("@model(){{Corpus.Blog}}\n@if(§)")]
+        [InlineData("@model(){{Corpus.Blog}}\n@(Title + §)")]
+        // Braces that open no body — in a string, a comment, a raw block, plain text, after an escape — and a
+        // body further down that is still being typed: none of them encloses this offset.
+        [InlineData("@model(){{Corpus.Blog}}\n@(\"{{\") @(§)")]
+        [InlineData("@model(){{Corpus.Blog}}\n@* {{ *@ @(§)")]
+        [InlineData("@model(){{Corpus.Blog}}\n@{ var t = '{{'; }@ @(§)")]
+        [InlineData("@model(){{Corpus.Blog}}\n<p>use {{ to open</p> @(§)")]
+        [InlineData("@model(){{Corpus.Blog}}\n@@{{ @(§)")]
+        [InlineData("@model(){{Corpus.Blog}}\n@(§)\n@list(Articles){{ @(Title)")]
+        public void DocumentLevelExpressionOffersTheModelsMembers(string marked)
+        {
+            var labels = Complete(marked);
+            Assert.Contains("Title", labels);
+            Assert.Contains("Articles", labels);
+            Assert.Contains("upper", labels);
+            Assert.Contains("this", labels);
+        }
+
+        [Fact]
+        public void DocumentLevelMemberAccessResolvesThePrefix()
+        {
+            var labels = Complete("@model(){{Corpus.Page}}\n@(Article.Author.§)");
+            Assert.Contains("Name", labels);
+            Assert.DoesNotContain("Title", labels);
+            Assert.Contains("Title", Complete("@model(){{Corpus.Page}}\n@(Article.§)"));
+        }
+
+        [Fact]
+        public void DocumentLevelHonoursTheHiddenMemberRule()
+        {
+            var labels = Complete("@model(){{Corpus.Account}}\n@(§)");
+            Assert.Contains("Owner", labels);
+            Assert.Contains("Number", labels);
+            Assert.DoesNotContain("Secret", labels);
+            Assert.DoesNotContain("Token", labels);
+            Assert.DoesNotContain("Pin", labels);
+            Assert.DoesNotContain("Code", labels);
+        }
+
+        /// <summary>A body is unclosed for as long as it is being typed, which is exactly when completion is asked
+        /// for: the cursor in it is offered the element's members, not the document's and not nothing.</summary>
+        [Theory]
+        [InlineData("@model(){{Corpus.Blog}}\n@list(Articles){{ @(§")]
+        [InlineData("@model(){{Corpus.Blog}}\n@list(Articles){{ <b>@(§)</b>")]
+        [InlineData("@model(){{Corpus.Blog}}\n@list(Articles){{ @(\"{{\") @(§) }}")]
+        public void ABodyStillBeingTypedOffersItsElementsMembers(string marked)
+        {
+            var labels = Complete(marked);
+            Assert.Contains("Author", labels);
+            Assert.DoesNotContain("Articles", labels);
+        }
+
+        [Fact]
+        public void DocumentWithNoModelOffersFunctionsButGuessesNoMembers()
+        {
+            var labels = Complete("plain @(§)");
+            Assert.Contains("upper", labels);
+            Assert.DoesNotContain("Title", labels);
+        }
+
+        /// <summary>The fallback is for the document level only. A body whose type the compiler did not record —
+        /// an abstract definition nobody calls — stays unknown: the document's model is not its model.</summary>
+        [Fact]
+        public void UncalledDefinitionBodyIsNotGivenTheDocumentsModel()
+        {
+            var labels = Complete("@%<panel>{{ @(§ }}%@\n@model(){{Corpus.Blog}}\n@(Title)");
+            Assert.DoesNotContain("Title", labels);
+            Assert.DoesNotContain("Articles", labels);
+        }
+
+        [Fact]
+        public void DocumentLevelHoverDescribesTheModelsMember()
+        {
+            var (text, offset) = CorpusFixture.At("@model(){{Corpus.Blog}}\n@(Ti§tle)");
+            using var service = CorpusFixture.NewTypedService();
+            service.Analyze(Path, text, 1);
+            var hover = service.GetHover(Path, offset);
+            Assert.NotNull(hover);
+            Assert.Contains("Title", hover.Markdown);
+            Assert.Contains("string", hover.Markdown);
+        }
+
         [Fact] // C02 — root members via ::
         public void C02_RootReferenceOffersRootMembers()
         {

@@ -212,14 +212,87 @@ namespace Heddle.Runtime.Expressions
         /// foreign <c>*.HiddenAttribute</c> in any other namespace still hides nothing.</summary>
         private static bool HasHidden(PropertyInfo property)
         {
-            foreach (var attribute in property.GetCustomAttributesData())
+            try
             {
-                if (string.Equals(attribute.AttributeType.FullName, HiddenAttributeFullName,
-                        StringComparison.Ordinal))
-                    return true;
-            }
+                foreach (var attribute in property.GetCustomAttributesData())
+                {
+                    if (string.Equals(attribute.AttributeType.FullName, HiddenAttributeFullName,
+                            StringComparison.Ordinal))
+                        return true;
+                }
 
+                return false;
+            }
+            catch (Exception ex) when (ex is TypeLoadException || ex is MissingMemberException ||
+                ex is System.IO.IOException || ex is BadImageFormatException)
+            {
+                // One attribute whose type or constructor cannot load — a model built against another version
+                // of something — and the runtime lists none of the member's attributes. The member stays
+                // hidden unless its metadata, read without loading anything, names no hidden attribute.
+                return !ProvablyCarriesNoHidden(property);
+            }
+        }
+
+        private static bool ProvablyCarriesNoHidden(PropertyInfo property)
+        {
+#if NET8_0_OR_GREATER
+            try
+            {
+                unsafe
+                {
+                    if (!System.Reflection.Metadata.AssemblyExtensions.TryGetRawMetadata(
+                            property.Module.Assembly, out byte* blob, out int length))
+                        return false;
+                    var reader = new System.Reflection.Metadata.MetadataReader(blob, length);
+                    var handle = System.Reflection.Metadata.Ecma335.MetadataTokens.EntityHandle(property.MetadataToken);
+                    if (handle.Kind != System.Reflection.Metadata.HandleKind.PropertyDefinition)
+                        return false;
+                    var definition = reader.GetPropertyDefinition(
+                        (System.Reflection.Metadata.PropertyDefinitionHandle) handle);
+                    foreach (var attributeHandle in definition.GetCustomAttributes())
+                    {
+                        var constructor = reader.GetCustomAttribute(attributeHandle).Constructor;
+                        System.Reflection.Metadata.EntityHandle declaring;
+                        if (constructor.Kind == System.Reflection.Metadata.HandleKind.MemberReference)
+                            declaring = reader.GetMemberReference(
+                                (System.Reflection.Metadata.MemberReferenceHandle) constructor).Parent;
+                        else if (constructor.Kind == System.Reflection.Metadata.HandleKind.MethodDefinition)
+                            declaring = reader.GetMethodDefinition(
+                                (System.Reflection.Metadata.MethodDefinitionHandle) constructor).GetDeclaringType();
+                        else
+                            return false;
+
+                        string fullName;
+                        if (declaring.Kind == System.Reflection.Metadata.HandleKind.TypeReference)
+                        {
+                            var type = reader.GetTypeReference((System.Reflection.Metadata.TypeReferenceHandle) declaring);
+                            fullName = reader.GetString(type.Namespace) + "." + reader.GetString(type.Name);
+                        }
+                        else if (declaring.Kind == System.Reflection.Metadata.HandleKind.TypeDefinition)
+                        {
+                            var type = reader.GetTypeDefinition((System.Reflection.Metadata.TypeDefinitionHandle) declaring);
+                            fullName = reader.GetString(type.Namespace) + "." + reader.GetString(type.Name);
+                        }
+                        else
+                        {
+                            return false;
+                        }
+
+                        if (string.Equals(fullName, HiddenAttributeFullName, StringComparison.Ordinal))
+                            return false;
+                    }
+
+                    return true;
+                }
+            }
+            catch (Exception ex) when (ex is BadImageFormatException || ex is InvalidOperationException ||
+                ex is NotSupportedException || ex is ArgumentException)
+            {
+                return false;
+            }
+#else
             return false;
+#endif
         }
 
         private static MemberAccess AccessOf(MethodBase getter)

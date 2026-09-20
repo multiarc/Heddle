@@ -60,6 +60,10 @@ namespace Heddle.Tool.Tests
             Assert.Contains("Generate(object model", result.Source);
             Assert.DoesNotContain(result.ModelFullName, result.Source);
             Assert.Contains("public static class", result.Source);
+            // Its sites cannot be printed either, and the notice says why and what to do.
+            Assert.Contains("HED7031", result.Stdout);
+            Assert.Contains("non-public type '" + result.ModelFullName + "'", result.Stdout);
+            Assert.Contains("make the model type and the members the template reads public", result.Stdout);
             AssertRenders(result);
         }
 
@@ -95,6 +99,7 @@ namespace Heddle.Tool.Tests
             internal Assembly Library;
             internal Assembly Consumer;
             internal string Template;
+            internal string Stdout;
         }
 
         private BuildResult Build(string consumerName, bool passConsumerName, string grantTo)
@@ -170,7 +175,8 @@ namespace Heddle.Tool.Tests
                 ModelFullName = ns + ".Secret",
                 Library = loadedLibrary,
                 Consumer = Assembly.Load(image.ToArray()),
-                Template = template
+                Template = template,
+                Stdout = stdout.ToString()
             };
         }
 

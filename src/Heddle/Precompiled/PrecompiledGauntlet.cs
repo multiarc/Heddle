@@ -373,14 +373,12 @@ namespace Heddle.Precompiled
         private static string NominalOrUnknown(CompiledTypeRef typeRef) =>
             typeRef != null ? typeRef.Nominal() : AqnFormatter.Unknown;
 
-        /// <summary>Structural type-ref comparison: a named ref by full name and, for a non-framework
-        /// assembly, the assembly simple name; a constructed generic by its definition and every argument
-        /// recursively (<c>Nullable&lt;T&gt;</c> is the constructed generic it is); an array by element and rank.
-        /// Never resolves by name and loads nothing.</summary>
-        /// <summary>The type-ref comparison: a Named ref by full name and, for a non-framework ref, its
-        /// assembly simple name (a framework ref's assembly name is advisory — System.Private.CoreLib at build,
-        /// mscorlib on net48); a constructed generic by its definition and every argument; an array by element
-        /// and rank. Shared by every place the engine compares a recorded identity to a live type.</summary>
+        /// <summary>The structural type-ref comparison: a named ref by full name and, for a non-framework ref,
+        /// its assembly simple name (a framework ref's assembly name is advisory — System.Private.CoreLib at
+        /// build, mscorlib on net48); a constructed generic by its definition and every argument, recursively
+        /// (<c>Nullable&lt;T&gt;</c> is the constructed generic it is); an array by element and rank. Never
+        /// resolves by name and loads nothing. Shared by every place the engine compares a recorded identity
+        /// to a live type.</summary>
         internal static bool TypeRefMatches(CompiledTypeRef recorded, Type live)
         {
             if (recorded == null || live == null)

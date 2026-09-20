@@ -64,7 +64,7 @@ namespace Heddle.Language
 
                 // Region default for this call site; a self-call inside the override body resolves to this site's base.
                 DefinitionItem regionDefault = null;
-                calleeDefinition?.Context?.DefinitionsBlock?.Definitions.TryGetValue(candidate.Name,
+                calleeDefinition?.Context?.DefinitionsBlock?.TryGet(candidate.Name,
                     out regionDefault);
                 if (regionDefault == null)
                 {

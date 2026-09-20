@@ -136,10 +136,13 @@
   <Target Name="_HeddleProbe"
           AfterTargets="BeforeCompile"
           BeforeTargets="_HeddleIntermediateCompile;_HeddleCompile"
-          DependsOnTargets="_HeddlePaths;_HeddleCollectImages;_HeddleEngineReference"
+          DependsOnTargets="_HeddlePaths;_HeddleItems;_HeddleCollectImages;_HeddleEngineReference"
           Condition="'$(DesignTimeBuild)' != 'true' and '$(BuildingProject)' == 'true' and '@(HeddleTemplate)' != ''">
+    <!-- Opted-out templates are passed as what they are: they bind no model at build time, so a model
+         only they name must not start the intermediate compile. -->
     <HeddleCompile
-        Templates="@(HeddleTemplate)"
+        Templates="@(_HeddleCompileItem)"
+        ImportOnly="@(_HeddleImportItem)"
         ProjectPath="$(MSBuildProjectFullPath)"
         TemplateRoot="$(HeddleTemplateRoot)"
         OutputProfile="$(HeddleOutputProfile)"
@@ -214,6 +217,12 @@
     </ItemGroup>
     <MakeDir Directories="$(_HeddleModelsDir)$(_HeddleDigest)" />
     <WriteLinesToFile File="$(_HeddleModelDigestPath)" Lines="$(_HeddleDigest)" Overwrite="true" WriteOnlyWhenDifferent="true" />
+    <ItemGroup>
+      <_HeddleModelDir Include="$([System.IO.Directory]::GetDirectories('$(_HeddleModelsDir)'))" />
+      <_HeddleStaleModelDir Include="@(_HeddleModelDir)" Condition="'%(Filename)%(Extension)' != '$(_HeddleDigest)'" />
+      <FileWrites Include="@(_HeddleIntermediateModel);$(_HeddleModelsDir)$(_HeddleDigest)/complete;$(_HeddleModelDigestPath);$(_HeddleStubsPath)" />
+    </ItemGroup>
+    <RemoveDir Directories="@(_HeddleStaleModelDir)" ContinueOnError="true" />
     <Delete Condition="'$(_HeddleImageUsable)' != 'true'" Files="$(_HeddleModelsDir)$(_HeddleDigest)/complete" />
     <Csc Condition="'$(_HeddleImageUsable)' != 'true'"
          Sources="@(_HeddleModelSources)"
@@ -235,14 +244,13 @@
          AnalyzerConfigFiles="@(EditorConfigFiles)"
          TreatWarningsAsErrors="false"
          WarningLevel="0"
-         OutputAssembly="@(_HeddleIntermediateModel)" />
+         OutputAssembly="@(_HeddleIntermediateModel)"
+         ContinueOnError="ErrorAndContinue" />
+    <!-- The compiler's errors stand as errors and the build fails; this only says whose pass they came from. -->
+    <Error Condition="'$(MSBuildLastTaskResult)' == 'false' and '$(_HeddleImageUsable)' != 'true'"
+           Code="HED7038" File="$(MSBuildProjectFullPath)"
+           Text="Heddle's intermediate model compile failed; the errors above are its compiler errors. It compiles the project's own sources once, ahead of the project's compile, because a template names a model type this project declares — so the project's own compile was not reached. Fix the errors above; or set Precompile=&quot;false&quot; on every template that binds such a model, in its own @model or through a library it imports, which then render through the dynamic path and need no model at build time; or declare the model types in a referenced project." />
     <Touch Condition="'$(_HeddleImageUsable)' != 'true'" Files="$(_HeddleModelsDir)$(_HeddleDigest)/complete" AlwaysCreate="true" />
-    <ItemGroup>
-      <_HeddleModelDir Include="$([System.IO.Directory]::GetDirectories('$(_HeddleModelsDir)'))" />
-      <_HeddleStaleModelDir Include="@(_HeddleModelDir)" Condition="'%(Filename)%(Extension)' != '$(_HeddleDigest)'" />
-      <FileWrites Include="@(_HeddleIntermediateModel);$(_HeddleModelsDir)$(_HeddleDigest)/complete;$(_HeddleModelDigestPath);$(_HeddleStubsPath)" />
-    </ItemGroup>
-    <RemoveDir Directories="@(_HeddleStaleModelDir)" ContinueOnError="true" />
   </Target>
 
   <!-- Design-time builds get compiling stubs and nothing else: no engine compile, image load,

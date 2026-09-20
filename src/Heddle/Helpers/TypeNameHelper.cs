@@ -169,7 +169,19 @@ namespace Heddle.Helpers
             return sb.ToString();
         }
 
-        private static string CreateEscapedIdentifier(string name)
+        /// <summary>A dotted name — a namespace — with each part that C# reserves escaped.</summary>
+        internal static string EscapeDottedName(string dotted)
+        {
+            if (string.IsNullOrEmpty(dotted))
+                return dotted;
+            var parts = dotted.Split('.');
+            for (int i = 0; i < parts.Length; i++)
+                parts[i] = parts[i].Length == 0 ? parts[i] : CreateEscapedIdentifier(parts[i].Trim());
+            return string.Join(".", parts);
+        }
+
+        /// <summary>The one escaping of an identifier every writer of C# source here goes through.</summary>
+        internal static string CreateEscapedIdentifier(string name)
         {
             // Identifiers starting with two underscores are reserved by C#.
             if (IsKeyword(name) || IsPrefixTwoUnderscore(name))
@@ -191,6 +203,67 @@ namespace Heddle.Helpers
         private static bool IsKeyword(string value)
         {
             return FixedStringLookup.Contains(Keywords, value, false);
+        }
+
+        /// <summary>
+        /// The spelling a C# compiler resolves from anywhere: <c>global::</c>-rooted, every enclosing type named,
+        /// each level's generic arguments spelled the same way, array ranks outermost first. Unlike
+        /// <see cref="GetBaseTypeOutput"/> — the display name, which messages and tests compare as text — this
+        /// one leans on no <c>using</c>: a nested type's simple name resolves through no namespace import, and
+        /// a generic argument's namespace may be imported nowhere.
+        /// </summary>
+        public static string GetCSharpReference(Type type)
+        {
+            if (type.IsArray)
+            {
+                var ranks = new System.Text.StringBuilder();
+                var innermost = type;
+                while (innermost.IsArray)
+                {
+                    ranks.Append('[').Append(',', innermost.GetArrayRank() - 1).Append(']');
+                    innermost = innermost.GetElementType();
+                }
+
+                return GetCSharpReference(innermost) + ranks;
+            }
+
+            if (type.IsGenericParameter)
+                return CreateEscapedIdentifier(type.Name);
+            if (type == typeof(void))
+                return "void";
+
+            var chain = new System.Collections.Generic.List<Type>();
+            for (var current = type; current != null; current = current.DeclaringType)
+                chain.Insert(0, current);
+            var arguments = type.GetTypeInfo().IsGenericType ? type.GetTypeInfo().GenericTypeArguments : new Type[0];
+            var sb = new System.Text.StringBuilder("global::");
+            if (!string.IsNullOrEmpty(type.Namespace))
+                sb.Append(EscapeDottedName(type.Namespace)).Append('.');
+
+            int consumed = 0;
+            for (int i = 0; i < chain.Count; i++)
+            {
+                string name = chain[i].Name;
+                int tick = name.IndexOf('`');
+                if (i > 0)
+                    sb.Append('.');
+                sb.Append(CreateEscapedIdentifier(tick < 0 ? name : name.Substring(0, tick)));
+                // A nested type carries the arguments of every enclosing type as one flat list; each level
+                // takes the slice its own arity adds.
+                int upTo = Math.Min(chain[i].GetTypeInfo().IsGenericType
+                    ? chain[i].GetTypeInfo().GenericTypeParameters.Length + chain[i].GetTypeInfo().GenericTypeArguments.Length
+                    : consumed, arguments.Length);
+                if (upTo > consumed)
+                {
+                    sb.Append('<');
+                    for (int a = consumed; a < upTo; a++)
+                        sb.Append(a > consumed ? ", " : string.Empty).Append(GetCSharpReference(arguments[a]));
+                    sb.Append('>');
+                    consumed = upTo;
+                }
+            }
+
+            return sb.ToString();
         }
 
         private static void GetTypeArgumentsOutput(Type[] typeArguments, int start, int length, ExStringBuilder sb)

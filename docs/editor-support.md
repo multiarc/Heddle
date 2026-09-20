@@ -83,7 +83,7 @@ against the parity test's own exclusion set, so it cannot quietly fall out of da
 | --- | --- |
 | `TemplateName` | Per‑document identity; the analyzer derives it from the file being analyzed. |
 | `FullPath` | Computed from `RootPath`/`TemplateName`/`FileNamePostfix` — not an input. |
-| `Functions` | A `FunctionRegistry` object with no literal JSON form; represented by `assemblies`, which the one‑shot export scan reads. |
+| `Functions` | A `FunctionRegistry` object with no literal JSON form; represented by `assemblies`, which the export scan reads each time the workspace loads. |
 | `Data` | Render input (the model instance); analysis compiles, never renders. |
 | `Encoder` | Render‑time output encoding, object‑valued; changes rendered bytes, never a diagnostic. |
 | `RenderBudget` | Per‑render resource limits, object‑valued; no lint depends on them. |
@@ -96,7 +96,7 @@ against the parity test's own exclusion set, so it cannot quietly fall out of da
 
 | Field | Meaning | Default |
 | --- | --- | --- |
-| `assemblies` | Model assemblies for typed completion/hover, **and** the input of the one‑shot export scan (see below). Relative to the workspace root. | none |
+| `assemblies` | Model assemblies for typed completion/hover, **and** the input of the export scan (see below). List your own assemblies; one of the engine's own assemblies listed here (the engine, its language assembly, the ANTLR runtime — a glob over an output directory picks them up) is skipped and logged, never loaded. Relative to the workspace root. | none |
 | `rootPath` | Template root for `@<<` import and `@partial` resolution (`TemplateOptions.RootPath`). | the workspace root |
 | `outputProfile` | `text` or `html` — so diagnostics match your host's compile options. | `html` |
 | `expressionMode` | `memberPathsOnly` / `native` / `fullCSharp`. | `native` |
@@ -121,14 +121,27 @@ The VS Code extension contributes mirror settings (`heddle.model.assemblies`,
 `heddle.compile.maxRecursionCount`, plus `heddle.server.path` and `heddle.trace.server`) and
 forwards them to the server.
 
+**The server's engine is the only engine.** A build output directory has a `Heddle.dll` beside your
+models; the server never loads it — not as a dependency, and not when `assemblies` names it outright (the path is skipped with one log line). Your assemblies' references to the engine resolve to the engine
+the server itself runs, so `[Hidden]`, `[ExportFunctions]`, `[ExportExtensions]` and extension base
+classes mean to the editor what they mean at run time. If your project is built against a different
+Heddle version than the installed server, the server still uses its own and writes one line to its
+log (`window/logMessage`) naming your assembly and both versions: completions and diagnostics then
+follow the **server's** version, so keep the tool version-pinned to the package you build with.
+
+**Completion and hover work at the top level of a document** as they do inside a body: an expression
+outside every `{{ … }}` sees the `@model` type's members (wherever in the file the directive is
+written), filtered by the same hidden-member rule the compiler applies. A document with no `@model`
+is dynamic, so it gets functions and keywords but no guessed members.
+
 **Types are stale until rebuild.** The editor loads your model assemblies as they are on disk;
 rebuild your project to pick up type changes.
 
-## Host registrations reach the editor via one scan
+## Host registrations reach the editor via the export scan
 
 The server process never runs your host's startup code, so functions and extensions you register at
 runtime are invisible to it *unless they are declared in the assembly*. At workspace load the editor
-runs a **one‑shot scan** of the configured `assemblies`:
+scans the configured `assemblies`, and scans again whenever they are reconfigured or reloaded:
 
 - Assembly‑level [`[ExportExtensions]`](custom-extensions.md#registering-your-extensions) — the
   exported extensions become offerable names and their calls stop drawing "unknown extension".
@@ -149,10 +162,12 @@ which model assemblies to load; the build tier is told by a reference, which
 `HeddleTemplate.Register` reads at startup. Declaring it once covers the run and build tiers; point
 `assemblies` at the same DLLs and all three agree about what `@model Foo` names.
 
-**The scan is one‑shot per server process.** A new export, a changed extension body, or an
-`assemblies` change after load requires a **server restart** (VS Code: *Heddle: Restart Language
-Server*). Consider a dedicated export assembly so an extension/function export never pulls model
-types into two load contexts.
+**Exports follow the configured assemblies.** They are read from the same loaded copies the model
+types come from, every time the workspace loads: changing `assemblies` — in `.heddle-lsp.json` or the
+client settings — rescans, offers the new workspace's extensions and functions, and drops the previous
+one's; no restart is needed. A workspace built against a different engine version than the server's
+is served by the server's engine (the log says so once); an export or member that needs something the
+server's engine does not have is skipped and named in the log, and the rest keeps working.
 
 **Delegate‑only registrations stay host‑only.** A purely runtime `Register(name, delegate)` closure
 cannot be discovered by scanning metadata; its calls draw an editor‑only "unknown function" even
@@ -171,7 +186,7 @@ installed the extension still colors `.heddle` files from the grammar — no con
 | "the .NET 10 runtime was not found" | Install the .NET 10 runtime. |
 | Types don't complete | No `assemblies` configured, or the project was not rebuilt. Check the paths in `.heddle-lsp.json`. |
 | A definition/prop shows stale types | Rebuild — model types update on rebuild, not on source edit. |
-| An extension or function is not offered | The export attribute is missing, the method is not an eligible public static, or the server needs a restart to rescan. Exported names are the **lowercase** method names; lookup is ordinal and case‑sensitive. |
+| An extension or function is not offered | The export attribute is missing, the method is not an eligible public static, or the assembly that exports it is not in `assemblies`. The server's log (`window/logMessage`) names every export it skipped and why. Exported names are the **lowercase** method names; lookup is ordinal and case‑sensitive. |
 
 ## Precompilation notes
 

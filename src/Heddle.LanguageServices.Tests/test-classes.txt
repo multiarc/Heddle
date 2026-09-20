@@ -2,8 +2,10 @@
 # Set-equality asserted by TestClassInventoryTests. A class added or removed here is the diff a
 # reviewer reads; nothing in this file measures how many tests a class carries.
 Heddle.LanguageServices.Tests.AliasTypeProjectionTests
+Heddle.LanguageServices.Tests.CompletionScalingTests
 Heddle.LanguageServices.Tests.DemoContractTests
 Heddle.LanguageServices.Tests.DiagnosticProjectionCorpusLspTests
+Heddle.LanguageServices.Tests.EngineIdentityUnificationTests
 Heddle.LanguageServices.Tests.ExportScanTests
 Heddle.LanguageServices.Tests.LanguageServiceCompletionTests
 Heddle.LanguageServices.Tests.LanguageServiceDefinitionTests
@@ -15,7 +17,9 @@ Heddle.LanguageServices.Tests.PositionMappingTests
 Heddle.LanguageServices.Tests.ProtocolContractTests
 Heddle.LanguageServices.Tests.RegionProjectionTests
 Heddle.LanguageServices.Tests.RenderPathTests
+Heddle.LanguageServices.Tests.RequestResilienceTests
 Heddle.LanguageServices.Tests.ServerLifecycleTests
 Heddle.LanguageServices.Tests.TestClassInventoryTests
 Heddle.LanguageServices.Tests.WorkspaceConfigTests
 Heddle.LanguageServices.Tests.WorkspaceOptionParityTests
+Heddle.LanguageServices.Tests.WorkspaceResilienceTests

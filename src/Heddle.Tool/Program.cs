@@ -16,6 +16,7 @@ namespace Heddle.Tool
             // What a build writes must not depend on the machine's regional settings.
             System.Globalization.CultureInfo.DefaultThreadCurrentCulture = System.Globalization.CultureInfo.InvariantCulture;
             System.Globalization.CultureInfo.CurrentCulture = System.Globalization.CultureInfo.InvariantCulture;
+            Compile.ImageLoadContext.ProcessEndsWithTheInvocation = true;
             return Run(args, Console.Out, Console.Error);
         }
 

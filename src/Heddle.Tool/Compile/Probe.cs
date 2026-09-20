@@ -44,6 +44,18 @@ namespace Heddle.Tool.Compile
                     unresolved.Add(spelling);
             }
 
+            // An import replays the imported text inside the importer, its model directive included: a
+            // compiled template binds whatever model a library it imports declares, whether or not that
+            // library is itself compiled. A library no compiled template reaches binds nothing at build time.
+            foreach (var text in ImportedTexts(request, templates))
+            {
+                string spelling = ScanModelDirective(text);
+                if (!string.IsNullOrEmpty(spelling) &&
+                    images.ResolveModelType(spelling, ScanUsingDirectives(text)) == null &&
+                    seenUnresolved.Add(spelling))
+                    unresolved.Add(spelling);
+            }
+
             var json = new StringBuilder();
             json.Append("{\"stubs\":[");
             for (int i = 0; i < stubs.Count; i++)
@@ -108,6 +120,91 @@ namespace Heddle.Tool.Compile
 
                 at += "@model".Length;
             }
+        }
+
+        /// <summary>The text of everything the compiled templates import, transitively — item rows by key or
+        /// registered name, then the template root on disk, as the compile itself resolves a spelling.</summary>
+        private static List<string> ImportedTexts(CompileRequest request, IReadOnlyList<TemplateInput> templates)
+        {
+            var byName = new Dictionary<string, TemplateInput>(System.StringComparer.Ordinal);
+            foreach (var template in templates)
+            {
+                if (template.Key != null && !byName.ContainsKey(template.Key))
+                    byName.Add(template.Key, template);
+                if (!string.IsNullOrEmpty(template.Item.Name) &&
+                    Heddle.Precompiled.TemplateKey.TryNormalize(template.Item.Name, out string alias) &&
+                    !byName.ContainsKey(alias))
+                    byName.Add(alias, template);
+            }
+
+            var texts = new List<string>();
+            var visited = new HashSet<string>(System.StringComparer.Ordinal);
+            var pending = new Queue<string>();
+            foreach (var template in templates)
+                if (!template.Item.IsImportOnly)
+                    pending.Enqueue(template.Text);
+            while (pending.Count > 0)
+            {
+                foreach (string spelling in ScanImports(pending.Dequeue()))
+                {
+                    if (!visited.Add(spelling))
+                        continue;
+                    string text = null;
+                    if (Heddle.Precompiled.TemplateKey.TryNormalize(spelling, out string key) &&
+                        byName.TryGetValue(key, out var row))
+                    {
+                        text = row.Text;
+                    }
+                    else
+                    {
+                        try
+                        {
+                            string path = Path.Combine(request.Root ?? string.Empty, spelling);
+                            if (File.Exists(path))
+                                text = File.ReadAllText(path);
+                        }
+                        catch (System.Exception ex) when (ex is IOException || ex is System.UnauthorizedAccessException ||
+                            ex is System.ArgumentException || ex is System.NotSupportedException)
+                        {
+                            // The real compile reports an import it cannot read.
+                        }
+                    }
+
+                    if (text == null)
+                        continue;
+                    texts.Add(text);
+                    pending.Enqueue(text);
+                }
+            }
+
+            return texts;
+        }
+
+        /// <summary>Every <c>@&lt;&lt;{{path}}</c> import spelling in the text, in order.</summary>
+        internal static List<string> ScanImports(string text)
+        {
+            var imports = new List<string>();
+            if (string.IsNullOrEmpty(text))
+                return imports;
+            int at = 0;
+            while ((at = text.IndexOf("@<<", at, System.StringComparison.Ordinal)) >= 0)
+            {
+                int j = SkipWhitespace(text, at + 3);
+                if (j + 1 < text.Length && text[j] == '{' && text[j + 1] == '{')
+                {
+                    int end = text.IndexOf("}}", j + 2, System.StringComparison.Ordinal);
+                    if (end > j)
+                    {
+                        string spelling = text.Substring(j + 2, end - j - 2);
+                        if (spelling.Length != 0)
+                            imports.Add(spelling);
+                    }
+                }
+
+                at += 3;
+            }
+
+            return imports;
         }
 
         /// <summary>Every <c>@using(){{Namespace}}</c> directive spelling in the text, in order — the imports

@@ -535,7 +535,8 @@ text anyway). Use it to prune a DTO, but treat the DTO's *shape* as the real bou
 **The most‑derived declaration of a name decides.** Resolution walks the model type and then its base
 classes, and stops at the first type that declares the name at all. If that declaration is a visible
 property, it binds; if it is anything else — a `[Hidden]` `override`, a `[Hidden]` or non‑public or
-`static` `new` property, a set‑only or `private` property, a field or method of that name — the name is
+`static` `new` property, a set‑only or `private` property, a field, method, event or nested type of
+that name — the name is
 *not found*, and the base class's
 visible property of the same name is **not** used instead. (It could not safely be: an overridden getter
 dispatches to the derived implementation, which is exactly the value the derived type hid.) The same

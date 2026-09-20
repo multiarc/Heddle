@@ -53,7 +53,7 @@ namespace Heddle.Benchmarks.Dotnet.Bench
             typeof(LanguageServiceBenchmarks),
         };
 
-        public static Type[] ColdTypes => new[] { typeof(ColdCompileBenchmarks) };
+        public static Type[] ColdTypes => new[] { typeof(ColdCompileBenchmarks), typeof(DefinitionScalingBenchmarks) };
 
         /// <summary>Runs one verb's types. Returns the process exit code.</summary>
         public static int Run(string verb, Type[] types, string[] args)

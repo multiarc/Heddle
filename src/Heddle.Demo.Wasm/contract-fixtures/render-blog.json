@@ -1,6 +1,6 @@
 {
   "name": "render-blog",
-  "description": "The blog starter renders live under OutputProfile.Html + ExpressionMode.Native against the deterministic canned Blog. The pinned fragments are the render golden the browser smoke test (S4) also asserts.",
+  "description": "The blog starter renders live under OutputProfile.Html + ExpressionMode.Native against the deterministic canned Blog. The pinned fragments are the render golden the browser smoke test also asserts.",
   "type": "render",
   "useStarter": "blog",
   "version": 1,

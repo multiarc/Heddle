@@ -556,7 +556,7 @@ namespace Heddle.Precompiled.CompiledForm
             if (!_items.TryGetValue(item, out form))
             {
                 form = new FormItem(item.Position, item.ParameterTemplate);
-                foreach (var key in context.DefinitionsBlock.Definitions.Keys)
+                foreach (var key in context.DefinitionsBlock.Names())
                     form.VisibleDefKeys.Add(key);
                 _items.Add(item, form);
             }
@@ -848,7 +848,7 @@ namespace Heddle.Precompiled.CompiledForm
         internal FormDocument BeginDocument(ParseContext parseContext, string rawText, string shapedText,
             List<DocumentElement> elements)
         {
-            var definitions = new List<string>(parseContext.DefinitionsBlock.Definitions.Keys);
+            var definitions = parseContext.DefinitionsBlock.Names();
             var facts = new FormParseFacts(parseContext.Offset, parseContext.InDefintionContext, definitions);
             var recorded = new List<FormElement>(elements.Count);
             var emitted = new HashSet<FormItem>();
@@ -978,7 +978,7 @@ namespace Heddle.Precompiled.CompiledForm
         internal int AppendSynthesizedDocument(ParseContext parseContext)
         {
             var facts = new FormParseFacts(parseContext.Offset, parseContext.InDefintionContext,
-                new List<string>(parseContext.DefinitionsBlock.Definitions.Keys));
+                parseContext.DefinitionsBlock.Names());
             var document = new FormDocument(string.Empty, string.Empty, facts, new List<FormElement>());
             _documents.Add(document);
             return _documents.Count - 1;

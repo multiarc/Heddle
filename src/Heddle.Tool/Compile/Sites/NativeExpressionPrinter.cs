@@ -696,7 +696,7 @@ namespace Heddle.Tool.Compile.Sites
                 generic = "<" + string.Join(", ", spelled) + ">";
             }
 
-            text = declaring + "." + method.Name + generic + "(" + string.Join(", ", arguments) + ")";
+            text = declaring + "." + Heddle.Helpers.TypeNameHelper.CreateEscapedIdentifier(method.Name) + generic + "(" + string.Join(", ", arguments) + ")";
             return true;
         }
 
@@ -751,7 +751,7 @@ namespace Heddle.Tool.Compile.Sites
                 return false;
             }
 
-            text = Operand(node.Expression, receiver) + "." + property.Name;
+            text = Operand(node.Expression, receiver) + "." + Heddle.Helpers.TypeNameHelper.CreateEscapedIdentifier(property.Name);
             return true;
         }
 

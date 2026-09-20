@@ -20,14 +20,12 @@ namespace Heddle.Runtime.Expressions
             return NumericTable.IsImplicit(NumericTable.FromClrType(from), NumericTable.FromClrType(to));
         }
 
-        /// <summary>Binary numeric promotion; returns the promoted type or <c>false</c> for illegal mixes
-        /// (decimal with float/double, ulong with signed integral).</summary>
-        // A promotion to decimal converts through System.Decimal's user-defined conversion operators,
-        // which System.Linq.Expressions resolves by reflection when the tree is built; a trimmed publish keeps
-        // them only if something roots them, and this is the one place that decides decimal is a target.
         /// <summary>Binary numeric promotion. Returns the promoted type, or <c>false</c> for the illegal
         /// mixes (decimal with float or double; ulong with a signed integral), which the caller reports
         /// as HED1008.</summary>
+        // A promotion to decimal converts through System.Decimal's user-defined conversion operators,
+        // which System.Linq.Expressions resolves by reflection when the tree is built; a trimmed publish keeps
+        // them only if something roots them, and this is the one place that decides decimal is a target.
         [DynamicDependency(DynamicallyAccessedMemberTypes.PublicMethods, typeof(decimal))]
         public static bool TryPromote(Type left, Type right, out Type promoted)
         {

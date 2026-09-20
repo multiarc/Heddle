@@ -27,6 +27,38 @@ namespace Heddle.Tool.Tests
         public string Secret { internal get; set; }
     }
 
+    namespace @event
+    {
+        public class RoundtripOrder
+        {
+            public string Name { get; set; }
+        }
+    }
+
+    public class RoundtripKeywords
+    {
+        public string @event { get; set; }
+
+        public RoundtripKeywords @class { get; set; }
+    }
+
+    public class RoundtripOuter
+    {
+        public class Inner
+        {
+            public string Value { get; set; }
+        }
+    }
+
+    public class RoundtripShelf<T>
+    {
+        public class Slot<U>
+        {
+            public T Owner { get; set; }
+            public U Item { get; set; }
+        }
+    }
+
     public class RoundtripOrder
     {
         public RoundtripCustomer Customer { get; set; }
@@ -167,6 +199,127 @@ namespace Heddle.Tool.Tests
             }
         }
 
+        /// <summary>Embedded C# over a nested and a nested-generic model: the build's printed class, and the
+        /// engine's own class when the dynamic tier compiles the same text, both have to name the type in
+        /// full — a nested type's simple name resolves through no <c>using</c>.</summary>
+        [Fact]
+        public void CSharpSitesOverNestedAndNestedGenericModelsServeFromTableWithParity()
+        {
+            string key = "rt-" + Guid.NewGuid().ToString("N");
+            string nestedText = "Deep: @(@model.Value.ToUpper())|@(@model.Value.Length + 1)\n";
+            string genericText = "Slot: @(@model.Owner + model.Item.Value)\n";
+            string nested = WriteTemplate("nested.heddle", nestedText);
+            string generic = WriteTemplate("generic.heddle", genericText);
+            string rsp = WriteRsp("--project", Project(), "--root", _dir,
+                "--output-profile", "Text", "--expression-mode", "FullCSharp",
+                "--template", nested + "|" + key + "-nested||" + typeof(RoundtripOuter.Inner).AssemblyQualifiedName + "|",
+                "--template", generic + "|" + key + "-generic||" +
+                    typeof(RoundtripShelf<string>.Slot<RoundtripOuter.Inner>).AssemblyQualifiedName + "|",
+                "--artifact-out", Out("form.bin"), "--source-out", Out("gen.g.cs"),
+                "--stamp", Out("stamp.txt"));
+            var result = Run("compile", "@" + rsp);
+            Assert.True(result.Exit == 0, "exit " + result.Exit + "\nSTDOUT:\n" + result.Stdout + "\nSTDERR:\n" + result.Stderr);
+            Assert.DoesNotContain("HED7031", result.Stdout);
+
+            var loaded = CompileAndLoad(Out("gen.g.cs"), Out("form.bin"));
+            Heddle.Precompiled.PrecompiledTemplates.Register(loaded);
+            AppContext.SetSwitch("Heddle.Precompiled.StrictLoad", true);
+            try
+            {
+                var strict = new Heddle.Data.TemplateOptions("strict-nested");
+                strict.ExpressionMode = Heddle.Data.ExpressionMode.FullCSharp;
+                Heddle.Precompiled.PrecompiledTemplates.DefaultOptions = strict;
+                var inner = new RoundtripOuter.Inner { Value = "deep" };
+                AssertParity(loaded, key + "-nested", nestedText, inner, "Text", "FullCSharp");
+                AssertParity(loaded, key + "-generic", genericText,
+                    new RoundtripShelf<string>.Slot<RoundtripOuter.Inner> { Owner = "o:", Item = inner },
+                    "Text", "FullCSharp");
+            }
+            finally
+            {
+                AppContext.SetSwitch("Heddle.Precompiled.StrictLoad", false);
+                Heddle.Precompiled.PrecompiledTemplates.DefaultOptions = _savedDefaultOptions;
+            }
+        }
+
+        /// <summary>Members named like C# keywords — legal in metadata, and spelled bare in a template — through
+        /// both printers that write a member name: the member-path accessor and the expression printer. Pins the
+        /// regression where the name went out unescaped and the consumer's build stopped on generated source.</summary>
+        [Fact]
+        public void MembersNamedLikeKeywordsPrintEscapedAndServeFromTableWithParity()
+        {
+            string key = "rt-" + Guid.NewGuid().ToString("N");
+            string text = "A: @(event) B: @(class.event) C: @(event + \"!\") D: @(class.event.Length + 1)\n";
+            string template = WriteTemplate("keywords.heddle", text);
+            string rsp = WriteRsp("--project", Project(), "--root", _dir,
+                "--output-profile", "Text", "--expression-mode", "Native",
+                "--template", template + "|" + key + "||" + typeof(RoundtripKeywords).AssemblyQualifiedName + "|",
+                "--artifact-out", Out("form.bin"), "--source-out", Out("gen.g.cs"),
+                "--stamp", Out("stamp.txt"));
+            var result = Run("compile", "@" + rsp);
+            Assert.True(result.Exit == 0, "exit " + result.Exit + "\nSTDOUT:\n" + result.Stdout + "\nSTDERR:\n" + result.Stderr);
+            Assert.DoesNotContain("HED7031", result.Stdout);
+            Assert.Contains(".@event", File.ReadAllText(Out("gen.g.cs")));
+            Assert.Contains(".@class", File.ReadAllText(Out("gen.g.cs")));
+
+            var loaded = CompileAndLoad(Out("gen.g.cs"), Out("form.bin"));
+            Heddle.Precompiled.PrecompiledTemplates.Register(loaded);
+            AppContext.SetSwitch("Heddle.Precompiled.StrictLoad", true);
+            try
+            {
+                Heddle.Precompiled.PrecompiledTemplates.DefaultOptions = new Heddle.Data.TemplateOptions("strict-keywords");
+                AssertParity(loaded, key, text,
+                    new RoundtripKeywords { @event = "e", @class = new RoundtripKeywords { @event = "inner" } },
+                    "Text", "Native");
+            }
+            finally
+            {
+                AppContext.SetSwitch("Heddle.Precompiled.StrictLoad", false);
+                Heddle.Precompiled.PrecompiledTemplates.DefaultOptions = _savedDefaultOptions;
+            }
+        }
+
+        /// <summary>A namespace with a part C# reserves — <c>Shop.event</c> is an ordinary name in metadata and in a
+        /// template — under the C# tier, which imports the model's namespace, and with the generated namespace
+        /// itself so named. Pins the regression where both went out bare, <c>using Shop.event;</c>, and the
+        /// consumer's build stopped on generated source.</summary>
+        [Fact]
+        public void ANamespaceNamedLikeAKeywordPrintsEscapedUnderTheCSharpTier()
+        {
+            string key = "rt-" + Guid.NewGuid().ToString("N");
+            string text = "@using(){{Heddle.Tool.Tests.event}}Order: @(@model.Name.ToUpper())\n";
+            string template = WriteTemplate("kwns.heddle", text);
+            string rsp = WriteRsp("--project", Project(), "--root", _dir,
+                "--output-profile", "Text", "--expression-mode", "FullCSharp",
+                "--generated-namespace", "Generated.class.Pages",
+                "--template", template + "|" + key + "||" + typeof(@event.RoundtripOrder).AssemblyQualifiedName + "|",
+                "--artifact-out", Out("form.bin"), "--source-out", Out("gen.g.cs"),
+                "--stamp", Out("stamp.txt"));
+            var result = Run("compile", "@" + rsp);
+            Assert.True(result.Exit == 0, "exit " + result.Exit + "\nSTDOUT:\n" + result.Stdout + "\nSTDERR:\n" + result.Stderr);
+            Assert.DoesNotContain("HED7031", result.Stdout);
+            string generated = File.ReadAllText(Out("gen.g.cs"));
+            Assert.Contains("using Heddle.Tool.Tests.@event;", generated);
+            Assert.DoesNotContain("Tests.event", generated);
+            Assert.Contains("namespace Generated.@class.Pages", generated);
+
+            var loaded = CompileAndLoad(Out("gen.g.cs"), Out("form.bin"));
+            Heddle.Precompiled.PrecompiledTemplates.Register(loaded);
+            AppContext.SetSwitch("Heddle.Precompiled.StrictLoad", true);
+            try
+            {
+                var strict = new Heddle.Data.TemplateOptions("strict-kwns");
+                strict.ExpressionMode = Heddle.Data.ExpressionMode.FullCSharp;
+                Heddle.Precompiled.PrecompiledTemplates.DefaultOptions = strict;
+                AssertParity(loaded, key, text, new @event.RoundtripOrder { Name = "ada" }, "Text", "FullCSharp");
+            }
+            finally
+            {
+                AppContext.SetSwitch("Heddle.Precompiled.StrictLoad", false);
+                Heddle.Precompiled.PrecompiledTemplates.DefaultOptions = _savedDefaultOptions;
+            }
+        }
+
         [Fact]
         public void DeclinedSiteIsListedAndRebuildsFromData()
         {
@@ -182,6 +335,10 @@ namespace Heddle.Tool.Tests
             Assert.True(result.Exit == 0, "exit " + result.Exit + "\nSTDOUT:\n" + result.Stdout + "\nSTDERR:\n" + result.Stderr);
             Assert.Contains("HED7031", result.Stdout);
             Assert.Contains("rebuilt at load", result.Stdout);
+            // The notice says why the site was declined and what the author can do about it.
+            Assert.Contains("'Secret' is not a public instance property", result.Stdout);
+            Assert.Contains("strict-load", result.Stdout);
+            Assert.Contains("make the model type and the members the template reads public", result.Stdout);
 
             // The declined site still renders through the data path, byte-identical.
             var loaded = CompileAndLoad(Out("gen.g.cs"), Out("form.bin"));
@@ -321,7 +478,8 @@ namespace Heddle.Tool.Tests
 
         private static Type WrapperType(Assembly loaded, string key)
         {
-            var wrapper = loaded.GetType("Heddle.Generated." + SanitizeName.ForKey(key));
+            var wrapper = loaded.GetType("Heddle.Generated." + SanitizeName.ForKey(key)) ??
+                          loaded.GetType("Generated.class.Pages." + SanitizeName.ForKey(key));
             if (wrapper == null)
                 throw new InvalidOperationException("No wrapper class for '" + key + "'.");
             return wrapper;

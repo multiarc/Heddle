@@ -352,6 +352,12 @@ namespace Heddle.Data
         /// warning under this id, not a fact per option.</para></summary>
         public const string BuildRetiredPropertySet = "HED7037";
 
+        /// <summary>The build's intermediate model compile — the one compiler run over the project's own sources
+        /// that lets templates bind a model type the project itself declares — failed. Raised by the
+        /// <c>Heddle.Build</c> targets after the compiler's own errors, to say whose pass they came from, that
+        /// the project's own compile was not reached, and what the author can do.</summary>
+        public const string BuildIntermediateCompileFailed = "HED7038";
+
         /// <summary>A precompiled entry failed the run-time gauntlet, so the render degrades to the dynamic
         /// tier (carried on <c>PrecompiledFallbackEvent.DiagnosticId</c>).</summary>
         public const string PrecompiledGauntletFallback = "HED7101";

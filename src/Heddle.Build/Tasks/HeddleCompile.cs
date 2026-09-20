@@ -146,8 +146,31 @@ namespace Heddle.Build.Tasks
                 if (_outputTail.Count == OutputTailLines)
                     _outputTail.Dequeue();
                 _outputTail.Enqueue(singleLine);
+
+                // MSBuild's canonical format knows errors and warnings; a diagnostic of any other severity
+                // would go out as the host's raw output, at an importance no ordinary build prints. A notice
+                // carrying an id is something its author asked to be told: once per template, as a message.
+                var notice = InfoDiagnostic.Match(singleLine);
+                if (notice.Success)
+                {
+                    Log.LogMessage(null, notice.Groups["code"].Value, null, notice.Groups["file"].Value,
+                        Number(notice.Groups["line"]), Number(notice.Groups["column"]),
+                        Number(notice.Groups["endLine"]), Number(notice.Groups["endColumn"]),
+                        MessageImportance.High, "{0}", notice.Groups["message"].Value);
+                    return;
+                }
             }
             base.LogEventsFromTextOutput(singleLine, messageImportance);
+        }
+
+        private static readonly System.Text.RegularExpressions.Regex InfoDiagnostic =
+            new System.Text.RegularExpressions.Regex(
+                @"^(?<file>.*?)(\((?<line>\d+),(?<column>\d+)(,(?<endLine>\d+),(?<endColumn>\d+))?\))?: info (?<code>HED\d{4}): (?<message>.*)$",
+                System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+
+        private static int Number(System.Text.RegularExpressions.Group group)
+        {
+            return group.Success && int.TryParse(group.Value, out int value) ? value : 0;
         }
 
         protected override bool HandleTaskExecutionErrors()

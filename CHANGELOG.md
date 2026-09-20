@@ -231,6 +231,94 @@ window's ratification remain in
 
 ### Fixed
 
+- **The language server no longer loads a second engine, and offers members at the top level of a
+  document.** A `Heddle.dll` beside the workspace's model assemblies was loaded into the models' own
+  context, so the workspace's `[Hidden]` and export attributes belonged to an engine the server did not
+  recognize: hidden members were offered by completion. Engine references now resolve to the server's
+  engine (a version difference is logged once), and `[Hidden]` is matched by name as a second line of
+  defence. Separately, an expression written outside every body was offered functions but none of the
+  `@model` type's members; the document is now a scope like any body. Lines the server logged while it
+  was still being constructed were dropped; they are now delivered when the host attaches its log.
+- **The language server survives a workspace it cannot fully read, and rescans exports when
+  `assemblies` changes.** A workspace built against a newer engine — an exported function whose
+  signature names a type the server's engine lacks, an export attribute constructor it lacks, a model
+  property typed or attributed with one — threw out of `initialize`, `didChangeConfiguration` or
+  completion and left the server unusable. Each such export or member is now skipped and named in the
+  log; a member whose attributes cannot be listed stays hidden unless its metadata proves none of them
+  is `[Hidden]`. A consumer assembly whose name merely starts with `Heddle` is no longer dropped whole
+  when one of its references is missing, and an engine assembly listed in `assemblies` is skipped
+  with a log line instead of becoming a second engine that swallows the workspace's exports. The export scan ran once per server process, so exports of a
+  workspace configured after the first were never offered; exports are now read from the loaded model
+  assemblies on every workspace load, and the previous workspace's are withdrawn. A failed background
+  analysis is logged and the document's diagnostics cleared instead of going stale in silence.
+- **Completion no longer loses the document's members after a literal `{{`,** in a string, a comment, a
+  raw block, plain text or after `@@`, and a body that is still being typed is offered its element's
+  members: body boundaries come from the parser, and open bodies are closed from the lexer's own state
+  before the completion compile.
+- **A page over a definitions library no longer costs the calls times the square of the definitions to
+  parse, in time or in allocation.** Every output chain keeps an isolated view of the definitions visible
+  where it was written, and that view was built eagerly: a copy of every definition's body, each with its
+  own copy of every definition before it, for every chain — and a copy of every chain written so far. The
+  view now shares its source's definition history up to the point it was taken, and a definition's body,
+  the chains and the raw items are copied when they are first read, which for most chains is never. What
+  is read late is read as it stood when the view was taken: the definition table, each definition's
+  position, body and whole base chain (an in-place override of a base is not seen through an earlier
+  call, however the derived definition is overridden afterwards), and each chain's position (an import
+  moving its chains into the importer, and a compile moving positions, are not seen either). Diagnostics,
+  rendered output and the stored compiled form are unchanged across the test corpus. Reading a compiled
+  template's parse tree from several threads at once is safe, as it was.
+  *Behaviour note for hosts that edit a parse tree by hand:* a view is no longer a finished copy at the
+  moment it is taken. Entries a host **removes from or inserts into** a context's `OutputChains`,
+  `DefaultChains`, `RawOutputItems`, `SkippedTokens` or `DefinitionsBlock.Positions` lists — and writes
+  made straight into a `DefinitionsBlock.Definitions` table *after* the view was taken from a table
+  already handed out — are seen through a view of that context that has not been read yet; entries
+  appended to a definition body's `SkippedTokens` or `Positions` are too. Appended chains and raw items,
+  a definition's `Position` or `Context` being set, and everything the engine itself does, are not.
+  Measured on one machine (Release, net10.0, x64; bytes allocated on the compiling thread by the second
+  compile of the same document in the process — the first compile in a process adds 25–40 MB of parser
+  and JIT warm-up whatever the document), a page of N definitions and 4N calls: 50 definitions allocated
+  547 MB in 0.2 s, 100 allocated 6.6 GB in 1.5 s and 200 allocated 91 GB in 16 s; they now allocate
+  5.9 MB, 11.9 MB and 24.3 MB — linear — and 200 definitions with 800 calls compile in about 0.07 s.
+  `bench-cold` carries the definitions × calls rows, capped at 50 definitions. Separately, a member path
+  read many times in one compile (`Title` in every row) is compiled to a delegate once per compile rather
+  than once per site.
+- **The editor's parse tries the fast prediction mode first, as a compile always has.** A document that
+  parses without an error — most of a large document's life — is no longer parsed in the exact
+  ambiguity-detecting mode; one with an error is tokenized and parsed again in that mode, so the editor's
+  diagnostics, and their order, are those of the single exact parse it ran before. One completion over a
+  23 KB document went from 71 MB allocated to 23 MB (about 55 ms).
+- **A syntax error in an `@<<` import no longer removes the importing document's diagnostics.** A document
+  with a syntax error is parsed a second time, and the second parse began by clearing the error list —
+  which an import shares with its importer, so everything reported before the import was lost, at run
+  time as well as in the editor. Only the first attempt's own errors are dropped now.
+- **Completion, hover, go-to-definition and semantic tokens answer with nothing instead of failing** when
+  the request throws: an unbalanced `}}` anywhere in the document made every completion request fail,
+  because tokenizing the buffer for its open bodies threw out of the request. That case is handled, and
+  any other fault in a request is logged once and answered empty.
+- **A namespace, type or member named like a C# keyword** (`Shop.event.class`, a property `@event`) **no
+  longer breaks generated source or the C# tier's `using` directives**; the build's printers and the
+  engine share one identifier escaping, which the generated file's own `using` lines and its
+  `HeddleGeneratedNamespace` go through as well.
+- **The build host shares a loaded image by identity, not by name,** so a process that compiles twice
+  is not handed the first of two images that share a name. The one-shot host still loads images from
+  their paths — consumer code that runs during the build finds its satellite resources and native
+  libraries as it would at run time — while a caller that stays alive gets them loaded from bytes, so
+  nothing it compiled over stays locked, with the same two lookups answered from the image's directory
+  for as long as the process lives, a later invocation over the same image included.
+- **Embedded C# over a model the project itself declares precompiles, and the build host never fails
+  in silence.** Under `FullCSharp`, every template whose model came from an image the build host loaded
+  for itself — which is what a same-project model is — failed the build with nothing but *"heddle
+  compile exited with code 1 without reporting a diagnostic"*. Two causes. The host loaded its images
+  into a collectible context, which the C# tier's emitted assembly may not reference, so the reference
+  was answered by loading the image a second time and the emitted method met a different copy of the
+  model type. And the fault that raised is kept by the engine on the compile result, while the host
+  forwarded only the compile context's list. The host's image context is no longer collectible (it is
+  a one-shot process), a model reference resolves to the image already loaded, and any failure the
+  engine reports on the result is forwarded as `HED7020` with its cause.
+- **Embedded C# over a nested model type compiles.** The C# tier declared its generated method's
+  parameters by simple type name and relied on an imported namespace, so a model that is a nested type
+  (`Shop.Outer.Inner`), a generic of one, or a generic argument from a namespace nothing imported,
+  failed with `CS0246`. The model, chained and root types are now spelled in full.
 - **A member a derived model type hides can no longer be read through its base class (sandbox).**
   Member resolution walked the model type and then its base classes looking for the first *accessible*
   property of the requested name, so it stepped over a `[Hidden]` override — or a `[Hidden]`, non-public
@@ -284,6 +372,20 @@ window's ratification remain in
 
 ### Build and packaging
 
+- **Two limitations of the generated sites are now documented, and the build reports the first.**
+  A site that reads a non-public model type or member is not printed (generated code is compiled into
+  the consumer's assembly and names only public things), so a strict-load or NativeAOT host refuses
+  the template; and an `[InternalsVisibleTo]` grant carrying a public key is not accepted as proof
+  that an entry point may name an internal model — that second case has no diagnostic of its own; the
+  template's sites are declined as in the first. The `HED7031` notice now gives each declined site's
+  reason and, for an accessibility decline, the way out, and an ordinary build prints it: it was a
+  low-importance message that only `-v:detailed` showed. Embedded C# (`FullCSharp`) over a non-public
+  model is a build error (`HED7012`), not a decline.
+  See [Limitations](docs/precompilation.md#limitations).
+- **A failed intermediate model compile is attributed (`HED7038`).** The compiler's errors are followed
+  by one Heddle error saying they came from Heddle's pass over the project's own sources, that the
+  project's compile was not reached, and how to avoid the pass. The build fails as before. A template
+  set to `Precompile="false"` no longer starts that pass on its own.
 - **Generated source is safe against the names templates bring.** Every type the build writes into the
   generated namespace is `global::`-qualified and an entry class's private members start with a
   lowercase letter, so a template called `system.heddle`, `stream.heddle`, `heddle.heddle` or

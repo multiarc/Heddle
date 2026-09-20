@@ -19,7 +19,9 @@ Heddle.Tests.BranchSetCompilerTests
 Heddle.Tests.BranchingGoldenTests
 Heddle.Tests.BuildSurfaceContractTests
 Heddle.Tests.CSharpEscapeTests
+Heddle.Tests.CSharpReferenceSpellingParityTests
 Heddle.Tests.CSharpTierMetadataTests
+Heddle.Tests.CSharpTierTypeSpellingTests
 Heddle.Tests.CSharpTypeNamesTests
 Heddle.Tests.CallTargetRulesTests
 Heddle.Tests.ChainedDefinitionTests
@@ -82,6 +84,7 @@ Heddle.Tests.HtmlEncodedRendererSpanParityTests
 Heddle.Tests.ImportCycleTests
 Heddle.Tests.ImportFormsPinningTests
 Heddle.Tests.ImportOriginTests
+Heddle.Tests.ImportedSyntaxErrorTests
 Heddle.Tests.IntegralRoundingBuiltInTests
 Heddle.Tests.LayoutDefinitionCompositionTests
 Heddle.Tests.LegacyImportRemovalTests
@@ -110,6 +113,7 @@ Heddle.Tests.OutputProfileGoldenTests
 Heddle.Tests.OutputProfileOptionsTests
 Heddle.Tests.OverloadBetternessEvaluationTests
 Heddle.Tests.OverloadRankLockstepTests
+Heddle.Tests.ParseSnapshotTests
 Heddle.Tests.ParserSettingsSeamTests
 Heddle.Tests.ParticipantScanLockstepTests
 Heddle.Tests.PrecompiledFallbackCarrierTests

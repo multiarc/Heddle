@@ -34,6 +34,12 @@ namespace Heddle.Language
             _context.Errors.Add(error);
         }
 
+        /// <summary>Drops what was recorded, before the input is tokenized again and reports it again.</summary>
+        public void Forget()
+        {
+            _recorded.Clear();
+        }
+
         /// <summary>Re-adds every recorded error after a diagnostic-mode retry clears the context: the retry
         /// re-parses buffered tokens, so the lexer never re-fires for input it already reported.</summary>
         public void Replay()

@@ -56,9 +56,8 @@ namespace Heddle.Language {
             }
             if (CurrentParseContext.CurrentDefenition.BaseDefinition == null)
             {
-                if (CurrentParseContext.DefinitionsBlock.Definitions.ContainsKey(CurrentParseContext.CurrentDefenition.Name))
+                if (CurrentParseContext.DefinitionsBlock.TryGet(CurrentParseContext.CurrentDefenition.Name, out var stored))
                 {
-                    var stored = CurrentParseContext.DefinitionsBlock.Definitions[CurrentParseContext.CurrentDefenition.Name];
                     if (stored.IsPublicRegion && CurrentParseContext.CurrentDefenition.IsPublicRegion)
                     {
                         CurrentParseContext.Errors.Add(
@@ -71,7 +70,7 @@ namespace Heddle.Language {
                         $"The definition <{CurrentParseContext.CurrentDefenition.Name}> with the same name already exists".ToError(CurrentParseContext.GetBlockPosition(context)));
                     return;
                 }
-                CurrentParseContext.DefinitionsBlock.Definitions.Add(CurrentParseContext.CurrentDefenition.Name,
+                CurrentParseContext.DefinitionsBlock.Set(CurrentParseContext.CurrentDefenition.Name,
                     CurrentParseContext.CurrentDefenition);
                 RecordRegionDeclaration(CurrentParseContext.CurrentDefenition);
             }
@@ -111,16 +110,14 @@ namespace Heddle.Language {
             if (context == null) throw new ArgumentNullException(nameof(context));
             if (CurrentParseContext.CurrentDefenition.BaseDefinition != null)
             {
-                if (!CurrentParseContext.DefinitionsBlock.Definitions.ContainsKey(CurrentParseContext.CurrentDefenition.Name))
+                if (!CurrentParseContext.DefinitionsBlock.TryGet(CurrentParseContext.CurrentDefenition.Name, out var definition))
                 {
-                    CurrentParseContext.DefinitionsBlock.Definitions.Add(CurrentParseContext.CurrentDefenition.Name,
+                    CurrentParseContext.DefinitionsBlock.Set(CurrentParseContext.CurrentDefenition.Name,
                         CurrentParseContext.CurrentDefenition);
                     RecordRegionDeclaration(CurrentParseContext.CurrentDefenition);
                 }
                 else
                 {
-                    var definition =
-                        CurrentParseContext.DefinitionsBlock.Definitions[CurrentParseContext.CurrentDefenition.Name];
                     if (CurrentParseContext.InDefintionContext)
                     {
                         if (definition != CurrentParseContext.CurrentDefenition.BaseDefinition)
@@ -135,8 +132,8 @@ namespace Heddle.Language {
                             CurrentParseContext.CurrentDefenition.IsRegion = true;
                             CurrentParseContext.CurrentDefenition.IsPublicRegion = definition.IsPublicRegion;
                         }
-                        CurrentParseContext.DefinitionsBlock.Definitions[CurrentParseContext.CurrentDefenition.Name] =
-                            CurrentParseContext.CurrentDefenition;
+                        CurrentParseContext.DefinitionsBlock.Set(CurrentParseContext.CurrentDefenition.Name,
+                            CurrentParseContext.CurrentDefenition);
                     }
                     else
                     {
@@ -147,7 +144,7 @@ namespace Heddle.Language {
                                     CurrentParseContext.GetBlockPosition(context)));
                             return;
                         }
-                        CurrentParseContext.DefinitionsBlock.Definitions[CurrentParseContext.CurrentDefenition.Name].OverrideWith(
+                        definition.OverrideWith(
                             CurrentParseContext.CurrentDefenition);
                     }
                 }
@@ -389,11 +386,11 @@ namespace Heddle.Language {
 
                 var isolatedContext = CurrentParseContext.IsolateContextWithTree();
                 var preImportNames = markProvenance
-                    ? new HashSet<string>(isolatedContext.DefinitionsBlock.Definitions.Keys)
+                    ? new HashSet<string>(isolatedContext.DefinitionsBlock.Names())
                     : null;
                 if (markProvenance)
                     isolatedContext.ImportOrigin = origin;
-                isolatedContext.OutputChains.Clear();
+                isolatedContext.ClearOutputChains();
                 isolatedContext.SkippedTokens.Clear();
                 parseState.ActiveImports.Add(importKey);
                 try
@@ -404,13 +401,8 @@ namespace Heddle.Language {
                 {
                     parseState.ActiveImports.RemoveAt(parseState.ActiveImports.Count - 1);
                 }
-                CurrentParseContext.DefaultChains.Clear();
-                CurrentParseContext.DefaultChains.AddRange(isolatedContext.DefaultChains);
-                CurrentParseContext.DefinitionsBlock.Definitions.Clear();
-                foreach (var definition in isolatedContext.DefinitionsBlock.Definitions)
-                {
-                    CurrentParseContext.DefinitionsBlock.Definitions.Add(definition.Key, definition.Value);
-                }
+                CurrentParseContext.ReplaceDefaultChains(isolatedContext.DefaultChains);
+                CurrentParseContext.DefinitionsBlock.Reset(isolatedContext.DefinitionsBlock.Entries());
                 foreach (var isolatedChain in isolatedContext.OutputChains)
                 {
                     isolatedChain.BlockPosition = new BlockPosition(CurrentParseContext.GetBlockPosition(context).StartIndex, 0);
@@ -421,7 +413,7 @@ namespace Heddle.Language {
                 {
                     StampImportedRange(CurrentParseContext.Errors, peMark, origin);
                     StampImportedRange(CurrentParseContext.Warnings, pwMark, origin);
-                    foreach (var pair in CurrentParseContext.DefinitionsBlock.Definitions)
+                    foreach (var pair in CurrentParseContext.DefinitionsBlock.Entries())
                     {
                         if (!preImportNames.Contains(pair.Key))
                             AttachImportOrigin(pair.Value, origin);

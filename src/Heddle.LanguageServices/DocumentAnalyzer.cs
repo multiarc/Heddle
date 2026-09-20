@@ -82,11 +82,51 @@ namespace Heddle.LanguageServices
             var diagnostics = ProjectDiagnostics(compileContext, parseContext);
             var definitions = ProjectDefinitions(parseContext, path, namespaces);
             var imports = ScanImports(text);
-            var scopes = new ScopeMapView(compileContext.ScopeMap, compileContext.RootScopeType);
+            var scopes = new ScopeMapView(compileContext.ScopeMap, compileContext.RootScopeType,
+                BodySpans(parseContext, text.Length));
 
             return new DocumentAnalysis(path, version, text, lineMap,
                 parseContext.Tokens.ToList(), parseContext.SkippedTokens.ToList(),
                 diagnostics, definitions, imports, scopes, csharpUsed);
+        }
+
+        /// <summary>The span of every body the parser recognized, from its opening braces to its closing ones — or
+        /// to the end of the text for a body that is still open.</summary>
+        private static List<KeyValuePair<int, int>> BodySpans(ParseContext root, int textLength)
+        {
+            var spans = new List<KeyValuePair<int, int>>();
+            var seen = new HashSet<ParseContext>();
+            var pending = new Stack<ParseContext>();
+            pending.Push(root);
+            while (pending.Count > 0)
+            {
+                var context = pending.Pop();
+                if (context == null || context.ImportOrigin != null || !seen.Add(context))
+                    continue;
+                int open = -1;
+                foreach (var token in context.Tokens)
+                {
+                    if (token.HeddleTokenType == HeddleTokenType.SubStart)
+                    {
+                        if (open >= 0)
+                            spans.Add(new KeyValuePair<int, int>(open, textLength));
+                        open = token.Position.StartIndex;
+                    }
+                    else if (token.HeddleTokenType == HeddleTokenType.SubClose && open >= 0)
+                    {
+                        int close = token.Position.StartIndex;
+                        spans.Add(new KeyValuePair<int, int>(open, close < open ? textLength : close));
+                        open = -1;
+                    }
+                }
+
+                if (open >= 0)
+                    spans.Add(new KeyValuePair<int, int>(open, textLength));
+                foreach (var sub in context.SubContexts)
+                    pending.Push(sub);
+            }
+
+            return spans;
         }
 
         /// <summary>Projects workspace options to engine options. Every analysis-applicable option is carried; the

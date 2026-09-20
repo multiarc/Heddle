@@ -183,6 +183,34 @@ namespace Heddle.LanguageServer
         [JsonRpcMethod("textDocument/completion", UseSingleObjectParameterDeserialization = true)]
         public LspProtocol.CompletionItem[] Completion(LspProtocol.CompletionParams @params, CancellationToken ct)
         {
+            return Answer("completion", Array.Empty<LspProtocol.CompletionItem>(), () => CompletionCore(@params, ct));
+        }
+
+        /// <summary>Runs a request and answers <paramref name="nothing"/> if it throws. A request that fails is
+        /// one the editor repeats on the next keystroke; failing it as an error helps nobody and, for as long as
+        /// the document stays as it is, fails every one after it. Said once per distinct fault.</summary>
+        internal T Answer<T>(string request, T nothing, Func<T> body)
+        {
+            try
+            {
+                return body();
+            }
+            catch (Exception e) when (!(e is OperationCanceledException || e is OutOfMemoryException))
+            {
+                string message = $"The {request} request failed and was answered with nothing: {e.GetType().Name}: {e.Message}";
+                bool first;
+                lock (_requestFaults)
+                    first = _requestFaults.Add(message);
+                if (first)
+                    LogSink(message);
+                return nothing;
+            }
+        }
+
+        private readonly HashSet<string> _requestFaults = new HashSet<string>(StringComparer.Ordinal);
+
+        private LspProtocol.CompletionItem[] CompletionCore(LspProtocol.CompletionParams @params, CancellationToken ct)
+        {
             var uri = @params.TextDocument.Uri;
             var analysis = EnsureAnalyzed(uri);
             if (analysis == null)
@@ -194,6 +222,11 @@ namespace Heddle.LanguageServer
 
         [JsonRpcMethod("textDocument/hover", UseSingleObjectParameterDeserialization = true)]
         public LspProtocol.Hover Hover(LspProtocol.HoverParams @params)
+        {
+            return Answer("hover", null, () => HoverCore(@params));
+        }
+
+        private LspProtocol.Hover HoverCore(LspProtocol.HoverParams @params)
         {
             var uri = @params.TextDocument.Uri;
             var analysis = EnsureAnalyzed(uri);
@@ -209,6 +242,11 @@ namespace Heddle.LanguageServer
 
         [JsonRpcMethod("textDocument/definition", UseSingleObjectParameterDeserialization = true)]
         public LspProtocol.Location Definition(LspProtocol.DefinitionParams @params)
+        {
+            return Answer("definition", null, () => DefinitionCore(@params));
+        }
+
+        private LspProtocol.Location DefinitionCore(LspProtocol.DefinitionParams @params)
         {
             var uri = @params.TextDocument.Uri;
             var analysis = EnsureAnalyzed(uri);
@@ -230,10 +268,13 @@ namespace Heddle.LanguageServer
         [JsonRpcMethod("textDocument/semanticTokens/full", UseSingleObjectParameterDeserialization = true)]
         public LspProtocol.SemanticTokens SemanticTokensFull(LspProtocol.SemanticTokensParams @params)
         {
-            var analysis = EnsureAnalyzed(@params.TextDocument.Uri);
-            return new LspProtocol.SemanticTokens(analysis == null
-                ? Array.Empty<int>()
-                : SemanticTokensBuilder.Build(analysis));
+            return Answer("semantic tokens", new LspProtocol.SemanticTokens(Array.Empty<int>()), () =>
+            {
+                var analysis = EnsureAnalyzed(@params.TextDocument.Uri);
+                return new LspProtocol.SemanticTokens(analysis == null
+                    ? Array.Empty<int>()
+                    : SemanticTokensBuilder.Build(analysis));
+            });
         }
 
         private void ScheduleDebounced(string uri)
@@ -273,9 +314,19 @@ namespace Heddle.LanguageServer
         {
             if (_service == null || !_buffers.TryGetValue(uri, out var buffer))
                 return;
-            var analysis = _service.Analyze(UriToPath(uri), buffer.Text, buffer.Version);
-            var diagnostics = analysis.Diagnostics.Select(d => ToLspDiagnostic(analysis, d)).ToArray();
-            PublishDiagnostics(uri, buffer.Version, diagnostics);
+            try
+            {
+                var analysis = _service.Analyze(UriToPath(uri), buffer.Text, buffer.Version);
+                var diagnostics = analysis.Diagnostics.Select(d => ToLspDiagnostic(analysis, d)).ToArray();
+                PublishDiagnostics(uri, buffer.Version, diagnostics);
+            }
+            catch (Exception e) when (!(e is OperationCanceledException))
+            {
+                // This runs from notifications and from the debounce timer, where nobody receives an exception:
+                // unreported, the document would keep showing the diagnostics of a version that is gone.
+                LogSink($"Analysis of {uri} failed, so its diagnostics were cleared: {e.GetType().Name}: {e.Message}");
+                PublishDiagnostics(uri, buffer.Version, Array.Empty<LspProtocol.Diagnostic>());
+            }
         }
 
         private void PublishDiagnostics(string uri, int? version, LspProtocol.Diagnostic[] diagnostics)

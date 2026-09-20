@@ -21,7 +21,14 @@ namespace Heddle.Tool.Compile.Sites
 
         internal string Why { get; }
 
+        /// <summary>Whether the site was declined because generated code cannot name something it reads: a
+        /// non-public type, or a member whose getter is not public.</summary>
+        internal bool IsAccessibility =>
+            Why != null && (Why.IndexOf("non-public type", System.StringComparison.Ordinal) >= 0 ||
+                Why.IndexOf("is not a public instance property", System.StringComparison.Ordinal) >= 0);
+
         public override string ToString() =>
-            Kind + " site" + (string.IsNullOrEmpty(Position) ? " ordinal " + Ordinal : " at " + Position);
+            Kind + " site" + (string.IsNullOrEmpty(Position) ? " ordinal " + Ordinal : " at " + Position) +
+            (string.IsNullOrEmpty(Why) ? string.Empty : " (" + Why + ")");
     }
 }

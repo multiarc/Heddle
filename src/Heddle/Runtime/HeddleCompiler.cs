@@ -105,6 +105,7 @@ namespace Heddle.Runtime
         {
             string workingDocument = document;
             bool trimDirectiveLines = compileScope.Options.TrimDirectiveLines;
+            parseContext.KeepParsedPositions();
             DocumentShaping.ShiftBySkippedTokens(parseContext);
             // HED4005 scan runs here when coordinates are consistent with exclusion spans.
             OutputLints.ScanBraceMisreads(parseContext, compileScope.CompileWarnings, workingDocument);
@@ -745,9 +746,24 @@ namespace Heddle.Runtime
 
             if (state != null)
                 state.ThrowIfStrictUnserved(kind, ordinal);
+            if (compileContext == null || properties.Count == 0)
+            {
+                return rootReference
+                    ? (IRuntimeParameter)new RootModelParameter(properties)
+                    : new ModelParameter(properties);
+            }
+
+            var accessors = compileContext.CompileContext.MemberAccessors;
+            var path = new MemberPathKey(properties);
+            if (!accessors.TryGetValue(path, out var shared))
+            {
+                shared = ModelParameter.GetPropertyChainAccessor(properties).Compile();
+                accessors.Add(path, shared);
+            }
+
             return rootReference
-                ? (IRuntimeParameter)new RootModelParameter(properties)
-                : new ModelParameter(properties);
+                ? (IRuntimeParameter)new RootModelParameter(shared)
+                : new ModelParameter(shared);
         }
 
         private static List<(Type Declaring, string Name, Type Member)> HopTriples(

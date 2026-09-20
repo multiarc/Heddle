@@ -247,7 +247,22 @@ its own, and nothing is handed to the real compile. Warnings never fail the pass
   imports, so everything the runtime accepts is accepted at build: a dotted nested type
   (`Shop.Outer.Inner`), a closed generic (`Shop.Box<Shop.Item>`), an alias.
 - An **internal** model is supported: see the accessibility note under
-  [Typed entry points](#typed-entry-points).
+  [Typed entry points](#typed-entry-points), and the strict-load consequence under
+  [Limitations](#limitations).
+- **Template items are ordinary MSBuild items**: a relative `Include` is relative to the project
+  directory, whatever `HeddleTemplateRoot` says — the root only decides what the key is measured from.
+  (Builds before 3.0's final targets joined the item path onto the root, so some projects spell the
+  item relative to the root instead; a path that names no file from the project directory but does
+  from the root is still honoured.)
+- **When the pass fails, the build fails** — there is no fallback to building without it. The
+  compiler's errors are reported as they are, from a compiler run the project did not start, so they
+  are followed by one `HED7038` error that says so: whose pass it was, that the project's own compile
+  was not reached, and the ways out. There is no switch that turns the pass off on its own; it runs only
+  while some precompiled template binds a model type that no referenced assembly declares — in its
+  own `@model`, or in the `@model` of a library it imports with `@<<`, whether or not that library is
+  itself precompiled — so `Precompile="false"` on every such importing template, or moving the models
+  to a referenced project, removes it. Opting out the library alone does not: its text, model
+  directive included, is still compiled into the template that imports it.
 
 **Editors and `dotnet watch`.** Templates, and the `HeddleModelAssembly` / `HeddleExtensionAssembly`
 items, are declared as `UpToDateCheckInput`, and templates as `Watch` items — so Visual Studio's fast
@@ -786,6 +801,55 @@ different compilation.
   form enumerates the assembly's types at registration, which trimming empties, and carries
   `[RequiresUnreferencedCode]` so a trimmed build says so instead of silently losing extensions.
 
+### Limitations
+
+Two things the build deliberately does not do. Neither changes a rendered byte; both matter to a host
+that sets `PrecompiledStrictLoad`.
+
+**Non-public model types and members are not printed, so strict load refuses them.**
+
+- *What is refused.* A generated site is C# compiled into **your** assembly, and the printer names only
+  what any assembly may name: `public` types, and properties with a `public` getter. A site that reads
+  an `internal` (or otherwise non-public) model type, or a property whose getter is not public, is
+  declined — whatever `[InternalsVisibleTo]` grants, and even when the type is the project's own. The
+  engine binds such members by reflection, so the template still compiles, precompiles and renders
+  identically: the declined site is rebuilt from the stored form when the template is first bound.
+- *What you see.* At build, the template's `HED7031` notice — a `message`, printed by an ordinary
+  `dotnet build` at its default verbosity, once per template and never a warning — lists each declined
+  site with its reason and ends with the way out:
+  `ledger.heddle(1,1): message HED7031: not fully precompiled: 2 sites rebuilt at load: MemberAccessor
+  site at @33 (start type: non-public type 'Books.Ledger'); …`. A member rather than the type reads
+  `(hop 0 'Secret' is not a public instance property)` for a plain member path, or `(member 'Secret'
+  is not a public instance property)` inside an expression. At run time nothing, unless the host is strict: then binding the template
+  throws `PrecompiledStrictLoadException` naming the template, the site ordinal and its kind, because
+  rebuilding a site is exactly the load-time compilation strict load exists to forbid. A NativeAOT
+  host cannot rebuild it at all.
+- *Why.* Printing `internal` names would make the generated source compile or not depending on who
+  compiles it; the printer has no way to know, site by site, and a site that fails to compile fails the
+  consumer's whole build. Declining costs one template its strict-load eligibility instead.
+- *Workaround.* Make the model type and the members the template reads `public`; or type the template
+  with a `public` interface or a DTO that exposes just those members, and pass the internal object
+  through it. The template no longer appearing under `HED7031` in the build output is the confirmation.
+- *Embedded C# is stricter, and says so as an error.* Under `ExpressionMode=FullCSharp` an `@( … )` C#
+  expression over a non-public model type is not a declined site: the expression is compiled as C#
+  against the model, the compiler refuses the name, and the build **fails** with `HED7012` —
+  `'Ledger' is inaccessible due to its protection level` — for a model the project itself declares as
+  much as for a referenced one. The ways out are the same two.
+
+**An `[InternalsVisibleTo]` grant that carries a public key is not taken as proof.**
+
+- *What is refused.* An entry point names an `internal` model type in its signature only when the
+  project provably sees it: the type is the project's own, or its assembly grants
+  `[InternalsVisibleTo("YourAssembly")]` **without** a `PublicKey`. With a key in the grant, the entry
+  point takes `object` instead (see [Typed entry points](#typed-entry-points)).
+- *What you see.* `Generate(object model, …)` in the generated source where you expected your type.
+  No diagnostic: the template precompiles, binds and renders, and the model-type check at render is
+  unchanged — only the compile-time typing of that one parameter is lost.
+- *Why.* A keyed grant is honoured only for a consumer signed with that key, and the build host is
+  told the consumer's name, not its key. Guessing wrong is `CS0281` in your build.
+- *Workaround.* Make the model `public`, or call the template through the registry
+  (`PrecompiledTemplates.TryResolve`), which needs no typed signature.
+
 ---
 
 ## Build-time diagnostics
@@ -821,13 +885,14 @@ their `.heddle` position; file/key/option‑level conditions report without a so
 | `HED7025` | **Reserved; the build does not raise it.** An illegal function call; the engine's own `HED1012`/`HED1013` report it. |
 | `HED7028` | An `@<<` import names a template by its registration key while the template also carries a `Name`. Both spellings resolve — `Name` adds an import name, it never replaces the key — so this is a warning recommending the name-first spelling for a named template. |
 | `HED7030` | **Reserved; the build does not raise it.** A type or member the consumer's assembly cannot name (a referenced assembly's `internal` member, an `[Obsolete(error: true)]` member); such a site is rebuilt from the compiled form at load and listed in `HED7031`. |
-| `HED7031` | Info, once per template that is not fully precompiled, naming every site that rebuilds at load or renders through the dynamic path: refusal sites (with their class and reason — see `HED7014`/`HED7033`), late‑bound functions, C# sites carried as data, printer declines. The output is identical either way; a strict host (`PrecompiledStrictLoad`) refuses such a template at load instead. |
+| `HED7031` | Info — a `message` an ordinary build prints, never a warning — once per template that is not fully precompiled, naming every site that rebuilds at load or renders through the dynamic path: refusal sites (with their class and reason — see `HED7014`/`HED7033`), late‑bound functions, C# sites carried as data, printer declines. The output is identical either way; a strict host (`PrecompiledStrictLoad`) refuses such a template at load instead. |
 | `HED7032` | A template carries **both** an in‑file `@model` directive and `ModelType` item metadata, and the two spellings resolve to **different types**. The runtime reads only the directive, so the build refuses to pick one rather than typing the same template differently on the two tiers. Equal spellings, or different spellings resolving to the same type, agree and raise nothing. Reported at the file's start — item metadata has no in‑file position. |
 | `HED7033` | A bound extension declares `[PrecompileUnsupported]` — its author's own statement that load‑time execution cannot reproduce its compile‑time behaviour (warning). The declared reason is quoted **verbatim**. Cost is **one call site**: that call binds dynamically (it renders by compiling its own source text at first render) while the rest of the template stays precompiled. Read on both sides — the build reads the declaration off the bound type, the loader reads it off the live type — so an extension package that adds the declaration *after* your assembly was built still falls back rather than binding through a seam its author has disowned. |
 | `HED7034` | **Reserved; the build does not raise it.** Engine observation; the build compiles through the engine itself, so there is nothing to observe. |
 | `HED7035` | The `Heddle.Build` package's engine version differs from the `Heddle` package the project references (error, at the project file). The artifact is stamped with the engine that compiled it, so the two must be equal — reference the same version of both packages. An engine reference the version lock cannot read fails the same way rather than stamping the artifact with an unverified engine. |
 | `HED7036` | An implementation assembly the build must bind over — a project reference's output, a package's runtime image, a declared `HeddleModelAssembly`/`HeddleExtensionAssembly` item — could not be loaded (error, at the project file). The diagnostic names the path and the loader's message; templates naming its types cannot be compiled, so fix the reference or exclude the templates with `Precompile="false"`. |
 | `HED7037` | An unsupported MSBuild property (`HeddleObserveEngine`, `HeddleNodeFallback`, `HeddleEmitUtf8Pieces`) is set (warning). It is ignored — delete it from the project. `HeddleObserveIntermediatePath` and `HeddleObserveImplementationPath` are ignored silently. |
+| `HED7038` | The [intermediate model compile](#models-declared-in-the-project-being-built) failed (error). It follows the compiler's own `CS…` errors, which are the real cause: that pass compiles the project's own sources ahead of the project's compile, so the project's compile **was not reached**. Fix the errors above it; or set `Precompile="false"` on every template that binds such a model, in its own `@model` or through a library it imports with `@<<` (they render through the dynamic path and need no model at build time, so the pass does not run); or declare the model types in a referenced project. |
 
 **Engine ids that fire at build.** A refusal the build can *prove* the engine repeats at its own
 template compile is not a `HED7xxx` twin but the engine's id **forwarded** as a build error — same

@@ -830,6 +830,30 @@ namespace Heddle.Tool.Compile
                         warning.Position.Length, id, message);
             }
 
+            // A fault raised while the compile was being finished is caught by the engine and kept on the
+            // result, not on the context's list read above. Returning on it unreported would fail the build
+            // with nothing but an exit code.
+            if (!compiled.CompileResult.Success)
+            {
+                bool reported = failed;
+                foreach (var error in compiled.CompileResult.ErrorList)
+                {
+                    if (context.CompileErrors.Contains(error))
+                        continue;
+                    reported = true;
+                    string detail = error.Exception != null
+                        ? error.Exception.GetType().Name + ": " + error.Exception.Message
+                        : error.Error;
+                    diagnostics.Error(template.FullPath, HeddleDiagnosticIds.BuildEmitterFault,
+                        Format(HeddleDiagnosticIds.BuildEmitterFault, template.FullPath, "compile", detail));
+                }
+
+                if (!reported)
+                    diagnostics.Error(template.FullPath, HeddleDiagnosticIds.BuildEmitterFault,
+                        Format(HeddleDiagnosticIds.BuildEmitterFault, template.FullPath, "compile",
+                            "the engine reported failure without an error"));
+            }
+
             if (failed || !compiled.CompileResult.Success)
                 return null;
 
@@ -993,11 +1017,22 @@ namespace Heddle.Tool.Compile
             if (emitted.Declines.Count != 0)
             {
                 var declines = new List<string>();
+                bool accessibility = false;
                 foreach (var decline in emitted.Declines)
+                {
                     declines.Add(decline.ToString());
+                    accessibility |= decline.IsAccessibility;
+                }
+
                 parts.Add(emitted.Declines.Count + " site" +
                     (emitted.Declines.Count == 1 ? "" : "s") + " rebuilt at load: " +
                     string.Join("; ", declines.ToArray()));
+                if (accessibility)
+                    parts.Add("generated code is compiled into your assembly and can name only public types and " +
+                        "members, so those sites are built at load instead — the output is the same, but a " +
+                        "strict-load (trimmed or NativeAOT) host refuses the template; to precompile them, make " +
+                        "the model type and the members the template reads public, or type the template with a " +
+                        "public interface or DTO");
             }
 
             diagnostics.Info(template.FullPath, HeddleDiagnosticIds.BuildTemplateNotPrecompiled,

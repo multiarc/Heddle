@@ -54,6 +54,8 @@ namespace Heddle.Runtime {
 
     /// <summary>
     /// By loading assemblies in this context, you can add or override extensions available during compilation.
+    /// <para>Not thread-safe: a compile writes to its context without synchronization, so a context belongs to
+    /// one compile at a time. Compiles that may run concurrently each take a context of their own.</para>
     /// </summary>
     public class CompileContext: IDisposable {
 
@@ -187,7 +189,17 @@ namespace Heddle.Runtime {
             ResolvedRegionLayouts = context.ResolvedRegionLayouts;
             ScopeMap = context.ScopeMap;
             _csharpContext = context._csharpContext;
+            _memberAccessors = context.MemberAccessors;
         }
+
+        private Dictionary<Parameters.MemberPathKey, System.Func<object, object>> _memberAccessors;
+
+        /// <summary>The member-path accessors this compile has built, by the hops they read. An accessor is a pure
+        /// function of its hops, and a document reads the same few paths again and again — <c>Title</c> in every
+        /// row of a list of pages — while building one costs a delegate compile. Shared by the contexts a compile
+        /// derives from this one, and gone with it.</summary>
+        internal Dictionary<Parameters.MemberPathKey, System.Func<object, object>> MemberAccessors =>
+            _memberAccessors ?? (_memberAccessors = new Dictionary<Parameters.MemberPathKey, System.Func<object, object>>());
 
         public CompileContext(ExType modelType = null) {
             RootScopeType = ScopeType = modelType ?? (ExType)typeof(object);

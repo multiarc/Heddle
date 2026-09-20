@@ -7,12 +7,40 @@ namespace Heddle.Language {
     /// Definition syntax element with inheritance support
     /// </summary>
     public class DefinitionItem {
-        internal DefinitionItem(DefinitionItem definition)
+        internal DefinitionItem(DefinitionItem definition) : this(definition, long.MaxValue, ParseContext.CurrentIsolationStamp)
         {
-            if (definition.BaseDefinition != null)
-                BaseDefinition = new DefinitionItem(definition.BaseDefinition);
-            Context = definition.Context;
-            Position = definition.Position;
+        }
+
+        /// <summary>A copy of <paramref name="definition"/> as the whole of it stood at <paramref name="asOf"/>:
+        /// its position and body, and every link of its base chain. A base is often the very item another
+        /// definition is registered under, which may have been overridden in place since — and an override
+        /// keeps the state it replaces as a copy of its own, made later still.</summary>
+        internal DefinitionItem(DefinitionItem definition, long asOf) : this(definition, asOf, asOf)
+        {
+        }
+
+        private DefinitionItem(DefinitionItem definition, long asOf, long copiedAt)
+        {
+            var baseDefinition = definition.BaseAsOf(asOf);
+            if (baseDefinition != null)
+            {
+                BaseDefinition = new DefinitionItem(baseDefinition, asOf, copiedAt)
+                {
+                    _copiedFrom = definition.BaseDefinition
+                };
+            }
+
+            // A copy an isolation reads late still stands where the isolation does: what changes it afterwards is
+            // a change since then, to whatever is isolated from it in turn.
+            _copiedAt = copiedAt;
+            _stateStamp = copiedAt;
+            if (asOf == long.MaxValue && definition._states != null)
+            {
+                _states = new List<State>(definition._states);
+                _stateStamp = definition._stateStamp;
+            }
+
+            definition.StateAsOf(asOf, out _position, out _context, out _deferredContext);
             ModelType = definition.ModelType;
             Name = definition.Name;
             ParameterTemplate = definition.ParameterTemplate;
@@ -32,14 +60,20 @@ namespace Heddle.Language {
             ParameterTemplate = parameterTemplate;
             BaseDefinition = baseDefinition;
             ModelType = modelType?.Trim() ?? "object";
-            Context = new ParseContext();
+            _stateStamp = ParseContext.CurrentIsolationStamp;
+            _context = new ParseContext();
         }
 
         public void OverrideWith(DefinitionItem item)
         {
-            BaseDefinition = new DefinitionItem(this);
-            Position = item.Position;
-            Context = item.Context;
+            long stamp = ParseContext.NextIsolationStamp();
+            (_overriddenAt ?? (_overriddenAt = new List<long>())).Add(stamp);
+            // What this item was is kept whole in the copy, so the fields are written without remembering them.
+            BaseDefinition = new DefinitionItem(this, long.MaxValue, stamp);
+            _stateStamp = stamp;
+            _position = item.Position;
+            _context = item.Context;
+            _deferredContext = null;
             Name = item.Name;
             ParameterTemplate = item.ParameterTemplate;
             ModelType = item.ModelType;
@@ -96,8 +130,150 @@ namespace Heddle.Language {
         public bool FullOverride { get; set; }
         public DefinitionItem BaseDefinition { get; private set; }
 
-        public BlockPosition Position { get; set; }
-        public ParseContext Context { get; set; }
+        public BlockPosition Position
+        {
+            get { return _position; }
+            set
+            {
+                RememberState();
+                _position = value;
+            }
+        }
+
+        /// <summary>The definition's body context. On a definition that belongs to an isolated context it is
+        /// produced on first read: isolating a context copies every definition visible in it, and copying every
+        /// one of their bodies as well, for each output chain of a document, is what made parsing cost the number
+        /// of calls times the square of the number of definitions.</summary>
+        public ParseContext Context
+        {
+            get
+            {
+                var context = _context;
+                if (context != null)
+                    return context;
+                var deferred = _deferredContext;
+                if (deferred == null)
+                    return _context;
+                context = deferred.Materialize();
+                lock (ParseContext.SharedLock)
+                {
+                    if (ReferenceEquals(_deferredContext, deferred))
+                    {
+                        _context = context;
+                        _deferredContext = null;
+                    }
+
+                    return _context;
+                }
+            }
+            set
+            {
+                lock (ParseContext.SharedLock)
+                {
+                    RememberState();
+                    _context = value;
+                    _deferredContext = null;
+                }
+            }
+        }
+
+        private struct State
+        {
+            internal long Until;
+            internal BlockPosition Position;
+            internal ParseContext Context;
+            internal ParseContext.DeferredIsolation Deferred;
+        }
+
+        private BlockPosition _position;
+        private ParseContext _context;
+        private ParseContext.DeferredIsolation _deferredContext;
+        private List<long> _overriddenAt;
+        private List<State> _states;
+        private long _stateStamp;
+        private DefinitionItem _copiedFrom;
+        private long _copiedAt;
+
+        /// <summary>Called before the position or the body changes. An isolated context reads a definition when
+        /// it is first asked for it, and has to find what the definition was when the context was isolated — so a
+        /// value that an isolation may have seen is kept, with the last stamp that saw it. One that no isolation
+        /// can have seen, because none was taken since it was written, is simply replaced.</summary>
+        private void RememberState()
+        {
+            long now = ParseContext.CurrentIsolationStamp;
+            if (now == _stateStamp)
+                return;
+            (_states ?? (_states = new List<State>())).Add(new State
+            {
+                Until = now, Position = _position, Context = _context, Deferred = _deferredContext
+            });
+            _stateStamp = now;
+        }
+
+        private void StateAsOf(long stamp, out BlockPosition position, out ParseContext context,
+            out ParseContext.DeferredIsolation deferred)
+        {
+            lock (ParseContext.SharedLock)
+            {
+                if (_states != null)
+                {
+                    foreach (var state in _states)
+                    {
+                        if (state.Until < stamp)
+                            continue;
+                        position = state.Position;
+                        context = state.Context;
+                        deferred = state.Deferred;
+                        return;
+                    }
+                }
+
+                position = _position;
+                context = _context;
+                deferred = _deferredContext;
+            }
+        }
+
+        /// <summary>This definition as it stood at <paramref name="stamp"/>. An override at the document's own
+        /// level rewrites the item in place and keeps what it was as <see cref="BaseDefinition"/>, so the state
+        /// before the overrides made since then is that many bases down.</summary>
+        internal DefinitionItem AsOf(long stamp)
+        {
+            var item = this;
+            if (_overriddenAt == null)
+                return item;
+            for (int i = _overriddenAt.Count - 1; i >= 0 && _overriddenAt[i] > stamp && item.BaseDefinition != null; i--)
+                item = item.BaseDefinition;
+            return item;
+        }
+
+        /// <summary>The base this definition had at <paramref name="stamp"/>, as that base stood then. A link
+        /// copied after the stamp — an override copies the whole chain under the state it keeps — stands for the
+        /// item it was copied from, which is where the chain led at the time.</summary>
+        private DefinitionItem BaseAsOf(long stamp)
+        {
+            var link = BaseDefinition;
+            while (link != null && link._copiedFrom != null && link._copiedAt > stamp)
+                link = link._copiedFrom;
+            return link?.AsOf(stamp);
+        }
+
+        /// <summary>Makes the body context an isolated copy, within <paramref name="tree"/>, of the one this item
+        /// carries now — made when it is first read.</summary>
+        internal void DeferContextIsolation(ParseContext.IsolationTree tree, long stamp)
+        {
+            if (_deferredContext != null)
+            {
+                _deferredContext = new ParseContext.DeferredIsolation(null, _deferredContext, stamp, tree);
+                _context = null;
+            }
+            else if (_context != null)
+            {
+                _deferredContext = new ParseContext.DeferredIsolation(_context, null, stamp, tree);
+                _context = null;
+            }
+        }
+
         public string Name { get; private set; }
         public string ParameterTemplate { get; private set; }
         public string ModelType { get; private set; }

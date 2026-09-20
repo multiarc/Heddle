@@ -58,7 +58,43 @@ namespace Heddle.LanguageServices.Completion
                 insert.Append(')');
 
             var repaired = text.Substring(0, offset) + insert + text.Substring(offset);
-            return (repaired, offset);
+            return (repaired + BodyClosers(repaired), offset);
+        }
+
+        /// <summary>The closing braces of every body still open at the end of the text — a body is open for as
+        /// long as it is being typed, and an open one leaves the parser nothing to type its contents by. Counted
+        /// from the lexer's own mode stack, so braces in a string, a comment, a raw block or plain text count for
+        /// nothing, exactly as they do when the document is compiled.</summary>
+        private static string BodyClosers(string text)
+        {
+            var lexer = new Heddle.Language.HeddleLexer(new Antlr4.Runtime.AntlrInputStream(text));
+            lexer.RemoveErrorListeners();
+            try
+            {
+                while (lexer.NextToken().Type != Antlr4.Runtime.TokenConstants.EOF)
+                {
+                }
+            }
+            catch (System.InvalidOperationException)
+            {
+                // A closer with nothing open empties the lexer's mode stack and the next pop throws. The
+                // document cannot be tokenized, which the analysis reports; there is nothing to close here.
+                return string.Empty;
+            }
+
+            int open = lexer.CurrentMode == Heddle.Language.HeddleLexer.SUB_BLOCK ? 1 : 0;
+            foreach (int mode in lexer.ModeStack)
+            {
+                if (mode == Heddle.Language.HeddleLexer.SUB_BLOCK)
+                    open++;
+            }
+
+            if (open == 0)
+                return string.Empty;
+            var closers = new StringBuilder(open * 2);
+            for (int i = 0; i < open; i++)
+                closers.Append("}}");
+            return closers.ToString();
         }
 
         /// <summary>

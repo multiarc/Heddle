@@ -90,6 +90,8 @@ namespace Heddle.Tests
                 "HED7036",
                 // HED7037: a retired MSBuild property is set; it is ignored (warned in phase 4).
                 "HED7037",
+                // HED7038: the build's intermediate model compile failed; follows the compiler's own errors.
+                "HED7038",
                 "HED7101", "HED7102", "HED7103",
                 // HED7104: registered name also answered by another template; runtime id due to cross-assembly collision.
                 "HED7104"

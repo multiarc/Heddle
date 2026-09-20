@@ -1,6 +1,6 @@
 ﻿@using(){{Heddle.Runtime}}@\
 @model(){{ExpressionOptions}}@\
-@list(Namespaces) {{
+@list(CSharpNamespaces) {{
 	using @();
 }}
 
@@ -8,7 +8,7 @@ namespace Heddle.Runtime {
 	public static class CSharpExpression {
 		private static void Main (string[] args) {}
 
-		public static object PreProcessData(@(ModelType) model, @(ChainedType) chained, @(RootModelType) root)
+		public static object PreProcessData(@(ModelCSharpType) model, @(ChainedCSharpType) chained, @(RootModelCSharpType) root)
 		{
 			return unchecked(@(Expression));
 		}

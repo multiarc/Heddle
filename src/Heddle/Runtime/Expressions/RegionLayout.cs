@@ -68,7 +68,7 @@ namespace Heddle.Runtime.Expressions
                 }
 
                 DefinitionItem definition = null;
-                component.Context?.DefinitionsBlock?.Definitions.TryGetValue(declaration.Name, out definition);
+                component.Context?.DefinitionsBlock?.TryGet(declaration.Name, out definition);
                 var slot = new RegionSlot
                 {
                     Name = declaration.Name,

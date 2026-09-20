@@ -429,6 +429,8 @@ namespace Heddle.Data
                 "compiled; fix the reference or exclude the templates with Precompile=\"false\".");
             Add(HeddleDiagnosticIds.BuildRetiredPropertySet, "Retired MSBuild property is set", warning,
                 "The MSBuild property '{0}' is retired and ignored; delete it from the project.");
+            Add(HeddleDiagnosticIds.BuildIntermediateCompileFailed, "Heddle intermediate model compile failed", error,
+                "Heddle's intermediate model compile failed; the errors above are its compiler errors. It compiles the project's own sources once, ahead of the project's compile, because a template names a model type this project declares — so the project's own compile was not reached. Fix the errors above; or set Precompile=\"false\" on every template that binds such a model, in its own @model or through a library it imports, which then render through the dynamic path and need no model at build time; or declare the model types in a referenced project.");
             Add(HeddleDiagnosticIds.BuildEmitterFault, "Heddle build host fault", error,
                 "The Heddle build host failed on '{0}': {1}: {2}. Compiling one template, this is a host defect " +
                 "rather than a template error — that template emits nothing and the pass continues; please " +

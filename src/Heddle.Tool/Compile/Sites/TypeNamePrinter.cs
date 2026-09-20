@@ -263,6 +263,7 @@ namespace Heddle.Tool.Compile.Sites
                 int tick = name.IndexOf('`');
                 if (tick >= 0)
                     name = name.Substring(0, tick);
+                name = Heddle.Helpers.TypeNameHelper.CreateEscapedIdentifier(name);
                 int upTo = part.IsGenericType ? part.GetGenericArguments().Length : consumed;
                 if (upTo > arguments.Length)
                     upTo = arguments.Length;
@@ -291,7 +292,9 @@ namespace Heddle.Tool.Compile.Sites
 
             string dotted = string.Join(".", parts.ToArray());
             string ns = type.Namespace;
-            spelling = "global::" + (string.IsNullOrEmpty(ns) ? dotted : ns + "." + dotted);
+            spelling = "global::" + (string.IsNullOrEmpty(ns)
+                ? dotted
+                : Heddle.Helpers.TypeNameHelper.EscapeDottedName(ns) + "." + dotted);
             return true;
         }
 

@@ -106,24 +106,5 @@ namespace Heddle.Tool.Compile.Sites
             cast = "(" + spelling + ")";
             return true;
         }
-
-        internal static void AppendUsings(StringBuilder sb, IEnumerable<string> usings)
-        {
-            // The engine's class template always carries these two alongside the site's @using
-            // namespaces; the printed class mirrors it so the same source compiles.
-            sb.Append("using System.Runtime.CompilerServices;\n");
-            sb.Append("using System.Reflection;\n");
-            if (usings == null)
-                return;
-            var seen = new HashSet<string>(System.StringComparer.Ordinal);
-            seen.Add("System.Runtime.CompilerServices");
-            seen.Add("System.Reflection");
-            foreach (var ns in usings)
-            {
-                if (string.IsNullOrWhiteSpace(ns) || !seen.Add(ns))
-                    continue;
-                sb.Append("using ").Append(ns).Append(";\n");
-            }
-        }
     }
 }

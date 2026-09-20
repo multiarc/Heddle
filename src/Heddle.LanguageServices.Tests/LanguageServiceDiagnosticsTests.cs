@@ -74,6 +74,39 @@ namespace Heddle.LanguageServices.Tests
         }
 
         /// <summary>
+        /// A syntax error inside an import must cost the importing document nothing: its own diagnostics stay,
+        /// in their order and first, and the import's are attributed to the import and anchored at its site.
+        /// The import is parsed twice when it has a syntax error, and the second parse once dropped every
+        /// diagnostic collected so far — the importer's included — and with them the mark the attribution
+        /// starts from.
+        /// </summary>
+        [Fact]
+        public void ASyntaxErrorInAnImportKeepsTheImportersDiagnosticsAndIsAttributedToTheImport()
+        {
+            const string own = "@%<x:nosuch>{{X}}%@";
+            var alone = Analyze(own + "tail", rootPath: CorpusDir);
+            Assert.NotEmpty(alone.Diagnostics);
+
+            var a = Analyze(own + "@<<{{broken-lib.heddle}}tail", rootPath: CorpusDir);
+
+            Assert.True(a.Diagnostics.Count > alone.Diagnostics.Count,
+                string.Join(" | ", a.Diagnostics.Select(x => x.Id + "@" + x.Offset + " " + x.ImportedFrom)));
+            for (int i = 0; i < alone.Diagnostics.Count; i++)
+            {
+                Assert.Equal(alone.Diagnostics[i].Id, a.Diagnostics[i].Id);
+                Assert.Equal(alone.Diagnostics[i].Offset, a.Diagnostics[i].Offset);
+                Assert.Null(a.Diagnostics[i].ImportedFrom);
+            }
+
+            foreach (var imported in a.Diagnostics.Skip(alone.Diagnostics.Count))
+            {
+                Assert.Contains("broken-lib.heddle", imported.ImportedFrom);
+                Assert.Equal(own.Length, imported.Offset);
+                Assert.Equal(0, imported.Length);
+            }
+        }
+
+        /// <summary>
         /// A buffer whose import does not exist yet is an ordinary editing state — the path is half typed, or the
         /// file is mid-rename. The read runs inside the parse tree walk, which the analyzer's own guard does not
         /// cover, so it threw straight out of the analysis and the document got no diagnostics at all: not for the

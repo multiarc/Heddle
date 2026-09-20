@@ -84,6 +84,10 @@ namespace Heddle.Runtime
 
         public ICollection<string> Namespaces => _namespaces;
 
+        /// <summary><see cref="Namespaces"/> as the emitted <c>using</c> directives have to spell them: a part
+        /// named like a C# keyword escaped.</summary>
+        internal IEnumerable<string> CSharpNamespaces => _namespaces.Select(Helpers.TypeNameHelper.EscapeDottedName);
+
         private readonly HashSet<string> _namespaces = new HashSet<string>();
 
         public Guid ClassGuid { get; } = Guid.NewGuid();

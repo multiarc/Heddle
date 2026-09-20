@@ -79,7 +79,7 @@ namespace Heddle.Helpers
                     {
                         return Enumerable.Empty<Type>();
                     }
-                }))
+                }).Where(HasLoadableDeclaringTypes))
                 {
                     string shortName;
                     if (type.IsNested)
@@ -110,6 +110,25 @@ namespace Heddle.Helpers
             }
 
             Volatile.Write(ref _maps, new NameMaps(shortNames, fullNames, generation));
+        }
+
+        /// <summary>A partial enumeration hands back a type nested in one that cannot load as if it were whole;
+        /// only asking for its declaring type faults. Such a type has no name a template could spell.</summary>
+        private static bool HasLoadableDeclaringTypes(Type type)
+        {
+            try
+            {
+                for (var parent = type; parent != null && parent.IsNested; parent = parent.DeclaringType)
+                {
+                }
+
+                return true;
+            }
+            catch (Exception ex) when (ex is System.IO.IOException || ex is TypeLoadException ||
+                ex is BadImageFormatException)
+            {
+                return false;
+            }
         }
 
         /// <summary>

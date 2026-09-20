@@ -32,6 +32,12 @@ The project sets `PublishAot=true`, `InvariantGlobalization=true`,
 `<RuntimeHostConfigurationOption Include="Heddle.Precompiled.StrictLoad" Value="true" />`
 (load-time compilation fails fast instead of happening silently).
 
+Every model here is `public`, and that is not incidental: generated sites are C# compiled into the
+app's own assembly and name only public types and members, so a template over an `internal` model
+still precompiles but has its sites rebuilt at load — which strict load refuses and NativeAOT cannot
+do. The build says so in the template's `HED7031` notice; see
+[Limitations](../../docs/precompilation.md#limitations).
+
 ## Capture mode (what CI runs)
 
 ```bash

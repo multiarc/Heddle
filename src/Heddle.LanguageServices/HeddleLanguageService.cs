@@ -35,8 +35,30 @@ namespace Heddle.LanguageServices
             InitializeWorkspace();
         }
 
-        /// <summary>Optional sink for operational/user-actionable messages. Set by the server or tests.</summary>
-        internal Action<string> LogSink { get; set; }
+        /// <summary>Optional sink for operational/user-actionable messages, set by the server or tests. The
+        /// workspace loads while the service is being constructed, before a host can assign this, so lines logged until then are kept and delivered on assignment.</summary>
+        internal Action<string> LogSink
+        {
+            get { return _logSink; }
+            set
+            {
+                _logSink = value;
+                if (value == null)
+                    return;
+                List<string> pending;
+                lock (_pendingLog)
+                {
+                    pending = new List<string>(_pendingLog);
+                    _pendingLog.Clear();
+                }
+
+                foreach (var line in pending)
+                    value(line);
+            }
+        }
+
+        private Action<string> _logSink;
+        private readonly List<string> _pendingLog = new List<string>();
 
         /// <summary>The current workspace function registry (the export-scan result, or null = Default).</summary>
         internal FunctionRegistry Functions => _functions;
@@ -47,21 +69,42 @@ namespace Heddle.LanguageServices
         private void InitializeWorkspace()
         {
             lock (_writerGate)
-            {
-                if (_options.AssemblyPaths != null && _options.AssemblyPaths.Count > 0)
-                {
-                    _modelManager.Load(_options.AssemblyPaths);
-                    _retainedHandles = ExtensionRegistrar.ScanOnce(_options.AssemblyPaths, Log);
-                }
-                else
-                {
-                    // A workspace with no configured assemblies contributes no exports of its own — it stays on
-                    // the default registry (bare-host parity), independent of any other workspace's scan.
-                    _retainedHandles = System.Array.Empty<System.Reflection.Assembly>();
-                }
+                LoadWorkspace();
+        }
 
+        /// <summary>Loads the configured assemblies and publishes what they export. The exports are read from the
+        /// very assemblies the models come from, so a reload rescans them: a workspace with no configured
+        /// assemblies contributes none and stays on the default registry (bare-host parity).</summary>
+        private void LoadWorkspace()
+        {
+            try
+            {
+                _retainedHandles = _options.AssemblyPaths != null && _options.AssemblyPaths.Count > 0
+                    ? _modelManager.Load(_options.AssemblyPaths, Log)
+                    : System.Array.Empty<System.Reflection.Assembly>();
+                ExtensionRegistrar.Publish(this, _retainedHandles, Log);
                 _functions = FunctionExportRegistrar.BuildRegistry(_retainedHandles, Log);
             }
+            catch (Exception e) when (WorkspaceReflection.IsLoadFault(e))
+            {
+                // Whatever of the workspace did load stays; its exports are not offered. A service that cannot
+                // be constructed is a server that cannot start, which no workspace content is worth.
+                _functions = null;
+                Log("Heddle: the workspace's exports could not be read, so none are offered: " +
+                    WorkspaceReflection.Describe(e));
+            }
+        }
+
+        /// <summary>Drops everything that refers into the model context, so it can unload.</summary>
+        private void UnloadWorkspace(bool withdrawExports)
+        {
+            _analyses.Clear();
+            _functions = null;
+            _retainedHandles = System.Array.Empty<System.Reflection.Assembly>();
+            // A reload leaves the old layer in place until the new one replaces it in a single publication.
+            if (withdrawExports)
+                ExtensionRegistrar.Withdraw(this);
+            _modelManager.Unload();
         }
 
         /// <summary>Analyzes a document version; returns the immutable analysis. Cancellation is honored between
@@ -118,15 +161,23 @@ namespace Heddle.LanguageServices
             // Completion runs against a repaired copy of the buffer so the enclosing body parses and records its
             // narrowed model type (the offset is unchanged). This analysis is synchronous and request-forced —
             // it is not cached and never republished.
-            var (repairedText, repairedOffset) = CompletionText.Repair(analysis.Text, offset);
-            DocumentAnalysis completionAnalysis;
-            if (string.Equals(repairedText, analysis.Text, StringComparison.Ordinal))
-                completionAnalysis = analysis;
-            else
-                completionAnalysis = _analyzer.Analyze(path, repairedText, analysis.Version, functions,
-                    cancellationToken);
+            try
+            {
+                var (repairedText, repairedOffset) = CompletionText.Repair(analysis.Text, offset);
+                DocumentAnalysis completionAnalysis;
+                if (string.Equals(repairedText, analysis.Text, StringComparison.Ordinal))
+                    completionAnalysis = analysis;
+                else
+                    completionAnalysis = _analyzer.Analyze(path, repairedText, analysis.Version, functions,
+                        cancellationToken);
 
-            return CompletionProvider.GetCompletions(completionAnalysis, repairedOffset, functions);
+                return CompletionProvider.GetCompletions(completionAnalysis, repairedOffset, functions, LogOnce);
+            }
+            catch (Exception e) when (WorkspaceReflection.IsRecoverable(e))
+            {
+                LogOnce("Completion skipped: " + WorkspaceReflection.Describe(e));
+                return CompletionResult.Empty;
+            }
         }
 
         /// <summary>Hover content for the offset, or null.</summary>
@@ -138,14 +189,32 @@ namespace Heddle.LanguageServices
             FunctionRegistry functions;
             lock (_writerGate)
                 functions = _functions;
-            return HoverProvider.GetHover(analysis, offset, functions);
+            try
+            {
+                return HoverProvider.GetHover(analysis, offset, functions, LogOnce);
+            }
+            catch (Exception e) when (WorkspaceReflection.IsRecoverable(e))
+            {
+                LogOnce("Hover skipped: " + WorkspaceReflection.Describe(e));
+                return null;
+            }
         }
 
         /// <summary>Definition target for the offset, or null.</summary>
         public DefinitionTarget GetDefinition(string path, int offset)
         {
             var analysis = GetAnalysis(path);
-            return analysis == null ? null : DefinitionProvider.GetDefinition(analysis, offset);
+            if (analysis == null)
+                return null;
+            try
+            {
+                return DefinitionProvider.GetDefinition(analysis, offset);
+            }
+            catch (Exception e) when (WorkspaceReflection.IsRecoverable(e))
+            {
+                LogOnce("Definition skipped: " + WorkspaceReflection.Describe(e));
+                return null;
+            }
         }
 
         /// <summary>Runs the model-assembly reload protocol; invalidates existing analyses — open documents must be
@@ -154,18 +223,36 @@ namespace Heddle.LanguageServices
         {
             lock (_writerGate)
             {
-                _analyses.Clear();
-                _modelManager.Unload();
-                if (_options.AssemblyPaths != null && _options.AssemblyPaths.Count > 0)
-                    _modelManager.Load(_options.AssemblyPaths);
-                // Extension registry is process-append-only; function registry re-applies from retained handles.
-                _functions = FunctionExportRegistrar.BuildRegistry(_retainedHandles, Log);
+                UnloadWorkspace(withdrawExports: false);
+                LoadWorkspace();
             }
         }
 
+        /// <summary>A request repeats on every keystroke; what it finds missing in the workspace is said once.</summary>
+        private void LogOnce(string message)
+        {
+            lock (_saidOnce)
+            {
+                if (!_saidOnce.Add(message))
+                    return;
+            }
+
+            Log(message);
+        }
+
+        private readonly HashSet<string> _saidOnce = new HashSet<string>(StringComparer.Ordinal);
+
         private void Log(string message)
         {
-            LogSink?.Invoke(message);
+            var sink = _logSink;
+            if (sink != null)
+            {
+                sink(message);
+                return;
+            }
+
+            lock (_pendingLog)
+                _pendingLog.Add(message);
         }
 
         public void Dispose()
@@ -174,10 +261,7 @@ namespace Heddle.LanguageServices
                 return;
             _disposed = true;
             lock (_writerGate)
-            {
-                _analyses.Clear();
-                _modelManager.Unload();
-            }
+                UnloadWorkspace(withdrawExports: true);
         }
     }
 }

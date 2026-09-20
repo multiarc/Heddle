@@ -122,7 +122,7 @@ namespace Heddle.Language
             var listener = new HeddleMainListener(context, settings);
 
             listener.CurrentParseContext.SkippedTokens.AddRange(
-                tokens.GetTokens()
+                ((CommonTokenStream) parser.TokenStream).GetTokens()
                     .Where(t => t.Channel == Lexer.Hidden)
                     .Select(t => new BlockPosition(t)));
 
@@ -139,35 +139,33 @@ namespace Heddle.Language
             int errorFrom, ParseDepthGuard depthGuard)
         {
             HeddleParser.HeddleContext tree;
-            if (!settings.ProvideLanguageFeatures)
+            // The fast prediction mode first, for an editor's parse as well: a parse it completes without an error
+            // is the parse the exact mode produces, at a fraction of the allocation, and one it does not is parsed
+            // again in the exact mode, which is where every reported error comes from.
+            bool relex = settings.ProvideLanguageFeatures;
+            bool needRetryIfFailed = false;
+            try
             {
-                bool needRetryIfFailed = false;
-                try
-                {
-                    tree = parser.heddle();
-                    needRetryIfFailed = true;
-                }
-                catch (ParseCanceledException e)
-                {
-                    tree = ParseDiagnosticMode(stream, parser, syntaxErrorListener, lexerErrorListener, depthGuard);
-                    syntaxErrorListener.Context.Warnings.Add(new HeddleCompileWarning
-                    {
-                        Error = e.Message,
-                        Exception = e,
-                        Fix = "SLL Mode failed, fix template or investigate why SLL is failing",
-                        Position = new BlockPosition(0, 0)
-                    });
-                }
-
-                if (needRetryIfFailed && context.Errors.Count > errorFrom)
-                {
-                    tree = ParseDiagnosticMode(stream, parser, syntaxErrorListener, lexerErrorListener, depthGuard);
-                }
-            }
-            else
-            {
-                parser.Interpreter.PredictionMode = PredictionMode.LL_EXACT_AMBIG_DETECTION;
                 tree = parser.heddle();
+                needRetryIfFailed = true;
+            }
+            catch (ParseCanceledException e)
+            {
+                tree = ParseDiagnosticMode(stream, parser, syntaxErrorListener, lexerErrorListener, depthGuard,
+                    errorFrom, relex);
+                syntaxErrorListener.Context.Warnings.Add(new HeddleCompileWarning
+                {
+                    Error = e.Message,
+                    Exception = e,
+                    Fix = "SLL Mode failed, fix template or investigate why SLL is failing",
+                    Position = new BlockPosition(0, 0)
+                });
+            }
+
+            if (needRetryIfFailed && context.Errors.Count > errorFrom)
+            {
+                tree = ParseDiagnosticMode(stream, parser, syntaxErrorListener, lexerErrorListener, depthGuard,
+                    errorFrom, relex);
             }
 
             return tree;
@@ -175,15 +173,30 @@ namespace Heddle.Language
 
         private static HeddleParser.HeddleContext ParseDiagnosticMode(AntlrInputStream stream, HeddleParser parser,
             HeddleSyntaxErrorListener syntaxErrorListener, HeddleLexerErrorListener lexerErrorListener,
-            ParseDepthGuard depthGuard)
+            ParseDepthGuard depthGuard, int errorFrom, bool relex)
         {
             stream.Reset();
             parser.Reset();
             // The second attempt of a two-stage parse shares the guard with the first, whose count was abandoned
             // partway when the attempt failed.
             depthGuard.Reset();
-            syntaxErrorListener.Clear();
-            lexerErrorListener.Replay();
+            // Only what the first attempt of this parse reported goes. The list is shared with the document that
+            // imports this one, and its diagnostics so far are not this parse's to remove.
+            syntaxErrorListener.Clear(errorFrom);
+            if (relex)
+            {
+                // An editor's diagnostics come in the order one exact parse reports them, the tokenizer's among
+                // the parser's. Tokenizing again reports them again, in their places; replaying would put them first.
+                var lexer = (Lexer) parser.TokenStream.TokenSource;
+                lexer.Reset();
+                lexerErrorListener.Forget();
+                parser.TokenStream = new CommonTokenStream(lexer);
+            }
+            else
+            {
+                lexerErrorListener.Replay();
+            }
+
             parser.Interpreter.PredictionMode = PredictionMode.LL_EXACT_AMBIG_DETECTION;
             return parser.heddle();
         }

@@ -182,20 +182,6 @@ namespace Heddle.Tests
 #endif
 
         /// <summary>
-        /// The engine must not <b>load</b> anything — the half of the promise its siblings do not cover. They pin
-        /// that an observed assembly takes no extension name, which is about scanning; a review showed the deleted
-        /// transitive load walk could be restored lazily and the entire suite stayed green.
-        /// <para>Stated as behaviour: an assembly that is referenced by a loaded assembly but has not itself been
-        /// loaded must still not be loaded after the engine has observed, compiled and rendered. This is also what
-        /// makes the published rule true that naming a model type in an assembly the host has never touched does not
-        /// resolve it: were the closure walked, it would.</para>
-        /// <para><b>What it does not cover.</b> A walk that runs <i>once</i>, at startup, has already run before this
-        /// test can build its probe, so a one-shot closure walk still passes — verified, not assumed. Closing that
-        /// needs a child process comparing the loaded set before and after the engine is first touched, which no
-        /// suite here does. What reddens is any walk on an observation pass, which is where both the deleted walk and
-        /// the review's reimplementation of it lived.</para>
-        /// </summary>
-        /// <summary>
         /// A registered assembly may hold a type this process cannot load — its base class lives in an assembly
         /// that is not there (a controller, when the build host does not run on the web framework). Pins the
         /// regression where that one type cost every other type of the assembly its name: enumerating the types
@@ -228,6 +214,51 @@ namespace Heddle.Tests
             Assert.Equal("Neighbours" + suffix + ".Model" + suffix, resolved.FullName);
         }
 
+        /// <summary>
+        /// The same assembly, one step further: a type nested in the one that cannot load is handed back by the
+        /// partial enumeration as if it were fine, and only asking for its declaring type faults. Pins the
+        /// regression where that fault escaped registration and took the whole build host down with it.
+        /// </summary>
+        [Fact]
+        public void ATypeNestedInOneThatCannotLoadDoesNotFailRegistration()
+        {
+            var suffix = Guid.NewGuid().ToString("N").Substring(0, 12);
+            var baseBytes = CompileAs("MissingOuterBase" + suffix,
+                "namespace MissingOuterBase" + suffix + " { public class Root { } }");
+            var references = AssemblyHelper.GetApplicationReferences();
+            references.Add(MetadataReference.CreateFromImage(baseBytes));
+            var compilation = CSharpCompilation.Create("NestedNeighbours" + suffix,
+                new[]
+                {
+                    CSharpSyntaxTree.ParseText(
+                        "namespace NestedNeighbours" + suffix + " { public class Broken : MissingOuterBase" + suffix +
+                        ".Root { public class Inside { } } public class Model" + suffix +
+                        " { public string Name { get; set; } public class Part { } } }")
+                },
+                references, new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+            using var image = new MemoryStream();
+            Assert.True(compilation.Emit(image).Success);
+            var neighbours = Assembly.Load(image.ToArray());
+
+            HeddleTemplate.Register(neighbours);
+            var resolved = ReflectionHelper.ResolveType("Model" + suffix + ".Part", "NestedNeighbours" + suffix);
+            Assert.Equal("NestedNeighbours" + suffix + ".Model" + suffix + "+Part", resolved.FullName);
+        }
+
+        /// <summary>
+        /// The engine must not <b>load</b> anything — the half of the promise its siblings do not cover. They pin
+        /// that an observed assembly takes no extension name, which is about scanning; a review showed the deleted
+        /// transitive load walk could be restored lazily and the entire suite stayed green.
+        /// <para>Stated as behaviour: an assembly that is referenced by a loaded assembly but has not itself been
+        /// loaded must still not be loaded after the engine has observed, compiled and rendered. This is also what
+        /// makes the published rule true that naming a model type in an assembly the host has never touched does not
+        /// resolve it: were the closure walked, it would.</para>
+        /// <para><b>What it does not cover.</b> A walk that runs <i>once</i>, at startup, has already run before this
+        /// test can build its probe, so a one-shot closure walk still passes — verified, not assumed. Closing that
+        /// needs a child process comparing the loaded set before and after the engine is first touched, which no
+        /// suite here does. What reddens is any walk on an observation pass, which is where both the deleted walk and
+        /// the review's reimplementation of it lived.</para>
+        /// </summary>
         [Fact]
         public void ObservingAndRenderingLoadsNoReferencedAssembly()
         {

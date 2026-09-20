@@ -123,17 +123,17 @@ namespace Heddle.Tool.Compile.Sites
                     if (last && hop.MemberIsValue)
                     {
                         sb.Append("            return (object)").Append(receiver).Append(".")
-                            .Append(hop.Name).Append(";\n");
+                            .Append(Heddle.Helpers.TypeNameHelper.CreateEscapedIdentifier(hop.Name)).Append(";\n");
                     }
                     else if (last)
                     {
-                        sb.Append("            return ").Append(receiver).Append(".").Append(hop.Name)
+                        sb.Append("            return ").Append(receiver).Append(".").Append(Heddle.Helpers.TypeNameHelper.CreateEscapedIdentifier(hop.Name))
                             .Append(";\n");
                     }
                     else
                     {
                         sb.Append("            var ").Append(target).Append(" = ").Append(receiver)
-                            .Append(".").Append(hop.Name).Append(";\n");
+                            .Append(".").Append(Heddle.Helpers.TypeNameHelper.CreateEscapedIdentifier(hop.Name)).Append(";\n");
                     }
                 }
                 else
@@ -147,20 +147,20 @@ namespace Heddle.Tool.Compile.Sites
                         {
                             sb.Append("            var ").Append(target).Append(" = ").Append(hop.NullTest)
                                 .Append(" ? ").Append(nullArm).Append(" : ").Append(receiver)
-                                .Append(".").Append(hop.Name).Append(";\n");
+                                .Append(".").Append(Heddle.Helpers.TypeNameHelper.CreateEscapedIdentifier(hop.Name)).Append(";\n");
                             sb.Append("            return (object)").Append(target).Append(";\n");
                         }
                         else
                         {
                             sb.Append("            return ").Append(hop.NullTest).Append(" ? null : (object)")
-                                .Append(receiver).Append(".").Append(hop.Name).Append(";\n");
+                                .Append(receiver).Append(".").Append(Heddle.Helpers.TypeNameHelper.CreateEscapedIdentifier(hop.Name)).Append(";\n");
                         }
                     }
                     else
                     {
                         sb.Append("            var ").Append(target).Append(" = ").Append(hop.NullTest)
                             .Append(" ? ").Append(nullArm).Append(" : ").Append(receiver)
-                            .Append(".").Append(hop.Name).Append(";\n");
+                            .Append(".").Append(Heddle.Helpers.TypeNameHelper.CreateEscapedIdentifier(hop.Name)).Append(";\n");
                     }
                 }
             }

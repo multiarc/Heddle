@@ -370,6 +370,12 @@ Holds the model type and shared compilation state
 ([CompileContext.cs](../src/Heddle/Runtime/CompileContext.cs)). You usually create one from
 `TemplateOptions`; the engine creates nested contexts internally for subtemplates and partials.
 
+**A `CompileContext` is not thread-safe, and belongs to one compile at a time.** A compile writes to it
+— the current model type, the collected errors and warnings, the items it has compiled — without
+synchronization. Give each compile that may run concurrently its own context (they are cheap, and may
+share one `TemplateOptions`); handing one context to two compiles at once fails unpredictably. This is
+about *compiling* only: a compiled `HeddleTemplate` renders concurrently, as described above.
+
 ```csharp
 public CompileContext(ExType modelType = null);
 public CompileContext(TemplateOptions options, ExType modelType = null);
@@ -500,7 +506,8 @@ output. The additions live in the `Heddle.Precompiled` namespace:
   (default `true`; `false` rebuilds every site from its serialized form) and
   `"Heddle.Precompiled.StrictLoad"` (default `false`; seeds `TemplateOptions.PrecompiledStrictLoad`,
   under which a site the table does not serve throws `PrecompiledStrictLoadException` instead of
-  compiling at load).
+  compiling at load — which includes every site that reads a non-public model type or member; see
+  [Limitations](precompilation.md#limitations)).
 - `PrecompiledMismatchPolicy` on `TemplateOptions` — `Fallback` (default: recompile + warn) or
   `Strict` (throw when a precompiled entry exists but cannot be plugged).
 - Typed entry points — `Heddle.Generated.{Name}.Generate(model)` (the default namespace is
