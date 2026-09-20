@@ -91,6 +91,7 @@ Heddle.Tests.LegacyImportRemovalTests
 Heddle.Tests.LexerErrorReportingTests
 Heddle.Tests.LineIndexTests
 Heddle.Tests.LiteralRoundTripTests
+Heddle.Tests.MemberPathKeyTests
 Heddle.Tests.MemberVisibilityConformanceTests
 Heddle.Tests.MultilineOverrideOffsetRegressionTests
 Heddle.Tests.NameLookupPrecedenceOracleTests

@@ -258,6 +258,40 @@ namespace Heddle.Tests
             Assert.Single(replaced.OutputChains[0].Context.GetDefenition("a").Context.OutputChains);
         }
 
+        private static ParseContext Compiled(string document)
+        {
+            var template = new HeddleTemplate(document,
+                new CompileContext(new TemplateOptions { OutputProfile = OutputProfile.Text }, typeof(Model)));
+            Assert.True(template.CompileResult.Success, template.CompileResult.ToString());
+            return template.CompileResult.Context;
+        }
+
+        /// <summary>A host may also take things away. What it removes from a context's lists before a view of
+        /// that context is read is gone from the view too: the view shows the part of the prefix it was promised
+        /// that is still there, and reading it is not a fault.</summary>
+        [Fact]
+        public void AHostsRemovalsLeaveAnUnreadViewWithWhatIsLeftOfItsPrefix()
+        {
+            const string document = "@* c0 *@@%<a>{{A}}%@@* c1 *@@a()@* c2 *@@a()";
+
+            var skipped = Compiled(document);
+            Assert.True(skipped.SkippedTokens.Count > 0, "the document's comments are skipped tokens");
+            var afterClear = skipped.OutputChains[1].Context;
+            skipped.SkippedTokens.Clear();
+            Assert.Empty(afterClear.SkippedTokens);
+
+            var trimmed = Compiled(document);
+            int before = trimmed.SkippedTokens.Count;
+            var afterOne = trimmed.OutputChains[1].Context;
+            trimmed.SkippedTokens.RemoveAt(0);
+            Assert.Equal(before - 1, afterOne.SkippedTokens.Count);
+
+            var chained = Compiled(document);
+            var afterChainsClear = chained.OutputChains[1].Context;
+            chained.OutputChains.Clear();
+            Assert.Empty(afterChainsClear.OutputChains);
+        }
+
         private static readonly string[] Pieces =
         {
             "@%<a>{{A}}%@", "@%<a:a>{{A2@a()}}%@", "@%<a(size: string):a>{{A3 @(size)}}%@",

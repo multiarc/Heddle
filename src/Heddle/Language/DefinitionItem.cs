@@ -143,24 +143,33 @@ namespace Heddle.Language {
         /// <summary>The definition's body context. On a definition that belongs to an isolated context it is
         /// produced on first read: isolating a context copies every definition visible in it, and copying every
         /// one of their bodies as well, for each output chain of a document, is what made parsing cost the number
-        /// of calls times the square of the number of definitions.</summary>
+        /// of calls times the square of the number of definitions.
+        /// <para>The promise of a copy is dropped only after the copy itself is published, and both are read and
+        /// written as volatile: a reader that finds no promise finds the copy, never a field it loaded before the
+        /// copy existed. Two readers may make the copy at once — the isolation they make it through hands both of
+        /// them the same one, and the second publishes nothing.</para>
+        /// <para>Making the copy is not done under a lock this property takes first: it builds a whole context,
+        /// and holding a lock across that would hold one across the type loads such a build can trigger, which
+        /// is what .NET Framework's loader does not survive. Readers are kept apart by the order the copy and
+        /// its promise are published in, not by waiting for each other.</para></summary>
         public ParseContext Context
         {
             get
             {
-                var context = _context;
+                var context = System.Threading.Volatile.Read(ref _context);
                 if (context != null)
                     return context;
-                var deferred = _deferredContext;
+                var deferred = System.Threading.Volatile.Read(ref _deferredContext);
                 if (deferred == null)
-                    return _context;
+                    return System.Threading.Volatile.Read(ref _context);
                 context = deferred.Materialize();
                 lock (ParseContext.SharedLock)
                 {
                     if (ReferenceEquals(_deferredContext, deferred))
                     {
-                        _context = context;
-                        _deferredContext = null;
+                        // Published first, promised away second: the order the getter reads them in.
+                        System.Threading.Volatile.Write(ref _context, context);
+                        System.Threading.Volatile.Write(ref _deferredContext, null);
                     }
 
                     return _context;
@@ -171,8 +180,8 @@ namespace Heddle.Language {
                 lock (ParseContext.SharedLock)
                 {
                     RememberState();
-                    _context = value;
-                    _deferredContext = null;
+                    System.Threading.Volatile.Write(ref _context, value);
+                    System.Threading.Volatile.Write(ref _deferredContext, null);
                 }
             }
         }

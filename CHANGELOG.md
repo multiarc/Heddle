@@ -272,8 +272,11 @@ window's ratification remain in
   `DefaultChains`, `RawOutputItems`, `SkippedTokens` or `DefinitionsBlock.Positions` lists — and writes
   made straight into a `DefinitionsBlock.Definitions` table *after* the view was taken from a table
   already handed out — are seen through a view of that context that has not been read yet; entries
-  appended to a definition body's `SkippedTokens` or `Positions` are too. Appended chains and raw items,
-  a definition's `Position` or `Context` being set, and everything the engine itself does, are not.
+  appended to a definition body's `SkippedTokens` or `Positions` are too. Such a view takes the first *n*
+  entries of the list as it stands when it is first read, where *n* is what the list held when the view
+  was taken — so a host that removes entries leaves the view with what is left of its prefix, not with
+  the entries it no longer has. Appended chains and raw items, a definition's `Position` or `Context`
+  being set, and everything the engine itself does, are not.
   Measured on one machine (Release, net10.0, x64; bytes allocated on the compiling thread by the second
   compile of the same document in the process — the first compile in a process adds 25–40 MB of parser
   and JIT warm-up whatever the document), a page of N definitions and 4N calls: 50 definitions allocated

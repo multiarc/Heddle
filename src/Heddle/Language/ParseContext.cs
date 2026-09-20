@@ -119,8 +119,12 @@ namespace Heddle.Language {
                 if (pending == null)
                     return;
                 pending.Source.MaterializeLists();
-                _rawOutputItems.InsertRange(0, pending.Source._rawOutputItems.GetRange(0, pending.RawCount));
-                _skippedTokens.InsertRange(0, pending.Source._skippedTokens.GetRange(0, pending.SkippedCount));
+                // What a host has removed from the source since is not there to be taken: the view gets what is
+                // left of the prefix it was promised rather than a fault for the part that is gone.
+                var raws = pending.Source._rawOutputItems;
+                var skipped = pending.Source._skippedTokens;
+                _rawOutputItems.InsertRange(0, raws.GetRange(0, Math.Min(pending.RawCount, raws.Count)));
+                _skippedTokens.InsertRange(0, skipped.GetRange(0, Math.Min(pending.SkippedCount, skipped.Count)));
                 // Published last: a reader that finds nothing pending takes the lists without the lock.
                 System.Threading.Volatile.Write(ref _pendingLists, null);
             }
@@ -241,9 +245,10 @@ namespace Heddle.Language {
                 _isolatingAsOf = pending.Stamp;
                 try
                 {
-                    for (int i = 0; i < pending.Count; i++)
+                    // As with the lists: a prefix a host has shortened since is taken as far as it still goes.
+                    for (int i = 0; i < pending.Count && i < pending.Chains.Count; i++)
                         _outputChains.Add(new OutputChain(pending.Chains[i], this, null));
-                    for (int i = 0; i < pending.DefaultCount; i++)
+                    for (int i = 0; i < pending.DefaultCount && i < pending.Defaults.Count; i++)
                         _defaultChains.Add(new OutputChain(pending.Defaults[i], this, null));
                 }
                 finally
