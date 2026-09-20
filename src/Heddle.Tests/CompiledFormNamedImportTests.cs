@@ -107,7 +107,7 @@ namespace Heddle.Tests
                     string fault = entry.TryGetRequestFault(requestOptions, out var reason, out var detail)
                         ? reason + ": " + detail
                         : "<no recorded fault>";
-                    Assert.True(false, "Materialization faulted: " + fault + ".");
+                    Assert.Fail("Materialization faulted: " + fault + ".");
                 }
 
                 Assert.Equal("BEFORE\nAFTER\nDISK\n",

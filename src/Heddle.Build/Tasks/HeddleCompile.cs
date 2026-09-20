@@ -63,6 +63,10 @@ namespace Heddle.Build.Tasks
         /// <summary>Response <c>--stamp</c>.</summary>
         public string StampPath { get; set; }
 
+        /// <summary>Response <c>--disk-imports</c>: where the host records the files it read off disk to
+        /// serve an <c>@&lt;&lt;</c> import. The targets read the list back as compile inputs.</summary>
+        public string DiskImportsPath { get; set; }
+
         /// <summary>Response <c>--probe</c>. Probe mode: no artifact, source or stamp.</summary>
         public string ProbeJson { get; set; }
 
@@ -87,8 +91,9 @@ namespace Heddle.Build.Tasks
         /// reused only for a digest that covers all of them.</summary>
         public string DigestOptions { get; set; }
 
-        /// <summary>The host tool assembly (<c>Heddle.Tool.dll</c> under <c>tools/net10.0/any/</c>).</summary>
-        public string ToolPath { get; set; }
+        /// <summary>The host tool assembly (<c>Heddle.Tool.dll</c> under <c>tools/net10.0/any/</c>).
+        /// Named apart from <see cref="ToolTask.ToolPath"/>, which names a directory, not a file.</summary>
+        public string ToolAssembly { get; set; }
 
         /// <summary>Where to write the response file; defaults beside the stamp path.</summary>
         public string ResponseFilePath { get; set; }
@@ -127,7 +132,7 @@ namespace Heddle.Build.Tasks
         protected override string GenerateCommandLineCommands()
         {
             var command = new StringBuilder();
-            command.Append('"').Append(ToolPath).Append('"');
+            command.Append('"').Append(ToolAssembly).Append('"');
             command.Append(" compile @\"").Append(_responseFile).Append('"');
             return command.ToString();
         }
@@ -191,16 +196,16 @@ namespace Heddle.Build.Tasks
         {
             try
             {
-                if (string.IsNullOrEmpty(ToolPath))
+                if (string.IsNullOrEmpty(ToolAssembly))
                 {
                     Log.LogError("HeddleToolPath is not set; it must point at the built Heddle.Tool.dll.");
                     return false;
                 }
-                if (!File.Exists(ToolPath))
+                if (!File.Exists(ToolAssembly))
                 {
                     Log.LogError("HeddleToolPath '{0}' does not exist; it must point at the built Heddle.Tool.dll " +
                         "(a project that sequences the build-time precompile references Heddle.Tool, or the " +
-                        "Heddle.Build package carries it).", ToolPath);
+                        "Heddle.Build package carries it).", ToolAssembly);
                     return false;
                 }
 
@@ -243,6 +248,7 @@ namespace Heddle.Build.Tasks
                     Add(args, "--artifact-out", ArtifactPath);
                     Add(args, "--source-out", SourcePath);
                     Add(args, "--stamp", StampPath);
+                    AddIfPresent(args, "--disk-imports", DiskImportsPath);
                 }
 
                 _responseFile = ResponseFilePath;

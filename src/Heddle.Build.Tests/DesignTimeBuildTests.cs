@@ -30,14 +30,14 @@ namespace Heddle.Build.Tests
                 // The opted-out item gets no stub either: the IDE never sees an entry point the real
                 // build omits.
                 Assert.DoesNotContain("Templates_Partial", stubsText);
-                Assert.Equal(0, Directory.GetFiles(fixture.Root, "Heddle.CompiledForm.bin", SearchOption.AllDirectories).Length);
-                Assert.Equal(0, Directory.GetFiles(fixture.Root, "Heddle.CompiledForm.g.cs", SearchOption.AllDirectories).Length);
-                Assert.Equal(0, Directory.GetFiles(fixture.Root, "stamp.txt", SearchOption.AllDirectories).Length);
+                Assert.Empty(Directory.GetFiles(fixture.Root, "Heddle.CompiledForm.bin", SearchOption.AllDirectories));
+                Assert.Empty(Directory.GetFiles(fixture.Root, "Heddle.CompiledForm.g.cs", SearchOption.AllDirectories));
+                Assert.Empty(Directory.GetFiles(fixture.Root, "stamp.txt", SearchOption.AllDirectories));
 
                 var real = fixture.Build(project);
                 real.AssertSuccess("real build after design-time");
                 Assert.DoesNotContain("Skipping target \"_HeddleCompile\"", real.Output);
-                Assert.Equal(1, Directory.GetFiles(fixture.Root, "Heddle.CompiledForm.bin", SearchOption.AllDirectories).Length);
+                Assert.Single(Directory.GetFiles(fixture.Root, "Heddle.CompiledForm.bin", SearchOption.AllDirectories));
             }
         }
     }

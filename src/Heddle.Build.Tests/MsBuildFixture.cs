@@ -156,6 +156,15 @@ namespace Heddle.Build.Tests
             return found[0];
         }
 
+        /// <summary>The single <c>disk-imports.txt</c> under <paramref name="dir"/>: the files the
+        /// compile read off disk to serve an <c>@&lt;&lt;</c> import.</summary>
+        public static string DiskImports(string dir)
+        {
+            string[] found = Directory.GetFiles(dir, "disk-imports.txt", SearchOption.AllDirectories);
+            Assert.True(found.Length == 1, "Expected one disk-import list under " + dir + ", found " + found.Length + ".");
+            return found[0];
+        }
+
         /// <summary>The single <c>Heddle.CompiledForm.g.cs</c> under <paramref name="dir"/>.</summary>
         public static string GeneratedSource(string dir)
         {

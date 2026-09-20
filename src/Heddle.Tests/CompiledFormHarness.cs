@@ -409,7 +409,7 @@ namespace Heddle.Tests
                 string detail;
                 string fault = entry.TryGetRequestFault(requestOptions, out reason, out detail) ?
                     reason + ": " + detail : "<no fault recorded>";
-                Assert.True(false, "Materialization fault for " + row.Name + ": " + fault + ".");
+                Assert.Fail("Materialization fault for " + row.Name + ": " + fault + ".");
             }
             return new RowResult { Pass = pass, Artifact = back, Image = loaded, Entry = entry, Strategy = strategy };
         }

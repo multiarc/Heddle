@@ -9,6 +9,7 @@ Heddle.Tool.Tests.GeneratedSiteRoundtripTests
 Heddle.Tool.Tests.HeddleToolTests
 Heddle.Tool.Tests.ImageSatelliteAndNativeTests
 Heddle.Tool.Tests.NativeExpressionPrinterDifferentialTests
+Heddle.Tool.Tests.StampTests
 Heddle.Tool.Tests.TestClassInventoryTests
 Heddle.Tool.Tests.TypeNamePrinterTests
 Heddle.Tool.Tests.WrapperModelAccessibilityTests

@@ -49,6 +49,10 @@ namespace Heddle.Tool.Compile
         internal string ArtifactOut;
         internal string SourceOut;
         internal string Stamp;
+
+        /// <summary>Where to record the files the compile read off disk to serve an <c>@&lt;&lt;</c>
+        /// import; null when the caller does not ask, and the compile then remembers nothing.</summary>
+        internal string DiskImports;
         internal string Probe;
         internal string StubsOnly;
     }
@@ -135,6 +139,7 @@ namespace Heddle.Tool.Compile
                     case "--artifact-out": request.ArtifactOut = Take(tokens, ref i, flag); break;
                     case "--source-out": request.SourceOut = Take(tokens, ref i, flag); break;
                     case "--stamp": request.Stamp = Take(tokens, ref i, flag); break;
+                    case "--disk-imports": request.DiskImports = Take(tokens, ref i, flag); break;
                     case "--probe": request.Probe = Take(tokens, ref i, flag); break;
                     case "--stubs-only": request.StubsOnly = Take(tokens, ref i, flag); break;
                     default:

@@ -25,10 +25,14 @@
   <PropertyGroup>
     <CustomCollectWatchItems>$(CustomCollectWatchItems);_HeddleEditorInputs</CustomCollectWatchItems>
   </PropertyGroup>
-  <Target Name="_HeddleEditorInputs" BeforeTargets="CollectUpToDateCheckInputDesignTime">
+  <!-- The collection hooks reach one thing the static declaration cannot: the libraries the last compile
+       read off disk to serve an @<< import, which no item declares and only that compile's own record
+       names. An editor that does not watch them serves the stale artifact after an edit to one. -->
+  <Target Name="_HeddleEditorInputs" BeforeTargets="CollectUpToDateCheckInputDesignTime"
+          DependsOnTargets="_HeddleDiskImportInputs">
     <ItemGroup>
-      <UpToDateCheckInput Include="@(HeddleTemplate);@(HeddleModelAssembly);@(HeddleExtensionAssembly)" KeepDuplicates="false" />
-      <Watch Include="@(HeddleTemplate)" KeepDuplicates="false" />
+      <UpToDateCheckInput Include="@(HeddleTemplate);@(HeddleModelAssembly);@(HeddleExtensionAssembly);@(_HeddleDiskImportInput)" KeepDuplicates="false" />
+      <Watch Include="@(HeddleTemplate);@(_HeddleDiskImportInput)" KeepDuplicates="false" />
     </ItemGroup>
   </Target>
 
@@ -60,6 +64,7 @@
       <_HeddleStubsPath>$(_HeddleDir)stubs/Heddle.Generated.Stubs.g.cs</_HeddleStubsPath>
       <_HeddleResponsePath>$(_HeddleDir)compile.rsp</_HeddleResponsePath>
       <_HeddleOptionsPath>$(_HeddleDir)options.txt</_HeddleOptionsPath>
+      <_HeddleDiskImportsPath>$(_HeddleDir)disk-imports.txt</_HeddleDiskImportsPath>
       <_HeddleModelsDir>$(_HeddleDir)models/</_HeddleModelsDir>
       <_HeddleModelDigestPath>$(_HeddleDir)models.txt</_HeddleModelDigestPath>
     </PropertyGroup>
@@ -75,11 +80,14 @@
     </ItemGroup>
   </Target>
 
-  <!-- The option properties are compile inputs too. A value changed on the command line touches no
-       project file, so it is written to a file that changes only when a value does, and that file
-       joins _HeddleCompile's inputs; an unchanged rebuild still skips the compile. -->
+  <!-- The option properties and the item set are compile inputs too, and neither is a file MSBuild's
+       own input list can stand in for: a value changed on the command line touches no project file, and
+       MSBuild's check is newest-input against oldest-output over the *current* items, so an item removed
+       or renamed leaves every remaining input older than the outputs it no longer describes. Both are
+       written to a file that changes only when they do, and that file joins _HeddleCompile's inputs; an
+       unchanged rebuild still skips the compile. -->
   <Target Name="_HeddleOptions"
-          DependsOnTargets="_HeddlePaths"
+          DependsOnTargets="_HeddlePaths;_HeddleItems"
           Condition="'$(DesignTimeBuild)' != 'true' and '$(BuildingProject)' == 'true' and '@(HeddleTemplate)' != ''">
     <ItemGroup>
       <_HeddleOptionLine Include="TemplateRoot=$(HeddleTemplateRoot)" />
@@ -89,12 +97,29 @@
       <_HeddleOptionLine Include="MaxRecursionCount=$(HeddleMaxRecursionCount)" />
       <_HeddleOptionLine Include="GeneratedNamespace=$(HeddleGeneratedNamespace)" />
       <_HeddleOptionLine Include="AssemblyName=$(AssemblyName)" />
+      <!-- The same fields the response file carries, so a changed Key, Name, ModelType or profile
+           override moves the line the item owns and nothing else does. -->
+      <_HeddleOptionLine Include="@(_HeddleCompileItem->'Template=%(Identity)|%(Key)|%(Name)|%(ModelType)|%(OutputProfile)')" />
+      <_HeddleOptionLine Include="@(_HeddleImportItem->'ImportOnly=%(Identity)|%(Key)|%(Name)')" />
     </ItemGroup>
     <MakeDir Directories="$(_HeddleDir)" />
     <WriteLinesToFile File="$(_HeddleOptionsPath)" Lines="@(_HeddleOptionLine)" Overwrite="true" WriteOnlyWhenDifferent="true" />
     <ItemGroup>
       <FileWrites Include="$(_HeddleOptionsPath)" />
     </ItemGroup>
+  </Target>
+
+  <!-- The files the last compile read off disk to serve an @<< import: a library the item set does not
+       declare — outside the project directory, or simply not globbed — whose text the importing
+       template is compiled from. Nothing in the item set names them, so without this list the compile
+       is skipped while one of them changes. The host writes the list beside the stamp, so it describes
+       exactly what the previous compile read; an absent list (first build, after a clean) adds nothing,
+       and the missing outputs run the compile anyway. A listed file that has since been deleted is left
+       in: MSBuild reads a missing input as out of date, which is what a deleted import is. -->
+  <Target Name="_HeddleDiskImportInputs" DependsOnTargets="_HeddlePaths">
+    <ReadLinesFromFile File="$(_HeddleDiskImportsPath)">
+      <Output TaskParameter="Lines" ItemName="_HeddleDiskImportInput" />
+    </ReadLinesFromFile>
   </Target>
 
   <!-- The implementation set the host binds over: project references' real outputs (not the
@@ -152,7 +177,7 @@
         GeneratedNamespace="$(HeddleGeneratedNamespace)"
         ImplementationImages="@(_HeddleImplementationImage)"
         EngineReference="@(_HeddleEngineReference->'%(FullPath)')"
-        ToolPath="$(HeddleToolPath)"
+        ToolAssembly="$(HeddleToolPath)"
         ResponseFilePath="$(_HeddleResponsePath)"
         ProbeJson="$(_HeddleProbePath)">
       <Output TaskParameter="UnresolvedCount" PropertyName="_HeddleUnresolvedCount" />
@@ -196,7 +221,7 @@
         TrimDirectiveLines="$(HeddleTrimDirectiveLines)"
         MaxRecursionCount="$(HeddleMaxRecursionCount)"
         GeneratedNamespace="$(HeddleGeneratedNamespace)"
-        ToolPath="$(HeddleToolPath)"
+        ToolAssembly="$(HeddleToolPath)"
         ResponseFilePath="$(_HeddleResponsePath)"
         StubsOnly="$(_HeddleStubsPath)"
         CompileSources="@(Compile)"
@@ -269,7 +294,7 @@
         TrimDirectiveLines="$(HeddleTrimDirectiveLines)"
         MaxRecursionCount="$(HeddleMaxRecursionCount)"
         GeneratedNamespace="$(HeddleGeneratedNamespace)"
-        ToolPath="$(HeddleToolPath)"
+        ToolAssembly="$(HeddleToolPath)"
         ResponseFilePath="$(_HeddleResponsePath)"
         StubsOnly="$(_HeddleStubsPath)" />
     <ItemGroup>
@@ -315,10 +340,10 @@
        FileWrites; the source joins Compile before CoreCompile (live at the Csc task, unlike resources).
        The stubs pass writes none of these outputs. -->
   <Target Name="_HeddleCompile"
-          Inputs="@(HeddleTemplate);@(_HeddleImplementationImage);$(MSBuildAllProjects);$(_HeddleOptionsPath);@(_HeddleModelDigestInput)"
+          Inputs="@(HeddleTemplate);@(_HeddleImplementationImage);$(MSBuildAllProjects);$(_HeddleOptionsPath);@(_HeddleModelDigestInput);@(_HeddleDiskImportInput)"
           Outputs="$(_HeddleArtifactPath);$(_HeddleSourcePath);$(_HeddleStampPath)"
           BeforeTargets="CoreCompile"
-          DependsOnTargets="_HeddlePaths;_HeddleItems;_HeddleOptions;_HeddleCollectImages;_HeddleEngineReference;_HeddleProbe;_HeddleIntermediateCompile"
+          DependsOnTargets="_HeddlePaths;_HeddleItems;_HeddleOptions;_HeddleDiskImportInputs;_HeddleCollectImages;_HeddleEngineReference;_HeddleProbe;_HeddleIntermediateCompile"
           Condition="'$(DesignTimeBuild)' != 'true' and '$(BuildingProject)' == 'true' and '@(HeddleTemplate)' != ''">
     <ItemGroup>
       <_HeddleImplementationImage Include="@(_HeddleIntermediateModel)" />
@@ -336,13 +361,14 @@
         ConsumerAssemblyName="$(AssemblyName)"
         ImplementationImages="@(_HeddleImplementationImage)"
         EngineReference="@(_HeddleEngineReference->'%(FullPath)')"
-        ToolPath="$(HeddleToolPath)"
+        ToolAssembly="$(HeddleToolPath)"
         ResponseFilePath="$(_HeddleResponsePath)"
         ArtifactPath="$(_HeddleArtifactPath)"
         SourcePath="$(_HeddleSourcePath)"
-        StampPath="$(_HeddleStampPath)" />
+        StampPath="$(_HeddleStampPath)"
+        DiskImportsPath="$(_HeddleDiskImportsPath)" />
     <ItemGroup>
-      <FileWrites Include="$(_HeddleArtifactPath);$(_HeddleSourcePath);$(_HeddleStampPath)" />
+      <FileWrites Include="$(_HeddleArtifactPath);$(_HeddleSourcePath);$(_HeddleStampPath);$(_HeddleDiskImportsPath)" />
       <Compile Include="$(_HeddleSourcePath)" />
     </ItemGroup>
   </Target>

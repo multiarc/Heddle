@@ -264,11 +264,44 @@ its own, and nothing is handed to the real compile. Warnings never fail the pass
   to a referenced project, removes it. Opting out the library alone does not: its text, model
   directive included, is still compiled into the template that imports it.
 
+**Incrementality.** The compile runs again whenever one of its inputs moved and skips when none did,
+and every input is declared — nothing the artifact's bytes depend on is read without being one.
+
+- The **template items' contents**, the implementation images, the intermediate model digest and the
+  project files, the usual way — and every option value, `HeddleTemplateRoot` among them. The root
+  earns its own mention: it decides every key the artifact records, and so every generated class name,
+  while the item rows name absolute paths, so nothing else moves when only the root does.
+- The **item list itself**, with every metadatum on it. A template deleted from a glob, or renamed
+  while keeping its timestamp, changes no file MSBuild compares — its check is newest-input against
+  oldest-output over the items that are *still there* — so the ordered list is written into
+  `obj/…/heddle/options.txt` beside the option values, and that file is an input. Removing, renaming,
+  re-keying or opting out a template therefore recompiles, and a rebuild that changed none of them
+  still skips.
+- The **libraries reached only through the import disk fallback**: a file an `@<<` names that no
+  `HeddleTemplate` item declares — outside the project directory, or simply not globbed — is read from
+  disk under `HeddleTemplateRoot` and compiled into the importing template. No item names it, so the
+  host records what it actually read in `obj/…/heddle/disk-imports.txt`; the targets read that list
+  back as compile inputs, and the host's own stamp covers those files' content. Editing such a library
+  recompiles; deleting it is the ordinary unreadable-import error (`HED4009`) at the `@<<` directive.
+
+A disk-served library is hashed from the text the compile was **handed**, never re-read once the
+compile has finished: a library saved while the build was running would otherwise be certified as
+content the artifact was never built from. When a compile cannot describe what it read — the same
+file answered twice with different text, so the artifact mixes both — it writes no stamp at all, and
+the build that follows compiles again rather than inheriting it. An input the build cannot read is
+likewise never hashed to a placeholder, which would make every such input look unchanged for ever; it
+makes the stamp unique instead, so the compile runs. A file that is merely **absent** is a different
+fact and keeps a stable identity, so a build whose input is simply not there can still be up to date.
+
 **Editors and `dotnet watch`.** Templates, and the `HeddleModelAssembly` / `HeddleExtensionAssembly`
 items, are declared as `UpToDateCheckInput`, and templates as `Watch` items — so Visual Studio's fast
 up-to-date check rebuilds after a template edit instead of serving the stale embedded artifact, and
-`dotnet watch` restarts on one. `dotnet clean` removes what the build wrote under `obj/…/heddle/`,
-the response file and the intermediate compile's stubs included.
+`dotnet watch` restarts on one. The disk-served import libraries above join both item sets from the
+collection hooks, and `dotnet watch` follows them — including a library **outside** the project
+directory, which `dotnet watch --list` shows by absolute path. They come from what a build recorded
+under `obj/$(Configuration)/…/heddle/`, so a configuration that has not been built yet contributes
+none of them. `dotnet clean` removes what the build wrote under `obj/…/heddle/`, the response file,
+the recorded import list and the intermediate compile's stubs included.
 
 ## Typed entry points
 

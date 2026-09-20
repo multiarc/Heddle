@@ -9,6 +9,9 @@
     <IncludeSymbols>true</IncludeSymbols>
     <LangVersion>latest</LangVersion>
     <SignAssembly>true</SignAssembly>
+    <!-- The ANTLR-generated lexer, parser and listeners carry [CLSCompliant(false)], which CS3021 reports
+         as redundant because the assembly declares no [CLSCompliant] of its own. Generated code is never
+         hand-edited, so the attribute stays and the report is noise. -->
     <NoWarn>CS3021</NoWarn>
   </PropertyGroup>
 

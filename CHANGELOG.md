@@ -259,6 +259,41 @@ window's ratification remain in
 
 ### Fixed
 
+- **The build no longer embeds a stale artifact after a template is deleted or renamed, or after a
+  library it imports but does not declare is edited.** The precompile declared as inputs only the
+  templates that were *still* in the item set, so MSBuild's newest-input-against-oldest-output check
+  had nothing to compare when an item left it: deleting a template from a glob, or renaming one while
+  its timestamp stayed put, skipped the compile with exit 0 and shipped the departed template's row
+  and entry point. The ordered item list and its metadata now join the options fingerprint file, which
+  is already an input and already only rewritten when it differs — so an item removed, renamed,
+  re-keyed or opted out recompiles, and an unchanged rebuild still skips. Separately, a file an `@<<`
+  import names that no item declares is read off disk and compiled into the importing template, and
+  nothing recorded that: editing it skipped the compile, and forcing the compile to run wrote nothing,
+  because the host's stamp covered the importer's content and not the import's. The host now records
+  every file it read through the import disk fallback in `obj/…/heddle/disk-imports.txt`, folds their
+  content into the stamp, and the targets read the list back as compile inputs — and as editor
+  up-to-date-check and watch inputs. Only `Clean`/`Rebuild` used to recover.
+- **`HeddleTemplateRoot` is a compile input.** The root decides every key the artifact records, and
+  so every generated class name, but the stamp covered no part of it while the item rows it hashes
+  name absolute paths — so changing only the root left the digest identical: the targets ran the
+  compile and the host threw the work away, and an incremental build then disagreed with a clean one
+  over byte-identical sources. It is in the digest now.
+- **A library saved while the build is reading it is no longer certified as something it is not.**
+  The stamp is computed after the compile, and it re-read each disk-served import there — so a
+  library saved mid-compile produced an artifact built partly from each version while the stamp
+  described it as the final one, and neither the host nor MSBuild ever corrected it. The hash is now
+  taken from the text the reader handed the parse; when a file answers twice with different text the
+  compile writes no stamp at all, so its outputs are incomplete and the next build compiles again.
+- **An input the build cannot read no longer looks unchanged for ever.** The stamp hashed an
+  unreadable file to the fixed string `<unreadable>`, so a file that stayed unreadable kept the digest
+  identical — the mistake the intermediate model digest documents avoiding and salts against. Both
+  halves agree now: an unreadable input salts the digest so the compile runs, while a file that is
+  merely *absent* keeps a stable token and invalidates the moment it appears. In the same pass, the
+  opted-out (`Precompile="false"`) items stopped being read and hashed a second time in response-file
+  order — every item is one ordinal-sorted row carrying the content hash taken at intake, so neither
+  item nor response-file order reaches the digest, which is what the artifact's own ordering already
+  promised. Every site in the stamp that hashes a file now classifies through one rule, so a
+  *missing* reference image no longer salts where a missing import library does not.
 - **The language server no longer loads a second engine, and offers members at the top level of a
   document.** A `Heddle.dll` beside the workspace's model assemblies was loaded into the models' own
   context, so the workspace's `[Hidden]` and export attributes belonged to an engine the server did not

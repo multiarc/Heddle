@@ -23,13 +23,13 @@ namespace Heddle.Build.Tests
                 Assert.DoesNotContain("error CS0101", scoped.Output);
                 string[] stubs = Directory.GetFiles(fixture.Root, "Heddle.Generated.Stubs.g.cs", SearchOption.AllDirectories);
                 Assert.True(stubs.Length == 1, "expected one stubs file, found " + stubs.Length + ".");
-                Assert.Equal(0, Directory.GetFiles(fixture.Root, "Heddle.CompiledForm.bin", SearchOption.AllDirectories).Length);
-                Assert.Equal(0, Directory.GetFiles(fixture.Root, "Heddle.CompiledForm.g.cs", SearchOption.AllDirectories).Length);
+                Assert.Empty(Directory.GetFiles(fixture.Root, "Heddle.CompiledForm.bin", SearchOption.AllDirectories));
+                Assert.Empty(Directory.GetFiles(fixture.Root, "Heddle.CompiledForm.g.cs", SearchOption.AllDirectories));
                 Assert.DoesNotContain("HED7037", scoped.Output);
 
                 var real = fixture.Build(project);
                 real.AssertSuccess("real build after the target-scoped one");
-                Assert.Equal(1, Directory.GetFiles(fixture.Root, "Heddle.CompiledForm.bin", SearchOption.AllDirectories).Length);
+                Assert.Single(Directory.GetFiles(fixture.Root, "Heddle.CompiledForm.bin", SearchOption.AllDirectories));
                 Assert.Contains("HeddleObserveEngine is retired and ignored", real.Output);
             }
         }

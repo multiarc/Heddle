@@ -407,6 +407,73 @@ namespace Heddle.Tool.Tests
                 artifact.Templates.Select(t => t.Key).ToArray());
         }
 
+        /// <summary>The stamp follows the artifact's rule: an item's place in the response file changes
+        /// neither. Pins the regression where opted-out items were read and hashed a second time in
+        /// response-file order, so reordering two of them recompiled a byte-identical artifact.</summary>
+        [Fact]
+        public void ItemOrderDoesNotChangeTheStamp()
+        {
+            string page = WriteTemplate("page.heddle", "P static\n");
+            string one = WriteTemplate("one.heddle", "@% <one>{{1}} %@\n");
+            string two = WriteTemplate("two.heddle", "@% <two>{{2}} %@\n");
+            string first = WriteRsp("--project", Project(), "--root", _dir, "--output-profile", "Text",
+                "--template", page + "||||", "--import-only", one + "||", "--import-only", two + "||",
+                "--artifact-out", Out("one.bin"), "--source-out", Out("one.g.cs"), "--stamp", Out("one.txt"));
+            string second = WriteRsp("--project", Project(), "--root", _dir, "--output-profile", "Text",
+                "--import-only", two + "||", "--import-only", one + "||", "--template", page + "||||",
+                "--artifact-out", Out("two.bin"), "--source-out", Out("two.g.cs"), "--stamp", Out("two.txt"));
+            Assert.Equal(0, Run("compile", "@" + first).Exit);
+            Assert.Equal(0, Run("compile", "@" + second).Exit);
+            Assert.Equal(File.ReadAllBytes(Out("one.bin")), File.ReadAllBytes(Out("two.bin")));
+            Assert.Equal(File.ReadAllText(Out("one.txt")), File.ReadAllText(Out("two.txt")));
+        }
+
+        /// <summary>An <c>@&lt;&lt;</c> import no item declares is served off disk, and the compile
+        /// records what it read beside the stamp — the list the next run's stamp covers and the targets
+        /// declare as inputs. Pins the regression where editing such a library left the host reporting
+        /// "up to date" and the artifact carrying the old text.</summary>
+        [Fact]
+        public void DiskServedImportIsRecordedAndCoveredByTheStamp()
+        {
+            Directory.CreateDirectory(Path.Combine(_dir, "shared"));
+            string library = WriteTemplate(Path.Combine("shared", "lib.heddle"), "@% <libline>{{one}} %@\n");
+            string page = WriteTemplate("page.heddle", "@<<{{shared/lib.heddle}}\nPage: @libline()\n");
+            string rsp = WriteRsp("--project", Project(), "--root", _dir, "--output-profile", "Text",
+                "--template", page + "||||",
+                "--artifact-out", Out("form.bin"), "--source-out", Out("gen.g.cs"),
+                "--stamp", Out("stamp.txt"), "--disk-imports", Out("disk-imports.txt"));
+            Assert.Equal(0, Run("compile", "@" + rsp).Exit);
+            string[] recorded = File.ReadAllLines(Out("disk-imports.txt"));
+            Assert.Single(recorded);
+            Assert.Equal(Path.GetFullPath(library), recorded[0]);
+            byte[] before = File.ReadAllBytes(Out("form.bin"));
+            Assert.Contains("up to date", Run("compile", "@" + rsp).Stdout);
+
+            File.WriteAllText(library, "@% <libline>{{two}} %@\n");
+            var changed = Run("compile", "@" + rsp);
+            Assert.Equal(0, changed.Exit);
+            Assert.DoesNotContain("up to date", changed.Stdout);
+            Assert.NotEqual(before, File.ReadAllBytes(Out("form.bin")));
+            Assert.Contains("up to date", Run("compile", "@" + rsp).Stdout);
+        }
+
+        /// <summary>A caller that asks for no record gets no disk-import tracking — not a stamp no later
+        /// check can reconstruct. The shipped targets always name the record, so this is the contract for
+        /// a fork or a custom targets file driving the task without it.</summary>
+        [Fact]
+        public void WithoutARecordFileADiskServedImportStillGoesUpToDate()
+        {
+            Directory.CreateDirectory(Path.Combine(_dir, "shared"));
+            WriteTemplate(Path.Combine("shared", "lib.heddle"), "@% <libline>{{one}} %@\n");
+            string page = WriteTemplate("page.heddle", "@<<{{shared/lib.heddle}}\nPage: @libline()\n");
+            string rsp = WriteRsp("--project", Project(), "--root", _dir, "--output-profile", "Text",
+                "--template", page + "||||",
+                "--artifact-out", Out("form.bin"), "--source-out", Out("gen.g.cs"),
+                "--stamp", Out("stamp.txt"));
+            Assert.Equal(0, Run("compile", "@" + rsp).Exit);
+            Assert.Contains("up to date", Run("compile", "@" + rsp).Stdout);
+        }
+
         /// <summary>P2-R4: an output that cannot be written after every template compiled is a reported
         /// error and exit 1; exit 3 stays for a host fault before any template compiled.</summary>
         [Fact]

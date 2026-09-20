@@ -14,6 +14,15 @@
     <Description>Heddle build-time precompilation: compiles .heddle templates through the real engine out of process and embeds the compiled form.</Description>
     <DevelopmentDependency>true</DevelopmentDependency>
     <IncludeBuildOutput>false</IncludeBuildOutput>
+
+    <!-- Two pack warnings this package is structurally required to raise, kept rather than fixed.
+         NU5100: the task assembly and its metadata reader ship under tasks/, not lib/ — a consumer must
+         never get a compile reference to them, which is the whole point of an MSBuild task package.
+         NU5128: with IncludeBuildOutput=false there is no lib/ or ref/ folder to match the .NETStandard2.0
+         dependency group the SDK writes from TargetFramework; that group is empty (every PackageReference
+         above is PrivateAssets="all"), so it declares nothing and nothing is missing. Narrow to this
+         project: the two rules stay live everywhere else, and the other packages ship normal lib/ output. -->
+    <NoWarn>$(NoWarn);NU5100;NU5128</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

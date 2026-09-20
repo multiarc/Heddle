@@ -144,6 +144,25 @@ Also open, without their own ids:
   means giving the generator an input it does not read from the compilation, which needs its own
   decision record. Until then the engine's own body-typing table is the floor for those builds, and
   deleting it was measured red across thirty-five test methods.
+- **A content-neutral timestamp on a template-compile input leaves the build launching the host on
+  every build.** `_HeddleCompile` declares three outputs; on the host's own up-to-date path it writes
+  none of them, so MSBuild's newest-input check stays unsatisfied and the target runs — spawning the
+  out-of-process host — on every subsequent build until something makes the host write. Touching a
+  declared `HeddleTemplate` reaches this state; so does any event that moves a **disk-served import
+  library**'s timestamp without changing its bytes (a branch switch, `git stash pop`, a file sync, a
+  save with no edit, or deleting a library and restoring identical content), and those libraries are
+  shared files outside the project, which is the population where that happens most. The build is
+  correct throughout and the artifact is never stale — the cost is a wasted process launch per build.
+  Closing it means the up-to-date path touching the outputs it declares, which is a separate decision
+  about what a stamp file means.
+- **A disk-served import whose path contains a line separator is never tracked, and that project
+  never goes up to date.** The record beside the stamp is one path per line, which the targets read
+  back as items; a POSIX path containing `\n` cannot round-trip it. Such a path is left out of the
+  record and the compile says so rather than certifying, so no stamp is written and every build
+  compiles again for as long as the path exists. Correct but non-convergent; recording it anyway
+  would hand MSBuild two inputs naming nothing and is the stale-prone direction. Windows cannot
+  produce the path at all. Closing it means a record the targets can decode, which `ReadLinesFromFile`
+  cannot do.
 - Two `AssemblyHelper` orderings cannot be pinned; a racing test passes by luck. Stated in
   `AssemblyRegistrationTests` and `PreparseCacheGenerationTests`.
 - The no-load pin cannot catch a one-shot startup walk; catching it needs a child process comparing

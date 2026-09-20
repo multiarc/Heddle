@@ -213,7 +213,11 @@ namespace Heddle.Tool.Compile
                     return 0;
                 }
 
-                string digest = Stamp.Compute(buildVersion, request, templates, request.ImportOnly);
+                // The disk-served imports of the previous compile stand for this one's: the set is a
+                // function of the item set, the template root and the files it reaches, so a change in
+                // any of them already moves the digest, and the compile below records what it read.
+                IReadOnlyList<DiskImportRead> previous = DiskImports.Read(request.DiskImports);
+                string digest = Stamp.Compute(buildVersion, request, templates, previous, false);
                 if (string.Equals(Stamp.Read(request.Stamp), digest, StringComparison.Ordinal) &&
                     File.Exists(request.ArtifactOut) && File.Exists(request.SourceOut))
                 {
@@ -236,13 +240,16 @@ namespace Heddle.Tool.Compile
                 // one process never read each other's set.
                 foreach (var image in images.Images)
                     options.HostImplementationImages.Add(image.GetName().Name ?? string.Empty);
+                var diskImports = new DiskImports();
                 CompileOutcome outcome = CompileAll(request, templates, images, options, diagnostics,
-                    FormatVersion(hostEngine));
+                    FormatVersion(hostEngine), diskImports);
                 if (outcome == null)
                     return 1;
+                IReadOnlyList<DiskImportRead> read = diskImports.Reads;
                 try
                 {
                     WriteOutputs(request, outcome, generatedNamespace);
+                    DiskImports.Write(request.DiskImports, read);
                 }
                 catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
                 {
@@ -253,7 +260,16 @@ namespace Heddle.Tool.Compile
                     return 1;
                 }
 
-                Stamp.Write(request.Stamp, digest);
+                // Stamped over what this compile read, not over what the last one did, so the next
+                // run's check finds the digest its own list computes. With nowhere to record that, the
+                // stamp covers the same list the check used: a caller that asks for no record gets no
+                // disk-import tracking, rather than a stamp no later check can ever reconstruct.
+                bool recording = !string.IsNullOrEmpty(request.DiskImports);
+                Stamp.Write(request.Stamp,
+                    recording
+                        ? Stamp.Compute(buildVersion, request, templates, read, diskImports.Unrecorded)
+                        : digest,
+                    certified: !recording || !diskImports.Unrecorded);
                 return 0;
             }
         }
@@ -523,7 +539,8 @@ namespace Heddle.Tool.Compile
         }
 
         private static Func<string, string> ImportReaderFor(CompileRequest request,
-            List<TemplateInput> templates, ImportPair pair, DiagnosticWriter diagnostics)
+            List<TemplateInput> templates, ImportPair pair, DiagnosticWriter diagnostics,
+            DiskImports diskImports)
         {
             var contents = ImportContents(request, templates);
             var namesByKey = NamesByKey(templates);
@@ -544,9 +561,31 @@ namespace Heddle.Tool.Compile
                             Format(HeddleDiagnosticIds.BuildNamedTemplateImportedByKey, spelling, name));
                     return content;
                 }
-                using (var file = File.OpenText(Path.Combine(request.Root ?? string.Empty, spelling)))
-                    return file.ReadToEnd();
+                string resolved = Path.Combine(request.Root ?? string.Empty, spelling);
+                string text = File.ReadAllText(resolved);
+                // Recorded from the text the parse is handed, never re-read afterwards: a library saved
+                // while this compile was reading it must not be certified by content the artifact was
+                // never built from.
+                diskImports.Record(FullPathOrSelf(resolved),
+                    Heddle.Precompiled.ContentHash.HashText(text));
+                return text;
             };
+        }
+
+        /// <summary>The absolute spelling of a disk-served import, so the same file reached through two
+        /// spellings is one recorded dependency. A path the platform refuses is recorded as written —
+        /// the read that follows it fails, and a failing compile writes no list.</summary>
+        private static string FullPathOrSelf(string path)
+        {
+            try
+            {
+                return Path.GetFullPath(path);
+            }
+            catch (Exception ex) when (ex is ArgumentException || ex is NotSupportedException ||
+                ex is PathTooLongException || ex is System.Security.SecurityException)
+            {
+                return path;
+            }
         }
 
         /// <summary>Every template key whose item also carries a validated registered name, for HED7028.</summary>
@@ -595,13 +634,13 @@ namespace Heddle.Tool.Compile
 
         private static CompileOutcome CompileAll(CompileRequest request, List<TemplateInput> templates,
             ImageLoadContext images, ResolvedOptions options, DiagnosticWriter diagnostics,
-            string engineVersion)
+            string engineVersion, DiskImports diskImports)
         {
             var outcome = new CompileOutcome();
             var parts = new List<CompiledArtifact>();
             bool failed = false;
             var imports = new ImportPair(ImportIdentifierFor(request, templates));
-            imports.Reader = ImportReaderFor(request, templates, imports, diagnostics);
+            imports.Reader = ImportReaderFor(request, templates, imports, diagnostics, diskImports);
             foreach (var template in templates)
             {
                 if (template.Key == null)
