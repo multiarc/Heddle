@@ -182,21 +182,28 @@ NuGet feed configuration is in [NuGet.Config](../NuGet.Config).
 
 ## Continuous integration
 
-CI runs on **GitHub Actions**. All publishing uses Trusted Publishing (OIDC, no stored
-tokens) and is skipped on fork pull requests.
+CI runs on **GitHub Actions**. Pull requests and pushes to `main` build, test and pack; they never
+publish anything. Publishing happens only for a release tag and uses Trusted Publishing (OIDC, no
+stored tokens) for nuget.org and npmjs.org.
 
 - **[.NET build](../.github/workflows/dotnet.yml)** — on every push and pull request to `main`,
   restores, builds, and runs the four test suites (Debug, each its own guarded step) on Linux and
-  Windows. Internal pull requests also publish a `-beta.<run>` prerelease to **nuget.org**.
+  Windows, then packs every package without publishing it.
 - **[Language server and Release legs](../.github/workflows/lsp.yml)** — builds the solution in Release
-  on Windows, runs all four suites in Release through the same guarded wrapper, and packs and
-  publishes the `heddle-lsp` tool.
-- **[Ace npm package](../.github/workflows/npm.yml)** — builds the custom Ace highlighter bundle;
-  internal pull requests **stage** a `@multiarc/ace_heddle` pre-release on **npmjs.org** for
-  maintainer review (`npm stage publish`).
-- **Production releases are tag-driven.** Pushing a `vX.Y.Z` tag publishes that exact version
-  to nuget.org and npmjs.org (as `latest`, with npm provenance) and creates a matching GitHub
-  Release. Merging to `main` only builds and tests — it does not publish.
+  on Windows, runs all four suites in Release through the same guarded wrapper, packs the
+  `heddle-lsp` tool, and packages the per-platform VS Code extensions.
+- **[Ace npm package](../.github/workflows/npm.yml)** — builds the custom Ace highlighter bundle.
+- **Publishing is tag-driven** ([release-tag.yml](../.github/workflows/release-tag.yml)):
+
+  | Tag | Where it may point | Publishes |
+  | --- | --- | --- |
+  | `vX.Y.Z` | a commit on `main` | nuget.org and npmjs.org (`latest`, with npm provenance), the VS Code Marketplace, a GitHub Release |
+  | `vX.Y.Z-alpha.N`, `vX.Y.Z-beta.N`, `vX.Y.Z-rc.N` | any branch | nuget.org pre-release, npmjs.org under the `alpha`/`beta`/`rc` dist-tag, a Marketplace pre-release, a GitHub pre-release |
+
+  The pre-release number is dotted (`beta.10`, not `beta10`) so versions sort numerically. Any other
+  `v*` tag, or a bare `vX.Y.Z` tag off `main`, fails before anything is published. The Marketplace
+  takes only a plain `X.Y.Z`, so a pre-release extension is numbered `X.Y.(Z×10000 + rank×1000 + N)`,
+  with alpha = 1, beta = 2 and rc = 3: `3.0.0-beta.2` ships as extension `3.0.2002`.
 - **[Documentation](../.github/workflows/docs.yml)** — builds this site (including the WebAssembly
   demo bundle) and deploys it to GitHub Pages. Pull requests build and run the demo smoke suite but
   do not deploy.

@@ -1,10 +1,13 @@
 # Builds and tests the Heddle language services (facade + LSP server), packs the version-pinned
 # per-RID dotnet tool, and packages the VS Code extension. Phase 6 (editor tooling / LSP).
 #
-# Marketplace publishing is TAG-DRIVEN, like the NuGet and npm workflows: a `vX.Y.Z` tag publishes
-# every per-target VSIX to the Visual Studio Marketplace under the `multiarc` publisher. The
-# credential is the VSCE_PAT secret on the `marketplace` environment; see marketplace-publish for
-# why it is a token and not OIDC.
+# Marketplace publishing is TAG-DRIVEN, like the NuGet and npm workflows (rules in release-tag.yml):
+# a `vX.Y.Z` tag on main publishes every per-target VSIX to the Visual Studio Marketplace under the
+# `multiarc` publisher, and a `vX.Y.Z-alpha.N`, `-beta.N` or `-rc.N` tag publishes them as a
+# Marketplace pre-release. The Marketplace takes only a plain X.Y.Z, so a pre-release is published
+# under the mapped number resolve-release-tag.sh documents (3.0.0-beta.2 -> 3.0.2002). Pull requests
+# and main build and package only. The credential is the VSCE_PAT secret on the `marketplace`
+# environment; see marketplace-publish for why it is a token and not OIDC.
 
 name: Heddle LSP
 
@@ -81,8 +84,21 @@ jobs:
           name: heddle-lsp-nupkg
           path: ./nupkg/*.nupkg
 
+  # What this ref publishes, if anything: see release-tag.yml. The VSIX build reads it too, because a
+  # tag stamps its version into the package.
+  release-tag:
+    uses: ./.github/workflows/release-tag.yml
+    permissions:
+      contents: read
+
   vsix:
+    needs: release-tag
     runs-on: ubuntu-latest
+    env:
+      IS_TAG: ${{ needs.release-tag.outputs.is_tag }}
+      PRERELEASE: ${{ needs.release-tag.outputs.prerelease }}
+      VERSION: ${{ needs.release-tag.outputs.version }}
+      VSIX_VERSION: ${{ needs.release-tag.outputs.vsix_version }}
     strategy:
       matrix:
         target: [win32-x64, win32-arm64, linux-x64, linux-arm64, alpine-x64, darwin-x64, darwin-arm64]
@@ -106,14 +122,28 @@ jobs:
             darwin-x64)  echo "rid=osx-x64" >> "$GITHUB_OUTPUT" ;;
             darwin-arm64) echo "rid=osx-arm64" >> "$GITHUB_OUTPUT" ;;
           esac
+      # On a tag, the bundled server reports the tagged version, and the extension's install hint names
+      # the tool version nuget.org actually carries for this tag. Stamped in the runner only.
       - name: Publish server (framework-dependent, R2R)
-        run: dotnet publish src/Heddle.LanguageServer/Heddle.LanguageServer.csproj -c Release -r ${{ steps.rid.outputs.rid }} --self-contained false -o editors/vscode/server -p:EnableToolR2R=true
+        run: |
+          version_args=()
+          if [ "$IS_TAG" = "true" ]; then version_args+=("-p:Version=$VERSION"); fi
+          dotnet publish src/Heddle.LanguageServer/Heddle.LanguageServer.csproj -c Release -r ${{ steps.rid.outputs.rid }} --self-contained false -o editors/vscode/server -p:EnableToolR2R=true "${version_args[@]}"
+      - name: Stamp extension version from the tag
+        if: ${{ env.IS_TAG == 'true' }}
+        working-directory: editors/vscode
+        run: |
+          npm version --no-git-tag-version --allow-same-version "$VSIX_VERSION"
+          sed -i -E "s/^const PINNED_VERSION = '[^']+';/const PINNED_VERSION = '$VERSION';/" src/extension.ts
+          grep -q "^const PINNED_VERSION = '$VERSION';" src/extension.ts
       - name: Package VSIX
         working-directory: editors/vscode
         run: |
+          pre_release_args=()
+          if [ "$PRERELEASE" = "true" ]; then pre_release_args+=(--pre-release); fi
           npm ci
           npm run copy-grammar
-          npx @vscode/vsce package --target ${{ matrix.target }}
+          npx @vscode/vsce package --target ${{ matrix.target }} "${pre_release_args[@]}"
       - uses: actions/upload-artifact@v7
         with:
           name: heddle-vsix-${{ matrix.target }}
@@ -130,8 +160,8 @@ jobs:
   # the `marketplace` environment, so no other job can read it. When Trusted Publishing ships, this
   # becomes `vsce publish --oidc` with `id-token: write` and the secret goes away.
   marketplace-publish:
-    needs: [ test, vsix ]
-    if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+    needs: [ test, vsix, release-tag ]
+    if: ${{ needs.release-tag.outputs.is_tag == 'true' }}
     runs-on: ubuntu-latest
     environment: marketplace
     permissions:
@@ -160,4 +190,9 @@ jobs:
       # The seven VSIXs share one version; the Marketplace lists them as one extension.
       - name: Publish to the Visual Studio Marketplace
         working-directory: editors/vscode
-        run: npx @vscode/vsce publish --packagePath ../vsix/*.vsix
+        env:
+          PRERELEASE: ${{ needs.release-tag.outputs.prerelease }}
+        run: |
+          pre_release_args=()
+          if [ "$PRERELEASE" = "true" ]; then pre_release_args+=(--pre-release); fi
+          npx @vscode/vsce publish --packagePath ../vsix/*.vsix "${pre_release_args[@]}"
