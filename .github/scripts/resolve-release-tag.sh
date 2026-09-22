@@ -18,10 +18,16 @@
 #   vsix_version   the VS Code Marketplace version                     3.0.2002
 #
 # The Marketplace accepts only a plain X.Y.Z and never takes a version twice, so a pre-release cannot share
-# its release's number. It maps to X.Y.(Z*10000 + rank*1000 + N), with alpha=1, beta=2, rc=3 and N<=999:
-# deterministic, ordered as SemVer orders the tags, and never equal to a release. As in VS Code's own
-# odd/even-minor scheme, a pre-release is numerically above the release it leads to, so users on the
-# pre-release channel stay on pre-releases until the next one ships.
+# its release's number. BOTH sides scale the patch component: a release maps to X.Y.(Z*10000) and a
+# pre-release to X.Y.(Z*10000 + rank*1000 + N), with alpha=1, beta=2, rc=3 and N<=999. That is
+# deterministic, ordered as SemVer orders the tags, and never equal to a release.
+#
+# The release side is scaled for a reason. With a release left at its bare patch number, every pre-release
+# in the line (>= 1001) outranks every later release (<= 999), so the Marketplace would never offer a
+# pre-release user a stable patch fix — they would sit on the pre-release until the next one shipped.
+# Scaling both keeps v3.0.1 (3.0.10000) above v3.0.0-rc.1 (3.0.3001) and below v3.0.1-rc.1 (3.0.13001),
+# so the pre-release channel rolls forward onto releases. The cost is a displayed extension version that
+# no longer resembles the tag; the tag is the source of truth and appears in the release notes.
 #
 # Needs full history (checkout fetch-depth: 0) to check that a release tag is on main.
 
@@ -57,7 +63,7 @@ if [ -z "$label" ]; then
   fi
   prerelease=false
   channel=latest
-  vsix_version=$version
+  vsix_version="${major}.${minor}.$(( patch * 10000 ))"
 else
   if [ "${#number}" -gt 3 ]; then
     echo "::error::Tag ${tag}: a pre-release number above 999 has no Marketplace version."

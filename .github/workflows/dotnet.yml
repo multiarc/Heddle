@@ -34,6 +34,10 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v7
+    # The tag resolver decides what every publishing job does, and nothing but a real tag push runs it.
+    # This drives it over a table of refs so its first execution is not a release.
+    - name: Self-test the release-tag resolver
+      run: .github/scripts/resolve-release-tag-selftest.sh
     - name: Setup .NET
       uses: actions/setup-dotnet@v6
       with:
@@ -125,7 +129,12 @@ jobs:
     - uses: actions/upload-artifact@v7
       with:
         name: nupkg-release
-        path: ${{ runner.temp }}/pkg/*.nupkg
+        # Both globs: `*.nupkg` does not match `*.snupkg`, and three libraries opt into IncludeSymbols.
+        # `dotnet nuget push` uploads a symbol package only when it sits beside its package, so a symbol
+        # package left out of the artifact never reaches the publishing runner and never ships.
+        path: |
+          ${{ runner.temp }}/pkg/*.nupkg
+          ${{ runner.temp }}/pkg/*.snupkg
         if-no-files-found: error
 
   release-publish:
@@ -154,6 +163,10 @@ jobs:
     - name: Create GitHub Release
       env:
         GH_TOKEN: ${{ github.token }}
+        # This job never checks out, so gh has no git remote to read the repository from, and it does not
+        # fall back to GITHUB_REPOSITORY: without GH_REPO it fails with "no git remotes found" — after the
+        # packages above are already public and, with no --skip-duplicate, unrepublishable.
+        GH_REPO: ${{ github.repository }}
         PRERELEASE: ${{ needs.release-tag.outputs.prerelease }}
       run: |
         flags=()

@@ -8,11 +8,12 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// The two release-pipeline invariants that CI itself cannot report: a publish step names packages that
-    /// exist, and nothing publishes over a red Release suite. Both failed silently before — a publish step's
-    /// relative <c>--packagePath</c> pointed at a directory no step creates, and the publishing jobs depended
-    /// only on the Debug suites — because the publishing jobs are skipped on every pull request, so a green
-    /// run says nothing about them.
+    /// The release-pipeline invariants that CI itself cannot report: a publish step names packages that
+    /// exist, nothing publishes over a red Release suite, and a step that calls <c>gh</c> can say which
+    /// repository it means. Each failed silently before — a publish step's relative <c>--packagePath</c>
+    /// pointed at a directory no step creates, the publishing jobs depended only on the Debug suites, and
+    /// the release job calls <c>gh</c> without checking out — because the publishing jobs are skipped on
+    /// every pull request, so a green run says nothing about them.
     /// </summary>
     public class WorkflowContractTests
     {
@@ -85,6 +86,123 @@ namespace Heddle.Tests
             Assert.True(publishers.Count >= 3,
                 "Expected the NuGet, npm and Marketplace publishing jobs; found: " + string.Join(", ", publishers));
         }
+
+        /// <summary>
+        /// A job that runs <c>gh</c> can name the repository it acts on. <c>gh</c> resolves it from
+        /// <c>--repo</c>, then <c>GH_REPO</c>, then the git remotes of the working directory — it does not
+        /// read <c>GITHUB_REPOSITORY</c>. A job that neither checks out nor sets <c>GH_REPO</c> fails with
+        /// "no git remotes found", and in the release job that happens after nuget.org is already public.
+        /// </summary>
+        [Fact]
+        public void EveryJobRunningGhCanResolveTheRepository()
+        {
+            var inspected = 0;
+            foreach (var file in WorkflowFiles)
+            {
+                foreach (var job in Jobs(File.ReadAllText(file).Replace("\r\n", "\n"))
+                    .Where(j => Regex.IsMatch(j.Value.Body, @"(?m)^\s*(\S.*\s)?gh\s+[a-z-]+\s")))
+                {
+                    inspected++;
+                    var body = job.Value.Body;
+                    Assert.True(
+                        body.IndexOf("actions/checkout", StringComparison.Ordinal) >= 0 ||
+                        body.IndexOf("GH_REPO:", StringComparison.Ordinal) >= 0 ||
+                        body.IndexOf("--repo ", StringComparison.Ordinal) >= 0,
+                        Path.GetFileName(file) + ": job '" + job.Key + "' runs gh but neither checks out nor " +
+                        "sets GH_REPO, so gh cannot resolve the repository.");
+                }
+            }
+
+            Assert.True(inspected > 0, "No job runs gh; this gate now measures nothing.");
+        }
+
+        /// <summary>
+        /// A release artifact that carries packages carries their symbol packages too. <c>*.nupkg</c> does
+        /// not match <c>*.snupkg</c>, and <c>dotnet nuget push</c> uploads a symbol package only from beside
+        /// its package, so one left out of the artifact never reaches the publishing runner.
+        /// </summary>
+        [Fact]
+        public void ReleaseArtifactsCarrySymbolPackages()
+        {
+            var opted = Directory.EnumerateFiles(Path.Combine(RepoRoot, "src"), "*.csproj",
+                    SearchOption.AllDirectories)
+                .Where(p => File.ReadAllText(p).IndexOf("<IncludeSymbols>true", StringComparison.Ordinal) >= 0)
+                .ToList();
+            Assert.True(opted.Count > 0,
+                "No project opts into IncludeSymbols; this gate now measures nothing.");
+
+            var inspected = 0;
+            foreach (var file in WorkflowFiles)
+            {
+                // A solution-wide `dotnet pack -c` builds every opted-in project's symbol package; a job that
+                // packs one named project (the RID-specific tools) produces none, and is not in scope here.
+                foreach (var job in Jobs(File.ReadAllText(file).Replace("\r\n", "\n"))
+                    .Where(j => j.Value.Body.IndexOf("upload-artifact", StringComparison.Ordinal) >= 0
+                                && Regex.IsMatch(j.Value.Body, @"dotnet pack\s+-c")))
+                {
+                    inspected++;
+                    Assert.True(job.Value.Body.IndexOf("*.snupkg", StringComparison.Ordinal) >= 0,
+                        Path.GetFileName(file) + ": job '" + job.Key + "' uploads packages but not *.snupkg, " +
+                        "so the symbol packages " + Path.GetFileName(opted[0]) + " produces never ship.");
+                }
+            }
+
+            Assert.True(inspected > 0, "No job uploads a package artifact; this gate now measures nothing.");
+        }
+
+        /// <summary>
+        /// Deployment scopes are granted to the job that deploys, never to the whole workflow. A workflow-level
+        /// grant is also held by the build job, which runs for pull requests and executes third-party code.
+        /// </summary>
+        [Fact]
+        public void DeploymentScopesAreNotGrantedWorkflowWide()
+        {
+            var inspected = 0;
+            foreach (var file in WorkflowFiles)
+            {
+                var text = File.ReadAllText(file).Replace("\r\n", "\n");
+                var jobs = Regex.Match(text, @"(?m)^jobs:[ \t]*$");
+                if (!jobs.Success)
+                    continue;
+
+                inspected++;
+                var preamble = Regex.Replace(text.Substring(0, jobs.Index), @"(?m)^[ \t]*#.*$", string.Empty);
+                foreach (var scope in new[] { "pages: write", "id-token: write" })
+                    Assert.True(preamble.IndexOf(scope, StringComparison.Ordinal) < 0,
+                        Path.GetFileName(file) + ": '" + scope + "' is granted at workflow level, so every " +
+                        "job holds it. Grant it on the job that needs it.");
+            }
+
+            Assert.True(inspected > 0, "No workflow was read; this gate now measures nothing.");
+        }
+
+        /// <summary>
+        /// A drift guard sees files the generator adds. <c>git diff</c> compares tracked files only, so a
+        /// regeneration that emits a new file leaves it untracked and the guard reports no drift.
+        /// </summary>
+        [Fact]
+        public void DriftGuardsSeeNewlyGeneratedFiles()
+        {
+            var inspected = 0;
+            foreach (var file in WorkflowFiles)
+            {
+                foreach (var job in Jobs(File.ReadAllText(file).Replace("\r\n", "\n"))
+                    .Where(j => j.Value.Body.IndexOf("git diff --exit-code", StringComparison.Ordinal) >= 0))
+                {
+                    inspected++;
+                    Assert.True(job.Value.Body.IndexOf("--intent-to-add", StringComparison.Ordinal) >= 0,
+                        Path.GetFileName(file) + ": job '" + job.Key + "' guards drift with git diff but never " +
+                        "stages the intent, so a newly generated file is invisible to it.");
+                }
+            }
+
+            Assert.True(inspected > 0, "No drift guard found; this gate now measures nothing.");
+        }
+
+        private static string RepoRoot =>
+            Path.GetDirectoryName(Path.GetDirectoryName(Path.GetDirectoryName(
+                BuildSurfaceContractTests.FindRepoFile(
+                    Path.Combine(".github", "workflows", "dotnet.yml")))));
 
         private readonly struct Job
         {

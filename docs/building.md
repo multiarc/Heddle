@@ -202,10 +202,15 @@ stored tokens) for nuget.org and npmjs.org.
   | `vX.Y.Z` | a commit on `main` | nuget.org and npmjs.org (`latest`, with npm provenance), the VS Code Marketplace, a GitHub Release |
   | `vX.Y.Z-alpha.N`, `vX.Y.Z-beta.N`, `vX.Y.Z-rc.N` | any branch | nuget.org pre-release, npmjs.org under the `alpha`/`beta`/`rc` dist-tag, a Marketplace pre-release, a GitHub pre-release |
 
-  The pre-release number is dotted (`beta.10`, not `beta10`) so versions sort numerically. Any other
-  `v*` tag, or a bare `vX.Y.Z` tag off `main`, fails before anything is published. The Marketplace
-  takes only a plain `X.Y.Z`, so a pre-release extension is numbered `X.Y.(Z×10000 + rank×1000 + N)`,
-  with alpha = 1, beta = 2 and rc = 3: `3.0.0-beta.2` ships as extension `3.0.2002`.
+  The pre-release number is dotted (`beta.10`, not `beta10`) so versions sort numerically. A `v*.*.*`
+  tag of any other shape, or a bare `vX.Y.Z` tag off `main`, fails before anything is published; a tag
+  with fewer than two dots (`v3`, `v3.0`) matches no trigger and starts no run at all.
+
+  The Marketplace takes only a plain `X.Y.Z`, so both sides scale the patch component: a release is
+  numbered `X.Y.(Z×10000)` and a pre-release `X.Y.(Z×10000 + rank×1000 + N)`, with alpha = 1, beta = 2
+  and rc = 3. So `3.0.0-beta.2` ships as extension `3.0.2002` and `3.0.1` ships as `3.0.10000`. The
+  release side is scaled so that a later release outranks an earlier pre-release — left at its bare
+  number it never would, and a user on the pre-release channel would not be offered a stable patch fix.
 
   Nothing publishes until the checks that matter have passed for that commit: every publishing job
   waits on the Release suites, and the NuGet packages additionally wait on the whole sample gallery.

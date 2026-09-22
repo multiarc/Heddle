@@ -115,15 +115,28 @@ namespace Heddle.Tests
             Assert.All(found, v => Assert.Equal(Canonical, v));
         }
 
-        /// <summary>The <c>--version-suffix</c> must not lead with '-' because the SDK joins prefix and suffix with one dash.</summary>
+        /// <summary>
+        /// A version suffix must not lead with '-': the SDK joins VersionPrefix and VersionSuffix with one
+        /// dash, so "-beta.1" composes "3.0.0--beta.1". Every workflow is scanned, in both spellings. No
+        /// workflow composes a version this way today — the release path passes a whole <c>-p:Version</c>
+        /// from the tag — so the suffix half is a guard against reintroducing the form; the premise it rests
+        /// on, that the version is still composed from a prefix, is asserted on every run.
+        /// </summary>
         [Fact]
-        public void TheBetaVersionSuffixCarriesNoLeadingDash()
+        public void AVersionSuffixInAnyWorkflowCarriesNoLeadingDash()
         {
-            foreach (Match m in Regex.Matches(Read(".github/workflows/dotnet.yml"),
-                @"--version-suffix\s+""(?<s>[^""]*)"""))
-                Assert.False(m.Groups["s"].Value.StartsWith("-", StringComparison.Ordinal),
-                    "A --version-suffix must not start with '-': VersionPrefix and VersionSuffix are joined with " +
-                    "one dash, so '" + m.Groups["s"].Value + "' would produce a double dash.");
+            Assert.Matches(@"^\d+\.\d+\.\d+$", Canonical);
+
+            foreach (var file in Directory.EnumerateFiles(
+                Path.Combine(RepoRoot, ".github", "workflows"), "*.yml"))
+            {
+                foreach (Match m in Regex.Matches(File.ReadAllText(file),
+                    @"(?:--version-suffix\s+|-p:VersionSuffix=)""?(?<s>[^""\s]+)"))
+                    Assert.False(m.Groups["s"].Value.StartsWith("-", StringComparison.Ordinal),
+                        Path.GetFileName(file) + ": a version suffix must not start with '-'. VersionPrefix " +
+                        "and VersionSuffix are joined with one dash, so '" + m.Groups["s"].Value +
+                        "' would compose a double dash.");
+            }
         }
 
         /// <summary>Prose statements of the current release line in documentation files.</summary>
