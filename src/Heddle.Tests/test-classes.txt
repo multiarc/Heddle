@@ -173,5 +173,6 @@ Heddle.Tests.TypeSpellingLockstepTests
 Heddle.Tests.UnbalancedCloserTests
 Heddle.Tests.UsingDirectiveClassificationTests
 Heddle.Tests.VersionConsistencyTests
+Heddle.Tests.WorkflowContractTests
 Heddle.Tests.ZeroOutputLockstepTests
 Heddle.Tests.ZeroOutputProtocolTests

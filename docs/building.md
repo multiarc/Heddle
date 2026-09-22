@@ -189,8 +189,10 @@ stored tokens) for nuget.org and npmjs.org.
 - **[.NET build](../.github/workflows/dotnet.yml)** — on every push and pull request to `main`,
   restores, builds, and runs the four test suites (Debug, each its own guarded step) on Linux and
   Windows, then packs every package without publishing it.
-- **[Language server and Release legs](../.github/workflows/lsp.yml)** — builds the solution in Release
-  on Windows, runs all four suites in Release through the same guarded wrapper, packs the
+- **[Release suites](../.github/workflows/tests-release.yml)** — all four suites in Release on Windows
+  through the same guarded wrapper, plus the JS editor-artifact harness. It is a callable workflow
+  because it is also a release gate (below), and a job can only depend on a job in its own workflow.
+- **[Language server](../.github/workflows/lsp.yml)** — calls the Release suites, packs the
   `heddle-lsp` tool, and packages the per-platform VS Code extensions.
 - **[Ace npm package](../.github/workflows/npm.yml)** — builds the custom Ace highlighter bundle.
 - **Publishing is tag-driven** ([release-tag.yml](../.github/workflows/release-tag.yml)):
@@ -204,6 +206,11 @@ stored tokens) for nuget.org and npmjs.org.
   `v*` tag, or a bare `vX.Y.Z` tag off `main`, fails before anything is published. The Marketplace
   takes only a plain `X.Y.Z`, so a pre-release extension is numbered `X.Y.(Z×10000 + rank×1000 + N)`,
   with alpha = 1, beta = 2 and rc = 3: `3.0.0-beta.2` ships as extension `3.0.2002`.
+
+  Nothing publishes until the checks that matter have passed for that commit: every publishing job
+  waits on the Release suites, and the NuGet packages additionally wait on the whole sample gallery.
+  The Debug suites alone are not the contract — `testing-standards.md` requires both configurations,
+  and the samples are the engine's end-to-end tests.
 - **[Documentation](../.github/workflows/docs.yml)** — builds this site (including the WebAssembly
   demo bundle) and deploys it to GitHub Pages. Pull requests build and run the demo smoke suite but
   do not deploy.

@@ -47,8 +47,17 @@ jobs:
     permissions:
       contents: read
 
+  # The bundle this package ships is what the JS editor-artifact harness covers, and that harness
+  # runs in the Release suites. Gate the publish on it: a tag must not ship over a red suite.
+  release-tests:
+    needs: release-tag
+    if: ${{ needs.release-tag.outputs.is_tag == 'true' }}
+    uses: ./.github/workflows/tests-release.yml
+    permissions:
+      contents: read
+
   publish-release:
-    needs: [ build, release-tag ]
+    needs: [ build, release-tag, release-tests ]
     if: ${{ needs.release-tag.outputs.is_tag == 'true' }}
     runs-on: ubuntu-latest
     permissions:

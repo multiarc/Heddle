@@ -86,11 +86,29 @@ jobs:
     permissions:
       contents: read
 
+  # The release gates. The Debug suites in `build` are not the whole contract: testing-standards.md
+  # requires the Release leg too, and the samples are the engine's end-to-end integration tests.
+  # Both used to run only in other workflows, which no publish awaited, so a tag could publish over
+  # a red Release suite or a broken sample. They run here only for a tag.
+  release-tests:
+    needs: release-tag
+    if: ${{ needs.release-tag.outputs.is_tag == 'true' }}
+    uses: ./.github/workflows/tests-release.yml
+    permissions:
+      contents: read
+
+  release-samples:
+    needs: release-tag
+    if: ${{ needs.release-tag.outputs.is_tag == 'true' }}
+    uses: ./.github/workflows/samples.yml
+    permissions:
+      contents: read
+
   # Release or pre-release: triggered by pushing a release tag. Publishes that exact version
   # (a release becomes "latest" on nuget.org, a suffixed version is a nuget.org pre-release)
   # and creates the matching GitHub Release.
   release-pack:
-    needs: [ build, release-tag ]
+    needs: [ build, release-tag, release-tests, release-samples ]
     if: ${{ needs.release-tag.outputs.is_tag == 'true' }}
     runs-on: ubuntu-latest
     steps:

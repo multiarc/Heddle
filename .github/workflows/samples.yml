@@ -1,8 +1,12 @@
 # Integration demo gallery: every sample is a CI job with golden assertions.
 # A red job here is an integration regression in the owning phase's feature.
+#
+# Also callable (workflow_call): dotnet.yml runs it as a release gate on a tag, since the samples are
+# the engine's end-to-end tests and a job cannot depend on another workflow's jobs.
 name: Heddle Samples
 
 on:
+  workflow_call:
   push:
     branches: [ "main" ]
     paths:
