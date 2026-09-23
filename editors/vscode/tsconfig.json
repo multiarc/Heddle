@@ -4,9 +4,8 @@
     "moduleResolution": "node16",
     "target": "ES2022",
     "lib": ["ES2022"],
-    "outDir": "dist",
     "rootDir": "src",
-    "sourceMap": true,
+    "noEmit": true,
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true

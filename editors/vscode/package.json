@@ -115,10 +115,13 @@
     ]
   },
   "scripts": {
-    "vscode:prepublish": "npm run copy-grammar && npm run compile",
+    "vscode:prepublish": "npm run copy-grammar && npm run check-types && npm run bundle",
     "copy-grammar": "node build/copy-grammar.js",
-    "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./",
+    "check-types": "tsc -p ./",
+    "bundle": "node build/bundle.js",
+    "compile": "npm run check-types && npm run bundle",
+    "watch": "node build/bundle.js --watch",
+    "watch:types": "tsc -watch -p ./",
     "pretest": "npm run compile",
     "test": "node ./dist/test/runTest.js"
   },
@@ -131,6 +134,7 @@
     "@types/vscode": "^1.91.0",
     "@vscode/test-electron": "^2.4.0",
     "@vscode/vsce": "3.9.2",
+    "esbuild": "0.28.2",
     "typescript": "^5.5.0"
   }
 }
