@@ -206,11 +206,14 @@ stored tokens) for nuget.org and npmjs.org.
   tag of any other shape, or a bare `vX.Y.Z` tag off `main`, fails before anything is published; a tag
   with fewer than two dots (`v3`, `v3.0`) matches no trigger and starts no run at all.
 
-  The Marketplace takes only a plain `X.Y.Z`, so both sides scale the patch component: a release is
-  numbered `X.Y.(Z×10000)` and a pre-release `X.Y.(Z×10000 + rank×1000 + N)`, with alpha = 1, beta = 2
-  and rc = 3. So `3.0.0-beta.2` ships as extension `3.0.2002` and `3.0.1` ships as `3.0.10000`. The
-  release side is scaled so that a later release outranks an earlier pre-release — left at its bare
-  number it never would, and a user on the pre-release channel would not be offered a stable patch fix.
+  The Marketplace takes only a plain `X.Y.Z`, so both sides scale the patch component: a pre-release is
+  numbered `X.Y.(Z×10000 + rank×1000 + N)`, with alpha = 1, beta = 2 and rc = 3, and a release
+  `X.Y.(Z×10000 + 9999)`. So `3.0.0-beta.2` ships as extension `3.0.2002` and `3.0.0` as `3.0.9999`.
+  Because the pre-release term reaches at most 3999, the numbers rise in exactly the order the tags are
+  pushed — a release over its own pre-releases included — so a user on the pre-release channel is always
+  offered the release they were testing, and every fix after it. Left at its bare number a release would
+  sit below every pre-release of its own version, and at `Z = 0` below every pre-release in the whole
+  minor line.
 
   Nothing publishes until the checks that matter have passed for that commit: every publishing job
   waits on the Release suites, and the NuGet packages additionally wait on the whole sample gallery.

@@ -177,26 +177,75 @@ namespace Heddle.Tests
         }
 
         /// <summary>
-        /// A drift guard sees files the generator adds. <c>git diff</c> compares tracked files only, so a
-        /// regeneration that emits a new file leaves it untracked and the guard reports no drift.
+        /// A drift guard sees every way generated output can change. <c>git diff</c> compares tracked files
+        /// only, so a regeneration that emits a new file leaves it untracked and the guard reports nothing;
+        /// staging the intent first (<c>git add -N -A</c>) exposes the addition but stages a deletion, which
+        /// then hides it from the same <c>git diff</c>. <c>git status --porcelain</c> reports additions,
+        /// modifications and deletions alike.
         /// </summary>
         [Fact]
-        public void DriftGuardsSeeNewlyGeneratedFiles()
+        public void DriftGuardsSeeEveryKindOfChange()
         {
             var inspected = 0;
             foreach (var file in WorkflowFiles)
             {
                 foreach (var job in Jobs(File.ReadAllText(file).Replace("\r\n", "\n"))
-                    .Where(j => j.Value.Body.IndexOf("git diff --exit-code", StringComparison.Ordinal) >= 0))
+                    .Where(j => j.Value.Body.IndexOf("git diff --exit-code", StringComparison.Ordinal) >= 0
+                                || j.Value.Body.IndexOf("git status --porcelain", StringComparison.Ordinal) >= 0))
                 {
                     inspected++;
-                    Assert.True(job.Value.Body.IndexOf("--intent-to-add", StringComparison.Ordinal) >= 0,
-                        Path.GetFileName(file) + ": job '" + job.Key + "' guards drift with git diff but never " +
-                        "stages the intent, so a newly generated file is invisible to it.");
+                    Assert.True(
+                        job.Value.Body.IndexOf("git diff --exit-code", StringComparison.Ordinal) < 0,
+                        Path.GetFileName(file) + ": job '" + job.Key + "' guards drift with git diff, which " +
+                        "cannot see a generated file that is new and therefore untracked. Use " +
+                        "git status --porcelain.");
                 }
             }
 
             Assert.True(inspected > 0, "No drift guard found; this gate now measures nothing.");
+        }
+
+        /// <summary>
+        /// Every self-test script is invoked by some workflow. A self-test nothing runs is the same defect
+        /// it exists to prevent, one level up: the subject goes back to being first executed in production.
+        /// </summary>
+        [Fact]
+        public void EverySelfTestScriptIsRunByAWorkflow()
+        {
+            var scripts = Directory.EnumerateFiles(Path.Combine(RepoRoot, ".github", "scripts"), "*-selftest.sh")
+                .Select(Path.GetFileName)
+                .ToList();
+            Assert.True(scripts.Count > 0, "No self-test script found; this gate now measures nothing.");
+
+            var workflows = WorkflowFiles.Select(File.ReadAllText).ToList();
+            foreach (var script in scripts)
+                Assert.True(workflows.Any(w => w.IndexOf(script, StringComparison.Ordinal) >= 0),
+                    script + " is never invoked by a workflow, so nothing runs it.");
+        }
+
+        /// <summary>
+        /// A job that talks to the Pages API declares the scope itself. The negative gate above keeps the
+        /// deployment scopes off every job; this one keeps them on the job that needs them, so moving them
+        /// cannot silently leave the deploy unable to run.
+        /// </summary>
+        [Fact]
+        public void JobsUsingPagesActionsDeclareThePagesScope()
+        {
+            var inspected = 0;
+            foreach (var file in WorkflowFiles)
+            {
+                foreach (var job in Jobs(File.ReadAllText(file).Replace("\r\n", "\n"))
+                    .Where(j => Regex.IsMatch(j.Value.Body, @"uses:\s*actions/(configure|deploy)-pages@")))
+                {
+                    inspected++;
+                    Assert.Matches(@"(?m)^\s{4}permissions:", job.Value.Body);
+                    Assert.True(Regex.IsMatch(job.Value.Body, @"(?m)^\s*pages:\s*(read|write)\s*$"),
+                        Path.GetFileName(file) + ": job '" + job.Key + "' uses a Pages action but declares no " +
+                        "pages scope of its own, so its token has pages: none.");
+                }
+            }
+
+            Assert.True(inspected > 0, "No job uses a Pages action; this gate now measures nothing.");
         }
 
         private static string RepoRoot =>

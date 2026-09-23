@@ -50,7 +50,8 @@ phase 6 decisions of record:
   `golang.org/x/perf v0.0.0-20260709024250-82a0b07e230d`), so `go.sum` locks every byte and
   `go tool templ` / `go tool benchstat` run the pinned versions with no global installs.
   Generated `*_templ.go` files are committed; the runner script re-generates and asserts
-  `git diff --exit-code` so commits can never drift from the pinned generator.
+  `git status --porcelain` so commits can never drift from the pinned generator, including a generated
+  file that is new and therefore untracked.
 - **Text/LF round-trip rule** (`benchmarks/go/.gitattributes`): `.templ` sources and the
   generated `*_templ.go` are ordinary text under the repo's normal EOL handling. The former
   `internal/model/data` `-text` byte-exact pin was removed when amendment E22 moved all literal
@@ -199,7 +200,7 @@ ns/render so the ratio column is dimensionless.
 `run-benchmarks.ps1` (committed) performs, in order: toolchain version assertions
 (`go version` = `go1.26.5`, `go tool templ version` = `v0.3.1020` — the pinned CLI is invoked
 through `go tool`, never a global install, per [D3 above](#layout-and-toolchain-rules-d2d3-condensed)),
-`go tool templ generate` + `git diff --exit-code -- '*_templ.go'` (regeneration freshness — committed generated code must match the
+`go tool templ generate` + `git status --porcelain -- '*_templ.go'` (regeneration freshness — committed generated code must match the
 pinned generator), `go vet ./...`, `go test ./...` (gates + unit tests), the prebuild, the two
 timed invocations, and benchstat. It is the reproduce command the report prints.
 

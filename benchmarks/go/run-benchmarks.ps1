@@ -2,7 +2,7 @@
 #
 # Performs, in order:
 #   1. Toolchain version assertions (go1.26.5; templ v0.3.1020 via `go tool` — the pinned CLI).
-#   2. `go tool templ generate` + `git diff --exit-code -- *_templ.go` (regeneration
+#   2. `go tool templ generate` + `git status --porcelain -- *_templ.go` (regeneration
 #      freshness -- committed generated code must match the pinned generator).
 #   3. `go vet ./...`
 #   4. `go test ./...` (gates + unit tests; TestMain gates before anything can time).
@@ -52,9 +52,13 @@ if ($VersionCheckOnly) {
 # --- 2. Regeneration freshness ---------------------------------------------------------------
 & go tool templ generate
 Assert-LastExit "go tool templ generate"
-& git diff --exit-code -- "*_templ.go"
-if ($LASTEXITCODE -ne 0) {
+# `git status --porcelain`, not `git diff`: a diff compares tracked files only, so a generator that
+# emits a NEW _templ.go leaves it untracked and invisible. Porcelain reports additions, modifications
+# and deletions alike, and is empty on a clean tree.
+$templDrift = & git status --porcelain -- "*_templ.go"
+if ($templDrift) {
     Write-Host "FAIL: committed *_templ.go does not match the pinned generator's output."
+    Write-Host ($templDrift -join "`n")
     exit 1
 }
 

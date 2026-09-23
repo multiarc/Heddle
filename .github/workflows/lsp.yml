@@ -4,8 +4,9 @@
 # Marketplace publishing is TAG-DRIVEN, like the NuGet and npm workflows (rules in release-tag.yml):
 # a `vX.Y.Z` tag on main publishes every per-target VSIX to the Visual Studio Marketplace under the
 # `multiarc` publisher, and a `vX.Y.Z-alpha.N`, `-beta.N` or `-rc.N` tag publishes them as a
-# Marketplace pre-release. The Marketplace takes only a plain X.Y.Z, so a pre-release is published
-# under the mapped number resolve-release-tag.sh documents (3.0.0-beta.2 -> 3.0.2002). Pull requests
+# Marketplace pre-release. The Marketplace takes only a plain X.Y.Z, so BOTH releases and pre-releases
+# publish under the mapped number resolve-release-tag.sh documents rather than the tag's own version
+# (3.0.0-beta.2 -> 3.0.2002, and 3.0.0 -> 3.0.9999). Pull requests
 # and main build and package only. The credential is the VSCE_PAT secret on the `marketplace`
 # environment; see marketplace-publish for why it is a token and not OIDC.
 

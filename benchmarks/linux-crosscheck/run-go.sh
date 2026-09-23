@@ -33,8 +33,16 @@ case "$GO_V" in
 esac
 
 # templ regeneration freshness: generated files must match their sources.
-lcx_note "templ freshness: git diff --exit-code -- '*_templ.go'" 2>&1 | tee -a "$LCX_OUT_DIR/run-go.log"
-git diff --exit-code -- '*_templ.go' 2>&1 | tee -a "$LCX_OUT_DIR/run-go.log"
+# Porcelain rather than `git diff`: a diff compares tracked files only, so a newly generated _templ.go
+# would be untracked and invisible to it.
+lcx_note "templ freshness: git status --porcelain -- '*_templ.go'" 2>&1 | tee -a "$LCX_OUT_DIR/run-go.log"
+templ_drift=$(git status --porcelain -- '*_templ.go')
+if [ -n "$templ_drift" ]; then
+  printf '%s
+' "$templ_drift" 2>&1 | tee -a "$LCX_OUT_DIR/run-go.log"
+  echo "FAIL: committed *_templ.go does not match the pinned generator's output." 2>&1 | tee -a "$LCX_OUT_DIR/run-go.log"
+  exit 1
+fi
 
 # Vet + gates (TestMain runs all gates in `go test ./suites`).
 lcx_note "go vet ./..." 2>&1 | tee -a "$LCX_OUT_DIR/run-go.log"

@@ -119,13 +119,15 @@ namespace Heddle.Tests
         /// A version suffix must not lead with '-': the SDK joins VersionPrefix and VersionSuffix with one
         /// dash, so "-beta.1" composes "3.0.0--beta.1". Every workflow is scanned, in both spellings. No
         /// workflow composes a version this way today — the release path passes a whole <c>-p:Version</c>
-        /// from the tag — so the suffix half is a guard against reintroducing the form; the premise it rests
-        /// on, that the version is still composed from a prefix, is asserted on every run.
+        /// from the tag — so the suffix half is a guard against reintroducing the form. Its premise, that
+        /// Directory.Build.props still states exactly one VersionPrefix for a suffix to be joined to, is
+        /// asserted by reading <c>Canonical</c>, whose accessor checks it. Do not add a pattern assertion on
+        /// the returned value: the accessor already made that one, so a second could never fail.
         /// </summary>
         [Fact]
         public void AVersionSuffixInAnyWorkflowCarriesNoLeadingDash()
         {
-            Assert.Matches(@"^\d+\.\d+\.\d+$", Canonical);
+            _ = Canonical;
 
             foreach (var file in Directory.EnumerateFiles(
                 Path.Combine(RepoRoot, ".github", "workflows"), "*.yml"))
