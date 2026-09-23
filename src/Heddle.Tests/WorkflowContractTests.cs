@@ -117,6 +117,40 @@ namespace Heddle.Tests
         }
 
         /// <summary>
+        /// Every job that ships bytes to a registry runs in one environment, so which refs may publish is a
+        /// single setting rather than a rule implied separately by three workflows. It is also the only gate
+        /// that covers all three registries at once: the deployment policy on that environment applies to
+        /// nuget.org, npm and the Marketplace together, and a job that declares no environment escapes it.
+        /// </summary>
+        [Fact]
+        public void EveryPublishingJobRunsInTheSameEnvironment()
+        {
+            var environments = new SortedSet<string>(StringComparer.Ordinal);
+            var publishers = new List<string>();
+            foreach (var file in WorkflowFiles)
+            {
+                foreach (var job in Jobs(File.ReadAllText(file).Replace("\r\n", "\n"))
+                    .Where(j => PublishCommands.Any(c =>
+                        j.Value.Body.IndexOf(c, StringComparison.Ordinal) >= 0)))
+                {
+                    publishers.Add(Path.GetFileName(file) + ":" + job.Key);
+                    var declared = Regex.Match(job.Value.Body, @"(?m)^\s{4}environment:[ \t]*(?<e>\S+)[ \t]*$");
+                    Assert.True(declared.Success,
+                        Path.GetFileName(file) + ": job '" + job.Key + "' publishes but declares no " +
+                        "environment, so the deployment policy the other publishing jobs run under does " +
+                        "not gate it.");
+                    environments.Add(declared.Groups["e"].Value);
+                }
+            }
+
+            Assert.True(publishers.Count >= 3,
+                "Expected the NuGet, npm and Marketplace publishing jobs; found: " + string.Join(", ", publishers));
+            Assert.True(environments.Count == 1,
+                "Publishing jobs run in different environments (" + string.Join(", ", environments) +
+                "), so the policy has to be maintained in more than one place.");
+        }
+
+        /// <summary>
         /// A release artifact that carries packages carries their symbol packages too. <c>*.nupkg</c> does
         /// not match <c>*.snupkg</c>, and <c>dotnet nuget push</c> uploads a symbol package only from beside
         /// its package, so one left out of the artifact never reaches the publishing runner.

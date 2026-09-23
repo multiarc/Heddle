@@ -140,6 +140,11 @@ jobs:
   release-publish:
     needs: [ release-pack, release-tag ]
     runs-on: ubuntu-latest
+    # Every job that ships bytes to a registry runs in one environment, so which refs may publish is a
+    # single setting rather than a rule implied three times. Note this changes the OIDC subject claim to
+    # repo:<owner>/<repo>:environment:marketplace, so nuget.org's Trusted Publishing policy must name
+    # this environment too.
+    environment: marketplace
     permissions:
       contents: write   # create the GitHub Release
       id-token: write   # OIDC token for nuget.org Trusted Publishing

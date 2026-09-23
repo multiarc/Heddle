@@ -183,8 +183,15 @@ NuGet feed configuration is in [NuGet.Config](../NuGet.Config).
 ## Continuous integration
 
 CI runs on **GitHub Actions**. Pull requests and pushes to `main` build, test and pack; they never
-publish anything. Publishing happens only for a release tag and uses Trusted Publishing (OIDC, no
+publish a package. Publishing happens only for a release tag and uses Trusted Publishing (OIDC, no
 stored tokens) for nuget.org and npmjs.org.
+
+Every job that ships bytes to a registry — nuget.org, npmjs.org and the Marketplace alike — runs in the
+`marketplace` deployment environment, so which refs may publish is one setting rather than a rule
+implied separately by three workflows. Its deployment policy admits the `main` branch and tags matching
+`v*.*.*`, the same glob the three workflows trigger on. Because the environment appears in the OIDC
+subject claim (`repo:<owner>/<repo>:environment:marketplace`), each registry's Trusted Publishing policy
+must name it too; a policy configured without an environment refuses the token.
 
 - **[.NET build](../.github/workflows/dotnet.yml)** — on every push and pull request to `main`,
   restores, builds, and runs the four test suites (Debug, each its own guarded step) on Linux and
