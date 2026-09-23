@@ -76,6 +76,7 @@ jobs:
       VERSION: ${{ needs.release-tag.outputs.version }}
       VSIX_VERSION: ${{ needs.release-tag.outputs.vsix_version }}
     strategy:
+      fail-fast: false          # the seven targets are independent; one runner fault must not cancel six
       matrix:
         target: [win32-x64, win32-arm64, linux-x64, linux-arm64, alpine-x64, darwin-x64, darwin-arm64]
     steps:

@@ -117,6 +117,31 @@ namespace Heddle.Tests
         }
 
         /// <summary>
+        /// A matrix leg does not cancel its siblings. Every matrix here fans out over independent things —
+        /// operating systems, samples, platform targets — so the default fail-fast turns one leg's failure,
+        /// including a transient runner fault, into a cancellation of every other leg. That masks whether
+        /// the failure was specific or systemic, and it discards work that had already succeeded.
+        /// </summary>
+        [Fact]
+        public void MatrixLegsDoNotCancelTheirSiblings()
+        {
+            var inspected = 0;
+            foreach (var file in WorkflowFiles)
+            {
+                foreach (var job in Jobs(File.ReadAllText(file).Replace("\r\n", "\n"))
+                    .Where(j => Regex.IsMatch(j.Value.Body, @"(?m)^\s{6}matrix:[ \t]*$")))
+                {
+                    inspected++;
+                    Assert.True(Regex.IsMatch(job.Value.Body, @"(?m)^\s{6}fail-fast:[ \t]*false\b"),
+                        Path.GetFileName(file) + ": job '" + job.Key + "' fans out over a matrix without " +
+                        "fail-fast: false, so one leg failing cancels the rest.");
+                }
+            }
+
+            Assert.True(inspected > 0, "No matrix job found; this gate now measures nothing.");
+        }
+
+        /// <summary>
         /// Every job that ships bytes to a registry runs in one environment, so which refs may publish is a
         /// single setting rather than a rule implied separately by three workflows. It is also the only gate
         /// that covers all three registries at once: the deployment policy on that environment applies to
