@@ -42,11 +42,26 @@ package and are covered by their own licenses (see the `LICENSE` and
 > Licensed under the **BSD 3-Clause License**.
 > <https://github.com/antlr/antlr4/blob/master/LICENSE.txt>
 
+### VS Code extension (`multiarc.heddle`)
+
+Every per-target VSIX bundles the extension's one runtime dependency, **vscode-languageclient**, and
+its dependency closure into `dist/extension.js`. The license text of every package in the bundle ships
+beside it in `dist/ThirdPartyNotices.txt`, generated at bundle time from what esbuild actually bundled,
+so it is the authoritative list:
+
+| Component | License |
+| --- | --- |
+| vscode-languageclient, vscode-languageserver-protocol, vscode-languageserver-types, vscode-languageserver-textdocument, vscode-jsonrpc | MIT |
+| minimatch | BlueOak-1.0.0 |
+| brace-expansion, balanced-match | MIT |
+| semver | ISC |
+
 ### Packed tools (`Heddle.Tool`, `Heddle.LanguageServer`, `Heddle.Build`)
 
 The two .NET tool packages and the build package carry their dependency closure inside the
-package, so these are redistributed there (and only there); the `Heddle` and `Heddle.Language`
-library packages declare them instead:
+package, so these are redistributed there, and every VSIX carries the `Heddle.LanguageServer` rows too:
+its `server/` is that tool's publish output. The `Heddle` and `Heddle.Language` library packages declare
+them instead:
 
 | Component | License | Carried by |
 | --- | --- | --- |

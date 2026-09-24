@@ -121,6 +121,15 @@ jobs:
           npm ci
           npm run copy-grammar
           npx @vscode/vsce package --target ${{ matrix.target }} "${pre_release_args[@]}"
+      # vsce refuses only a missing entry point; a bundle that is present but unusable installs cleanly
+      # and throws at activation. Unzipped outside any project, the shipped bundle is loaded against
+      # a stubbed host module, and the dependencies must ship inside it with their license texts.
+      - name: Verify VSIX contents
+        working-directory: editors/vscode
+        run: |
+          rm -rf "$RUNNER_TEMP/vsix-check"
+          unzip -q ./*.vsix -d "$RUNNER_TEMP/vsix-check"
+          node build/verify-vsix.js "$RUNNER_TEMP/vsix-check/extension"
       - uses: actions/upload-artifact@v7
         with:
           name: heddle-vsix-${{ matrix.target }}
@@ -143,8 +152,10 @@ jobs:
     environment: marketplace
     permissions:
       contents: read
+    # No dependency install scripts anywhere in this job, npx included: one can plant code in node_modules
+    # that the token-holding steps below then run.
     env:
-      VSCE_PAT: ${{ secrets.VSCE_PAT }}
+      npm_config_ignore_scripts: 'true'
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -168,18 +179,23 @@ jobs:
             exit 1
           fi
       # vsce comes from the extension's own lock file, so the version that publishes is the one the
-      # VSIXs were packaged with. verify-pat fails before any upload if the token is expired or is
-      # not a member of the publisher.
+      # VSIXs were packaged with. This job only publishes finished VSIXs; it neither bundles (esbuild) nor
+      # signs (vsce-sign) nor stores credentials (keytar), which is all their install scripts set up.
+      - name: Install vsce
+        working-directory: editors/vscode
+        run: npm ci --ignore-scripts
+      # verify-pat fails before any upload if the token is expired or is not a member of the publisher.
       - name: Verify publisher access
         working-directory: editors/vscode
-        run: |
-          npm ci
-          npx @vscode/vsce verify-pat multiarc
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: npx @vscode/vsce verify-pat multiarc
       # No --skip-duplicate: a release of an already-published version must fail loudly (dotnet.yml).
       # The seven VSIXs share one version; the Marketplace lists them as one extension.
       - name: Publish to the Visual Studio Marketplace
         working-directory: editors/vscode
         env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
           PRERELEASE: ${{ needs.release-tag.outputs.prerelease }}
         run: |
           pre_release_args=()

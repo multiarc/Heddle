@@ -1,5 +1,24 @@
 # Bundling the VS Code extension
 
+## Status
+
+Executed in 453cad53. The review of that change added three things this plan did not foresee:
+
+- **License texts.** Bundling drops the loose `node_modules/*/License*` files that used to satisfy the
+  dependencies' MIT/ISC/BlueOak notice clauses, and esbuild strips their copyright headers. `build/bundle.js`
+  now writes `dist/ThirdPartyNotices.txt` from the packages esbuild actually bundled, and it ships beside the
+  bundle.
+- **A gate that loads the bundle.** Step 4 below is no longer a manual check. CI's `vsix` job runs
+  `build/verify-vsix.js` on every packaged VSIX. It loads the bundle against a stubbed `vscode` module outside
+  any `node_modules`, and requires notices for every bundled package. Nothing reaches activation.
+- **The Marketplace token.** The publish job's `npm ci` used to run every dependency's install script,
+  esbuild's included, with the token in the environment. It now runs with `--ignore-scripts`, the job sets
+  `npm_config_ignore_scripts` so no `npx` runs one either, and the token is scoped to the two steps that use
+  it.
+
+Step 5, the GUI leg, was run during the review: VS Code 1.139.0 and 1.91.0 against a real server
+(activation, diagnostics, completion, Restart Language Server), matching the unbundled build.
+
 ## Why
 
 `vsce package` warns on every one of the seven per-target VSIXs:
@@ -7,6 +26,9 @@
 > This extension consists of 356 files, out of which 182 are JavaScript files. For performance reasons,
 > you should bundle your extension... You should also exclude unnecessary files by adding them to your
 > `.vscodeignore`.
+
+That count is from a CI-built VSIX, so it includes roughly 93 files of the .NET server under `server/`.
+Packaged without `server/`, the same VSIX holds 263 entries, 182 of them JavaScript.
 
 Both halves have one cause. The extension has a single runtime dependency,
 `vscode-languageclient@^10.1.0`, which resolves to nine packages (~2.9 MB); `main` points at raw `tsc`
@@ -33,9 +55,9 @@ need its own `tsconfig.test.json` emitting to `out/`.
 
 ## The one non-obvious problem: the output collision
 
-`tsc -p ./` emits `dist/extension.js` today. esbuild would write the same path. Whichever runs last wins,
-so `npm run compile` would silently replace a bundle with unbundled output — and the damage shows only at
-F5 or in a shipped VSIX.
+Before this change, `tsc -p ./` emitted `dist/extension.js`. esbuild would write the same path. Whichever
+runs last wins, so `npm run compile` would silently replace a bundle with unbundled output — and the damage
+shows only at F5 or in a shipped VSIX.
 
 **Resolution: put `"noEmit": true` in `tsconfig.json`** and let `dist/` belong to the bundler alone. A
 `--noEmit` flag on a script line protects only the invocations that carry it; a human running `npx tsc -p .`
@@ -65,8 +87,8 @@ top, a header comment saying *why*, paths from `path.resolve(__dirname, '..')`, 
 | platform | `'node'` | **mandatory.** `vscode-languageclient`, `vscode-languageserver-protocol` and `vscode-jsonrpc` all export `./node` under the `node` condition only, with no `default` — any other platform cannot resolve `vscode-languageclient/node` at all |
 | format | `'cjs'` | the host `require()`s `main`; also keeps `minimatch` (type: module, dual exports) on its `require` branch |
 | target | `'node20'` | `engines.vscode: ^1.91.0` → VS Code 1.91 → Electron 29.4 → Node 20.9. The exact floor, not a guess |
-| minify | `false` | unminified output names each module in stack traces; minified collapses to ~28 lines naming nothing. Since no `.map` ships, this is the only form debuggable from a user's bug report, and ~530 KB is noise beside the .NET server payload |
-| sourcemap | `false` | `.vscodeignore` ships no maps; a `sourceMappingURL` pointing at a file that isn't in the VSIX is worse than none |
+| minify | `false` | unminified output names each module in stack traces; minified collapses to ~28 lines naming nothing. Since no `.map` ships, this is the only form debuggable from a user's bug report, and ~950 KB is noise beside the .NET server payload |
+| sourcemap | `false` (`--watch` only: on) | `.vscodeignore` ships no maps; a `sourceMappingURL` pointing at a file that isn't in the VSIX is worse than none. The watch build feeds F5, which needs them |
 
 Support `--watch` through `esbuild.context()` so F5 keeps working.
 
@@ -94,7 +116,7 @@ CI runs.
 Dependency: `npm install --save-exact --save-dev esbuild`. Pin exactly, as `@vscode/vsce` is pinned to
 `3.9.2` — this tool produces the shipped bytes. Verify `package-lock.json` gains the `@esbuild/linux-x64`
 and `@esbuild/linux-arm64` entries even though you installed on Windows, or `npm ci` on `ubuntu-latest`
-fails. (esbuild has `hasInstallScript: true`; CI does not use `--ignore-scripts`.)
+fails. (esbuild has `hasInstallScript: true`; CI's packaging `npm ci` does not use `--ignore-scripts`.)
 
 This does not disturb `VersionConsistencyTests.NpmManifestsCarryTheCanonicalVersion`, which cuts the
 manifest at the first of `dependencies`/`devDependencies`/`engines` — `engines` is at line 24, well above.
@@ -135,35 +157,39 @@ does.
 Rehearse red before trusting it: delete `&& npm run bundle` from `vscode:prepublish` and confirm the
 failure names that link.
 
-## CI needs no change
+## CI needs no change to run the bundler
 
 `vsce package` triggers `vscode:prepublish`, so the bundler runs on all seven matrix targets with no edit
 to `.github/workflows/lsp.yml`. The existing order already favours it: the `sed` that rewrites
 `PINNED_VERSION` in `src/extension.ts` runs before `npm ci` and `vsce package`, so the bundle consumes the
-stamped source.
+stamped source. (The review later added a step that checks the packaged VSIX; see Status.)
 
 ## Verification
 
 Run from `editors/vscode`.
 
 1. **Before**: `npx @vscode/vsce package --target linux-x64 -o ../../before.vsix`; count entries and `.js`
-   entries. Expect 356 and 182.
+   entries. Expect 263 and 182; that is without `server/`, which adds about 93 more.
 2. Apply the change; `npm install --save-exact --save-dev esbuild`; confirm the lockfile gained the Linux
    binaries.
 3. `npm run compile && npx @vscode/vsce package --target linux-x64 -o ../../after.vsix`. Expect the warning
-   gone and exactly one `.js` entry. Without `server/` published in, the VSIX should hold 8 entries: the six
-   shipped files plus vsce's `[Content_Types].xml` and `extension.vsixmanifest`.
-4. **Prove the bundle initialises without VS Code** — the cheap check that catches an elided dynamic require
-   or a broken RAL install in `vscode-jsonrpc`. Load `dist/extension.js` under `node` with a stubbed
-   `vscode` module and assert its exports are exactly `activate,deactivate`. Module-level evaluation walks
-   the whole `vscode-languageclient/node` → `vscode-languageserver-protocol` → `vscode-jsonrpc` → `ril` →
-   `RAL.install` chain, which is where a bundling defect fires.
+   gone and exactly one `.js` entry. Without `server/` published in, the VSIX should hold 9 entries: the six
+   shipped files, `dist/ThirdPartyNotices.txt`, and vsce's `[Content_Types].xml` and `extension.vsixmanifest`.
+4. **Prove the bundle initialises without VS Code** — the cheap check that catches an elided or unresolvable
+   require. Load `dist/extension.js` under `node` with a stubbed `vscode` module, from a copy outside any
+   project — no `node_modules` in any parent directory, no `NODE_PATH`, no global node folders (otherwise
+   requires resolve from there) — and assert its exports are exactly `activate,deactivate`;
+   `build/verify-vsix.js` does exactly this on an unzipped VSIX, and refuses to run anywhere else. Module-level
+   evaluation walks the whole `vscode-languageclient/node` → `vscode-languageserver-protocol` →
+   `vscode-jsonrpc` → `ril` chain. It does not prove the RAL install:
+   `RAL()` is first called at activation (see Known risks).
 5. **Install and exercise both paths**: `code --install-extension ../../after.vsix --force`; open a
    `.heddle` file (coloring proves `syntaxes/**` shipped); with no server, confirm the install hint appears
    *and* coloring still works; point `heddle.server.path` at a local `Heddle.LanguageServer.dll` and confirm
    diagnostics and completion work — the end-to-end proof the bundled language client still talks to the
    server. Run **Heddle: Restart Language Server** to exercise `deactivate` → `stop` → `start`. Inspect the
-   installed folder: `dist/` holds only `extension.js`, and `node_modules/` is absent.
+   installed folder: `dist/` holds only `extension.js` and
+   `ThirdPartyNotices.txt`, and `node_modules/` is absent.
 6. **Prove the collision is closed**: `npx tsc -p .` writes nothing and leaves `dist/extension.js`
    untouched; introduce a type error and confirm `npm run compile` fails at `check-types` before the bundler
    runs.
@@ -173,7 +199,9 @@ Run from `editors/vscode`.
 
 - `vscode-jsonrpc` installs its runtime abstraction layer as a top-level side effect (`ril.install()` →
   `RAL.install`). None of the nine production packages declares `sideEffects`, so esbuild may not elide it,
-  and step 4 proves it at build time rather than at a user's activation.
+  and CI's `build/verify-vsix.js` evaluates the bundle on every packaged VSIX. That walks the chain, but
+  `RAL()` is first called at activation, so an elided `install()` would load cleanly and fail only there;
+  no gate reaches activation.
 - `vscode-languageclient` deep-requires `semver/functions/parse` and `.../satisfies`; `semver` has no
   `exports` map, so these resolve as plain paths and bundle normally.
 - No `__dirname`, `createRequire`, `require.resolve`, dynamic `require()` or native `.node` binaries

@@ -1,6 +1,6 @@
 # Shipped: package.json, README.md, LICENSE, language-configuration.json, syntaxes/**, dist/extension.js
-# (the bundle, which carries the runtime dependencies) and server/** (the per-target language server CI
-# publishes in).
+# (the bundle, which carries the runtime dependencies), dist/ThirdPartyNotices.txt (their license texts)
+# and server/** (the per-target language server CI publishes in).
 .vscode/**
 .vscode-test/**
 src/**

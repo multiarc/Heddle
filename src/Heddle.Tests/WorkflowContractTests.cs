@@ -58,6 +58,110 @@ namespace Heddle.Tests
         }
 
         /// <summary>
+        /// A job that holds a credential — a secret, the job token, or a write permission (an OIDC token among
+        /// them) — and can install packages runs no dependency install scripts: <c>npm_config_ignore_scripts</c>
+        /// is set for the whole job or workflow, which covers
+        /// every npm verb and alias and <c>npx</c>, and nothing in the job turns it back on. <c>npm ci</c> runs
+        /// every dependency's install script, and the Marketplace job's handed the token to each of them —
+        /// esbuild's among them, in a job that never bundles. Scoping the token to later steps does not help: an
+        /// install script can plant code in <c>node_modules</c> that those steps then run with the token.
+        /// </summary>
+        [Fact]
+        public void NoJobHoldingACredentialRunsInstallScripts()
+        {
+            // The setting in a job's env (key at indent 4, entries at 6) or the workflow's (0 and 2), in any case
+            // as npm reads it; Jobs() leaves comment lines blank.
+            const string ignoresScripts =
+                @"(?im)^ {{{0}}}env:[ \t]*(#.*)?\n(?: {{{1}}}.*\n|[ \t]*\n)*? {{{1}}}npm_config_ignore_scripts:"
+                + @"\s*['""]?true\b";
+            var installing = new List<string>();
+            foreach (var file in WorkflowFiles)
+            {
+                var text = File.ReadAllText(file).Replace("\r\n", "\n");
+                // A credential or setting above the jobs (env, permissions) reaches every job.
+                var jobsAt = Regex.Match(text, @"(?m)^jobs:[ \t]*$");
+                var header = jobsAt.Success ? text.Substring(0, jobsAt.Index) : "";
+                header = Regex.Replace(header, @"(?m)^[ \t]*#.*$", "");
+                var workflowIgnoresScripts = Regex.IsMatch(header, string.Format(ignoresScripts, 0, 2));
+                foreach (var job in Jobs(text))
+                {
+                    var body = job.Value.Body;
+                    var where = Path.GetFileName(file) + ":" + job.Key;
+                    // A job's own permissions replace the workflow's; its secrets and token do not.
+                    var ownPermissions = Regex.IsMatch(body, @"(?m)^ {4}permissions:");
+                    if (!NamesCredential(header) && !NamesCredential(body) && !GrantsWrite(body)
+                        && (ownPermissions || !GrantsWrite(header)))
+                        continue;
+
+                    // Each command of a chained line on its own, from run lines only (a step's name may say npm).
+                    // npm has too many install aliases (ic, cit, it, install-test, update, ...) to list, so every
+                    // verb but the few that never install counts.
+                    var commands = body.Split('\n')
+                        .Where(l => !Regex.IsMatch(l, @"^\s*(-\s+)?name:"))
+                        .SelectMany(l => Regex.Split(Regex.Replace(l, @"(^|\s)#.*$", ""), @"&&|\|\||[;|]"));
+                    if (!commands.Any(c => Regex.IsMatch(c, @"(?:^|\s)npx\s")
+                                           || NpmVerb(c) is string verb && !NonInstallingNpmVerbs.Contains(verb)))
+                        continue;
+
+                    installing.Add(where);
+                    Assert.True(workflowIgnoresScripts || Regex.IsMatch(body, string.Format(ignoresScripts, 4, 6)),
+                        where + " holds a credential and can install packages without npm_config_ignore_scripts: "
+                        + "true in the job or workflow env");
+                    // npm reads the variable in any case, and a step can also set it through $GITHUB_ENV, or drop it.
+                    Assert.DoesNotMatch(@"(?i)npm_config_ignore_scripts\s*[:=]\s*(?!['""]?true\b)\S"
+                        + @"|(?i)\b(unset|env\s+(\S+\s+)*?(-u\s*|--unset[=\s]))\s*npm_config_ignore_scripts\b"
+                        + @"|--ignore-scripts(=|\s+)false\b|--no-ignore-scripts", header + body);
+                }
+            }
+
+            Assert.Contains("lsp.yml:marketplace-publish", installing);
+        }
+
+        /// <summary>A secret or the job token named in an expression.</summary>
+        private static bool NamesCredential(string text) =>
+            Regex.IsMatch(text, @"\$\{\{[^}]*\b(secrets|github\.token)\b");
+
+        /// <summary>Any scope granted <c>write</c> in a <c>permissions:</c> block, block or flow style, quoted or
+        /// not, or <c>write-all</c> - by shape, so a scope GitHub adds later counts too.</summary>
+        private static bool GrantsWrite(string text)
+        {
+            const string write = @"[a-z-]+:\s*['""]?write\b";
+            if (Regex.IsMatch(text, @"(?m)^\s*permissions:\s*(['""]?write-all\b|\{[^}]*\b" + write + ")"))
+                return true;
+
+            const string block =
+                @"(?m)^(?<indent>[ \t]*)permissions:[ \t]*(#.*)?\n(?<block>(?:\k<indent>[ \t]+\S.*\n|[ \t]*\n)*)";
+            return Regex.Matches(text, block).Cast<Match>()
+                .Any(m => Regex.IsMatch(m.Groups["block"].Value, @"(?m)^\s*" + write));
+        }
+
+        private static readonly HashSet<string> NonInstallingNpmVerbs = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "run", "run-script", "version", "publish", "view", "info", "whoami", "pack", "ls", "list", "config",
+        };
+
+        /// <summary>The first non-option word after <c>npm</c>, skipping the value of the options that take one;
+        /// an unknown option's value reads as an installing verb - a false red, never a miss.</summary>
+        private static string NpmVerb(string command)
+        {
+            var npm = Regex.Match(command, @"(?:^|\s)npm\s+(?<rest>.*)$");
+            if (!npm.Success)
+                return null;
+
+            var words = npm.Groups["rest"].Value.Split((char[])null, StringSplitOptions.RemoveEmptyEntries);
+            for (var i = 0; i < words.Length; i++)
+            {
+                const string valued = @"^(--prefix|-C|--workspace|-w|--registry|--cache|--userconfig|--loglevel)$";
+                if (Regex.IsMatch(words[i], valued))
+                    i++;
+                else if (!words[i].StartsWith("-", StringComparison.Ordinal))
+                    return words[i];
+            }
+
+            return null;
+        }
+
+        /// <summary>
         /// Every job that publishes waits — directly or through its dependency chain — on the job that runs the
         /// Release suites. testing-standards.md requires both configurations, and the Release leg lives in its
         /// own callable workflow precisely so a publishing job can depend on it.
