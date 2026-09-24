@@ -1,7 +1,7 @@
 "use strict";
 
 /*
- * Beautify helper (WS4 verification surface).
+ * Beautify helper.
  *
  * Exercises `js/src/ext/beautify.js` against a real Ace `EditSession` whose
  * tokenizer is the Heddle highlight tokenizer. The beautifier walks the

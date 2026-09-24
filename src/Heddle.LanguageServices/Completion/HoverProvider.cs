@@ -7,22 +7,21 @@ using Heddle.Runtime.Expressions;
 
 namespace Heddle.LanguageServices.Completion
 {
-    /// <summary>Hover content (phase 6 D15): a fenced <c>csharp</c> signature line plus plain paragraphs.</summary>
+    /// <summary>Hover content: a fenced <c>csharp</c> signature line plus plain paragraphs.</summary>
     internal static class HoverProvider
     {
-        internal static HoverResult GetHover(DocumentAnalysis analysis, int offset, FunctionRegistry functions)
+        internal static HoverResult GetHover(DocumentAnalysis analysis, int offset, FunctionRegistry functions,
+            Action<string> log = null)
         {
             var (word, start, length) = WordAt(analysis.Text, offset);
             if (string.IsNullOrEmpty(word))
                 return null;
             var registry = functions ?? FunctionRegistry.Default;
 
-            // Definition name.
             var definition = analysis.Definitions.FirstOrDefault(d => d.Name == word);
             if (definition != null)
                 return new HoverResult(Fence(DefinitionSignature(definition)), start, length);
 
-            // Prop of any definition.
             foreach (var def in analysis.Definitions)
             {
                 var prop = def.Props.FirstOrDefault(p => p.Name == word);
@@ -34,7 +33,7 @@ namespace Heddle.LanguageServices.Completion
                 }
             }
 
-            // Phase 7 (WI5): a named content region of any definition — show visibility and type.
+            // A named content region of any definition — show visibility and type.
             foreach (var def in analysis.Definitions)
             {
                 var region = def.Regions.FirstOrDefault(r => r.Name == word);
@@ -49,13 +48,11 @@ namespace Heddle.LanguageServices.Completion
                 }
             }
 
-            // Member of the innermost scope model set.
             var types = analysis.Scopes.GetModelTypesAt(offset);
-            var memberHover = MemberHover(word, types);
+            var memberHover = MemberHover(word, types, log);
             if (memberHover != null)
                 return new HoverResult(memberHover, start, length);
 
-            // Registered function.
             var overloads = registry.EnumerateOverloads().Where(o => o.Name == word).ToList();
             if (overloads.Count > 0)
             {
@@ -63,14 +60,13 @@ namespace Heddle.LanguageServices.Completion
                 return new HoverResult(body, start, length);
             }
 
-            // Extension name.
             if (TemplateFactory.RegisteredNames().Contains(word))
                 return new HoverResult($"extension `{word}`", start, length);
 
             return null;
         }
 
-        private static string MemberHover(string word, IReadOnlyList<ExType> types)
+        private static string MemberHover(string word, IReadOnlyList<ExType> types, Action<string> log)
         {
             if (types == null || types.Count == 0)
                 return null;
@@ -79,7 +75,7 @@ namespace Heddle.LanguageServices.Completion
             {
                 if (type == null || type.IsDynamic)
                     continue;
-                var property = MemberPathResolver.GetVisibleProperties(type.Type)
+                var property = CompletionProvider.LoadableProperties(type.Type, log)
                     .FirstOrDefault(p => p.Name == word);
                 if (property != null)
                     lines.Add($"{type}.{word} : {CompletionProvider.Friendly(property.PropertyType)}");
@@ -89,7 +85,7 @@ namespace Heddle.LanguageServices.Completion
                 return null;
             if (lines.Count == 1)
                 return Fence(lines[0]);
-            // Abstract body with differing per-site types (D13).
+            // Abstract body with differing per-site types.
             return Fence("varies by call site") + "\n\n" + string.Join("\n", lines.Select(l => "- " + l));
         }
 

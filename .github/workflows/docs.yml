@@ -31,8 +31,6 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 # Allow one concurrent deployment; don't cancel an in-progress one.
 concurrency:
@@ -56,7 +54,7 @@ jobs:
     # ---- WS1 (D-D): regenerate the JS ANTLR grammar + propagate into the mode copy and
     # fail the build on any drift against the checked-in files. This is the single drift
     # guard: it regenerates js/*.js from the v2 .g4 (needs Java) and re-runs the
-    # deterministic propagation into js/src/mode/heddle/, then git diff --exit-code.
+    # deterministic propagation into js/src/mode/heddle/, then a git status --porcelain drift check.
     - name: Setup Java (ANTLR)
       uses: actions/setup-java@v5
       with:
@@ -72,7 +70,17 @@ jobs:
         java -jar "$ANTLR_JAR" -Dlanguage=JavaScript HeddleLexer.g4 HeddleParser.g4 -o js -lib js -package Heddle.Language
         node propagate_js.js
     - name: Fail on generated-grammar drift
-      run: git diff --exit-code -- src/Heddle.Language/js
+      # `git diff` compares tracked files only, so a regeneration that emits a NEW file leaves it
+      # untracked and invisible. `git add --intent-to-add` makes an addition visible but stages a
+      # deletion, which then hides it from `git diff` — measured, both ways. `git status --porcelain`
+      # reports additions, modifications and deletions alike and is empty on a clean tree.
+      run: |
+        drift=$(git status --porcelain -- src/Heddle.Language/js)
+        if [ -n "$drift" ]; then
+          echo "::error::Generated JavaScript grammar is out of date. Regenerate it and commit the result."
+          echo "$drift"
+          exit 1
+        fi
     # Build the custom Ace editor bundle (Ace + Heddle mode + ANTLR JS parser) and stage it
     # into docs/public so VitePress copies it to the site root. The JS parser under js/ was
     # just regenerated + propagated above; the script only assembles the bundle.
@@ -117,19 +125,29 @@ jobs:
     - name: Demo smoke tests
       working-directory: docs
       run: npm run demo:smoke
-    - name: Configure Pages
-      if: github.event_name != 'pull_request'
-      uses: actions/configure-pages@v6
+    # No `actions/configure-pages` here. It reads GET /repos/{owner}/{repo}/pages, which needs a `pages`
+    # scope this job deliberately does not hold, and it earns nothing in return: it carries no `id:`, so
+    # nothing reads its base_url/base_path outputs, it ran after `npm run docs:build` so it could not have
+    # influenced them anyway, and the site's base is fixed in docs/.vitepress/config.mts. Uploading the
+    # artifact and deploying it need no Pages scope in this job.
     - name: Upload artifact
       if: github.event_name != 'pull_request'
       uses: actions/upload-pages-artifact@v5
       with:
         path: docs/.vitepress/dist
 
+  # Only this job deploys, so only this job gets the deployment scopes. Granted at workflow level they
+  # would also be held by `build`, which runs for pull requests and executes third-party code (a
+  # downloaded ANTLR jar, `npm ci`, a Playwright browser install) — anything reaching code execution
+  # there could publish over the site with the job's own token.
   deploy:
     needs: build
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

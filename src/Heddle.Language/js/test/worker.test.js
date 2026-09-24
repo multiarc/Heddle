@@ -1,7 +1,7 @@
 "use strict";
 
 /*
- * WS5 — worker diagnostics (parse-only baseline).
+ * Worker diagnostics (parse-only baseline).
  *
  * Drives the real Heddle worker parse path (DocumentParser -> ANTLR v2 grammar ->
  * HeddleErrorListener -> ParseContext) through helpers/parse.js, which applies the
@@ -173,7 +173,7 @@ test("multiline error inside nested markup keeps the column offset", async () =>
 });
 
 // ---------------------------------------------------------------------------
-// Phase 2 (post-2.0): the `@@` literal-@ escape. The rows below also prove the
+// The `@@` literal-@ escape. The rows below also prove the
 // JS-target sempred translation in HeddleLexerExtended runs (a broken
 // predicate would throw ReferenceError on every '@@').
 // ---------------------------------------------------------------------------
@@ -211,7 +211,7 @@ test("@@* adjacency guard: the escape does NOT fire before a comment", async () 
 });
 
 // ---------------------------------------------------------------------------
-// Phase 7 (post-2.0): named content regions.
+// Named content regions.
 // ---------------------------------------------------------------------------
 const REGION_POSITIVE = [
     ["R01 public region", "@%<:header>{{Default}}%@"],

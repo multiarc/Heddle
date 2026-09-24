@@ -7,8 +7,8 @@ using Xunit;
 namespace Heddle.LanguageServices.Tests
 {
     /// <summary>
-    /// The phase 6 diagnostics scenario matrix (success criterion 2): engine <c>HED*</c> diagnostics projected
-    /// with ID + span, the D25 import re-anchoring, and the D24 exported-function resolution (no false HED1001).
+    /// Diagnostics projection scenarios: engine <c>HED*</c> diagnostics are projected with ID + span,
+    /// imported diagnostics are re-anchored to the import site, and exported functions are resolved (no false HED1001).
     /// </summary>
     public class LanguageServiceDiagnosticsTests
     {
@@ -49,7 +49,7 @@ namespace Heddle.LanguageServices.Tests
         [Fact]
         public void ScannedExportedFunctionCallDrawsNoHed1001()
         {
-            // titlecase is a D24-scanned export → registered in the workspace registry, so the engine resolves it.
+            // titlecase is a scanned export registered in the workspace registry, so the engine resolves it.
             var a = Analyze("@model(){{Corpus.Blog}}\n@(titlecase(Title))");
             Assert.DoesNotContain(a.Diagnostics, x => x.Id == "HED1001");
         }
@@ -73,7 +73,57 @@ namespace Heddle.LanguageServices.Tests
             Assert.Equal(0, d.Length);
         }
 
-        // ---- Phase 8 (WI7): extension parameters surface transitively through HeddleCompiler.Compile ----
+        /// <summary>
+        /// A syntax error inside an import must cost the importing document nothing: its own diagnostics stay,
+        /// in their order and first, and the import's are attributed to the import and anchored at its site.
+        /// The import is parsed twice when it has a syntax error, and the second parse once dropped every
+        /// diagnostic collected so far — the importer's included — and with them the mark the attribution
+        /// starts from.
+        /// </summary>
+        [Fact]
+        public void ASyntaxErrorInAnImportKeepsTheImportersDiagnosticsAndIsAttributedToTheImport()
+        {
+            const string own = "@%<x:nosuch>{{X}}%@";
+            var alone = Analyze(own + "tail", rootPath: CorpusDir);
+            Assert.NotEmpty(alone.Diagnostics);
+
+            var a = Analyze(own + "@<<{{broken-lib.heddle}}tail", rootPath: CorpusDir);
+
+            Assert.True(a.Diagnostics.Count > alone.Diagnostics.Count,
+                string.Join(" | ", a.Diagnostics.Select(x => x.Id + "@" + x.Offset + " " + x.ImportedFrom)));
+            for (int i = 0; i < alone.Diagnostics.Count; i++)
+            {
+                Assert.Equal(alone.Diagnostics[i].Id, a.Diagnostics[i].Id);
+                Assert.Equal(alone.Diagnostics[i].Offset, a.Diagnostics[i].Offset);
+                Assert.Null(a.Diagnostics[i].ImportedFrom);
+            }
+
+            foreach (var imported in a.Diagnostics.Skip(alone.Diagnostics.Count))
+            {
+                Assert.Contains("broken-lib.heddle", imported.ImportedFrom);
+                Assert.Equal(own.Length, imported.Offset);
+                Assert.Equal(0, imported.Length);
+            }
+        }
+
+        /// <summary>
+        /// A buffer whose import does not exist yet is an ordinary editing state — the path is half typed, or the
+        /// file is mid-rename. The read runs inside the parse tree walk, which the analyzer's own guard does not
+        /// cover, so it threw straight out of the analysis and the document got no diagnostics at all: not for the
+        /// missing import, and not for anything else in it either.
+        /// </summary>
+        [Fact]
+        public void AMissingImportIsReportedInsteadOfEndingTheAnalysis()
+        {
+            var a = Analyze("@model(){{Corpus.Blog}}\n@<<{{no-such-lib.heddle}}@\\\n@(Nonexistent)",
+                rootPath: CorpusDir);
+
+            Assert.Contains(a.Diagnostics, x => x.Id == "HED4009");
+            // The rest of the document is still analysed.
+            Assert.Contains(a.Diagnostics, x => x.Id == "HED0001");
+        }
+
+        // ---- Extension parameters surface transitively through HeddleCompiler.Compile ----
 
         [Fact]
         public void ParameterDeclaringExtensionCallCompilesCleanInLsp()

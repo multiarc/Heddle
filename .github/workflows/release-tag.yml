@@ -1,0 +1,57 @@
+# Resolves the ref a workflow runs for into what it publishes. Called by every workflow that publishes
+# (dotnet.yml, npm.yml, lsp.yml); the rules live in .github/scripts/resolve-release-tag.sh.
+#
+#   - branches and pull requests -> is_tag=false: build and test only, nothing is published anywhere
+#   - vX.Y.Z                     -> a release; the tagged commit must be on main
+#   - vX.Y.Z-{alpha,beta,rc}.N   -> a pre-release, from any branch
+#
+# A `v*.*.*` tag of any other shape fails this job, and with it every publishing job that depends on it.
+# A tag with fewer than two dots (v3, v3.0) matches no workflow trigger and starts no run at all.
+
+name: Release tag
+
+on:
+  workflow_call:
+    outputs:
+      is_tag:
+        description: "true when the ref is a valid release or pre-release tag"
+        value: ${{ jobs.resolve.outputs.is_tag }}
+      version:
+        description: "The version as tagged, without the leading v"
+        value: ${{ jobs.resolve.outputs.version }}
+      prerelease:
+        description: "true when the tag carries an alpha, beta or rc suffix"
+        value: ${{ jobs.resolve.outputs.prerelease }}
+      channel:
+        description: "The npm dist-tag: latest, alpha, beta or rc"
+        value: ${{ jobs.resolve.outputs.channel }}
+      vsix_version:
+        description: "The VS Code Marketplace version (plain X.Y.Z)"
+        value: ${{ jobs.resolve.outputs.vsix_version }}
+
+permissions:
+  contents: read
+
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    outputs:
+      is_tag: ${{ steps.tag.outputs.is_tag }}
+      version: ${{ steps.tag.outputs.version }}
+      prerelease: ${{ steps.tag.outputs.prerelease }}
+      channel: ${{ steps.tag.outputs.channel }}
+      vsix_version: ${{ steps.tag.outputs.vsix_version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # A release tag is checked for being on main, which needs the history.
+          fetch-depth: 0
+      # The self-test runs here, before the resolver decides anything, because this job is the one piece
+      # every publishing workflow shares. Jobs cannot depend on another workflow's jobs, so a copy that
+      # ran only in dotnet.yml would gate the NuGet release and leave the npm and Marketplace releases
+      # publishing on an unverified resolver.
+      - name: Self-test the release-tag resolver
+        run: bash .github/scripts/resolve-release-tag-selftest.sh
+      - name: Resolve release tag
+        id: tag
+        run: bash .github/scripts/resolve-release-tag.sh

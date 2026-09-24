@@ -2,8 +2,7 @@ using System.Collections.Generic;
 
 namespace Heddle.Tests
 {
-    // Top-level model types so definition ':: PropArticle' etc. resolve by short name.
-
+    // Top-level model types so definition ':: PropArticle' etc. resolve by short name
     public class PropArticle
     {
         public string Title { get; set; }

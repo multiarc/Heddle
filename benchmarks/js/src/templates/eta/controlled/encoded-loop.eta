@@ -1,0 +1,1 @@
+<table><% it.items.forEach(r => { %><tr><td data-tag="<%= r.tag %>"><%= r.name %></td><td><%= r.comment %></td></tr><% }) %></table>

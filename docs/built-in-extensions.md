@@ -1,4 +1,4 @@
-# Built‑in Extensions
+# Built-in Extensions
 
 Extensions are the verbs of Heddle: every `@name(...)` directive invokes an extension. This page
 documents the extensions bundled with the `Heddle` assembly. Each entry lists the name
@@ -167,6 +167,10 @@ one `@else`. Only the winning branch's body renders.
   its branch sets and its compile‑time scan.
 - **Isolation.** Each `@list`/`@for` iteration, each nested body, and each `@partial` gets its
   own set state — an inner set can never satisfy or clear an outer one.
+- **A custom continuation or terminal must declare `[ScopeChannel]`** to read the state an opener
+  publishes. One that does not draws `HED3005` and then misses every
+  read at render, so it behaves as though no opener ran — see
+  [building your own branch set](custom-extensions.md#building-your-own-branch-set).
 
 These four are the engine's own **role‑carrying** extensions: each declares its position in a set
 with `[BranchRole]` (opener / continuation / terminal). Nothing about the classification is
@@ -217,6 +221,13 @@ common cases need no embedded C# at all:
 A negative or zero count renders empty (the loop condition is false immediately), matching a
 data‑driven `Count = 0`.
 
+A `Range` and an `int` are the **only** values `@for` accepts. Anything else with a static type is
+refused when the template is compiled (**HED0004**, naming the type it got and the two it wanted) — a
+`long`, a `decimal`, a `string`. That includes the *chained* forms, which is the surprising one:
+`@for((Count))` and `@for(len(Name))` hand `@for` the chain's rendered **text**, not the number, so both
+are refused. Write the expression without the chain — `@for(Count)`, `@for(len(Name) + 0)` — or wrap it
+in `range`.
+
 **`range(start, last[, step])`.** The default [function registry](native-expressions.md)
 includes `range`, which builds a `Heddle.Models.Range` — so `@for(range(...))` gives start/step
 control with no new syntax:
@@ -227,6 +238,10 @@ control with no new syntax:
 
 `step` must be positive: a zero or negative literal step is a compile error (**HED4001**), and a
 non‑positive step known only at render throws. See [native expressions](native-expressions.md#range).
+
+Calling a definition that carries a default output (`-> chain`) by name renders it **twice** — once
+where the call is, once at document end — and the compiler warns with **HED4002**. See
+[default output](language-reference.md#default-output-chain).
 
 The C# tier still works for computed models:
 
@@ -421,7 +436,7 @@ Every flagged site is silenced per‑site by switching to the matching encoder (
 
 ## Output and context
 
-### Empty / unnamed
+### Empty or unnamed
 [EmptyExtension.cs](../src/Heddle/Extensions/EmptyExtension.cs) · names: `""`, `raw`
 
 The extension with the empty name backs the unnamed call form `@(...)`. If it has a body it
@@ -487,7 +502,7 @@ chained data. This is how a definition surfaces the caller's inline content.
 
 `@out()` is the mechanism behind layouts: a `layout` definition wraps the page chrome around a
 central `@out()`, and each page supplies the content. See
-[Language Reference → composition](language-reference.md#inheritance-and-override-childbase).
+[Language Reference → composition](language-reference.md#inheritance-and-override-with-child-and-base).
 
 **Two modes.** `@out` has a second, *slot* mode. When the enclosing definition declares a
 [slot parameter](language-reference.md#parameterized-slots-out-type) (`out:: Type`), `@out(expr)`
@@ -496,7 +511,7 @@ renders the caller's body **once per execution** with `expr` (typed as the slot 
 (a bare `@out()` is **HED5013**) and is bodiless (**HED5018**).
 
 **`@out` with a value needs a slot.** Outside a slot‑declaring body, `@out` takes **no** argument —
-`@out(X)` (formerly accepted and silently ignored) is now the compile error **HED5012**. The fix is
+`@out(X)` is the compile error **HED5012**. The fix is
 to drop the argument (`@out()`) or to declare `out:: Type` and mean it.
 
 ### `swap`
@@ -539,13 +554,46 @@ resolve unqualified identifiers.
 @using(){{MyBlog.Models}}
 ```
 
-### `import` — removed
+The body is the **header of a C# `using` directive**, and all three of its forms work — the
+engine writes each one into the C# it compiles for an embedded expression, and type names are
+resolved through them too:
+
+```heddle
+@using(){{Models = MyBlog.Models}}          @* namespace alias  → @model(){{Models.Post}}   *@
+@using(){{Post = MyBlog.Models.Post}}       @* type alias       → @model(){{Post}}          *@
+@using(){{static MyBlog.Models.Catalog}}    @* nested types of Catalog answer to their own name *@
+```
+
+A type name may also carry the `global::` qualifier, which names the global namespace and
+consults no import and no alias — `@model(){{global::MyBlog.Models.Post}}`.
+
+Where a name answers to both an alias and an ordinary import, the **alias wins**, as it does in
+C#, whichever order the directives appear in; and an alias that claims the leading name commits to
+it, so the import is not consulted as a fallback when the alias reaches nothing.
+
+A plain namespace import brings in the types **declared in** that namespace, and not the
+namespaces nested inside it — the same rule C# follows. So `@using(){{MyBlog}}` lets you write
+`@model(){{Post}}` if `MyBlog.Post` is a type, and lets you reach a type nested inside it
+(`@model(){{Post.Draft}}`), but it does **not** let you write `@model(){{Models.Post}}` for a
+`MyBlog.Models.Post`: import `MyBlog.Models`, alias it (`@using(){{Models = MyBlog.Models}}`, which
+names the namespace itself and does reach through it), or spell the type in full.
+
+Three limits, each because the spelling means something the resolver does not model rather than
+because it was overlooked: an alias target carrying type arguments (`X = List<int>`), an alias
+target with whitespace inside it (`X = My . Ns`), and an extern-alias qualifier (`A::B`). Each is
+treated as an ordinary namespace body, so a spelling that needs it does not resolve.
+
+For **static members** — `using static System.Math;` then `Max(a, b)` — the directive contributes
+nothing: `@using(){{static …}}` reaches that type's nested *types* only. Register a
+[function](custom-extensions.md) instead.
+
+### The removed import extension
 [ImportExtension.cs](../src/Heddle/Extensions/Archived/ImportExtension.cs) · name: `import`
 
 `@import()` has been **removed**. The name is kept registered only as a tombstone so that any
-call site fails with a single positioned [`HED4003`](language-reference.md#imports---) error
+call site fails with a single positioned [`HED4003`](language-reference.md#imports) error
 naming its replacements, instead of a generic "unknown extension" error. Use
-[`@<<{{ path }}`](language-reference.md#imports---) to share definitions and layouts across
+[`@<<{{ path }}`](language-reference.md#imports) to share definitions and layouts across
 files, or [`@partial()`](#partial) to embed another template's rendered output inline.
 
 ### `profile`

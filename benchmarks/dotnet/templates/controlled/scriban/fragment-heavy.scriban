@@ -1,0 +1,1 @@
+<div class="panel">{{ for item in items }}{{ if item.is_tile }}{{ include 'tile' }}{{ else if item.is_card }}{{ include 'card' }}{{ else if item.is_media }}{{ include 'media-row' }}{{ else }}{{ include 'stat' }}{{ end }}{{ end }}</div>

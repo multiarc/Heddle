@@ -1,17 +1,19 @@
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Reflection;
 using Heddle;
 using Heddle.Data;
 using Heddle.Runtime;
 using Xunit;
+using Heddle.TestCorpus;
 
 namespace Heddle.Tests
 {
     /// <summary>
-    /// The six phase-5 fixture/golden pairs (props-card, props-defaults, props-abstract-panel, props-inherit,
-    /// slot-picker, slot-compose), rendered under <c>AllowCSharp = false</c> against committed goldens. These
-    /// are the file-driven twins of the inline binding/inheritance/slot tests and the phase-9 gallery source.
+    /// The six props/slot fixture-and-golden pairs (props-card, props-defaults, props-abstract-panel, props-inherit,
+    /// slot-picker, slot-compose), rendered under <c>AllowCSharp = false</c> against committed goldens — the
+    /// file-driven twins of the inline binding/inheritance/slot tests.
     /// </summary>
     public class PropsGoldenTests
     {
@@ -36,12 +38,25 @@ namespace Heddle.Tests
             var t = new HeddleTemplate(document,
                 new CompileContext(new TemplateOptions { ExpressionMode = ExpressionMode.Native }, model.GetType()));
             Assert.True(t.CompileResult.Success, t.CompileResult.ToString());
-            return t.Generate(model);
+
+            // props-defaults renders a negative int default, and the negative sign is a culture property (ar-SA
+            // prefixes U+061C). The goldens are committed in invariant form and are not this suite's to regenerate,
+            // so the render is pinned to the culture they hold.
+            var previous = CultureInfo.CurrentCulture;
+            CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
+            try
+            {
+                return t.Generate(model);
+            }
+            finally
+            {
+                CultureInfo.CurrentCulture = previous;
+            }
         }
 
         private static void AssertGolden(string name, string actual)
         {
-            File.WriteAllText($"TestTemplate/test-{name}.html", actual);
+            File.WriteAllText(TestCorpusIndex.WrittenArtifactPath($"test-{name}.html"), actual);
             var expected = File.ReadAllText($"TestTemplate/generated-{name}.html").Replace("\r\n", "\n");
             Assert.Equal(expected, actual);
         }

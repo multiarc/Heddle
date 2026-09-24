@@ -1,0 +1,17 @@
+@*
+    Idiomatic Razor -- fragment-heavy tile partial.
+
+    Patterns followed, from Microsoft's own documentation:
+      Razor syntax        https://learn.microsoft.com/aspnet/core/mvc/views/razor
+      Partial views       https://learn.microsoft.com/aspnet/core/mvc/views/partial
+
+    One of the four dispatched fragment kinds. Strongly-typed @model and the DEFAULT
+    @expression output. Checked by the functional verifier, not the byte gate.
+*@
+@using Heddle.Benchmarks.Dotnet.Models
+@model FragmentContent.FragmentRow
+<section class="tile">
+    <h3>@Model.Name</h3>
+    <p class="v">@Model.Value</p>
+    <span class="badge">@Model.Badge</span>
+</section>

@@ -1,0 +1,248 @@
+//! Idiomatic-track Askama runners. Every template file carries a header comment citing
+//! the official Askama 0.16 book pages its patterns follow: *Getting started* /
+//! *Creating templates* (derive structs with `#[template(path = …)]`), *Template syntax —
+//! Template inheritance* (composed-page's layout + live body block), *Template syntax —
+//! For / If / Include*, and *Filters — escape* (default `Html` escaper everywhere — no
+//! `escape` override on any struct). No `|safe` filter appears
+//! anywhere: the inert chrome is literal template text, which Askama trusts
+//! natively, and every raw-suite model value contains no characters HTML escaping
+//! rewrites, so default escaping is a byte-level no-op. Askama compiles templates at
+//! build time, so parse/compile sits outside every `render()`; the structs are
+//! `OnceLock` singletons borrowing the shared models.
+
+use std::sync::OnceLock;
+
+use askama::Template;
+
+use crate::models;
+use crate::models::{
+    ConditionalRow, EncodedLoopRow, FortuneRow, FragmentRow, LoopRow, MixedProduct, NavModel,
+};
+
+// ---- composed-page (raw; native inheritance layout with a live body block) -------------------
+// Doc citations: Askama book *Template syntax — Template inheritance* (the page extends
+// `composed-page-layout.html` and fills `{% block body %}` with the slider), *Include*
+// (the ten chrome-fragment partials + the nested nav-family partials), *For* / *If*
+// (nav loops over menus/tabs/columns/sections/links; `has_dropdown` / `title_linked`).
+
+/// Model shape: the structured nav only — the chrome and the spliced body are
+/// literal template text.
+#[derive(Template)]
+#[template(path = "idiomatic/askama/composed-page.html")]
+pub struct ComposedIdiomatic<'a> {
+    pub nav: &'a NavModel,
+}
+
+pub fn composed() -> &'static ComposedIdiomatic<'static> {
+    static RUNNER: OnceLock<ComposedIdiomatic<'static>> = OnceLock::new();
+    RUNNER.get_or_init(|| ComposedIdiomatic {
+        nav: &models::composed().nav,
+    })
+}
+
+pub fn render_composed_page() -> String {
+    composed()
+        .render()
+        .expect("askama idiomatic composed-page render")
+}
+
+// ---- trivial-substitution (raw) --------------------------------------------------------------
+// Doc citations: Askama book *Getting started*, *Creating templates*.
+
+#[derive(Template)]
+#[template(path = "idiomatic/askama/trivial-substitution.html")]
+pub struct SubstitutionIdiomatic<'a> {
+    pub title: &'a str,
+    pub sku: &'a str,
+    pub price: i32,
+    pub brand: &'a str,
+    pub category: &'a str,
+    pub availability: &'a str,
+    pub url: &'a str,
+    pub image_url: &'a str,
+    pub summary: &'a str,
+    pub rating: &'a str,
+}
+
+pub fn substitution() -> &'static SubstitutionIdiomatic<'static> {
+    static RUNNER: OnceLock<SubstitutionIdiomatic<'static>> = OnceLock::new();
+    RUNNER.get_or_init(|| {
+        let m = models::substitution();
+        SubstitutionIdiomatic {
+            title: m.title,
+            sku: m.sku,
+            price: m.price,
+            brand: m.brand,
+            category: m.category,
+            availability: m.availability,
+            url: m.url,
+            image_url: m.image_url,
+            summary: m.summary,
+            rating: m.rating,
+        }
+    })
+}
+
+pub fn render_trivial_substitution() -> String {
+    substitution()
+        .render()
+        .expect("askama idiomatic trivial-substitution render")
+}
+
+// ---- large-loop (raw) ------------------------------------------------------------------------
+// Doc citations: Askama book *Template syntax — For*.
+
+#[derive(Template)]
+#[template(path = "idiomatic/askama/large-loop.html")]
+pub struct LargeLoopIdiomatic<'a> {
+    pub items: &'a [LoopRow],
+}
+
+pub fn large_loop() -> &'static LargeLoopIdiomatic<'static> {
+    static RUNNER: OnceLock<LargeLoopIdiomatic<'static>> = OnceLock::new();
+    RUNNER.get_or_init(|| LargeLoopIdiomatic {
+        items: models::large_loop(),
+    })
+}
+
+pub fn render_large_loop() -> String {
+    large_loop()
+        .render()
+        .expect("askama idiomatic large-loop render")
+}
+
+// ---- mixed-page (raw; SINGLE-FILE by rule — layout composition is
+// composed-page's dimension) -------------------------------------------------------------------
+// Doc citations: Askama book *Creating templates*, *Template syntax — For*, *If*.
+
+#[derive(Template)]
+#[template(path = "idiomatic/askama/mixed-page.html")]
+pub struct MixedIdiomatic<'a> {
+    pub page_title: &'a str,
+    pub store_name: &'a str,
+    pub hero_heading: &'a str,
+    pub hero_tagline: &'a str,
+    pub show_banner: bool,
+    pub banner_text: &'a str,
+    pub show_debug_panel: bool,
+    pub footer_note: &'a str,
+    pub year: i32,
+    pub support_email: &'a str,
+    pub products: &'a [MixedProduct],
+}
+
+pub fn mixed() -> &'static MixedIdiomatic<'static> {
+    static RUNNER: OnceLock<MixedIdiomatic<'static>> = OnceLock::new();
+    RUNNER.get_or_init(|| {
+        let m = models::mixed();
+        MixedIdiomatic {
+            page_title: m.page_title,
+            store_name: m.store_name,
+            hero_heading: m.hero_heading,
+            hero_tagline: m.hero_tagline,
+            show_banner: m.show_banner,
+            banner_text: m.banner_text,
+            show_debug_panel: m.show_debug_panel,
+            footer_note: m.footer_note,
+            year: m.year,
+            support_email: m.support_email,
+            products: &m.products,
+        }
+    })
+}
+
+pub fn render_mixed_page() -> String {
+    mixed()
+        .render()
+        .expect("askama idiomatic mixed-page render")
+}
+
+// ---- conditional-heavy (raw) -----------------------------------------------------------------
+// Doc citations: Askama book *Template syntax — If*, *For*.
+
+#[derive(Template)]
+#[template(path = "idiomatic/askama/conditional-heavy.html")]
+pub struct ConditionalIdiomatic<'a> {
+    pub rows: &'a [ConditionalRow],
+}
+
+pub fn conditional() -> &'static ConditionalIdiomatic<'static> {
+    static RUNNER: OnceLock<ConditionalIdiomatic<'static>> = OnceLock::new();
+    RUNNER.get_or_init(|| ConditionalIdiomatic {
+        rows: models::conditional(),
+    })
+}
+
+pub fn render_conditional_heavy() -> String {
+    conditional()
+        .render()
+        .expect("askama idiomatic conditional-heavy render")
+}
+
+// ---- fragment-heavy (raw; per-row four-way dispatch to per-kind partials, one nesting
+// level: card -> badge + price against the row's promo) ----------------------------------------
+// Doc citations: Askama book *Template syntax — If* (if/elif/else dispatch chain),
+// *Include*, *For*.
+
+#[derive(Template)]
+#[template(path = "idiomatic/askama/fragment-heavy.html")]
+pub struct FragmentIdiomatic<'a> {
+    pub items: &'a [FragmentRow],
+}
+
+pub fn fragment() -> &'static FragmentIdiomatic<'static> {
+    static RUNNER: OnceLock<FragmentIdiomatic<'static>> = OnceLock::new();
+    RUNNER.get_or_init(|| FragmentIdiomatic {
+        items: models::fragment(),
+    })
+}
+
+pub fn render_fragment_heavy() -> String {
+    fragment()
+        .render()
+        .expect("askama idiomatic fragment-heavy render")
+}
+
+// ---- fortunes-encoded (encoded — default Html escaper, no filters) ---------------------------
+// Doc citations: Askama book *Filters — escape*, *Template syntax — For*.
+
+#[derive(Template)]
+#[template(path = "idiomatic/askama/fortunes-encoded.html")]
+pub struct FortunesIdiomatic<'a> {
+    pub rows: &'a [FortuneRow],
+}
+
+pub fn fortunes() -> &'static FortunesIdiomatic<'static> {
+    static RUNNER: OnceLock<FortunesIdiomatic<'static>> = OnceLock::new();
+    RUNNER.get_or_init(|| FortunesIdiomatic {
+        rows: models::fortunes(),
+    })
+}
+
+pub fn render_fortunes_encoded() -> String {
+    fortunes()
+        .render()
+        .expect("askama idiomatic fortunes-encoded render")
+}
+
+// ---- encoded-loop (encoded — default Html escaper, no filters) -------------------------------
+// Doc citations: Askama book *Filters — escape*, *Template syntax — For*.
+
+#[derive(Template)]
+#[template(path = "idiomatic/askama/encoded-loop.html")]
+pub struct EncodedLoopIdiomatic<'a> {
+    pub items: &'a [EncodedLoopRow],
+}
+
+pub fn encoded_loop() -> &'static EncodedLoopIdiomatic<'static> {
+    static RUNNER: OnceLock<EncodedLoopIdiomatic<'static>> = OnceLock::new();
+    RUNNER.get_or_init(|| EncodedLoopIdiomatic {
+        items: models::encoded_loop(),
+    })
+}
+
+pub fn render_encoded_loop() -> String {
+    encoded_loop()
+        .render()
+        .expect("askama idiomatic encoded-loop render")
+}

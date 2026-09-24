@@ -1,0 +1,3 @@
+@using(){{Heddle.Samples.PrecompiledAot}}
+@model(){{FortuneModel}}
+<table>@list(Fortunes){{<tr><td>@()</td></tr>}}</table>

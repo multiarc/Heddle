@@ -1,0 +1,1 @@
+<div class="media-row"><img src="/img/<%~ it.name %>.jpg" alt="<%~ it.name %>" /><div class="media-body"><h4><%~ it.name %></h4><p>Caption for <%~ it.name %></p></div></div>

@@ -1,0 +1,4 @@
+@using(){{Heddle.Samples.PrecompiledAot}}
+@model(){{LargeLoopModel}}
+<ul>@list(Items){{<li>@()</li>}}</ul>
+<p>Total: @(Count)</p>

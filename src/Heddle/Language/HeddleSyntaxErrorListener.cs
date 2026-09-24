@@ -22,9 +22,11 @@ namespace Heddle.Language
             Context.Errors.Add(error);
         }
 
-        public void Clear()
+        /// <summary>Removes the errors reported since the list held <paramref name="from"/> of them.</summary>
+        public void Clear(int from)
         {
-            Context.Errors.Clear();
+            if (Context.Errors.Count > from)
+                Context.Errors.RemoveRange(from, Context.Errors.Count - from);
         }
     }
 }

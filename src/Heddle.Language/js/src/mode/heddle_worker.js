@@ -261,7 +261,7 @@ oop.inherits(HeddleWorker, Mirror);
                 }];
         }
         var doc = this.doc;
-        // Shared mapping (mode/heddle/toAnnotations.js) also drives the WS5 test
+        // Shared mapping (mode/heddle/toAnnotations.js) also drives the test
         // harness, and aligns the annotation text with the engine's HED0003
         // syntax-error phrasing.
         var errors = errorsToAnnotations(results, function (index) {

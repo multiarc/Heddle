@@ -9,13 +9,14 @@ using Heddle;
 using Heddle.Data;
 using Heddle.Runtime;
 using Xunit;
+using Heddle.TestCorpus;
 
 namespace Heddle.Tests.Streaming
 {
     /// <summary>
-    /// Phase 8 WI8 — the multi-byte torture fixture, the &gt; 1 MB allocation-bound fixture, the concurrent mixed-sink
-    /// guarantee (D15), and the downlevel degradation contract. The unicode fixture is also golden-pinned (byte-exact
-    /// string path + three-sink parity); the large fixture powers the D13 allocation asserts.
+    /// The multi-byte torture fixture, the &gt; 1 MB allocation-bound fixture, the concurrent mixed-sink
+    /// guarantee, and the downlevel degradation contract. The unicode fixture is also golden-pinned (byte-exact
+    /// string path + three-sink parity); the large fixture powers the allocation asserts.
     /// </summary>
     public class StreamingFixtureAndGuaranteeTests
     {
@@ -31,7 +32,7 @@ namespace Heddle.Tests.Streaming
 
         /// <summary>A large loop-free static template: the committed fixture's static body repeated <paramref name="reps"/>
         /// times. Every piece is a compile-time constant, so a byte-sink render allocates only the adapter + lazy
-        /// encoder (O(1)) regardless of output size N — the property D13 asset 2 isolates from any per-element cost.</summary>
+        /// encoder (O(1)) regardless of output size N — isolating from any per-element cost.</summary>
         private static string LargeStatic(int reps)
         {
             var block = Read("streaming-large");
@@ -57,7 +58,7 @@ namespace Heddle.Tests.Streaming
             Assert.Equal(Encoding.UTF8.GetBytes(s), bw.ToArray());
 
             // Golden pin (string path). Write the actual for diffing, then compare against the committed golden.
-            File.WriteAllText("TestTemplate/test-streaming-unicode.html", s);
+            File.WriteAllText(TestCorpusIndex.WrittenArtifactPath("test-streaming-unicode.html"), s);
             var golden = File.ReadAllText("TestTemplate/generated-streaming-unicode.html").Replace("\r\n", "\n");
             Assert.Equal(golden, s.Replace("\r\n", "\n"));
         }
@@ -80,8 +81,8 @@ namespace Heddle.Tests.Streaming
         [Fact]
         public void ConcurrentMixedSinks_ByteIdenticalToSingleThreadedGolden()
         {
-            // D15: one compiled template, N threads, mixing string/TextWriter/byte sinks — every output byte-identical
-            // to the single-threaded reference (the phase 3 opposite-conditions parallel pattern).
+            // One compiled template, N threads, mixing string/TextWriter/byte sinks — every output byte-identical
+            // to the single-threaded reference.
             var t = SinkTestHarness.Compile(
                 "Hi @(Name) from @(City)! 😀 @if(Name){{named}}@else(){{anon}}", typeof(UniModel), OutputProfile.Html);
             var model = new UniModel { Name = "Α<b>", City = "北京 & Zürich" };
@@ -128,11 +129,11 @@ namespace Heddle.Tests.Streaming
 
         public class DownModel { public int N { get; set; } public decimal P { get; set; } public string U { get; set; } }
 
-#if NET6_0_OR_GREATER
+#if NET8_0_OR_GREATER
         [Fact]
         public void LargeOutputByteSinkAllocatesBounded()
         {
-            // D13 asset 1: > 1 MB output rendered to a reusable pooled buffer writer allocates < 64 KB per render
+            // > 1 MB output rendered to a reusable pooled buffer writer allocates < 64 KB per render
             // (no full-output byte[]/string/StringBuilder). Warm up, reuse the writer, measure the delta.
             var t = SinkTestHarness.Compile(LargeStatic(180), null, OutputProfile.Text);
             var writer = new PooledResettableBufferWriter(4 << 20);
@@ -154,7 +155,7 @@ namespace Heddle.Tests.Streaming
         [Fact]
         public void AllocationIsOutputSizeInvariant()
         {
-            // D13 asset 2: doubling the output stays within ~10% of the single-size per-render allocation (sub-linear
+            // Doubling the output stays within ~10% of the single-size per-render allocation (sub-linear
             // ⇒ no O(N) term). @list over reference elements adds no per-element heap allocation.
             var single = SinkTestHarness.Compile(LargeStatic(180), null, OutputProfile.Text);   // > 1 MB
             var doubled = SinkTestHarness.Compile(LargeStatic(360), null, OutputProfile.Text);  // ~2×
@@ -185,8 +186,8 @@ namespace Heddle.Tests.Streaming
         [Fact]
         public void ByteSinkAllocatesMeasurablyBelowStringPath()
         {
-            // Success criterion 1 (the RenderUtf8Buffer acceptance): rendering a > 1 MB page to a pooled byte sink
-            // allocates far below the string path — by at least the final output size (the full-output string is gone).
+            // Rendering a > 1 MB page to a pooled byte sink allocates far below the string path — by at least the final output size
+            // (the full-output string is gone).
             var t = SinkTestHarness.Compile(LargeStatic(180), null, OutputProfile.Text);
             var writer = new PooledResettableBufferWriter(4 << 20);
 

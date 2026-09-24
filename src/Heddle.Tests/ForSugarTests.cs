@@ -5,11 +5,12 @@ using Heddle.Data;
 using Heddle.Runtime;
 using Heddle.Tests.Data;
 using Xunit;
+using Heddle.TestCorpus;
 
 namespace Heddle.Tests
 {
     /// <summary>
-    /// The phase 4 <c>@for</c> counted-loop sugar (D1): an <c>int</c> model iterates 0…n−1 with the
+    /// The <c>@for</c> counted-loop sugar: an <c>int</c> model iterates 0…n−1 with the
     /// <c>Heddle.Models.Range</c> arm untouched, all rows under <c>AllowCSharp = false</c>. Negative/zero counts
     /// render empty; a non-<c>int</c>/<c>Range</c> typed value is a positioned HED0004, not a silent empty render.
     /// </summary>
@@ -28,38 +29,38 @@ namespace Heddle.Tests
             return t;
         }
 
-        [Fact] // F01
+        [Fact]
         public void F01_LiteralCountRendersBody()
         {
             Assert.Equal("xxx", Compile("@for(3){{x}}", typeof(object)).Generate(null));
         }
 
-        [Fact] // F02
+        [Fact]
         public void F02_IndexRidesTheChainedChannel()
         {
             Assert.Equal("<i>0</i><i>1</i><i>2</i>",
                 Compile("@for(3){{<i>@out()</i>}}", typeof(object)).Generate(null));
         }
 
-        [Fact] // F03
+        [Fact]
         public void F03_TypedIntMemberIterates()
         {
             Assert.Equal("xxxx", Compile("@for(Count){{x}}", typeof(CountModel)).Generate(new CountModel { Count = 4 }));
         }
 
-        [Fact] // F04
+        [Fact]
         public void F04_ZeroCountRendersEmpty()
         {
             Assert.Equal("", Compile("@for(Count){{x}}", typeof(CountModel)).Generate(new CountModel { Count = 0 }));
         }
 
-        [Fact] // F05
+        [Fact]
         public void F05_NegativeCountRendersEmpty()
         {
             Assert.Equal("", Compile("@for(-3){{x}}", typeof(object)).Generate(null));
         }
 
-        [Fact] // F06
+        [Fact]
         public void F06_NullableCountNullEmptyValueIterates()
         {
             Assert.Equal("",
@@ -70,7 +71,7 @@ namespace Heddle.Tests
                     .Generate(new NullableCountModel { NullableCount = 2 }));
         }
 
-        [Fact] // F07
+        [Fact]
         public void F07_StringMemberIsPositionedTypeError()
         {
             HeddleTemplate.Configure(typeof(ForSugarTests).GetTypeInfo().Assembly);
@@ -82,20 +83,20 @@ namespace Heddle.Tests
             Assert.True(error.Position.Length > 0, "HED0004 must carry the call position");
         }
 
-        [Fact] // F08
+        [Fact]
         public void F08_RangeStartAndStepHonored()
         {
             Assert.Equal("2 5 ", Compile("@for(range(2, 8, 3)){{@out() }}", typeof(object)).Generate(null));
         }
 
-        [Fact] // F09
+        [Fact]
         public void F09_RangeStartGreaterOrEqualLastRendersEmpty()
         {
             Assert.Equal("", Compile("@for(range(5, 5)){{x}}", typeof(object)).Generate(null));
             Assert.Equal("", Compile("@for(range(7, 3)){{x}}", typeof(object)).Generate(null));
         }
 
-        [Fact] // F10
+        [Fact]
         public void F10_CSharpTierRangeModelPathUnchanged()
         {
             var t = Compile("@using(){{Heddle.Models}}@for(@new Heddle.Models.Range(0, 2)){{<i>@out()</i>}}",
@@ -103,7 +104,7 @@ namespace Heddle.Tests
             Assert.Equal("<i>0</i><i>1</i>", t.Generate(null));
         }
 
-        [Fact] // phase 6 (post-2.0) WI8 range golden: iteration, empty range, and the D4 str(range(...)) row
+        [Fact]
         public void RangeForGolden()
         {
             HeddleTemplate.Configure(typeof(ForSugarTests).GetTypeInfo().Assembly);
@@ -111,12 +112,12 @@ namespace Heddle.Tests
             var t = new HeddleTemplate(document, new CompileContext(new TemplateOptions(), typeof(ErgoForData)));
             Assert.True(t.CompileResult.Success, t.CompileResult.ToString());
             var actual = t.Generate(new ErgoForData());
-            File.WriteAllText("TestTemplate/test-range-for.html", actual);
+            File.WriteAllText(TestCorpusIndex.WrittenArtifactPath("test-range-for.html"), actual);
             var expected = File.ReadAllText("TestTemplate/generated-range-for.html").Replace("\r\n", "\n");
             Assert.Equal(expected, actual);
         }
 
-        [Fact] // ergo-for golden (roadmap criterion 1)
+        [Fact]
         public void ErgoForGolden()
         {
             HeddleTemplate.Configure(typeof(ForSugarTests).GetTypeInfo().Assembly);
@@ -124,7 +125,7 @@ namespace Heddle.Tests
             var t = new HeddleTemplate(document, new CompileContext(new TemplateOptions(), typeof(ErgoForData)));
             Assert.True(t.CompileResult.Success, t.CompileResult.ToString());
             var actual = t.Generate(new ErgoForData { Count = 2 });
-            File.WriteAllText("TestTemplate/test-ergo-for.html", actual);
+            File.WriteAllText(TestCorpusIndex.WrittenArtifactPath("test-ergo-for.html"), actual);
             var expected = File.ReadAllText("TestTemplate/generated-ergo-for.html").Replace("\r\n", "\n");
             Assert.Equal(expected, actual);
         }

@@ -2,8 +2,7 @@ using System.Collections.Generic;
 
 namespace Heddle.Tests
 {
-    // Top-level model types so ':: RegionArticle' etc. resolve by short name (phase 7 fixtures).
-
+    // Top-level model types so ':: RegionArticle' etc. resolve by short name.
     public class RegionArticle
     {
         public string Title { get; set; }

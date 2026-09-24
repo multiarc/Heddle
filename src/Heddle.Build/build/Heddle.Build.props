@@ -1,0 +1,15 @@
+<Project>
+
+  <!-- Defaults, stated explicitly. The normative table is Heddle.Precompiled.HeddleBuildOptions;
+       HeddleTemplateRoot's default is expressible only here. Nothing runs in the compiler: there is
+       no CompilerVisibleProperty, CompilerVisibleItemMetadata or AdditionalFiles transform — the
+       HeddleCompile task reads plain MSBuild items and properties out of process. -->
+  <PropertyGroup>
+    <HeddleOutputProfile Condition="'$(HeddleOutputProfile)' == ''">Html</HeddleOutputProfile>
+    <HeddleExpressionMode Condition="'$(HeddleExpressionMode)' == ''">Native</HeddleExpressionMode>
+    <HeddleTrimDirectiveLines Condition="'$(HeddleTrimDirectiveLines)' == ''">true</HeddleTrimDirectiveLines>
+    <HeddleMaxRecursionCount Condition="'$(HeddleMaxRecursionCount)' == ''">100</HeddleMaxRecursionCount>
+    <HeddleTemplateRoot Condition="'$(HeddleTemplateRoot)' == ''">$(MSBuildProjectDirectory)</HeddleTemplateRoot>
+  </PropertyGroup>
+
+</Project>

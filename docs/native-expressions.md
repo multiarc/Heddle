@@ -13,7 +13,7 @@ compile to `System.Linq.Expressions` delegates and render with **zero Roslyn inv
 @(::Year - PublishedOn.Year < 1 ? "new" : "")
 ```
 
-Anything the [member tier](language-reference.md#member-expressions-abc) already accepts stays a
+Anything the [member tier](language-reference.md#member-expressions) already accepts stays a
 member path; an operator, a literal, or a multi‑argument function call is what makes a parameter a
 native expression. No new sigil is introduced.
 
@@ -25,8 +25,7 @@ native expression. No new sigil is introduced.
 | Arithmetic, comparisons, string building, a whitelisted function | **native expression** | this page |
 | Arbitrary C#, method calls, LINQ, `new` | the `@` C# tier `@( @expr )` | requires `ExpressionMode.FullCSharp`; see [csharp-api.md](csharp-api.md) |
 
-The native tier is on by default (`ExpressionMode.Native`). Because every native expression that
-newly compiles was previously a compile error, turning it on is backward‑compatible.
+The native tier is on by default (`ExpressionMode.Native`).
 
 ## Operators
 
@@ -38,9 +37,9 @@ C# precedence, verbatim. Highest to lowest:
 | unary | `!` `-` `+` `~` | right | `Not`, `Negate`, `UnaryPlus`, `OnesComplement` |
 | multiplicative | `*` `/` `%` | left | |
 | additive | `+` `-` | left | `+` is string concatenation when an operand is a string |
-| shift | `<<` `>>` | left | integral left operand; `int` right operand |
-| relational | `<` `<=` `>` `>=` | left | null operands compare `false` (lifted, non‑null result) |
-| equality | `==` `!=` | left | `object.Equals` fallback for unrelated reference/mixed types |
+| shift | `<<` `>>` | left | integral left operand; **any** integral right operand, converted to `int` (a [deviation](#deviations-from-c)) |
+| relational | `<` `<=` `>` `>=` | left | a `null`‑*valued* `Nullable<T>` compares `false` (lifted, non‑null result); the `null` **literal** is `HED1008` |
+| equality | `==` `!=` | left | `object.Equals` fallback when **both** operands are reference types or `Nullable<T>`; a reference/value mix is `HED1008` |
 | bitwise AND | `&` | left | ints, same‑enum, and `bool` |
 | bitwise XOR | `^` | left | |
 | bitwise OR | `\|` | left | |
@@ -59,10 +58,26 @@ signed operand becomes `long`) → `uint` → `int`. Mixing `decimal` with `floa
 ### Lifted (nullable) operands
 
 When either operand is `Nullable<T>`, arithmetic and bitwise operators produce a nullable result
-(`null` in → `null` out). Relational and equality operators produce a plain `bool`: any `null`
-operand compares `false`, and `null == null` is `true` — exactly as C#.
+(`null` in → `null` out). Relational and equality operators produce a plain `bool`: a `null` operand
+compares `false`, and `null == null` is a constant `true`.
 
-### Why there is no `?.`
+**Lifting is numeric-path only.** A mixed-nullability pair of a *non-numeric* type does not lift, so
+where C# has a lifted operator this tier has none:
+
+| Expression | C# | Here |
+| --- | --- | --- |
+| `@(FlagNullable == Flag)` (`bool?` vs `bool`) | lifted, compiles | `HED1008` |
+| `@(FlagNullable & Flag)` (`bool?` vs `bool`) | lifted, compiles | `HED1008` |
+| `@(N < 3)` (`int?` vs `int`) | lifted, compiles | lifted, compiles |
+
+Both tiers agree on refusing the bitwise row with the same positioned id — the bool arm of the
+bitwise visitor guards mismatched nullability explicitly, and the build tier reaches the same verdict
+because it runs that same visitor: the build host compiles through the real engine.
+
+The `null` **literal** is separate from a `null`-valued `Nullable<T>`: `@(x < null)` and
+`@(3 == null)` are `HED1008`, exactly as C# rejects them.
+
+### Why there is no null-conditional operator
 
 Member hops are **already null‑safe**: a hop off a `null` reference yields `default(T)` of the
 property's type — `null` for reference types and `Nullable<T>`, the zero value for other value
@@ -86,7 +101,7 @@ The full C# literal set except verbatim/interpolated/raw strings:
 
 String interpolation is intentionally excluded — use `+` or the `format` function instead.
 
-## `this` — the current model
+## The this keyword is the current model
 
 `this` is the current scope's model, typed as the current scope type. It fills the one gap a bare
 member path can't: naming the model **itself** rather than something derived from it.
@@ -98,14 +113,14 @@ member path can't: naming the model **itself** rather than something derived fro
 - As an **operand or path root**, `this` is a typed operand and follows the same rule as any path:
   `this.Name`, `len(this)`, and `this == null` need a typed model (a `dynamic` scope reports
   **HED1004**). `this.<name>` is also the explicit escape for a model member a
-  [prop shadows](language-reference.md#props-nameprop-type--default).
+  [prop shadows](language-reference.md#props).
 
 `this` is a C# keyword, so it can never collide with a model member. It is expression‑tier, so it
 reports **HED1014** under `MemberPathsOnly`.
 
-## Native expressions as named‑argument values
+## Native expressions as named-argument values
 
-The value of a [prop named argument](language-reference.md#props-nameprop-type--default) is a native
+The value of a [prop named argument](language-reference.md#props) is a native
 expression — `@card(Article, style: Featured ? "wide" : "plain", tag: upper(Kind))`. Every construct
 on this page is allowed there (paths off the caller model, `::` root refs, operators, functions,
 `this`, literals). A named‑argument value is **not** a C# `@`‑tier expression and **not** a call
@@ -118,10 +133,11 @@ Native expressions can call functions the host has registered, plus a frozen set
 Registration is the **trust boundary**: anything registered is callable from template text, and
 nothing else is. There is no path from template text to arbitrary methods by name.
 
-### The default built‑ins
+### The default built-ins
 
-All are invariant‑culture and never throw at render (string‑returning ones map `null` input to
-`""`):
+All are invariant‑culture, and all but `range` never throw at render (string‑returning ones map
+`null` input to `""`). `range` is the one sanctioned exception: a non‑positive step known only at
+render throws, because the alternative is a loop that never terminates — see [`range`](#range).
 
 | Function | Behavior |
 | --- | --- |
@@ -134,7 +150,8 @@ All are invariant‑culture and never throw at render (string‑returning ones m
 | `format(value, fmt)` | `IFormattable.ToString(fmt, InvariantCulture)` |
 | `format(fmt, args…)` | composite `string.Format(InvariantCulture, …)` |
 | `str(value)` | invariant `Convert.ToString` |
-| `abs`, `min`, `max`, `round`, `floor`, `ceil` | over `int`/`long`/`double`/`decimal` as applicable; clamped, non‑throwing |
+| `abs`, `min`, `max` | `int`, `long`, `double`, `decimal` (one overload per type); clamped, non‑throwing |
+| `round`, `floor`, `ceil` | `int`, `long`, `double`, `decimal` (as `abs`/`min`/`max`); `round` also takes a digit count. The integral overloads are the identity |
 | `range(start, last[, step])` | builds a `Heddle.Models.Range` for `@for` — iterates `start … last‑1` by `step` (default 1) |
 
 <a id="range"></a>
@@ -164,13 +181,28 @@ var options = new TemplateOptions { Functions = functions };
 
 - Names are ordinal and case‑sensitive.
 - Registering the same name with identical parameter types **replaces**; otherwise it adds an
-  overload. Overload resolution ranks exact match over widening over boxing to `object`.
-- The registry **freezes on first compile use**; registering afterwards throws
-  `InvalidOperationException`. Frozen registries are immutable and safe for concurrent compiles and
-  renders.
+  overload. Overload resolution ranks each candidate on a flat scale — exact match over implicit
+  widening over boxing to `object` — and refuses when two candidates tie, rather than applying C#'s
+  better‑conversion‑target rule. Both tiers share one ranker, so a call that binds at build time
+  binds identically at run time and a tie is `HED1013` on both.
+  The consequence is narrower acceptance than C#, not a different winner: measured over the shipped
+  built‑in table, **0 of 480** argument combinations would change which overload wins under C#'s rule,
+  **100** would become bindable that are ties today, and **38** stay ambiguous either way (`double`
+  and `decimal` are mutually non‑convertible, so neither is closer). Adopting C#'s rule would *widen*
+  what compiles, which is a breaking change.
+  Note that betterness is not what makes an integral argument bind to `floor`/`ceil`/`round`: with only
+  a `double` and a `decimal` overload the two are mutually non‑convertible, so C# reports the tie too —
+  `Math.Floor(3)` is `CS0121`. What binds `floor(3)` is that those three carry an `int` and a `long`
+  overload, exactly as `abs`/`min`/`max` do.
+- The registry **freezes when a native expression is first compiled against it** — not when a
+  template is merely compiled, so a template containing no native expression leaves it open.
+  Registering after the freeze throws `InvalidOperationException`. Frozen registries are immutable
+  and safe for concurrent compiles and renders, which is why the freeze exists.
+  Registration order therefore matters: register everything before the first render, not lazily on
+  demand.
 - `null` `TemplateOptions.Functions` means `FunctionRegistry.Default` (the frozen built‑ins).
 
-### Standalone vs. in‑expression calls
+### Standalone versus in-expression calls
 
 A standalone `@fn(x)` resolves in the order **definition → extension → registered function**. If a
 registered function name collides with an extension, the extension wins and a warning is emitted —
@@ -189,29 +221,94 @@ invoke the function inside an expression (`@( fn(x) )`) to disambiguate. Inside 
 
 `AllowCSharp` is a bridge over this enum: `AllowCSharp = true` selects `FullCSharp`; reading it
 returns whether the mode is `FullCSharp`. It is retained for compatibility and marked
-`[Obsolete]` since 2.x — reads and writes keep working; new code uses `ExpressionMode`.
+`[Obsolete]` — reads and writes keep working; new code uses `ExpressionMode`.
 
 ## Deviations from C#
 
 Native expressions match C# except for a small, deliberate set of ergonomic choices:
 
-1. `==`/`!=` on unrelated reference/mixed types compiles to a total, null‑safe `object.Equals`
-   instead of a compile error.
+1. `==`/`!=` on **unrelated reference types** compiles to a total, null‑safe `object.Equals`
+   instead of a compile error — `@(Maker == Where)` renders `False` rather than failing to compile.
+   The fallback requires **both** operands to be a reference type or `Nullable<T>`; a
+   reference/value mix such as `@(Name == Count)` is a positioned `HED1008` on **both** tiers, which
+   is what `NativeExpressionCompiler`'s `IsReferenceish(left) && IsReferenceish(right)` guard decides
+   and what `NativeOperatorRulesTests.Deviation1_MixedEqualityEmitsThroughTheAdapterWhereTheEnginesChainIsTotal`
+   pins against the engine. **Do not widen the guard to match a looser reading of this rule:** doing so turns a compile
+   error into a silent `false`, which is a breaking change.
+   On the precompiled tier this deviation prints from the engine's own tree, which already carries
+   the fallback verdict — a user operator where the pair binds one, null‑safe `object.Equals`
+   otherwise — so the two tiers keep one verdict byte for byte instead of the template degrading.
 2. `.` hops (and indexer targets) are null‑safe, yielding `default(T)`.
 3. `-2147483648` types as `long` (first‑fit literal typing, without C#'s lexer special case); the
    value is identical.
 4. Enum arithmetic (`enum + int`) is not supported.
 5. The `enum & 0`‑literal special case is not carried over.
-6. User‑defined *operators* are honored (e.g. `DateTime`/`TimeSpan`), but user‑defined *implicit
-   conversions* are not consulted during promotion or arm unification.
+6. User‑defined *operators* are honored for **arithmetic, relational, equality and `??`** (e.g.
+   `DateTime`/`TimeSpan`), and **not at all** for `&`/`^`/`|`, `<<`/`>>`, or any unary operator —
+   those arms refuse a non‑numeric, non‑`bool`, non‑enum operand before an operator method could be
+   found. User‑defined *implicit conversions* are never consulted, in any arm, during promotion or
+   arm unification.
 7. `&&`/`||` reject `bool?` with a targeted error instead of C#'s wording.
+8. `<<`/`>>` accept **any** integral right operand and convert it to `int`, so `@(I << L)` compiles
+   here and is `CS0019` in C#. **Do not narrow this to match C#:** it would break templates that
+   compile today, so it is a breaking change.
+9. Mixed nullability does not lift outside the numeric paths — see
+   [Lifted (nullable) operands](#lifted-nullable-operands) for the two shapes and which of them is a
+   deviation and which is a defect.
+
+## Diagnostics
+
+Every diagnostic the native tier raises. All are **compile-time** and positioned at the offending
+construct, so none of them can reach render. The build tier raises the same id for the same input —
+that is the match requirement: wherever the build host can **prove** the refusal, `HED1003`, `HED1004`,
+`HED1005`, `HED1007`, `HED1008`, `HED1009`, `HED1010`, `HED1011` and `HED1018` also fire at **build**
+as errors forwarded from the build host (`heddle compile`), carrying the engine's own sentence at the `.heddle` position.
+Where it cannot prove the refusal it degrades the call to the dynamic tier instead of guessing, and
+the template meets the engine's verdict at runtime.
+
+| ID | Severity | Raised when |
+| --- | --- | --- |
+| `HED1001` | error | A function name matches neither the registry nor an extension/definition. |
+| `HED1002` | error | An in‑expression call names an extension or definition rather than a registered function. Call it standalone, or register a function. |
+| `HED1003` | error | Method‑call syntax (`x.Foo(...)`) appears in an expression. Only registered functions are callable. |
+| `HED1004` | error | An operand is a dynamic scope, or a path crosses a `[Dynamic]` property. Declare a typed `@model`, or use the `@` C# tier. |
+| `HED1005` | error | `&&`/`\|\|` applied to a non‑`bool` operand — including `bool?`, which C# would accept. |
+| `HED1006` | error | `??` applied to a left operand that is a non‑nullable value type. |
+| `HED1007` | error | The `?:` arms have no common type. Also raised for a `??` pair with no common type. |
+| `HED1008` | error | A binary operator has no rule for its operand types — a reference/value equality mix, a promotion with no common type, enum arithmetic, a `null` literal in a relational position — or a numeric literal overflows its type. |
+| `HED1009` | error | A unary operator is not defined for its operand type (`-` on `ulong` or a non‑numeric, `~` on a non‑integral, `!` on a non‑`bool`). |
+| `HED1010` | error | An indexer target has no accessible indexer matching the argument types. |
+| `HED1011` | error | The `?:` condition is not `bool`. |
+| `HED1012` | error | No overload of a registered function binds to the supplied argument types. |
+| `HED1013` | error | A registered‑function call is ambiguous — two candidates tie under the flat rank. `min(1, 2u)` is the canonical case; see [Registering your own](#registering-your-own). |
+| `HED1014` | error | An expression beyond a bare member path is used while `ExpressionMode` is `MemberPathsOnly`. |
+| `HED1015` | error | A composite `format` literal references an argument index beyond the supplied count. |
+| `HED1016` | warning | A standalone `@name(...)` resolved to an extension that shadows a registered function of the same name. Write `@( name(...) )` to reach the function. |
+| `HED1017` | error | A standalone registry hit was given a chain or C#‑parameter shape rather than a single expression. |
+| `HED1018` | error | An integral or `decimal` `/` or `%` over **constant** operands whose divisor is zero — `@(1/0)`, `@(1%(1&0))`, `@(1.0m/0m)`. Rendering could only throw `DivideByZeroException`, so the expression fails the compile instead, **on both tiers**: the engine raises it and the build host forwards it under the same id. Scoped exactly as C# scopes `CS0020` — floating‑point stays legal (`@(1.0/0)` renders `∞`), and a runtime divisor that happens to be zero still throws at render. |
+
+A member‑path segment that fails resolution is **`HED0001`**, not a `HED1xxx`: the member tier is
+shared with the C# tier and the dynamic path, so its diagnostic is shared too. It fires when a segment
+is missing, non‑readable, `[Hidden]`, or has an inaccessible getter — judged on the **most‑derived**
+declaration of the name, so a base class's visible property never stands in for a derived one that is
+hidden or inaccessible — see
+[Exposing models to untrusted templates](patterns.md#exposing-models-to-untrusted-templates).
+
+An expression that faults the compiler itself for a reason no other diagnostic covers is
+**`HED0005`**, the compile‑item catch‑all — positioned at the call and carrying the exception. The
+canonical case is a member path *ending on* a `ref struct` (an expression operand must box, and a
+`ref struct` cannot): the engine refuses it at compile time on modern TFMs, and the build tier
+degrades the same path so the reader gets this positioned id rather than a consumer‑build `CS0030`.
+Reading *through* a `ref struct` to an ordinary member stays legal on both tiers.
 
 ## The sandbox
 
 The compiler can only ever emit invocations of: property/indexer getters that pass the member‑tier
-visibility and `[Hidden]` filter; the `MethodInfo`s/delegates the host registered (built‑ins
-included); compiler‑chosen intrinsics (`string.Concat`, static `object.Equals`, conversions); and
-user‑defined operator methods declared by the operand types themselves. Method‑call syntax
+visibility and `[Hidden]` filter; **array element access** (`Expression.ArrayIndex`, single- and
+multi-dimensional), which invokes nothing but is an emitted access all the same; the
+`MethodInfo`s/delegates the host registered (built‑ins included); compiler‑chosen intrinsics
+(`string.Concat`, static `object.Equals`, conversions); and user‑defined operator methods declared by
+the operand types themselves. Method‑call syntax
 (`x.Foo()`), unregistered names, dynamic‑scope operands, assignment, lambdas, `new`, casts, and
 `is`/`as` are all rejected at **compile time** with a positioned error — never executed. See the
 [built‑in extension parameter docs](built-in-extensions.md) for how `@if`/`@for` consume these
@@ -220,3 +317,17 @@ expressions, and [csharp-api.md](csharp-api.md) for when to escalate to the `@` 
 For host‑side guidance on exposing models safely — DTOs, `[Hidden]`, the registry freeze, render
 budgets, and encoding contexts — see
 [Exposing models to untrusted templates](patterns.md#exposing-models-to-untrusted-templates).
+
+---
+
+*Verified against source at `f8a9497c`.* Claims marked ✓ are gated by a test:
+the diagnostics table ✓ (`DiagnosticIdTests.EveryShippedIdIsNamedInAPublishedDocument` — every id
+here is a shipped constant and this page is its registry-designated home); deviation 1's guard ✓
+(`NativeOperatorRulesTests.Deviation1_MixedEqualityEmitsThroughTheAdapterWhereTheEnginesChainIsTotal`); the
+operator legality table and the lifted-operand shapes ✓ (`NativeOperatorRulesTests`, which sweeps an
+independently written verdict table against the engine's compiler, pair by pair); the hidden-member
+rule ✓ (`HiddenMemberShadowingTests`); the overload-rank measurement ✓
+(`OverloadBetternessEvaluationTests`). Everything else on this page is verified against source, not gated —
+which matters: an unmarked claim is **evidence of intent, not an authority**, so a contradiction
+between it and both tiers agreeing is investigated and recorded, never resolved by editing code to
+match the sentence.

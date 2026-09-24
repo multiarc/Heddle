@@ -14,6 +14,7 @@ namespace Heddle.Extensions
     /// concurrent renders like every directive extension.</para>
     /// </summary>
     [ExtensionName("profile")]
+    [ZeroOutput]
     public class ProfileExtension : AbstractExtension
     {
         public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType, ExType parent)
@@ -23,29 +24,20 @@ namespace Heddle.Extensions
             base.InitStart(initContext, dataType, chainedType, parent);
             var value = (GetInnerResult(Scope.Null) ?? string.Empty).Trim();
 
-            OutputProfile profile;
-            if (string.Equals(value, "text", StringComparison.OrdinalIgnoreCase))
-                profile = OutputProfile.Text;
-            else if (string.Equals(value, "html", StringComparison.OrdinalIgnoreCase))
-                profile = OutputProfile.Html;
-            else
+            // Must stay in sync with OutputProfileRules: trim and ordinal-ignore-case matching.
+            if (!OutputProfileRules.TryParseProfile(value, out var profile))
             {
                 initContext.CompileScope.CompileErrors.Add(
-                    $"Unknown output profile '{value}'. Valid values: text, html.".ToError(Position,
-                        HeddleDiagnosticIds.UnknownOutputProfile));
+                    $"Unknown output profile '{value}'. Valid values: {OutputProfileRules.ValidProfileValues}."
+                        .ToError(Position, HeddleDiagnosticIds.UnknownOutputProfile));
                 return null;
             }
 
             var context = initContext.CompileScope.CompileContext;
             if (context.UnnamedOutputCompiled)
             {
-                initContext.CompileScope.CompileWarnings.Add(new HeddleCompileWarning
-                {
-                    Error = "@profile() appears after output has already been compiled; earlier output keeps the previous profile.",
-                    Fix = "Move @profile() to the top of the template.",
-                    Position = Position,
-                    DiagnosticId = HeddleDiagnosticIds.ProfileDirectiveAfterOutput
-                });
+                initContext.CompileScope.CompileWarnings.Add(
+                    Heddle.Language.CompileWarningFactory.ProfileDirectiveAfterOutput(Position));
             }
 
             context.OutputProfile = profile;

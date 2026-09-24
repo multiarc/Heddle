@@ -9,11 +9,11 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Allocation proof for the int-<c>@for</c> loop (phase 4 D1 / criterion): the <c>is int</c> normalization
-    /// produces three stack locals and never boxes a <see cref="Heddle.Models.Range"/>. Rendered
-    /// against the C#-tier <c>Heddle.Models.Range</c> path — which boxes one <c>Range</c> per render — through the
-    /// identical loop body, the int path must allocate no more (the spec's "allocated bytes must not increase"
-    /// acceptance). The Range arm stays first, so existing templates keep their exact type-test sequence.
+    /// Allocation proof for the int-<c>@for</c> loop: the <c>is int</c> normalization produces three stack
+    /// locals and never boxes a <see cref="Heddle.Models.Range"/>. Rendered against the C#-tier
+    /// <c>Heddle.Models.Range</c> path — which boxes one <c>Range</c> per render — through the identical loop
+    /// body, the int path must allocate no more. The Range arm stays first, so existing templates keep their
+    /// exact type-test sequence.
     /// </summary>
     public class ForSugarAllocationTests
     {
@@ -44,7 +44,6 @@ namespace Heddle.Tests
                 "@using(){{Heddle.Tests.Data}}@using(){{Heddle.Models}}@for(@new Heddle.Models.Range(0, model.Count)){{<i>@out()</i>}}",
                 typeof(ErgoForData), allowCSharp: true);
 
-            // Byte-identical output: the int arm behaves exactly as Heddle.Models.Range(0, n).
             Assert.Equal(modelFor.Generate(model), intFor.Generate(model));
 
             for (int i = 0; i < 30; i++) { intFor.Generate(model); modelFor.Generate(model); } // warm up (JIT/tiering)
@@ -52,8 +51,7 @@ namespace Heddle.Tests
             long intAlloc = Measure(() => { for (int i = 0; i < 200; i++) intFor.Generate(model); });
             long modelAlloc = Measure(() => { for (int i = 0; i < 200; i++) modelFor.Generate(model); });
 
-            // The int path shares the Range path's loop body exactly and additionally avoids the per-render
-            // Heddle.Models.Range box — so it must never allocate more. A small tolerance absorbs GC noise.
+            // Int path avoids Range boxing on each render; tolerance absorbs GC noise.
             Assert.True(intAlloc <= modelAlloc + 4096,
                 $"int-@for allocated {intAlloc} B, Range-@for allocated {modelAlloc} B — the int normalization must not increase allocation.");
         }

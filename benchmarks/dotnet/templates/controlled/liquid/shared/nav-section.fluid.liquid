@@ -1,0 +1,1 @@
+<div class="nav-section">{% if nav-section.title_linked %}<span class="nav-title"><a href="{{ nav-section.href }}">{{ nav-section.title }}</a></span>{% else %}<span class="nav-title">{{ nav-section.title }}</span>{% endif %}<ul>{% for link in nav-section.links %}{% include 'nav-link' with link %}{% endfor %}</ul></div>

@@ -5,13 +5,13 @@ markup is just text — but a handful of core ideas are deliberately different. 
 Razor habits that trip people up to their Heddle equivalents. For the full picture read the
 [Language Reference](language-reference.md).
 
-> Every Heddle snippet below is a complete template, verified to compile against **Heddle 2.0.0**
+> Every Heddle snippet below is a complete template, verified to compile against **Heddle 3.0.0**
 > under the default `ExpressionMode` — with one exception: the embedded‑C# line in
 > [Where C# runs](#where-c-runs-three-tiers-not-everywhere) (`@(@model.Title.ToUpper())`) requires
 > `ExpressionMode.FullCSharp`, as noted inline. Where a snippet reads model members it declares a
 > `dynamic` model with `@model(){{dynamic}}`; the Razor snippets are illustrative and need not compile.
 
-## Context is relative, not `Model.X`
+## Context is relative, not a Model property
 
 ```text
 <h1>@Model.Title</h1>
@@ -36,7 +36,7 @@ context is *relative* and narrows as you descend, so inside `@list(Articles)` a 
 the **article's** title, not the blog's. To reach back to the original model, prefix the path with
 `::` — the [root reference](language-reference.md#root-reference-member) is the escape hatch.
 
-## Layouts and sections → definitions + `@<<`
+## Layouts and sections become definitions and imports
 
 ```text
 @* _Layout.cshtml — the layout reaches into the page for its body *@
@@ -74,9 +74,9 @@ Razor's direction runs page → layout: the page sets `Layout` and the layout pu
 with `@RenderBody`. Heddle **flips** it — `layout` is an ordinary definition, and the page imports
 it with `@<<` and *calls* it, dropping its own content in through `@out()`. Because the relationship
 is symmetric, any template that exposes regions can serve as a base for another; see
-[composition without coupling](language-reference.md#inheritance-and-override-childbase).
+[composition without coupling](language-reference.md#inheritance-and-override-with-child-and-base).
 
-## `@:` is a raw line, not code-block text
+## The raw line marker, not code-block text
 
 ```text
 @{
@@ -90,7 +90,7 @@ is symmetric, any template that exposes regions can serve as a base for another;
 ```
 
 In Razor `@:` marks a line of literal text *inside a `@{ … }` C# code block*. Heddle has no C# code
-blocks, so `@:` means something else entirely: a [raw line](language-reference.md#raw-blocks----and-)
+blocks, so `@:` means something else entirely: a [raw line](language-reference.md#raw-blocks)
 — everything to the end of the line is emitted verbatim, which is why `@(Name)` and `@if()` above are
 printed exactly as written rather than evaluated.
 
@@ -113,7 +113,7 @@ Razor runs arbitrary C# anywhere on the page. Heddle gates it behind three `Expr
 and `FullCSharp` (the inner-`@` Roslyn tier) — so an untrusted template can be compiled without ever
 enabling C#. Only the last line above needs `FullCSharp`; see [Native Expressions](native-expressions.md).
 
-## Tag helpers and view components → extensions
+## Tag helpers and view components become extensions
 
 ```text
 <email-button to="@Model.Email">Contact</email-button>   @* a tag helper *@

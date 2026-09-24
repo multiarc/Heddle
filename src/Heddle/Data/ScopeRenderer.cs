@@ -16,7 +16,7 @@ namespace Heddle.Data;
             _stringBuilder = new StringBuilder(capacity);
         }
 
-        // B2: the effective output encoder for this render, set by the render entry point (null = legacy path).
+        // The effective output encoder for this render, set by the render entry point (null = legacy path).
         internal void SetOutputEncoder(TextEncoder encoder) => _outputEncoder = encoder;
         TextEncoder IEncoderCarrier.Encoder => _outputEncoder;
 
@@ -50,7 +50,7 @@ namespace Heddle.Data;
             _items = new List<string>(elementCount);
         }
 
-        // B2: the effective output encoder for this render, set by the render entry point (null = legacy path).
+        // The effective output encoder for this render, set by the render entry point (null = legacy path).
         internal void SetOutputEncoder(TextEncoder encoder) => _outputEncoder = encoder;
         TextEncoder IEncoderCarrier.Encoder => _outputEncoder;
 

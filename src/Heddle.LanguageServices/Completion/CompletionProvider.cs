@@ -3,22 +3,21 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using Heddle.Data;
+using Heddle.Helpers;
 using Heddle.Runtime;
 using Heddle.Runtime.Expressions;
 
 namespace Heddle.LanguageServices.Completion
 {
     /// <summary>
-    /// Builds completion items as a pure projection of the analysis (phase 6 D12/D13): typed members via the
-    /// scope map + the member-tier filter, definitions/extensions/functions from the live registries, props from
-    /// the definition declarations. Never guesses when types are unknown (D12 rule 7).
+    /// Builds completion items from the analysis. Never guesses when types are unknown.
     /// </summary>
     internal static class CompletionProvider
     {
         private static readonly string[] Keywords = { "this", "true", "false", "null" };
 
         internal static CompletionResult GetCompletions(DocumentAnalysis analysis, int offset,
-            FunctionRegistry functions)
+            FunctionRegistry functions, Action<string> log = null)
         {
             var context = ContextDetector.Detect(analysis, offset, out var passedProps);
             var registry = functions ?? FunctionRegistry.Default;
@@ -31,7 +30,7 @@ namespace Heddle.LanguageServices.Completion
                 case CompletionContextKind.ExpressionPosition:
                 {
                     var items = new List<CompletionItem>();
-                    items.AddRange(Members(analysis.Scopes.GetModelTypesAt(offset)));
+                    items.AddRange(Members(analysis.Scopes.GetModelTypesAt(offset), log));
                     items.AddRange(FunctionItems(registry));
                     foreach (var keyword in Keywords)
                         items.Add(new CompletionItem(keyword, CompletionItemKind.Keyword, null, keyword));
@@ -42,7 +41,7 @@ namespace Heddle.LanguageServices.Completion
                 {
                     var root = analysis.Scopes.RootType;
                     var types = root != null ? new List<ExType> { root } : new List<ExType>();
-                    return new CompletionResult(Members(types));
+                    return new CompletionResult(Members(types, log));
                 }
 
                 case CompletionContextKind.MemberOfPrefix:
@@ -53,7 +52,7 @@ namespace Heddle.LanguageServices.Completion
                     var resolved = ResolvePrefix(baseType, context.Prefix);
                     if (resolved == null || resolved.IsDynamic)
                         return CompletionResult.Empty;
-                    return new CompletionResult(Members(new List<ExType> { resolved }));
+                    return new CompletionResult(Members(new List<ExType> { resolved }, log));
                 }
 
                 case CompletionContextKind.NamedArgument:
@@ -77,8 +76,6 @@ namespace Heddle.LanguageServices.Completion
 
                 case CompletionContextKind.RegionOverride:
                 {
-                    // Phase 7 (WI5): offer the callee's PUBLIC region names at a call-body '<' override position,
-                    // inserting the '<name:name>' fill form's name pair.
                     var callee = analysis.Definitions.FirstOrDefault(d => d.Name == context.CallName);
                     if (callee == null)
                         return CompletionResult.Empty;
@@ -133,18 +130,48 @@ namespace Heddle.LanguageServices.Completion
             }
         }
 
-        private static IReadOnlyList<CompletionItem> Members(IReadOnlyList<ExType> types)
+        /// <summary>The members of <paramref name="type"/> a template can read and this process can type. A
+        /// member whose type cannot load here — the workspace was built against something the server does not
+        /// have — is left out and said so, rather than failing the request.</summary>
+        internal static List<PropertyInfo> LoadableProperties(Type type, Action<string> log)
+        {
+            var properties = new List<PropertyInfo>();
+            try
+            {
+                foreach (var property in MemberPathResolver.GetVisibleProperties(type))
+                {
+                    try
+                    {
+                        if (property.PropertyType != null)
+                            properties.Add(property);
+                    }
+                    catch (Exception e) when (WorkspaceReflection.IsLoadFault(e))
+                    {
+                        log?.Invoke("Member '" + type.FullName + "." + property.Name + "' is not offered: " +
+                            WorkspaceReflection.Describe(e));
+                    }
+                }
+            }
+            catch (Exception e) when (WorkspaceReflection.IsLoadFault(e))
+            {
+                log?.Invoke("Members of '" + type.FullName + "' could not be read: " + WorkspaceReflection.Describe(e));
+            }
+
+            return properties;
+        }
+
+        private static IReadOnlyList<CompletionItem> Members(IReadOnlyList<ExType> types, Action<string> log)
         {
             if (types == null || types.Count == 0)
                 return Array.Empty<CompletionItem>();
             if (types.Any(t => t == null || t.IsDynamic))
                 return Array.Empty<CompletionItem>();
 
-            // Name-based intersection across the recorded call-site types (D13).
+            // Name-based intersection across the recorded call-site types.
             Dictionary<string, List<PropertyInfo>> byName = null;
             foreach (var type in types)
             {
-                var here = MemberPathResolver.GetVisibleProperties(type.Type)
+                var here = LoadableProperties(type.Type, log)
                     .GroupBy(p => p.Name).ToDictionary(g => g.Key, g => g.First());
                 if (byName == null)
                 {
@@ -177,9 +204,17 @@ namespace Heddle.LanguageServices.Completion
         {
             if (baseType == null || segments == null || segments.Length == 0)
                 return baseType;
-            var resolution = MemberPathResolver.TryResolve(baseType, segments);
-            if (resolution.Kind == MemberPathResolutionKind.Resolved)
-                return resolution.ResultType;
+            try
+            {
+                var resolution = MemberPathResolver.TryResolve(baseType, segments);
+                if (resolution.Kind == MemberPathResolutionKind.Resolved)
+                    return resolution.ResultType;
+            }
+            catch (Exception e) when (WorkspaceReflection.IsLoadFault(e))
+            {
+                // A hop typed with something this process cannot load: unknown, so nothing is offered.
+            }
+
             return null;
         }
 
@@ -195,19 +230,11 @@ namespace Heddle.LanguageServices.Completion
             return $"{ret} {o.Name}({pars})";
         }
 
+        /// <summary>Display name for a type: shared alias table with <see cref="ExType"/> fallback.</summary>
         internal static string Friendly(Type type)
         {
-            if (type == null) return "void";
-            if (type == typeof(void)) return "void";
-            if (type == typeof(int)) return "int";
-            if (type == typeof(long)) return "long";
-            if (type == typeof(double)) return "double";
-            if (type == typeof(decimal)) return "decimal";
-            if (type == typeof(string)) return "string";
-            if (type == typeof(bool)) return "bool";
-            if (type == typeof(object)) return "object";
-            if (type == typeof(object[])) return "object[]";
-            return new ExType(type).ToString();
+            if (type == null || type == typeof(void)) return "void";
+            return CSharpTypeNames.TryGetDisplayName(type, out var name) ? name : new ExType(type).ToString();
         }
 
         private static string FormatDefault(object value)

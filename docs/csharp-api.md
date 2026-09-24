@@ -11,7 +11,7 @@ namespaces:
 - [`HeddleCompileResult`](../src/Heddle/Data/HeddleCompileResult.cs) — success/errors with source positions.
 - [`Scope`](../src/Heddle/Data/Scope.cs) — the data view extensions see while rendering.
 
-The library targets `netstandard2.0;net6.0;net8.0;net10.0`
+The library targets `netstandard2.0;net8.0;net10.0`
 ([Heddle.csproj](../src/Heddle/Heddle.csproj)).
 
 ---
@@ -22,19 +22,46 @@ The concrete engine entry point ([HeddleTemplate.cs](../src/Heddle/HeddleTemplat
 `sealed` and implements `IDisposable`. A single instance is compiled once and can be rendered
 many times, including concurrently.
 
-### Registration: `Configure`
+### Registration: `Register`
 
 ```csharp
-public static void Configure(Assembly startupAssembly);
+public static void Register(Assembly assembly);
+public static void Configure(Assembly startupAssembly);   // the same call, older name
 ```
 
-Scans `startupAssembly` (and its references) for extensions and registers them. Call once at
-startup, passing your application's assembly so custom extensions are discovered. The built‑in
-extensions are registered automatically.
+Reads `assembly`'s `[ExportExtensions]` and registers what it names, and makes its types visible to
+`@model`/type resolution. The engine loads and scans nothing on its own, so registration is **per
+assembly and not transitive** — call it for your application assembly and for every extension library
+you use. Built‑in extensions are always present.
+
+Idempotent per assembly and repeatable, so registration order is the host's to choose. Throws
+`ArgumentNullException` on null, and `TemplateOverrideException` when two unrelated types claim one
+extension name.
 
 ```csharp
-HeddleTemplate.Configure(typeof(Program).GetTypeInfo().Assembly);
+HeddleTemplate.Register(typeof(Program).GetTypeInfo().Assembly);
+HeddleTemplate.Register(typeof(SomeLibrary.WidgetExtension).GetTypeInfo().Assembly);
 ```
+
+#### Declaring model assemblies: `[HeddleModelAssembly]`
+
+`Register` also reads the registering assembly's assembly‑level
+`Heddle.Attributes.HeddleModelAssemblyAttribute` and registers each named type's **assembly**:
+
+```csharp
+[assembly: Heddle.Attributes.HeddleModelAssembly(typeof(Acme.Models.Invoice))]
+```
+
+The `typeof` is what makes this stronger than the equivalent `Register` call. A type cannot be named
+from a project that does not reference its assembly, so a missing reference is **CS0246 in your own
+source** rather than a model that fails to resolve at first render — and the reference it forces is
+exactly what the [build tier](precompilation.md#assemblies-the-build-must-see) needs to resolve the
+same `@model` spelling. One declaration configures both tiers; there is no `HED` id for it because
+the C# compiler already owns the diagnostic.
+
+`AllowMultiple`, so declare as many as you have. Only the assembly each type comes from is used, so
+any public type in it will do. A declared assembly is registered for the life of the process and is
+never removed by an editor‑style workspace reload, which withdraws only what the workspace loaded.
 
 ### Constructors
 
@@ -65,8 +92,14 @@ Behavior notes:
 
 - Throws `TemplateInitException` if you never compiled, or `TemplateCompileException` if
   compilation failed — guard with `CompileResult.Success`.
-- In **`DEBUG`** builds, `Generate` validates that `data`'s type matches the compiled model
-  type and throws `TemplateProcessingException` on a mismatch. Release builds skip this check.
+- Every top‑level render validates that `data`'s type matches the compiled model type and
+  throws `TemplateProcessingException` on a mismatch — once per `Generate` call, in every build
+  configuration. Without the check a wrong‑typed model would escape as a raw
+  `InvalidCastException` from the compiled accessor. A `null` model is legal and skips the
+  check. **A precompiled template resolved from the registry is checked the same way**, against
+  the model type its manifest entry records (`PrecompiledTemplateInfo.ModelType`); an untyped
+  entry records `object` and so admits every value. The fault, and its message, are the same on
+  both tiers.
 - The output buffer auto‑sizes: each call grows an internal capacity estimate (with ~10 %
   margin) so repeated renders avoid reallocations.
 
@@ -74,7 +107,7 @@ Behavior notes:
 string html = template.Generate(model);
 ```
 
-### Streaming: `Generate` into a sink
+### Streaming into a sink
 
 Alongside the string overload, `HeddleTemplate` renders into a sink with **no full‑output
 string materialization** — the structural allocation high‑throughput server‑side rendering
@@ -120,7 +153,7 @@ through — the engine buffers nothing. Treat the exception as "abort the respon
 don't flush the partial output as if it were complete.
 
 > **Source‑compatibility note.** A call written as the positional literal
-> `template.Generate(data, null)` is now **CS0121** (ambiguous between the `TextWriter` and
+> `template.Generate(data, null)` is **CS0121** (ambiguous between the `TextWriter` and
 > `IBufferWriter<byte>` overloads — `null` is equally convertible to both). This is a
 > compile‑time‑only, self‑announcing change; fix it with `Generate(data)` or
 > `Generate(data, chained: null)`. Binary compatibility is unaffected — existing assemblies keep
@@ -134,14 +167,15 @@ don't flush the partial output as if it were complete.
 | `HeddleCompileResult Compile(string document, ExType modelType = null)` | Compile an inline string. |
 | `HeddleCompileResult Recompile(string newDocument, CompileContext context = null)` | Replace the current template with a new string. |
 | `HeddleCompileResult Recompile(ExType newModelType)` | Recompile the current source against a new model type. |
-| `HeddleCompileResult TryCompilation(CompileContext context)` | **Dry run**: runs the parse and extension/type‑check passes but discards the compiled output. |
+| `HeddleCompileResult TryCompilation(CompileContext context)` | **Dry run**: runs the full compile pipeline but publishes nothing onto the instance. |
 | `HeddleCompileResult TryCompilation(string document, TemplateOptions options = null, ExType modelType = null)` | Dry run for an inline string. |
 
-`TryCompilation` is useful for CI/linting — it tells you whether a template's parse and
-extension/type‑check passes succeed, without producing a renderer. Note it does **not** run
-the deferred‑finalization or embedded‑C# (Roslyn) steps, so a `FullCSharp` template (or one
-whose delayed subtemplate fails finalization) can pass the dry run and still fail a real
-`Compile`. A template can only be compiled once per instance; compiling an
+`TryCompilation` is useful for CI/linting — it runs the **same pipeline as a real `Compile`**,
+including deferred‑extension finalization and the embedded‑C# (Roslyn) compile, so its result
+reports exactly what a real `Compile` of the same input would. The difference is that nothing
+is published: the compiled output is discarded, the instance stays uncompiled (`Compiled`
+remains `false`), and `CompileResult` is not set — the outcome is only the returned result. A
+template can only be compiled once per instance; compiling (or dry‑running) an
 already‑compiled instance throws `TemplateInitException`.
 
 ### State properties
@@ -189,9 +223,11 @@ superseded document is released once no render holds it.
 ### Disposal
 
 `HeddleTemplate` owns its compiled runtime document and any file watcher. Dispose it when done.
-Disposal is **best‑effort deferred** while a render is in progress (it aims to dispose once the
-last in‑flight `Generate` returns); the in‑flight counter is not fully synchronized, so avoid
-disposing an instance that is still being rendered concurrently on other threads.
+`Dispose()` is **non‑blocking, idempotent, and safe to call concurrently with active renders**:
+it marks the template disposed immediately — a `Generate` that starts afterwards throws
+`ObjectDisposedException` — and the actual teardown (watcher, compiled documents) is deferred
+until the last in‑flight render exits, so renders already running complete normally. Teardown
+runs exactly once across the `Dispose`, deferred‑last‑exit, and finalizer paths.
 
 ---
 
@@ -207,8 +243,8 @@ Controls where templates are read from and which features are enabled
 | `FileNamePostfix` | `""` | Suffix appended to the name, e.g. `".heddle"`. |
 | `ExpressionMode` | `Native` | Selects the expression tier: `MemberPathsOnly`, `Native` (sandbox‑safe operators/functions — see [Native Expressions](native-expressions.md)), or `FullCSharp` (adds the inner‑`@` Roslyn tier). |
 | `Functions` | `null` (= `FunctionRegistry.Default`) | Functions callable from native expressions; see [Native Expressions](native-expressions.md#registered-functions). |
-| `OutputProfile` | `Html` | Selects whether the unnamed `@(...)` output HTML‑encodes by default: `Html` (bodiless `@(value)` encodes; `@raw` opts out) — the default since 2.0 — or `Text` (raw output; the 1.x‑compatibility setting). Inherited by bodies/partials/imports; also settable per template with [`@profile()`](built-in-extensions.md#profile). See [Output profiles](language-reference.md#output-profiles). Participates in `Equals`/`GetHashCode`. |
-| `TrimDirectiveLines` | `true` | When `true` (the default since 2.0), a whole‑line directive that produces no output (`@using`, `@model`, `@profile(){{…}}`, `@% … %@` definitions, `@<<` imports, whole‑line comments, and any extension whose `InitStart` returns `null`) swallows its line — leading indentation, trailing spaces, and one line terminator. Inherited by child compiles. Set `false` to keep 1.x whitespace byte‑exact. Participates in `Equals`/`GetHashCode` (it changes rendered bytes, so it keys template caches). Compile‑time only. See [Whitespace trimming](language-reference.md#whitespace-trimming-). |
+| `OutputProfile` | `Html` | Selects whether the unnamed `@(...)` output HTML‑encodes by default: `Html` (bodiless `@(value)` encodes; `@raw` opts out) — the default — or `Text` (raw output; the 1.x‑compatibility setting). Inherited by bodies/partials/imports; also settable per template with [`@profile()`](built-in-extensions.md#profile). See [Output profiles](language-reference.md#output-profiles). Participates in `Equals`/`GetHashCode`. |
+| `TrimDirectiveLines` | `true` | When `true` (the default), a whole‑line directive that produces no output (`@using`, `@model`, `@profile(){{…}}`, `@% … %@` definitions, `@<<` imports, whole‑line comments, and any extension whose `InitStart` returns `null`) swallows its line — leading indentation, trailing spaces, and one line terminator. Inherited by child compiles. Set `false` to keep 1.x whitespace byte‑exact. Participates in `Equals`/`GetHashCode` (it changes rendered bytes, so it keys template caches). Compile‑time only. See [Whitespace trimming](language-reference.md#whitespace-trimming). |
 | `Encoder` | `null` (legacy `WebUtility.HtmlEncode`) | The output encoder used at HTML‑encoding sites — bare `@(value)` under `OutputProfile.Html` and `[EncodeOutput]` extensions. A `System.Text.Encodings.Web.TextEncoder`; `null` (the default) keeps the built‑in legacy path (`WebUtility.HtmlEncode`, byte‑identical to 2.0.0). Set `HtmlEncoder.Create(UnicodeRanges.All)` for a modern Unicode‑aware encoder, or supply a `JavaScriptEncoder`/`UrlEncoder`/custom `TextEncoder`. Not applied to `@raw`, raw blocks, literal text, or `OutputProfile.Text`. Participates in `Equals`/`GetHashCode` **by reference** (a different encoder instance renders different bytes, so it keys template caches). See [encoding contexts](built-in-extensions.md#encoding-contexts). |
 | `AllowCSharp` | `false` | **Obsolete** bridge over `ExpressionMode` (use `ExpressionMode` directly): `true` == `FullCSharp`. Enables embedded C# (`@( @expr )`, `@new`, LINQ, typed `@model()`). Setting `false` leaves `MemberPathsOnly` untouched, otherwise selects `Native`. Reads and writes keep working; new code sets `ExpressionMode`. |
 | `MaxRecursionCount` | `100` | Upper bound on definition recursion depth. |
@@ -217,11 +253,10 @@ Controls where templates are read from and which features are enabled
 | `ProvideLanguageFeatures` | `false` | Parse in a tooling mode that emits a token list for editors/highlighters (used by the IDE integrations). |
 | `Data` | `null` | Optional ambient data carried on the options. |
 
-The file actually read is `Path.Combine(RootPath, TemplateName + FileNamePostfix)`. The
-`FullPath` property is a plain string concatenation (`RootPath + TemplateName + FileNamePostfix`,
-with no path separator) and is not the resolved read path. A non‑empty `FileNamePostfix` is
-**required** for a file compile — `FileReader` throws if it is empty, so the `""` default cannot
-be used to compile from a file.
+The file actually read is `Path.Combine(RootPath, TemplateName + FileNamePostfix)`, and `FullPath`
+composes exactly that — the same `Path.Combine`, so it **is** the resolved read path. A non‑empty
+`FileNamePostfix` is **required** for a file compile — `FileReader` throws if it is empty, so the
+`""` default cannot be used to compile from a file.
 
 ```csharp
 var options = new TemplateOptions("home")
@@ -297,7 +332,7 @@ bound zero‑output loops or in‑memory value accumulation. For a hard bound ag
 **Streaming caveat.** On the `TextWriter`/`IBufferWriter` sinks, whatever was written before the
 breach **stays written** — the engine is write‑through and the caller owns the sink. Treat
 `TemplateRenderBudgetException` as *abort the response*: stop, and do not treat the partial output as
-complete. (See also [Streaming](#streaming-generate-into-a-sink).)
+complete. (See also [Streaming](#streaming-into-a-sink).)
 
 ### Choosing the output profile per template
 
@@ -333,6 +368,12 @@ combination without a collision.
 Holds the model type and shared compilation state
 ([CompileContext.cs](../src/Heddle/Runtime/CompileContext.cs)). You usually create one from
 `TemplateOptions`; the engine creates nested contexts internally for subtemplates and partials.
+
+**A `CompileContext` is not thread-safe, and belongs to one compile at a time.** A compile writes to it
+— the current model type, the collected errors and warnings, the items it has compiled — without
+synchronization. Give each compile that may run concurrently its own context (they are cheap, and may
+share one `TemplateOptions`); handing one context to two compiles at once fails unpredictably. This is
+about *compiling* only: a compiled `HeddleTemplate` renders concurrently, as described above.
 
 ```csharp
 public CompileContext(ExType modelType = null);
@@ -417,12 +458,12 @@ to descend into elements or swap model/chained values. See
   errors with positions. The parser first tries fast SLL prediction and falls back to full LL
   diagnostics on ambiguity, recording a warning when it does — that SLL→LL warning lands on
   `ParseContext.Warnings` (reachable via `CompileResult.Context.Warnings`), not
-  `CompileContext.CompileWarnings` (see [Architecture](architecture.md#2-parsing)).
+  `CompileContext.CompileWarnings` (see [Architecture](architecture.md#stage-2-parsing)).
 - **Render errors** surface as exceptions from `Generate`
-  (`TemplateInitException`, `TemplateCompileException`, and — in DEBUG —
+  (`TemplateInitException`, `TemplateCompileException`, and
   `TemplateProcessingException` for a model‑type mismatch).
 
-## End‑to‑end example
+## End-to-end example
 
 ```csharp
 using System.Reflection;
@@ -430,7 +471,7 @@ using Heddle;
 using Heddle.Data;
 using Heddle.Runtime;   // CompileContext
 
-HeddleTemplate.Configure(typeof(Program).GetTypeInfo().Assembly);
+HeddleTemplate.Register(typeof(Program).GetTypeInfo().Assembly);
 
 var options = new TemplateOptions("home")
 {
@@ -447,7 +488,7 @@ string html = template.Generate(myBlog);
 
 ---
 
-## Build‑time pre‑compilation
+## Build-time pre-compilation
 
 Templates can be pre‑compiled into your assembly at build time so they are **looked up, not
 parsed and compiled** at run time — the Razor compiled‑views shape. The runtime types above are
@@ -455,8 +496,17 @@ unchanged and remain the semantic reference; the precompiled backend produces by
 output. The additions live in the `Heddle.Precompiled` namespace:
 
 - `PrecompiledTemplates` — the process‑wide registry: `Register(assembly)` (repeatable,
-  idempotent), `Entries` (host‑visible discovery), `TryGet(key, out …)`, the `OnFallback`
-  diagnostic callback, and the `BindingResolver` hook.
+  idempotent), `Entries` (host‑visible discovery), `TryGet(key, out …)`, `DefaultOptions` (the
+  options every typed entry point binds under), `BindTyped(assembly, key, modelType)` (the typed
+  bind a generated entry point performs — gauntlet, then materialization, throwing
+  `PrecompiledMismatchException` on a refusal), the `OnFallback` diagnostic callback, and the
+  `BindingResolver` hook. The artifact itself is produced by the `Heddle.Build` package.
+- Two `AppContext` switches govern the generated sites: `"Heddle.Precompiled.UseGeneratedSites"`
+  (default `true`; `false` rebuilds every site from its serialized form) and
+  `"Heddle.Precompiled.StrictLoad"` (default `false`; seeds `TemplateOptions.PrecompiledStrictLoad`,
+  under which a site the table does not serve throws `PrecompiledStrictLoadException` instead of
+  compiling at load — which includes every site that reads a non-public model type or member; see
+  [Limitations](precompilation.md#limitations)).
 - `PrecompiledMismatchPolicy` on `TemplateOptions` — `Fallback` (default: recompile + warn) or
   `Strict` (throw when a precompiled entry exists but cannot be plugged).
 - Typed entry points — `Heddle.Generated.{Name}.Generate(model)` (the default namespace is
@@ -464,10 +514,12 @@ output. The additions live in the `Heddle.Precompiled` namespace:
   recommended host API for templates known at compile time (compile‑checked model, no lookup).
   Each typed entry also gains the two **sink overloads** — `Generate(model, TextWriter)` and
   `Generate(model, IBufferWriter<byte>)` — mirroring `HeddleTemplate` (same no‑materialization
-  contract, same `Generate(model, null)` CS0121 corner). Building with `HeddleEmitUtf8Pieces=true`
-  emits pre‑encoded `"…"u8` static pieces that flow to the byte sink with zero transcoding.
+  contract, same `Generate(model, null)` CS0121 corner).
 
-See [Build‑Time Pre‑compilation](precompilation.md) for the generator package, the MSBuild
+The public surface is pinned by `PublicApiSurfaceTests` against `src/Heddle.Tests/TestTemplate/public-api-heddle.txt`:
+any added or removed public type or member fails the build.
+
+See [Build‑Time Pre‑compilation](precompilation.md) for the `Heddle.Build` package, the MSBuild
 options, the validation gauntlet, `[ExportFunctions]` binding, and the `heddle` codegen CLI.
 
 ## Advanced: disabling the C# tier for trimmed hosts

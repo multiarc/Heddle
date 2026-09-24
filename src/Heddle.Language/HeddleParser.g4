@@ -13,11 +13,11 @@ definition: DEF_START def+ DEF_CLOSE;
 
 def:
     DEF_STARTNAME ID def_props? def_base? DEF_ENDNAME default_chain? subtemplate def_type?
-    | DEF_STARTNAME DELIM ID def_region_type? DEF_ENDNAME subtemplate                          // NEW (phase 7): <:name> public region
+    | DEF_STARTNAME DELIM ID def_region_type? DEF_ENDNAME subtemplate                          // <:name> public region
 	;
 
-// NEW (phase 7): the in-header model type of a public region (<:item :: Article>). The type sits
-// inside the angle brackets (R7's ratified <:name :: Type> shape), distinct from a definition's
+// The in-header model type of a public region (<:item :: Article>). The type sits
+// inside the angle brackets (the <:name :: Type> shape), distinct from a definition's
 // trailing def_type (}} :: T). A region carries no prop list, no base, and no default output chain.
 def_region_type: DEF_TYPE ID;
 
@@ -101,7 +101,7 @@ expr:
     | ID arg_list                                                  # FunctionCallExpr
     | OUT_PARAMSTART expr OUT_PARAMEND                             # GroupExpr
     | literal                                                      # LiteralExpr
-    | THIS                                                         # ThisExpr    // NEW (phase 5)
+    | THIS                                                         # ThisExpr
     | ROOT_REF? ID                                                 # PathRootExpr
     ;
 

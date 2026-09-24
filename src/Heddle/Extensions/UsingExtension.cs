@@ -6,6 +6,7 @@ using Heddle.Data;
 namespace Heddle.Extensions
 {
     [ExtensionName("using")]
+    [ZeroOutput]
     public class UsingExtension : AbstractExtension
     {
         public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType, ExType parent)

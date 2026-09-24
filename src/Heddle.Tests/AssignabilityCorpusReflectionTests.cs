@@ -1,0 +1,86 @@
+using System;
+using System.Collections.Generic;
+using Heddle.Helpers;
+using Heddle.Runtime.Expressions;
+using Xunit;
+
+namespace Heddle.Tests
+{
+    /// <summary>
+    /// The <b>reflection-side</b> driver of the assignability conformance corpus. It proves
+    /// two things: that every committed expectation equals the live CLR relation (so the corpus is generated data,
+    /// not belief), and that the engine's own <see cref="ReflectionTypeFacts"/> helper answers it row for row.
+    /// <para>The deleted 2.x generator suite carried a symbol-side driver over the same file; this suite is the
+    /// surviving driver, so <see cref="AssignabilityCorpus"/> lives here beside it. Corrupting one row turns it
+    /// red — that is the point.</para>
+    /// </summary>
+    public class AssignabilityCorpusReflectionTests
+    {
+        public static IEnumerable<object[]> Rows()
+        {
+            foreach (var row in AssignabilityCorpus.Rows)
+                yield return new object[] { row.Source, row.Target, row.Expected, row.Family };
+        }
+
+        private static Type Resolve(string spelling) =>
+            ReflectionHelper.ResolveType(spelling, Array.Empty<string>());
+
+        /// <summary>
+        /// The expectation for the CLR actually running this test.
+        ///
+        /// <para>The shared corpus commits the relation as CoreCLR answers it.</para>
+        /// The .NET Framework CLR answers one row differently: on x64 it permits
+        /// <c>IntPtr[]</c> -&gt; <c>Int64[]</c> array covariance, reducing <c>IntPtr</c> to its
+        /// 64-bit underlying primitive, where CoreCLR refuses. Skipping
+        /// the row on netfx would drop a real assertion; flipping the committed value would break
+        /// the CoreCLR driver, which reads the same file. So
+        /// the divergence is recorded here and the netfx run asserts the behaviour netfx actually
+        /// has. A change on either side of the divergence turns a run red, which is the point of the corpus.</para>
+        /// </summary>
+        private static bool ExpectedOnThisRuntime(string source, string target, bool committed)
+        {
+#if NETFRAMEWORK
+            if (source == "System.IntPtr[]" && target == "System.Int64[]") return true;
+#endif
+            return committed;
+        }
+
+        [Theory]
+        [MemberData(nameof(Rows))]
+        public void CommittedExpectationEqualsTheLiveClrRelation(string source, string target, bool expected,
+            string family)
+        {
+            var sourceType = Resolve(source);
+            var targetType = Resolve(target);
+            var here = ExpectedOnThisRuntime(source, target, expected);
+            Assert.True(targetType.IsAssignableFrom(sourceType) == here,
+                $"{family}: {source} -> {target} — expectation {here} disagrees with live reflection.");
+        }
+
+        [Theory]
+        [MemberData(nameof(Rows))]
+        public void ReflectionTypeFactsMatchTheCorpus(string source, string target, bool expected, string family)
+        {
+            Assert.True(ReflectionTypeFacts.IsAssignableFrom(Resolve(target), Resolve(source))
+                        == ExpectedOnThisRuntime(source, target, expected),
+                $"{family}: {source} -> {target}");
+        }
+
+        [Fact]
+        public void CorpusCoversEveryDeclaredFamily()
+        {
+            var families = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var row in AssignabilityCorpus.Rows)
+                families.Add(row.Family);
+
+            // Losing a seed family silently breaks test coverage.
+            foreach (var required in new[]
+                     {
+                         "identity", "reference", "boxing", "nullable", "nullable-correction-A",
+                         "nullable-correction-C", "numeric", "hierarchy", "variance", "valuetuple", "array",
+                         "array-covariance", "array-interface-covariance", "array-rank"
+                     })
+                Assert.Contains(required, families);
+        }
+    }
+}

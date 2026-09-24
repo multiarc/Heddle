@@ -1,9 +1,11 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
-using System.Reflection;
 using Heddle.Data;
 using Heddle.Extensions;
+using Heddle.Native;
 using Heddle.Precompiled;
+using Heddle.Precompiled.CompiledForm;
 using Heddle.Runtime;
 using Heddle.Runtime.Expressions;
 using Xunit;
@@ -11,45 +13,113 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Phase 7 D7/D8/D9/D21 per-request validation gauntlet: the ordered checks (marker → options → extensions →
-    /// functions → staleness) with the pinned reason and detail strings.
+    /// Per-request validation gauntlet: the ordered checks (options → model type → extensions →
+    /// bindings → functions → staleness) with the pinned reason and detail strings. Every row arrives
+    /// through the loader's internal constructor over an in-memory artifact.
     /// </summary>
     public class PrecompiledGauntletTests
     {
-        private sealed class FakeStrategy : IProcessStrategy
-        {
-            public string Execute(in Scope scope) => string.Empty;
-            public void Render(in Scope scope) { }
-        }
+        private static CompiledExtensionRow ExtensionRow(string name, string fullName,
+            string assemblySimpleName, string fingerprint = null) =>
+            new CompiledExtensionRow
+            {
+                RegistryName = name,
+                Type = CompiledFormHarness.TypeRef(fullName, assemblySimpleName),
+                Fingerprint = fingerprint
+            };
 
-        private static readonly IProcessStrategy Strategy = new FakeStrategy();
+        private static CompiledExtensionRow ExtensionRow(string name, Type type) =>
+            new CompiledExtensionRow
+            {
+                RegistryName = name,
+                Type = CompiledFormHarness.TypeRef(type)
+            };
+
+        private static CompiledFunctionRow FunctionRow(string name, string fullName,
+            string assemblySimpleName, int overloads) =>
+            new CompiledFunctionRow
+            {
+                Name = name,
+                Target = CompiledFormHarness.TypeRef(fullName, assemblySimpleName),
+                OverloadCount = overloads
+            };
+
+        private static CompiledFunctionRow LateBoundRow(string name) =>
+            new CompiledFunctionRow { Name = name, Target = null, OverloadCount = 0 };
+
+        private static string IfAssemblyName => typeof(IfExtension).Assembly.GetName().Name;
 
         private static string IfBindingType =>
-            typeof(IfExtension).FullName + ", " + typeof(IfExtension).Assembly.GetName().Name;
+            typeof(IfExtension).FullName + ", " + IfAssemblyName;
 
         private static PrecompiledTemplateInfo Entry(
             PrecompiledOptionsFingerprint fingerprint = default,
-            PrecompiledExtensionBinding[] extensions = null,
-            PrecompiledFunctionBinding[] functions = null,
-            PrecompiledImport[] imports = null,
+            CompiledExtensionRow[] extensions = null,
+            CompiledFunctionRow[] functions = null,
+            CompiledImport[] imports = null,
             string contentHash = "0",
-            IProcessStrategy strategy = null,
             string key = "views/x.heddle")
         {
-            return new PrecompiledTemplateInfo(key, typeof(object), typeof(object), false, contentHash,
-                imports, fingerprint, extensions, functions, PrecompiledCapabilities.StringOutput,
-                strategy ?? Strategy);
+            var artifact = CompiledFormHarness.MinimalArtifact();
+            var extRefs = new List<int>();
+            if (extensions != null)
+                foreach (var row in extensions)
+                {
+                    artifact.Extensions.Add(row);
+                    extRefs.Add(artifact.Extensions.Count - 1);
+                }
+            var fnRefs = new List<int>();
+            if (functions != null)
+                foreach (var row in functions)
+                {
+                    artifact.Functions.Add(row);
+                    fnRefs.Add(artifact.Functions.Count - 1);
+                }
+            var template = CompiledFormHarness.TemplateRow(key, contentHash: contentHash,
+                extensionRefs: extRefs, functionRefs: fnRefs);
+            template.Options = new CompiledOptionsFingerprint
+            {
+                Profile = fingerprint.Profile.ToString(),
+                Mode = fingerprint.ExpressionMode.ToString(),
+                Trim = fingerprint.TrimDirectiveLines
+            };
+            if (imports != null)
+                foreach (var import in imports)
+                    template.Imports.Add(import);
+            artifact.Templates.Add(template);
+            return CompiledFormHarness.LoaderRow(artifact);
+        }
+
+        /// <summary>An entry whose model type is the build's assumption rather than a type the template pins —
+        /// the only shape the model-type step judges.</summary>
+        private static PrecompiledTemplateInfo AmbientEntry(Type modelType,
+            PrecompiledOptionsFingerprint fingerprint)
+        {
+            var artifact = CompiledFormHarness.MinimalArtifact();
+            var template = CompiledFormHarness.TemplateRow("views/x.heddle",
+                modelType: CompiledFormHarness.TypeRef(modelType), ambient: true);
+            template.Options = new CompiledOptionsFingerprint
+            {
+                Profile = fingerprint.Profile.ToString(),
+                Mode = fingerprint.ExpressionMode.ToString(),
+                Trim = fingerprint.TrimDirectiveLines
+            };
+            artifact.Templates.Add(template);
+            return CompiledFormHarness.LoaderRow(artifact);
         }
 
         private static PrecompiledFallbackEvent? Run(PrecompiledTemplateInfo entry, TemplateOptions options)
             => PrecompiledGauntlet.Validate(entry, options, null);
 
+        private static PrecompiledFallbackEvent? Run(PrecompiledTemplateInfo entry, TemplateOptions options,
+            Type requestModelType)
+            => PrecompiledGauntlet.Validate(entry, options, null, requestModelType);
+
         private static readonly PrecompiledOptionsFingerprint TextNative =
             new PrecompiledOptionsFingerprint(OutputProfile.Text, ExpressionMode.Native, false);
 
-        // The gauntlet fixtures are fingerprinted Text/Native/false; a request must match on the dimensions
-        // not under test, or the options check (which precedes the extension/function/staleness checks) masks
-        // the reason being asserted. The 2.0 engine defaults (Html/true) no longer match, so pin explicitly.
+        // Fixtures are Text/Native/false; requests must match these dimensions to avoid masking the checks.
+        // The 2.0 defaults (Html/true) don't match, so pin explicitly.
         private static TemplateOptions Match() =>
             new TemplateOptions { OutputProfile = OutputProfile.Text, TrimDirectiveLines = false };
 
@@ -57,20 +127,18 @@ namespace Heddle.Tests
         public void AllPassReturnsNull()
         {
             var entry = Entry(TextNative,
-                new[] { new PrecompiledExtensionBinding("if", IfBindingType) });
+                new[] { ExtensionRow("if", typeof(IfExtension)) });
             Assert.Null(Run(entry, Match()));
         }
 
         [Fact]
-        public void MarkerEntryShortCircuits()
+        public void LateBoundCallSiteForAnUnregisteredNameIsUnsupported()
         {
-            var entry = new PrecompiledTemplateInfo("views/x.heddle", null, null, false, "0", null, TextNative,
-                null, new[] { new PrecompiledFunctionBinding("titlecase", null, 0) },
-                PrecompiledCapabilities.None, strategy: null);
-            var evt = Run(entry, new TemplateOptions());
+            var entry = Entry(TextNative, functions: new[] { LateBoundRow("titlecase") });
+            var evt = Run(entry, Match());
             Assert.NotNull(evt);
             Assert.Equal(PrecompiledFallbackReason.UnsupportedFunction, evt.Value.Reason);
-            Assert.Equal("Function 'titlecase': not precompiled (no default or exported binding; build warning HED7014)",
+            Assert.Equal("Function 'titlecase': manifest=<late-bound> live=<unregistered>",
                 evt.Value.Detail);
             Assert.Equal("HED7101", evt.Value.DiagnosticId);
         }
@@ -101,11 +169,105 @@ namespace Heddle.Tests
             Assert.Equal("TrimDirectiveLines: manifest=false request=true", evt.Value.Detail);
         }
 
+        /// <summary>The model-type step, on the only entry shape it applies to: the build assumed one model type
+        /// and the request would compile the template against another, so the typed code the build wrote is not the
+        /// code the request asked for.</summary>
+        [Fact]
+        public void AmbientModelTypeMismatchFails()
+        {
+            var entry = AmbientEntry(typeof(HeddleTemplate), TextNative);
+            var evt = Run(entry, Match(), typeof(TemplateOptions));
+            Assert.NotNull(evt);
+            Assert.Equal(PrecompiledFallbackReason.ModelTypeMismatch, evt.Value.Reason);
+            Assert.Equal("Model: manifest=Heddle.HeddleTemplate, Heddle request=Heddle.Data.TemplateOptions, Heddle",
+                evt.Value.Detail);
+            Assert.Equal("HED7101", evt.Value.DiagnosticId);
+        }
+
+        [Fact]
+        public void AmbientModelTypeMatchPasses()
+        {
+            var entry = AmbientEntry(typeof(HeddleTemplate), TextNative);
+            Assert.Null(Run(entry, Match(), typeof(HeddleTemplate)));
+        }
+
+        /// <summary>A caller with no model type to declare — the aggregate validation pass, chiefly — leaves the
+        /// step skipped rather than having it invent <c>object</c> and refuse everything ambient.</summary>
+        [Fact]
+        public void AmbientEntryWithNoDeclaredRequestModelTypePasses()
+        {
+            var entry = AmbientEntry(typeof(HeddleTemplate), TextNative);
+            Assert.Null(Run(entry, Match(), null));
+        }
+
+        /// <summary>A template that pins its own <c>@model</c> types both tiers from the directive, so the request's
+        /// model type is not evidence of anything and the step does not look at it.</summary>
+        [Fact]
+        public void ADeclaredModelTypeEntryIgnoresTheRequestModelType()
+        {
+            Assert.Null(Run(Entry(TextNative), Match(), typeof(TemplateOptions)));
+        }
+
+        /// <summary>Order is pinned like every other step's: options are judged before the model type, so an entry
+        /// failing both reports the options failure.</summary>
+        [Fact]
+        public void OptionsAreJudgedBeforeTheModelType()
+        {
+            var entry = AmbientEntry(typeof(HeddleTemplate), TextNative);
+            var evt = Run(entry, new TemplateOptions { OutputProfile = OutputProfile.Html }, typeof(TemplateOptions));
+            Assert.NotNull(evt);
+            Assert.Equal(PrecompiledFallbackReason.OptionsMismatch, evt.Value.Reason);
+        }
+
+        /// <summary>Registration can run before the model's assembly has loaded — a module initializer, a
+        /// plugin host. Pins the regression where the model type was resolved once, at registration, so such an
+        /// entry reported <c>live=&lt;unresolved&gt;</c> for the life of the process; it now resolves on the first
+        /// read after the assembly arrives, and a materialization attempted too early leaves no memoized
+        /// fault behind.</summary>
+        [Fact]
+        public void AModelTypeWhoseAssemblyLoadsAfterRegistrationResolvesOnTheNextRequest()
+        {
+            string assemblyName = "LateModel_" + Guid.NewGuid().ToString("N");
+            var artifact = CompiledFormHarness.MinimalArtifact();
+            var template = CompiledFormHarness.TemplateRow("views/late-model.heddle",
+                modelType: CompiledFormHarness.TypeRef("LateModels.Late", assemblyName));
+            artifact.Templates.Add(template);
+            var entry = CompiledFormHarness.LoaderRow(artifact);
+
+            Assert.Null(entry.ModelType);
+            var early = Run(entry, Match());
+            Assert.NotNull(early);
+            Assert.Equal(PrecompiledFallbackReason.MemberBindingMismatch, early.Value.Reason);
+            Assert.Equal("Type 'LateModels.Late, " + assemblyName + "': manifest=" + assemblyName + " live=<unresolved>",
+                early.Value.Detail);
+            Assert.Null(entry.GetStrategy(Match()));
+            Assert.True(entry.TryGetRequestFault(Match(), out var reason, out _));
+            Assert.Equal(PrecompiledFallbackReason.MemberBindingMismatch, reason);
+
+            var compilation = Microsoft.CodeAnalysis.CSharp.CSharpCompilation.Create(assemblyName,
+                new[]
+                {
+                    Microsoft.CodeAnalysis.CSharp.CSharpSyntaxTree.ParseText(
+                        "namespace LateModels { public class Late { public string Name { get; set; } } }")
+                },
+                Heddle.Native.AssemblyHelper.GetApplicationReferences(),
+                new Microsoft.CodeAnalysis.CSharp.CSharpCompilationOptions(
+                    Microsoft.CodeAnalysis.OutputKind.DynamicallyLinkedLibrary));
+            using var image = new MemoryStream();
+            Assert.True(compilation.Emit(image).Success);
+            var loaded = System.Reflection.Assembly.Load(image.ToArray());
+
+            Assert.Same(loaded.GetType("LateModels.Late"), entry.ModelType);
+            Assert.Null(Run(entry, Match()));
+            Assert.NotNull(entry.GetStrategy(Match()));
+            Assert.False(entry.TryGetRequestFault(Match(), out _, out _));
+        }
+
         [Fact]
         public void ExtensionUnresolved()
         {
             var entry = Entry(TextNative,
-                new[] { new PrecompiledExtensionBinding("no-such-ext-xyz", "Foo.Bar, Baz") });
+                new[] { ExtensionRow("no-such-ext-xyz", "Foo.Bar", "Baz") });
             var evt = Run(entry, Match());
             Assert.Equal(PrecompiledFallbackReason.ExtensionBindingMismatch, evt.Value.Reason);
             Assert.Equal("Extension 'no-such-ext-xyz': manifest=Foo.Bar, Baz live=<unresolved>", evt.Value.Detail);
@@ -115,7 +277,7 @@ namespace Heddle.Tests
         public void ExtensionTypeDiverges()
         {
             var entry = Entry(TextNative,
-                new[] { new PrecompiledExtensionBinding("if", "Wrong.Type, Heddle") });
+                new[] { ExtensionRow("if", "Wrong.Type", "Heddle") });
             var evt = Run(entry, Match());
             Assert.Equal(PrecompiledFallbackReason.ExtensionBindingMismatch, evt.Value.Reason);
             Assert.Equal($"Extension 'if': manifest=Wrong.Type, Heddle live={IfBindingType}", evt.Value.Detail);
@@ -126,7 +288,7 @@ namespace Heddle.Tests
         {
             var entry = Entry(TextNative, functions: new[]
             {
-                new PrecompiledFunctionBinding("upper", DefaultFunctionTable.ShimTargetTypeName, 1)
+                FunctionRow("upper", "Heddle.Runtime.Expressions.BuiltInFunctions", "Heddle", 1)
             });
             Assert.Null(Run(entry, Match())); // options.Functions == null, all built-in
         }
@@ -136,7 +298,7 @@ namespace Heddle.Tests
         {
             var entry = Entry(TextNative, functions: new[]
             {
-                new PrecompiledFunctionBinding("titlecase", "Acme.Web.TemplateFunctions, Acme.Web", 1)
+                FunctionRow("titlecase", "Acme.Web.TemplateFunctions", "Acme.Web", 1)
             });
             var evt = Run(entry, Match());
             Assert.Equal(PrecompiledFallbackReason.FunctionBindingMismatch, evt.Value.Reason);
@@ -151,7 +313,7 @@ namespace Heddle.Tests
             registry.Register("titlecase", (Func<string, string>)(s => s));
             var entry = Entry(TextNative, functions: new[]
             {
-                new PrecompiledFunctionBinding("titlecase", "Acme.Web.TemplateFunctions, Acme.Web", 1)
+                FunctionRow("titlecase", "Acme.Web.TemplateFunctions", "Acme.Web", 1)
             });
             var evt = Run(entry, new TemplateOptions { OutputProfile = OutputProfile.Text, TrimDirectiveLines = false, Functions = registry });
             Assert.Equal(PrecompiledFallbackReason.FunctionBindingMismatch, evt.Value.Reason);
@@ -213,5 +375,173 @@ namespace Heddle.Tests
             var entry = Entry(TextNative, key: "nowhere/x.heddle", contentHash: "deadbeef");
             Assert.Null(Run(entry, new TemplateOptions { OutputProfile = OutputProfile.Text, TrimDirectiveLines = false, RootPath = "/nonexistent" }));
         }
+
+        /// <summary>A recorded option value that names no member is refused, never guessed at. Pins the
+        /// regression where <c>Enum.TryParse</c>'s failure wrote <c>default(TEnum)</c> over the seeded default,
+        /// so a row recording an unreadable profile silently became <see cref="OutputProfile.Text"/> — the one
+        /// profile that encodes nothing — and every unnamed expression in that template stopped being
+        /// HTML-encoded. The fingerprint keeps the build default and the gauntlet refuses the entry outright,
+        /// whichever profile the request asks for.</summary>
+        [Theory]
+        [InlineData("Htlm")]
+        [InlineData("0")]
+        [InlineData(" Html")]
+        public void ARecordedProfileThatNamesNoMemberIsRefused(string recorded)
+        {
+            var entry = EntryWithRecordedOptions(recorded, ExpressionMode.Native.ToString());
+
+            Assert.NotEqual(OutputProfile.Text, entry.OptionsFingerprint.Profile);
+            Assert.Equal(HeddleBuildOptions.DefaultOutputProfile, entry.OptionsFingerprint.Profile);
+
+            foreach (var requested in new[] { OutputProfile.Html, OutputProfile.Text })
+            {
+                var evt = Run(entry, new TemplateOptions { OutputProfile = requested, TrimDirectiveLines = false });
+                Assert.NotNull(evt);
+                Assert.Equal(PrecompiledFallbackReason.OptionsMismatch, evt.Value.Reason);
+                Assert.Equal("OutputProfile: manifest='" + recorded + "' names no profile; expected " +
+                    HeddleBuildOptions.ExpectedValues<OutputProfile>(), evt.Value.Detail);
+                Assert.Equal("HED7101", evt.Value.DiagnosticId);
+            }
+
+            // And it never materializes behind the gauntlet's back either.
+            Assert.Null(entry.GetStrategy(Match()));
+            Assert.True(entry.TryGetRequestFault(Match(), out var reason, out _));
+            Assert.Equal(PrecompiledFallbackReason.OptionsMismatch, reason);
+        }
+
+        /// <summary>The same guard on the expression mode, which carries no encoding decision but would
+        /// otherwise be guessed at the same way.</summary>
+        [Fact]
+        public void ARecordedExpressionModeThatNamesNoMemberIsRefused()
+        {
+            var entry = EntryWithRecordedOptions(OutputProfile.Html.ToString(), "Nativ");
+            Assert.Equal(HeddleBuildOptions.DefaultExpressionMode, entry.OptionsFingerprint.ExpressionMode);
+            var evt = Run(entry, new TemplateOptions { OutputProfile = OutputProfile.Html, TrimDirectiveLines = false });
+            Assert.NotNull(evt);
+            Assert.Equal(PrecompiledFallbackReason.OptionsMismatch, evt.Value.Reason);
+            Assert.Equal("ExpressionMode: manifest='Nativ' names no mode; expected " +
+                HeddleBuildOptions.ExpectedValues<ExpressionMode>(), evt.Value.Detail);
+        }
+
+        /// <summary>A value that is simply absent is still the build default and still passes — the guard
+        /// refuses what is present and unreadable, not what was never recorded.</summary>
+        [Fact]
+        public void AbsentRecordedOptionsStayTheBuildDefaults()
+        {
+            var entry = EntryWithRecordedOptions(null, string.Empty);
+            Assert.Equal(HeddleBuildOptions.DefaultOutputProfile, entry.OptionsFingerprint.Profile);
+            Assert.Equal(HeddleBuildOptions.DefaultExpressionMode, entry.OptionsFingerprint.ExpressionMode);
+            Assert.Null(Run(entry, new TemplateOptions
+            {
+                OutputProfile = HeddleBuildOptions.DefaultOutputProfile,
+                ExpressionMode = HeddleBuildOptions.DefaultExpressionMode,
+                TrimDirectiveLines = false
+            }));
+        }
+
+        private static PrecompiledTemplateInfo EntryWithRecordedOptions(string profile, string mode)
+        {
+            var artifact = CompiledFormHarness.MinimalArtifact();
+            var template = CompiledFormHarness.TemplateRow("views/x.heddle");
+            template.Options = new CompiledOptionsFingerprint { Profile = profile, Mode = mode, Trim = false };
+            artifact.Templates.Add(template);
+            return CompiledFormHarness.LoaderRow(artifact);
+        }
+
+        /// <summary>The verdict is a pure function of the row, the request's shape and the live type graph, so
+        /// it is computed once per shape and read back after: the checks walk every recorded member row through
+        /// the live member graph, and a hosted resolver runs them on every request for every view. Two shapes
+        /// get two runs; the same shape twice gets one.</summary>
+        [Fact]
+        public void APassIsComputedOncePerRequestShape()
+        {
+            var entry = Entry(TextNative, new[] { ExtensionRow("if", typeof(IfExtension)) });
+            var options = Match();
+
+            int before = PrecompiledGauntlet.OrderedRunCount;
+            Assert.Null(Run(entry, options));
+            Assert.Equal(before + 1, PrecompiledGauntlet.OrderedRunCount);
+
+            Assert.Null(Run(entry, options));
+            Assert.Null(Run(entry, Match()));
+            Assert.Equal(before + 1, PrecompiledGauntlet.OrderedRunCount);
+
+            // A different function registry is a different shape: the registry decides the function step.
+            var other = Match();
+            other.Functions = new FunctionRegistry();
+            Assert.Null(Run(entry, other));
+            Assert.Equal(before + 2, PrecompiledGauntlet.OrderedRunCount);
+        }
+
+        /// <summary>…and the memo is dropped when the engine's assembly set moves, because that is what can
+        /// change the live type graph the checks compared against.</summary>
+        [Fact]
+        public void APassIsRecomputedAfterAnAssemblyRegistration()
+        {
+            var entry = Entry(TextNative, new[] { ExtensionRow("if", typeof(IfExtension)) });
+            var options = Match();
+
+            Assert.Null(Run(entry, options));
+            int settled = PrecompiledGauntlet.OrderedRunCount;
+            Assert.Null(Run(entry, options));
+            Assert.Equal(settled, PrecompiledGauntlet.OrderedRunCount);
+
+            int generation = AssemblyHelper.Generation;
+            var registered = false;
+            try
+            {
+                AssemblyHelper.RegisterModelAssemblies(new[] { NewDynamicAssembly() });
+                registered = true;
+                Assert.NotEqual(generation, AssemblyHelper.Generation);
+
+                Assert.Null(Run(entry, options));
+                Assert.Equal(settled + 1, PrecompiledGauntlet.OrderedRunCount);
+            }
+            finally
+            {
+                if (registered)
+                    AssemblyHelper.UnregisterModelAssemblies();
+            }
+        }
+
+        /// <summary>The one shape that is never memoized: a request that asks for the staleness step asks for
+        /// the files to be read again, and an answer kept from the last request is the one thing that step must
+        /// not give. A pass here runs the checks every time, and notices the moment the file changes.</summary>
+        [Fact]
+        public void AFileChangeCheckingRequestIsNeverMemoized()
+        {
+            var root = Path.Combine(Path.GetTempPath(), "heddle-memo-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(root);
+            try
+            {
+                var file = Path.Combine(root, "x.heddle");
+                File.WriteAllText(file, "hello world");
+                var entry = Entry(TextNative, key: "x.heddle",
+                    contentHash: PrecompiledGauntlet.HashFile(file));
+                var options = new TemplateOptions
+                {
+                    OutputProfile = OutputProfile.Text,
+                    TrimDirectiveLines = false,
+                    RootPath = root,
+                    EnableFileChangeCheck = true
+                };
+
+                int before = PrecompiledGauntlet.OrderedRunCount;
+                Assert.Null(Run(entry, options));
+                Assert.Null(Run(entry, options));
+                Assert.Equal(before + 2, PrecompiledGauntlet.OrderedRunCount);
+
+                File.WriteAllText(file, "hello other world");
+                var evt = Run(entry, options);
+                Assert.NotNull(evt);
+                Assert.Equal(PrecompiledFallbackReason.StaleContent, evt.Value.Reason);
+            }
+            finally { try { Directory.Delete(root, true); } catch { } }
+        }
+
+        private static System.Reflection.Assembly NewDynamicAssembly() =>
+            System.Reflection.Emit.AssemblyBuilder.DefineDynamicAssembly(
+                new System.Reflection.AssemblyName("HeddleMemoProbe_" + Guid.NewGuid().ToString("N")),
+                System.Reflection.Emit.AssemblyBuilderAccess.Run);
     }
 }

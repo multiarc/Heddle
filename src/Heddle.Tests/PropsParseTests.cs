@@ -9,8 +9,7 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// The executable grammar spec for phase 5 (grammar.md parse corpus PP01–PP24 / NP01–NP15): the 5th
-    /// <c>call</c> alternative (named arguments), the <c>this</c> primary, the <c>def_props</c> rule family,
+    /// Named arguments in calls (5th call alternative), the <c>this</c> primary, the <c>def_props</c> rule family,
     /// and their DTO/AST shapes via the public <see cref="ExprNode"/>/<see cref="PropDeclaration"/>/
     /// <see cref="NamedArgument"/> surfaces. Positive rows assert shapes; negative rows assert a positioned
     /// HED0003 syntax error (never an exception).
@@ -40,8 +39,6 @@ namespace Heddle.Tests
             var path = Assert.IsType<PathNode>(node);
             Assert.Equal(segments, path.Segments.ToArray());
         }
-
-        // ---- Call side: named arguments (PP01–PP14) ----
 
         [Fact]
         public void PP01_PositionalMemberPlusNamedArguments()
@@ -146,9 +143,7 @@ namespace Heddle.Tests
         [Fact]
         public void PP12_ThisAsFunctionArgument()
         {
-            // Grammar reality (like phase 1's @(upper(Name))): a single-argument call parses as the alt-3
-            // nested-chain carrier — the function-argument binding happens at compile time. 'this' rides as
-            // the carrier's native parameter, which is the "this as a function argument" the corpus pins.
+            // A single-argument call parses as the nested-chain carrier; 'this' rides as the native parameter.
             var p = ParseCall("@(len(this))");
             Assert.NotNull(p.ChainParameter);
             var carrier = Assert.Single(p.ChainParameter);
@@ -176,8 +171,6 @@ namespace Heddle.Tests
             Assert.NotNull(chain[0].CallParameter.PropArguments);
             Assert.Equal("html", chain[1].ExtensionName);
         }
-
-        // ---- Definition side: prop declarations & slots (PP15–PP24) ----
 
         [Fact]
         public void PP15_TwoPropsWithDecodedDefaults()
@@ -270,8 +263,6 @@ namespace Heddle.Tests
             Assert.Equal("string[]", def.PropDeclarations[0].TypeName);
         }
 
-        // ---- Negative corpus: positioned HED0003 (NP01–NP15) ----
-
         [Theory]
         [InlineData("@card(Article, style: @ Model.X )")]     // NP01 C# tier as named-argument value
         [InlineData("@card(Article, style: a():b())")]        // NP02 nested chain as named-argument value
@@ -295,8 +286,6 @@ namespace Heddle.Tests
             Assert.NotEmpty(ctx.Errors);
             Assert.Contains(ctx.Errors, e => e.DiagnosticId == HeddleDiagnosticIds.SyntaxError);
         }
-
-        // ---- Editor-token classification under ProvideLanguageFeatures ----
 
         private static List<HeddleTokenType> Tokens(string template)
         {

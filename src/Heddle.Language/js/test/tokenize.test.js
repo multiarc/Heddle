@@ -1,11 +1,11 @@
 "use strict";
 
 /*
- * WS9 smoke tests for the highlight tokenizer harness (feeds WS2).
+ * Smoke tests for the highlight tokenizer harness.
  *
  * These prove the plumbing works: the Heddle Ace highlight rules load, an Ace
  * Tokenizer is constructed from them, and a token stream with defined Ace
- * classes comes back. Exhaustive per-construct fixtures land in WS2.
+ * classes comes back. Exhaustive per-construct fixtures live in highlight.test.js.
  */
 
 const test = require("node:test");

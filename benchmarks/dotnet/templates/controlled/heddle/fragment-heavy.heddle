@@ -1,0 +1,2 @@
+@<<{{shared/fragments.heddle}}
+<div class="panel">@list(Items){{@if(IsTile){{@tile()}}@elif(IsCard){{@card()}}@elif(IsMedia){{@media_row()}}@else(){{@stat()}}}}</div>

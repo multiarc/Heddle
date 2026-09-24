@@ -11,10 +11,9 @@ using Xunit;
 namespace Heddle.LanguageServices.Tests
 {
     /// <summary>
-    /// Phase 6 D4–D8/D17 contract tests: the real <c>LspServer</c> driven over an in-proc
-    /// <c>FullDuplexStream.CreatePair()</c> (no process, no editor). Initialize handshake, didOpen →
-    /// publishDiagnostics with the <c>HED*</c> code, didClose clears, completion, the semantic-token walkthrough,
-    /// and shutdown/exit.
+    /// LSP protocol contract: the real <c>LspServer</c> driven over an in-proc <c>FullDuplexStream.CreatePair()</c>.
+    /// Tests initialize handshake, didOpen → publishDiagnostics with <c>HED*</c> codes, didClose clears diagnostics,
+    /// completion, semantic-token output, and shutdown/exit.
     /// </summary>
     public class ProtocolContractTests : IAsyncLifetime
     {
@@ -31,8 +30,11 @@ namespace Heddle.LanguageServices.Tests
             [JsonRpcMethod("textDocument/publishDiagnostics", UseSingleObjectParameterDeserialization = true)]
             public void Publish(PublishDiagnosticsParams p) => Published.Add(p);
 
+            public readonly System.Collections.Concurrent.ConcurrentQueue<string> Logged =
+                new System.Collections.Concurrent.ConcurrentQueue<string>();
+
             [JsonRpcMethod("window/logMessage", UseSingleObjectParameterDeserialization = true)]
-            public void Log(LogMessageParams p) { }
+            public void Log(LogMessageParams p) => Logged.Enqueue(p.Message);
         }
 
         private PublishDiagnosticsParams TakePublished()
@@ -42,7 +44,7 @@ namespace Heddle.LanguageServices.Tests
             return value;
         }
 
-        public Task InitializeAsync()
+        public ValueTask InitializeAsync()
         {
             var pair = FullDuplexStream.CreatePair();
             _server = new LspServer();
@@ -59,14 +61,14 @@ namespace Heddle.LanguageServices.Tests
             _clientRpc = new JsonRpc(new HeaderDelimitedMessageHandler(pair.Item2, pair.Item2, clientFormatter));
             _clientRpc.AddLocalRpcTarget(_sink, new JsonRpcTargetOptions { AllowNonPublicInvocation = false });
             _clientRpc.StartListening();
-            return Task.CompletedTask;
+            return default;
         }
 
-        public Task DisposeAsync()
+        public ValueTask DisposeAsync()
         {
             _clientRpc?.Dispose();
             _serverRpc?.Dispose();
-            return Task.CompletedTask;
+            return default;
         }
 
         private static JsonElement EmptyObject() => JsonSerializer.Deserialize<JsonElement>("{}");
@@ -144,6 +146,57 @@ namespace Heddle.LanguageServices.Tests
                     Position = new Position(0, 1)
                 });
             Assert.Contains(items, i => i.Label == "list");
+        }
+
+        /// <summary>The server over the wire, started on a workspace built against a newer engine whose export
+        /// attribute has a constructor this server lacks, then reconfigured to a workspace that exports a
+        /// function. Pins both halves: <c>initialize</c> answers and the version note reaches the client's log,
+        /// and the reconfigured workspace's export is offered without a restart.</summary>
+        [Fact]
+        public async Task AWorkspaceFromANewerEngineInitializesAndAReconfiguredOneOffersItsExports()
+        {
+            using (var workspace = new SynthesizedWorkspace())
+            {
+                string newer = workspace.Emit("Heddle",
+                    "[assembly: System.Reflection.AssemblyVersion(\"99.0.0.0\")] namespace Heddle.Attributes { " +
+                    "[System.AttributeUsage(System.AttributeTargets.Assembly, AllowMultiple = true)] public class ExportFunctionsAttribute : System.Attribute " +
+                    "{ public ExportFunctionsAttribute(string newer, System.Type c) { } } }", subdirectory: "newer");
+                string skewed = workspace.Emit("WsCtor",
+                    "[assembly: Heddle.Attributes.ExportFunctions(\"x\", typeof(W.Fns))] namespace W { public static class Fns { " +
+                    "public static string shout(string s) => s; } public class M { public string Open { get; set; } } }",
+                    newer, "newer");
+                string exporting = workspace.Emit("Exp",
+                    "[assembly: Heddle.Attributes.ExportFunctions(typeof(B.Fns))] namespace B { public static class Fns { " +
+                    "public static string shout(string s) => s; } public class M { public string Open { get; set; } } }",
+                    SynthesizedWorkspace.RealEngine);
+
+                var result = await _clientRpc.InvokeWithParameterObjectAsync<InitializeResult>("initialize",
+                    new InitializeParams
+                    {
+                        Capabilities = EmptyObject(),
+                        InitializationOptions = JsonSerializer.SerializeToElement(new { assemblies = new[] { skewed } })
+                    });
+                Assert.Equal("heddle-lsp", result.ServerInfo.Name);
+
+                await _clientRpc.NotifyWithParameterObjectAsync("textDocument/didOpen",
+                    new DidOpenTextDocumentParams(new TextDocumentItem("file:///s.heddle", "heddle", 1, "@model(){{B.M}} @()")));
+                TakePublished();
+                Assert.Contains(_sink.Logged, line => line.Contains("99.0.0.0"));
+
+                await _clientRpc.NotifyWithParameterObjectAsync("workspace/didChangeConfiguration",
+                    new DidChangeConfigurationParams(JsonSerializer.SerializeToElement(new { assemblies = new[] { exporting } })));
+                TakePublished();
+
+                var items = await _clientRpc.InvokeWithParameterObjectAsync<Heddle.LanguageServer.Protocol.CompletionItem[]>(
+                    "textDocument/completion",
+                    new CompletionParams
+                    {
+                        TextDocument = new TextDocumentIdentifier("file:///s.heddle"),
+                        Position = new Position(0, 18)
+                    });
+                Assert.Contains(items, i => i.Label == "shout");
+                Assert.Contains(items, i => i.Label == "Open");
+            }
         }
 
         [Fact]

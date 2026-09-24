@@ -6,13 +6,12 @@ using Heddle.Strings.Core;
 namespace Heddle.LanguageServer
 {
     /// <summary>
-    /// Builds the delta-encoded semantic-token stream (phase 6 D17) from an analysis: a sparse projection over the
-    /// TextMate base, one token type per <see cref="HeddleTokenType"/> (punctuation, C# spans, literals and parse
-    /// errors are not emitted), plus the hidden-channel skipped spans as comments.
+    /// Builds the delta-encoded semantic-token stream from an analysis: a sparse projection over the TextMate base,
+    /// one token type per <see cref="HeddleTokenType"/> (punctuation, C# spans, literals and parse errors are not
+    /// emitted), plus hidden-channel skipped spans as comments.
     /// </summary>
     internal static class SemanticTokensBuilder
     {
-        // Legend indexes (wire values): property 0, function 1, keyword 2, operator 3, macro 4, comment 5.
         private const int Property = 0, Function = 1, Keyword = 2, Operator = 3, Macro = 4, Comment = 5;
 
         internal static readonly string[] TokenTypes =

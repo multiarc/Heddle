@@ -5,7 +5,7 @@ using Xunit;
 namespace Heddle.Tool.Tests
 {
     /// <summary>
-    /// WI12 — the <c>heddle</c> CLI T4-successor scenario: render a C# enum from JSON data through the full dynamic
+    /// The <c>heddle</c> CLI T4-successor scenario: render a C# enum from JSON data through the full dynamic
     /// engine, plus the argument-handling surface. The codegen sample proves a build <c>Exec</c> step can turn data
     /// into source with no runtime Heddle dependency in the produced artifact.
     /// </summary>

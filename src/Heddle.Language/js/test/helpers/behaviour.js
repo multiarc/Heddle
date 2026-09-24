@@ -1,7 +1,7 @@
 "use strict";
 
 /*
- * Behaviour-driver helper (WS7 verification surface).
+ * Behaviour-driver helper.
  *
  * The Heddle bracket behaviour (`mode/behaviour/heddle.js`) is written as Ace
  * `Behaviour` insertion/deletion callbacks that expect a live editor+session.

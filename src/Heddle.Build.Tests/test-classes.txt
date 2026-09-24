@@ -1,0 +1,18 @@
+# Every class in Heddle.Build.Tests that declares a [Fact] or [Theory], ordinal-sorted.
+# Set-equality asserted by TestClassInventoryTests. A class added or removed here is the diff a
+# reviewer reads; nothing in this file measures how many tests a class carries.
+Heddle.Build.Tests.ClassLibraryImageTests
+Heddle.Build.Tests.DesignTimeBuildTests
+Heddle.Build.Tests.HostBuiltArtifactTests
+Heddle.Build.Tests.IncrementalityTests
+Heddle.Build.Tests.IntermediateCompileFailureTests
+Heddle.Build.Tests.IntermediateCompileTests
+Heddle.Build.Tests.MultiTargetTests
+Heddle.Build.Tests.RetiredPropertyTests
+Heddle.Build.Tests.SameProjectModelTests
+Heddle.Build.Tests.SignedConsumerAndEditorInputTests
+Heddle.Build.Tests.SurfaceTests
+Heddle.Build.Tests.TargetScopedBuildTests
+Heddle.Build.Tests.TestClassInventoryTests
+Heddle.Build.Tests.VersionLockTests
+Heddle.Build.Tests.WebSdkConsumerTests

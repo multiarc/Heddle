@@ -1,0 +1,18 @@
+{# Idiomatic Askama template. Per-row four-way fragment
+   dispatch on the precomputed kind booleans, invoking one per-kind partial per row
+   (Askama book: "Template syntax - If" - if / elif / else chain - and "Template syntax -
+   Include"; included partials have full access to the loop variable). Default HTML
+   escaping left on. #}
+<div class="panel">
+  {% for item in items %}
+    {% if item.is_tile %}
+      {% include "idiomatic/askama/shared/fragment-heavy-tile.html" %}
+    {% elif item.is_card %}
+      {% include "idiomatic/askama/shared/fragment-heavy-card.html" %}
+    {% elif item.is_media %}
+      {% include "idiomatic/askama/shared/fragment-heavy-media-row.html" %}
+    {% else %}
+      {% include "idiomatic/askama/shared/fragment-heavy-stat.html" %}
+    {% endif %}
+  {% endfor %}
+</div>

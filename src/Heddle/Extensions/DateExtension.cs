@@ -7,14 +7,8 @@ using Heddle.Data;
 namespace Heddle.Extensions
 {
     /// <summary>
-    /// <para>Date template</para>
-    /// <para>Optional parameter represents date formatting</para>
-    /// <para>For Example:</para>
-    /// <para>
-    ///     <code>
-    ///         &lt;%&lt;date&gt;BirthDate[yyyy-MM-dd]%&gt;
-    ///     </code>
-    /// </para>
+    /// Formats a DateTime value. Optional parameter is the date format string; defaults to "d".
+    /// Example: <code>&lt;%&lt;date&gt;BirthDate[yyyy-MM-dd]%&gt;</code>
     /// </summary>
     [ExtensionName("date")]
     [DataType(typeof(DateTime))]
@@ -45,8 +39,8 @@ namespace Heddle.Extensions
                 dateFormat = "d";
             if (scope.ModelData is DateTime date)
             {
-#if NET6_0_OR_GREATER
-                scope.Renderer.Render(date, dateFormat, CultureInfo.InvariantCulture);   // phase 8 D10
+#if NET8_0_OR_GREATER
+                scope.Renderer.Render(date, dateFormat, CultureInfo.InvariantCulture);
 #else
                 scope.Renderer.Render(date.ToString(dateFormat, CultureInfo.InvariantCulture));
 #endif

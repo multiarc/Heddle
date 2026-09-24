@@ -30,7 +30,7 @@ public class Greeting { public string Name { get; set; } public int Count { get;
 | --- | --- |
 | `Heddle` | Core engine: parser host, compiler, runtime, built‑in extensions. |
 | `Heddle.Language` | ANTLR grammar + generated lexer/parser and editor assets. |
-| `Heddle.Generator` | Build‑time source generator that pre‑compiles `.heddle` files into your assembly. Add with `PrivateAssets="all"` (an analyzer package). |
+| `Heddle.Build` | Build‑time host that pre‑compiles `.heddle` files into your assembly (MSBuild targets driving the out‑of‑process `heddle compile`). Replaces `Heddle.Generator` — see [Upgrading from 2.x](docs/precompilation.md#upgrading-from-version-2). |
 | `Heddle.LanguageServices` | Editor language‑service facade (completion, diagnostics, hover, go‑to‑definition) you can host yourself. |
 | `Heddle.LanguageServer` | LSP server for editors, shipped as a `dotnet tool` (`heddle-lsp`). |
 | `Heddle.Tool` | The `heddle` CLI — a `dotnet tool` for rendering templates and build‑time code generation (the T4 successor). |
@@ -43,6 +43,7 @@ Full documentation lives in **[docs/](docs/README.md)**:
 - [Language Reference](docs/language-reference.md) — every Heddle construct and its nuances.
 - [Built‑in Extensions](docs/built-in-extensions.md) — `list`, `if`, `date`, `money`, and more.
 - [C# API Reference](docs/csharp-api.md) — `HeddleTemplate`, options, contexts, results.
+- [Build‑Time Pre‑compilation](docs/precompilation.md) — compiling `.heddle` files into the assembly with `Heddle.Build`.
 - [Writing Custom Extensions](docs/custom-extensions.md) — add your own directives.
 - [Architecture](docs/architecture.md) — the lex → parse → compile → render pipeline.
 - [Building & Testing](docs/building.md) — SDK, scripts, tests, packaging, CI.
@@ -80,10 +81,7 @@ people usually weigh it against.
   layout with **no runtime cost**, and any page can serve as a base for another.
 - **Compiled to an execution‑ready document.** A template becomes an in‑memory tree of
   extension calls wired to **compiled** accessors — member paths to expression‑tree delegates,
-  embedded C# to Roslyn delegates — so nothing is reflected or re‑parsed per render. In the
-  benchmark run of 2026‑07‑11 it rendered [faster than Razor with fewer allocations](#performance)
-  (Razor's page is larger and not parity‑checked, so treat that pairing as indicative — the four
-  parity‑checked engines are the like‑for‑like comparison).
+  embedded C# to Roslyn delegates — so nothing is reflected or re‑parsed per render.
 
 **Best fit:** performance‑sensitive, first‑party .NET rendering by a team that values typed
 templates and component‑style composition. **Poor fit:** untrusted user‑supplied templates
@@ -101,81 +99,16 @@ extension calls wired to compiled accessors (member paths to expression‑tree d
 embedded C# to Roslyn delegates). Rendering walks that document, so it does not re‑parse, reflect,
 or pay per‑call activation, section, or dependency‑injection overhead at run time.
 
-The repository includes a [BenchmarkDotNet](https://benchmarkdotnet.org/) suite
-([src/Heddle.Performance](src/Heddle.Performance)) that measures Heddle head‑to‑head against four
-other .NET template engines — **Fluid**, **Scriban**, **DotLiquid**, and **Handlebars.Net** — plus
-ASP.NET Core **Razor**. Every one of the four Liquid/Handlebars twins is held to **byte‑identical
-output** with Heddle by a parity assertion that runs before any timing, so the render and
-compile numbers below compare identical work (see
-[src/Heddle.Performance/Runners](src/Heddle.Performance/Runners/README.md)). Heddle is the ratio
-baseline (`[Benchmark(Baseline = true)]`, `[MemoryDiagnoser]` enabled).
-
-**The measured workload.** The parity‑checked page is the static composition of
-`home.heddle` + `layout.heddle`: the layout's reusable‑section defaults, ~a dozen
-component/extension calls (`@assets_component`, `@head_scripts`, …), and a list loop over seven
-area‑menu fragments (≈55.5 KB raw output). Because `home.heddle` extends the layout via
-`@<<{{layout.heddle}}`, the current engine emits that **ordered fragment sequence** rather than the
-full HTML page skeleton (the `@body()` slot resolves to its empty default); the four twins
-reproduce exactly those bytes. This keeps the comparison honest — all five engines do the same
-work — at the cost of not exercising the literal page chrome. The `RenderRazor` row below renders
-the full `Views/home.cshtml` page (larger, different output) and is **not** under the parity
-assertion, so treat it as indicative rather than apples‑to‑apples.
-
-### Results — 2026‑07‑11 (commit `8341bb67`)
+The repository carries a cross‑stack benchmark harness — a [BenchmarkDotNet](https://benchmarkdotnet.org/)
+leg ([benchmarks/dotnet](benchmarks/dotnet)) measuring Heddle beside Fluid, Scriban, DotLiquid,
+Handlebars.Net and ASP.NET Core Razor under a byte‑identical parity gate, plus Rust, JVM, JS, Python
+and Go legs — and publishes no numbers: measurements are taken and kept outside this repository.
+Run it yourself per [benchmarks/README.md](benchmarks/README.md):
 
 ```
-BenchmarkDotNet v0.15.8 · Windows 11 (10.0.26200.8655/25H2)
-AMD Ryzen 9 9950X 4.30GHz, 16 physical / 32 logical cores
-.NET SDK 10.0.301 · .NET 10.0.9 runtime, X64 RyuJIT x86-64-v4
+dotnet run -c Release --project benchmarks/dotnet -- gate
+dotnet run -c Release --project benchmarks/dotnet -- bench-crossstack
 ```
-
-**Render** (cached‑template path; lower is better; ratio vs Heddle):
-
-| Engine | Mean | Ratio | Allocated | Alloc ratio |
-| --- | ---: | ---: | ---: | ---: |
-| **Heddle** (baseline) | **32.50 μs** | **1.00** | **227.86 KB** | **1.00** |
-| Fluid 2.31.0 | 64.88 μs | 2.02 | 231.98 KB | 1.02 |
-| Handlebars.Net 2.1.6 | 69.76 μs | 2.17 | 227.59 KB | 1.00 |
-| DotLiquid 2.3.197 | 178.21 μs | 5.55 | 404.69 KB | 1.78 |
-| Scriban 7.2.5 | 376.71 μs | 11.73 | 1,154.34 KB | 5.07 |
-| Razor (full page)† | 65.55 μs | 2.04 | 263.51 KB | 1.16 |
-
-On this workload Heddle rendered fastest of the six — 2.0× ahead of the next engine (Fluid, 64.88 μs)
-and 11.7× ahead of Scriban — while allocating the least or tied‑least memory (227.86 KB; Handlebars.Net
-is within 0.3 KB, Scriban allocates 5.07×). † Razor renders a different, larger page and is not parity‑checked.
-
-**Compile / parse** (cold, one‑time cost; lower is better; ratio vs Heddle):
-
-| Engine | Mean | Ratio | Allocated |
-| --- | ---: | ---: | ---: |
-| **Heddle** (baseline) | **264.99 μs** | **1.00** | **1,339.67 KB** |
-| Fluid 2.31.0 | 3.65 μs | 0.01 | 5.31 KB |
-| Scriban 7.2.5 | 4.68 μs | 0.02 | 22.95 KB |
-| DotLiquid 2.3.197 | 7.21 μs | 0.03 | 36.01 KB |
-| Handlebars.Net 2.1.6 | 8,287.09 μs | 31.27 | 260.65 KB |
-
-Heddle's model is **compile‑once, render‑many**: its first compile runs ANTLR, expression‑tree
-compilation, and (for embedded C#) Roslyn, so at 264.99 μs it is ~70× the cold cost of the Liquid
-engines and allocates far more up front — a cost amortized across every subsequent cached render,
-where it leads. Handlebars.Net compiles slower still (8.29 ms, 31.3× Heddle).
-
-Raw BenchmarkDotNet artifacts (md/csv/html) for this run are committed under
-[docs/benchmarks/2026-07-11](docs/benchmarks/2026-07-11). Numbers are hardware‑ and date‑specific;
-reproduce them yourself with:
-
-```
-dotnet run -c Release --project src/Heddle.Performance
-```
-
-**Workload breadth.** The composition page above is one of three published workloads. A
-[trivial-substitution and a large-loop workload](docs/benchmarks/2026-07-18) bracket it — the
-former (scalar output, no composition) is the shape where Heddle's lead is workload-dependent
-rather than universal (in the 2026‑07‑18 run Heddle rendered it fastest but Handlebars.Net
-allocated less than half the memory), and the latter (one large iteration) is where the time race
-is tightest (Handlebars.Net within ~8%, again allocating less); both are parity-checked against
-the same four engines. No universal-superiority claim follows. Numbers are hardware- and
-date-specific; reproduce with the command above filtered to `*SubstitutionRenderBenchmarks*` /
-`*LoopRenderBenchmarks*`.
 
 ## Building
 

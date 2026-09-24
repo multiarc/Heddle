@@ -1,0 +1,1 @@
+<div class="nav-section"><% if (it.title_linked) { %><span class="nav-title"><a href="<%~ it.href %>"><%~ it.title %></a></span><% } else { %><span class="nav-title"><%~ it.title %></span><% } %><ul><% it.links.forEach(l => { %><%~ include("@nav_link", l) %><% }) %></ul></div>

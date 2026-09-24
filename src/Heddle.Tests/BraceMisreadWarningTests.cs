@@ -6,15 +6,13 @@ using Heddle.Data;
 using Heddle.Language;
 using Heddle.Runtime;
 using Xunit;
+using Heddle.TestCorpus;
 
 namespace Heddle.Tests
 {
     /// <summary>
-    /// Phase 2 (post-2.0) WI2/D5–D7 — the HED4005 <c>{{ … }}</c>-in-text misread lint: a bare
-    /// <c>{{ Title }}</c> in body text renders literal braces, warns once per occurrence (positioned at the
-    /// <c>{{</c>), and suggests <c>@(Title)</c>. Never fires inside a real subtemplate body, a raw region,
-    /// a definition body, or an <c>@&lt;&lt;</c> import block; never fires on operator/colon bodies. The
-    /// corpus scan asserts zero HED4005 across every pre-existing fixture (D-BC1).
+    /// HED4005 warns on <c>{{ Title }}</c> in text, rendering literal braces.
+    /// Tests verify it does not fire in subtemplates, raw regions, imports, or operator/colon bodies.
     /// </summary>
     public class BraceMisreadWarningTests
     {
@@ -108,7 +106,7 @@ namespace Heddle.Tests
         [Fact]
         public void ImportBlockNoWarn()
         {
-            // '@<<{{layout.heddle}}' matches the D7 dotted-path regex, but the import block's span lives in
+            // '@<<{{layout.heddle}}' matches the lint's dotted-path regex, but the import block's span lives in
             // DefinitionsBlock.Positions — excluded.
             HeddleTemplate.Configure(typeof(BraceMisreadWarningTests).GetTypeInfo().Assembly);
             var options = new TemplateOptions { RootPath = Path.GetFullPath("TestTemplate") };
@@ -120,7 +118,7 @@ namespace Heddle.Tests
         [Fact]
         public void CommentBeforeRealBodyNoWarn()
         {
-            // F2 coordinate regression: the comment excises to a clean '@if(true){{ Title }}' whose
+            // Coordinate regression: the comment excises to a clean '@if(true){{ Title }}' whose
             // '{{ Title }}' clean offset falls inside the post-shift chain span — proving the scan runs
             // AFTER ShiftBySkippedTokens (a pre-shift scan false-fires here).
             var t = Compile("@* note *@@if(true){{ Title }}");
@@ -131,7 +129,7 @@ namespace Heddle.Tests
         [Fact]
         public void CommentBeforeTextMisreadWarns()
         {
-            // F2 coordinate regression: a genuine text-position misread preceded by a comment still fires,
+            // Coordinate regression: a genuine text-position misread preceded by a comment still fires,
             // positioned at the clean-document '{{' (the comment's excised length precedes it).
             var t = Compile("@* note *@<p>{{ Title }}</p>");
             Assert.True(t.CompileResult.Success, t.CompileResult.ToString());
@@ -165,12 +163,12 @@ namespace Heddle.Tests
             Assert.True(t.CompileResult.Success, t.CompileResult.ToString());
             Assert.Equal(1, WarningCount(t));
             var actual = t.Generate(null);
-            File.WriteAllText("TestTemplate/test-brace-misread.html", actual);
+            File.WriteAllText(TestCorpusIndex.WrittenArtifactPath("test-brace-misread.html"), actual);
             var expected = File.ReadAllText("TestTemplate/generated-brace-misread.html").Replace("\r\n", "\n");
             Assert.Equal(expected, actual);
         }
 
-        [Fact] // corpus scan (D-BC1) — zero HED4005 on every pre-existing fixture
+        [Fact] // corpus scan — zero HED4005 on every pre-existing fixture
         public void CorpusScanReportsOnlyTheBraceMisreadFixture()
         {
             HeddleTemplate.Configure(typeof(BraceMisreadWarningTests).GetTypeInfo().Assembly);

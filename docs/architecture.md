@@ -3,37 +3,62 @@
 This page is for contributors who want to understand or modify the engine. It traces a
 template from text to rendered output and points at the types that do each job.
 
-## High‑level pipeline
+## High-level pipeline
 
-```mermaid
-flowchart TD
-    src["Template text"] --> lex
-
-    subgraph parse["DocumentParser.Parse (steps 1-3)"]
-        lex["1. LEX<br/>HeddleLexer (ANTLR, mode stack)"] -->|tokens| prs["2. PARSE<br/>HeddleParser - SLL, fallback LL"]
-        prs -->|parse tree| walk["3. WALK<br/>HeddleMainListener + ParseContext"]
-        prs -.->|syntax errors| errs["HeddleSyntaxErrorListener"]
-    end
-
-    subgraph compile["HeddleCompiler.Compile (steps 4-5)"]
-        cmp["4. COMPILE (HeddleCompiler)<br/>extensions + compiled accessors"] --> mem["member paths -> expression-tree delegates"]
-        cmp --> cs["@(...) C# -> Roslyn delegates"]
-    end
-
-    walk -->|"definitions, output chains"| cmp
-    cmp --> rt["RuntimeDocument (+ IProcessStrategy)"]
-    rt --> render["6. RENDER<br/>HeddleTemplate.Generate(data)<br/>ScopeRenderer -> string"]
-    errs -.->|collected| result["HeddleCompileResult"]
-    cmp -.-> result
+```text
+Template text
+  │
+  ▼
+1. LEX ── HeddleLexer (ANTLR, mode stack) ── tokens ──► 2. PARSE ── HeddleParser (SLL, fallback LL)
+  │                                                        │  ▲
+  │ syntax errors                                          │  │ parse tree
+  ▼                                                        ▼  │
+HeddleSyntaxErrorListener ── collected ──► HeddleCompileResult ◄── 3. WALK ── HeddleMainListener + ParseContext
+                                                              │
+                                              definitions, output chains
+                                                              ▼
+                        4. COMPILE ── HeddleCompiler (extensions + compiled accessors)
+                          ├── member paths ──► expression-tree delegates
+                          └── `@(...)` C# ──► Roslyn delegates
+                                                              │
+                                                              ▼
+                        RuntimeDocument (+ IProcessStrategy)
+                                                              │
+                                                              ▼
+                        6. RENDER ── HeddleTemplate.Generate(data) ── ScopeRenderer ──► string
 ```
 
 The orchestration entry points are
 [`DocumentParser.Parse`](../src/Heddle/Language/DocumentParser.cs) (steps 1–3) and
 [`HeddleTemplate.Compile`](../src/Heddle/HeddleTemplate.cs) → `HeddleCompiler.Compile` (steps 4–5).
 
+### The MSBuild build host
+
+Precompilation runs the same pipeline out of process. The `Heddle.Build` targets serialize items
+and properties into a response file; `heddle compile` parses, compiles with form recording,
+and writes two outputs: the embedded compiled-form artifact
+(`Heddle.CompiledForm.bin`) and the generated source (`Heddle.CompiledForm.g.cs`) — one typed entry
+class per template plus one static site method per printable site. At run time the loader reads the
+artifact rows through `PrecompiledTemplateInfo`, serves printable sites from the table, and rebuilds
+declined sites from the recorded form. Nothing runs inside the compiler. See
+[Build‑Time Pre‑compilation](precompilation.md) and
+[Build integration](building.md#build-integration).
+
+### Under the hood: form and gauntlet
+
+The compiled form (`src/Heddle/Precompiled/CompiledForm/`) is a versioned binary section layout —
+templates, documents, extensions, functions, members — written by `CompiledFormWriter` and read by
+`CompiledFormReader` (schema 3 is the only readable shape; the reader rejects anything else before
+any row is trusted). The run-time gauntlet (`PrecompiledGauntlet.Validate`) checks a row against the
+*live* request — options fingerprint, ambient model type, extension identities, function targets,
+member bindings, content staleness — and any failure degrades that template to the dynamic tier with
+a `PrecompiledFallbackEvent`. Regeneration is byte-exact by construction: `CompiledFormWriter`
+stamps a content digest, and `CompiledFormFixtureTests` pins a stored real-build artifact
+(`src/Heddle.Tests/TestTemplate/compiled-form-v3.bin`) byte-for-byte through read and re-encode, and registers and renders it against the text compile of the same fixture.
+
 ---
 
-## 1. Lexing
+## Stage 1 lexing
 
 The lexer is generated from [HeddleLexer.g4](../src/Heddle.Language/HeddleLexer.g4) (which
 imports [CSharp.g4](../src/Heddle.Language/CSharp.g4) for C# tokens). It is **mode‑based**:
@@ -96,7 +121,7 @@ for the author‑facing view.
 
 ---
 
-## 2. Parsing
+## Stage 2 parsing
 
 The parser is generated from [HeddleParser.g4](../src/Heddle.Language/HeddleParser.g4). The
 top‑level rule is `heddle`; the interesting rules are `definition`, `outblock`, `chain`, `call`,
@@ -118,7 +143,7 @@ Syntax errors are gathered by
 
 ---
 
-## 3. Tree walking
+## Stage 3 tree walking
 
 A `ParseTreeWalker` drives
 [`HeddleMainListener`](../src/Heddle/Language/HeddleMainListener.cs), which builds the
@@ -128,7 +153,7 @@ imports, and the raw/text spans. This is the structured representation the compi
 
 ---
 
-## 4–5. Compilation
+## Stages 4 and 5 compilation
 
 [`HeddleCompiler`](../src/Heddle/Runtime/HeddleCompiler.cs) turns the parse context into an
 **execution‑ready document** ([`RuntimeDocument`](../src/Heddle/Runtime/RuntimeDocument.cs)):
@@ -155,8 +180,9 @@ DLR call sites (see below).
   ([`CompiledParameter`](../src/Heddle/Runtime/Parameters/CompiledParameter.cs)). This is
   also where C# expressions are **bound to the model's types**; the
   [`CompileScope`](../src/Heddle/Runtime)/`CSharpContext` track imported namespaces
-  (`@using`) and the model type (`@model`, `:: Type`). `CompileScope.Compile()` runs that
-  Roslyn pass.
+  (`@using`) and the model type (`@model`, `:: Type`). The Roslyn pass is run by
+  `ContextCompilation.Compile`, an internal extension method over `CompileScope` — not a member of
+  `CompileScope`, which exposes no compile entry point of its own.
 - Errors from either path are collected as `HeddleCompileError`s rather than thrown, and surfaced
   through [`HeddleCompileResult`](../src/Heddle/Data/HeddleCompileResult.cs).
 
@@ -167,7 +193,7 @@ document — not a single whole‑template Roslyn compile.
 
 ---
 
-## 6. Rendering
+## Stage 6 rendering
 
 [`HeddleTemplate.Generate`](../src/Heddle/HeddleTemplate.cs) creates a
 [`ScopeRenderer`](../src/Heddle/Data) and a root [`Scope`](../src/Heddle/Data/Scope.cs),
@@ -186,17 +212,12 @@ length‑based on net8+ and count‑based on older targets).
 
 ## Performance characteristics
 
-The repository's [BenchmarkDotNet suite](../src/Heddle.Performance) measures Heddle against four
-other .NET template engines (Fluid, Scriban, DotLiquid, Handlebars.Net) — all four rendering
-byte‑identical parity‑checked output over a component‑heavy composition workload — plus ASP.NET Core
-Razor, which renders a larger, different page and is **not** under the parity assertion
-(`[MemoryDiagnoser]` enabled). In the run of **2026‑07‑11** (commit `8341bb67`; AMD Ryzen 9 9950X,
-.NET 10.0.9, BenchmarkDotNet 0.15.8) Heddle rendered that page in **32.50 μs / 227.86 KB** — the
-fastest of the six and tied‑least on allocation (within 0.3 KB of Handlebars.Net); the next engine (Fluid) took 2.0× as long and
-Scriban 11.7× with 5.07× the allocation. The full render and compile‑cost tables, environment
-header, and raw artifacts live in the [README Performance section](../README.md#performance) and
-[docs/benchmarks/2026-07-11](benchmarks/2026-07-11/). The reasons Heddle leads on the render path are
-structural, not incidental:
+The repository's [BenchmarkDotNet suite](../benchmarks/dotnet) measures Heddle against five
+other .NET template engines (Fluid, Scriban, DotLiquid, Handlebars.Net and ASP.NET Core Razor) over
+eight workloads, every one of them rendering byte‑identical parity‑checked output
+(`[MemoryDiagnoser]` enabled); measurements are taken and kept outside the repository
+([benchmarks/README.md](../benchmarks/README.md)). The design of the render path is what the harness
+measures:
 
 - **Execution‑ready document, not per‑call activation.** Each template becomes a
   `RuntimeDocument` / `IProcessStrategy` with extension instances already resolved and typed,
@@ -214,21 +235,17 @@ structural, not incidental:
   `[MethodImpl(AggressiveInlining)]` transforms, avoiding per‑scope heap allocation as the
   renderer descends into elements and subtemplates.
 - **Composition is near‑free at run time.** Splitting a page into independent reusable templates
-  recombined by a layout (see the benchmark's `@<<{{layout.heddle}}` import + `<body:body>`
+  recombined by a layout (see the benchmark's `@<<{{shared/layout.heddle}}` import + `<body:body>`
   override) renders through one pre‑built extension node per definition invocation — no per‑render
   lookup, activation, or buffer indirection — unlike Razor sections, whose layout/section binding
   adds indirection. See
-  [Language Reference → inheritance](language-reference.md#inheritance-and-override-childbase).
+  [Language Reference → inheritance](language-reference.md#inheritance-and-override-with-child-and-base).
 
 The trade‑off is **up‑front compilation**: the first compile runs ANTLR (parse), expression‑tree
 compilation (member accessors), and Roslyn (embedded C#), so it is not cheap — the model is
-"compile once, render many." In the same 2026‑07‑11 run, cold‑compiling the layout + home
-templates took **264.99 μs / 1,339.67 KB** for Heddle versus single‑digit microseconds for the
-Liquid engines (Fluid 3.65 μs, Scriban 4.68 μs, DotLiquid 7.21 μs) — a cost amortized across every
-cached render. Compile cost is benchmarked via
-[TemplateParseBenchmarks](../src/Heddle.Performance/TemplateParseBenchmarks.cs) and the runners in
-[src/Heddle.Performance/Runners](../src/Heddle.Performance/Runners/README.md); full table in the
-[README](../README.md#performance).
+"compile once, render many" — a cost amortized across every cached render. Compile cost is benchmarked by the harness's cold sidebar
+(`dotnet run -c Release --project benchmarks/dotnet -- bench-cold`), which measures parse and
+compile as separate rows because they are separate steps.
 
 ---
 
@@ -246,8 +263,10 @@ cached render. Compile cost is benchmarked via
 | `Heddle/Strings` | Fast string building (`ExStringBuilder`). |
 | `Heddle/LanguageTemplates` | `.tcs` resources used to emit C# for Roslyn. |
 | [src/Heddle.Language](../src/Heddle.Language) | ANTLR grammar + generated lexer/parser + editor assets. |
+| [src/Heddle.Build](../src/Heddle.Build) | MSBuild task + targets/props: the out-of-process build host. |
+| [src/Heddle.Tool](../src/Heddle.Tool) | The `heddle` CLI incl. `compile`: form writer, site printers, source emitter. |
 | [src/Heddle.Tests](../src/Heddle.Tests) | xUnit tests + `.heddle` fixtures. |
-| [src/Heddle.Performance](../src/Heddle.Performance) | BenchmarkDotNet benchmarks. |
+| [benchmarks/dotnet](../benchmarks/dotnet) | BenchmarkDotNet benchmarks — the cross-stack .NET leg. Not in `Heddle.sln`. |
 
 ---
 
@@ -273,7 +292,7 @@ The project references `Antlr4.Runtime.Standard` 4.13.1 at run time. The `js/` a
 
 ---
 
-## Editor / tooling integrations
+## Editor and tooling integrations
 
 - **JavaScript parser** — `generate_js.cmd` produces a JS lexer/parser under `js/` from the
   same grammar (for in‑browser editing).

@@ -1,31 +1,21 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
 using Heddle.Attributes;
 using Heddle.Core;
 using Heddle.Data;
 using Heddle.Helpers;
+using Heddle.Precompiled;
+using Heddle.Precompiled.CompiledForm;
 using Heddle.Strings;
 
 namespace Heddle.Extensions
 {
     /// <summary>
-    /// <para>List Template</para>
-    /// <para>Optional parameter is sub-template (fully incluisive) wich represents one of element of the list.</para>
-    /// <para>Data should be formatted as ordinary source template. Required <see cref="IEnumerable{T}"/> interface implemented for source data to be serialized.</para>
-    /// <para>For Example:</para>
-    /// <para>
-    ///     <code>
-    ///         <para>&lt;%&lt;list&gt;</para>
-    ///             <para>CustomerList</para>
-    ///             <para>[Birth Date: &lt;%&lt;date&gt;BirthDate[yyyy-MM-dd]%&gt; Name: &lt;%&lt;string&gt;Name%&gt;&lt;br /&gt;]</para>
-    ///         <para>%&gt;</para>
-    ///     </code>
-    /// </para>
-    /// <para>Will produce:</para>
-    /// <para>Birth Date: 1970-02-22 Name: Alex</para>
-    /// <para>Birth Date: 1976-04-15 Name: Anna</para>
-    /// <para>...</para>
+    /// Renders a sub-template once per element of an <see cref="IEnumerable{T}"/>, concatenating results.
     /// </summary>
     [ExtensionName("list")]
     [DataType(typeof(IEnumerable))]
@@ -33,10 +23,14 @@ namespace Heddle.Extensions
     {
         private ICountReader _collectionCountReader;
 
+        [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "CountReader<T> is instantiated only over reference-type elements, which share one canonical instantiation in an AOT publish; value-type elements take the non-generic count path.")]
         public override ExType InitStart(InitContext initContext, ExType dataType, ExType chainedType, ExType parent)
         {
             if (dataType == null)
                 throw new ArgumentNullException(nameof(dataType));
+            string ambiguity;
+            if (HasAmbiguousElementType(dataType.Type, out ambiguity))
+                NoteOrderRefusal(initContext, ambiguity);
             if (dataType.IsDynamic)
             {
                 return base.InitStart(initContext, dataType, new ExType(typeof(int)), null);
@@ -45,7 +39,20 @@ namespace Heddle.Extensions
             var elementType = dataType.Type.TryGetElementType(typeof(ICollection<>));
             if (elementType != null)
             {
-                _collectionCountReader = (ICountReader) Activator.CreateInstance(typeof(CountReader<>).MakeGenericType(elementType));
+                // CountReader<T> shares one instantiation for reference-type elements, but a
+                // value-type element needs fresh codegen per T, which NativeAOT cannot make at load.
+                // Value-type elements take the non-generic ICollection.Count path instead (else no
+                // count, which only loses the result-array pre-size, never a byte).
+                if (elementType.IsValueType)
+                {
+                    _collectionCountReader = NonGenericCountReader.Instance;
+                }
+                else
+                {
+                    // Reference-type instantiations share codegen, so this MakeGenericType is
+                    // AOT-safe; value-type elements never reach it.
+                    _collectionCountReader = (ICountReader) Activator.CreateInstance(typeof(CountReader<>).MakeGenericType(elementType));
+                }
             }
 
             ExType underlyingType = dataType.Type.TryGetElementType(typeof(IEnumerable<>)) ?? ExType.Dynamic;
@@ -56,8 +63,7 @@ namespace Heddle.Extensions
         {
             if (!(scope.ModelData is IEnumerable))
                 return string.Empty;
-            // C1-R4: same one-time probe type-test for the value-building path — a giant loop in value context
-            // accumulates before it ever reaches the sink, so the deadline is its only bound.
+            // Type-test the probe once; large loops accumulate before reaching the sink, so enforce the deadline here.
             var probe = scope.Renderer as IBudgetProbe;
             var enumerable = (IEnumerable) scope.ModelData;
             var count = _collectionCountReader?.GetCount(scope.ModelData);
@@ -71,9 +77,11 @@ namespace Heddle.Extensions
                 {
                     probe?.TickDeadline();
                     var itemScope = scope.Model(item, index);
-                    var result = GetInnerResult(itemScope);
+                    // A bodiless @list has no inner result at all; the slot still has to hold a string,
+                    // because the concatenation below copies every slot.
+                    var result = GetInnerResult(itemScope) ?? string.Empty;
                     itemResults[index] = result;
-                    totalLength += result?.Length ?? 0;
+                    totalLength += result.Length;
                     index++;
                 }
 
@@ -107,8 +115,7 @@ namespace Heddle.Extensions
             if (!(scope.ModelData is IEnumerable))
                 return;
 
-            // C1-R4: type-test the held renderer for the budget probe once, before the loop, then enforce the
-            // wall-clock deadline per iteration so a zero-output loop (no render op) still terminates.
+            // Type-test the probe once; enforce the deadline per iteration even if the loop produces no output.
             var probe = scope.Renderer as IBudgetProbe;
             var enumerable = (IEnumerable) scope.ModelData;
             var index = 0;
@@ -132,6 +139,52 @@ namespace Heddle.Extensions
             {
                 return (value as ICollection<T>)?.Count;
             }
+        }
+
+        /// <summary>Reference-free count for value-type element types: the non-generic
+        /// <see cref="System.Collections.ICollection.Count"/>, else no count (the loop then grows a
+        /// <c>LinearList</c> instead of a pre-sized array; the bytes never change).</summary>
+        private sealed class NonGenericCountReader : ICountReader
+        {
+            public static readonly NonGenericCountReader Instance = new NonGenericCountReader();
+
+            public int? GetCount(object value)
+            {
+                return (value as System.Collections.ICollection)?.Count;
+            }
+        }
+
+        /// <summary>Detects the reflection-order hazard: the element type the engine would pick is the
+        /// first of several <c>IEnumerable&lt;T&gt;</c> implementations in reflection enumeration order,
+        /// so no static answer exists. The build records a class-(b) refusal instead of blessing one.</summary>
+        [UnconditionalSuppressMessage("Trimming", "IL2070", Justification = "Reflection over a model type; model types reach the engine through [HeddleModelAssembly]/typeof parameters annotated DynamicallyAccessedMemberTypes.All, which keeps their members through a trimmed publish.")]
+        private static bool HasAmbiguousElementType(Type type, out string detail)
+        {
+            detail = null;
+            if (type == null)
+                return false;
+            var candidates = type.GetTypeInfo().ImplementedInterfaces
+                .Where(i => i.GetTypeInfo().IsGenericType &&
+                    i.GetGenericTypeDefinition() == typeof(IEnumerable<>))
+                .Select(i => i.GenericTypeArguments[0])
+                .Distinct()
+                .ToList();
+            if (candidates.Count < 2)
+                return false;
+            detail = "element type chosen among " +
+                string.Join(", ", candidates.Select(t => t.FullName));
+            return true;
+        }
+
+        private static void NoteOrderRefusal(InitContext initContext, string detail)
+        {
+            var scope = initContext.CompileScope;
+            var record = scope?.CompileContext.FormRecord;
+            if (record == null || initContext.SourceItem == null)
+                return;
+            record.NoteRefusal(initContext.SourceItem, PrecompiledRefusalClass.ReflectionOrderValue,
+                detail, scope.ScopeType, scope.ScopeType, scope.RootScopeType,
+                new List<string>(scope.Namespaces));
         }
     }
 }

@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -13,13 +14,25 @@ using LspProtocol = Heddle.LanguageServer.Protocol;
 namespace Heddle.LanguageServer
 {
     /// <summary>
-    /// The hand-rolled LSP 3.17 layer (phase 6 D4–D8): thin StreamJsonRpc target methods, each a projection of a
-    /// <see cref="HeddleLanguageService"/> call plus DTO mapping. Full-document sync, 300 ms debounce,
-    /// request-forced analysis. No compiler logic lives here.
+    /// Thin StreamJsonRpc target methods, each a projection of a <see cref="HeddleLanguageService"/> call
+    /// plus DTO mapping. Full-document sync, 300 ms debounce, request-forced analysis. No compiler logic lives here.
     /// </summary>
     internal sealed class LspServer
     {
-        internal const string InformationalVersion = "1.0.0";
+        /// <summary>Version reported by <c>heddle-lsp --version</c> and LSP <c>initialize</c> response.
+        /// Read from <see cref="AssemblyInformationalVersionAttribute"/> (source-revision trimmed); derived to prevent drift.</summary>
+        internal static readonly string InformationalVersion = ReadInformationalVersion();
+
+        private static string ReadInformationalVersion()
+        {
+            var raw = typeof(LspServer).Assembly
+                .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+            if (string.IsNullOrEmpty(raw))
+                return typeof(LspServer).Assembly.GetName().Version?.ToString() ?? "unknown";
+            var plus = raw.IndexOf('+');
+            return plus < 0 ? raw : raw.Substring(0, plus);
+        }
+
         private const int DebounceMs = 300;
 
         private readonly ConcurrentDictionary<string, (string Text, int Version)> _buffers =
@@ -43,8 +56,6 @@ namespace Heddle.LanguageServer
             _rpc = rpc;
         }
 
-        // ---- Lifecycle -----------------------------------------------------------------------------------------
-
         [JsonRpcMethod("initialize", UseSingleObjectParameterDeserialization = true)]
         public LspProtocol.InitializeResult Initialize(LspProtocol.InitializeParams @params)
         {
@@ -53,6 +64,7 @@ namespace Heddle.LanguageServer
                 _workspaceRoot = ResolveWorkspaceRoot(@params);
                 var options = BuildOptions(_workspaceRoot, @params?.InitializationOptions);
                 _service = new HeddleLanguageService(options) { LogSink = LogSink };
+                LogConfigurationMessages(options);
                 _initialized = true;
             }
 
@@ -62,7 +74,7 @@ namespace Heddle.LanguageServer
                     TextDocumentSync = new LspProtocol.TextDocumentSyncOptions
                     {
                         OpenClose = true,
-                        Change = 1, // Full
+                        Change = 1,
                         Save = new LspProtocol.SaveOptions()
                     },
                     CompletionProvider = new LspProtocol.CompletionOptions
@@ -112,7 +124,6 @@ namespace Heddle.LanguageServer
         [JsonRpcMethod("workspace/didChangeConfiguration", UseSingleObjectParameterDeserialization = true)]
         public void DidChangeConfiguration(LspProtocol.DidChangeConfigurationParams @params)
         {
-            // v1: re-read the workspace file/settings and rebuild. The one-shot export scan never re-runs (D23/D24).
             lock (_lifecycleGate)
             {
                 if (!_initialized)
@@ -120,13 +131,12 @@ namespace Heddle.LanguageServer
                 var options = BuildOptions(_workspaceRoot, @params?.Settings);
                 _service?.Dispose();
                 _service = new HeddleLanguageService(options) { LogSink = LogSink };
+                LogConfigurationMessages(options);
             }
 
             foreach (var uri in _buffers.Keys.ToArray())
                 AnalyzeAndPublish(uri);
         }
-
-        // ---- Document sync -------------------------------------------------------------------------------------
 
         [JsonRpcMethod("textDocument/didOpen", UseSingleObjectParameterDeserialization = true)]
         public void DidOpen(LspProtocol.DidOpenTextDocumentParams @params)
@@ -170,10 +180,36 @@ namespace Heddle.LanguageServer
             PublishDiagnostics(uri, null, Array.Empty<LspProtocol.Diagnostic>());
         }
 
-        // ---- Features ------------------------------------------------------------------------------------------
-
         [JsonRpcMethod("textDocument/completion", UseSingleObjectParameterDeserialization = true)]
         public LspProtocol.CompletionItem[] Completion(LspProtocol.CompletionParams @params, CancellationToken ct)
+        {
+            return Answer("completion", Array.Empty<LspProtocol.CompletionItem>(), () => CompletionCore(@params, ct));
+        }
+
+        /// <summary>Runs a request and answers <paramref name="nothing"/> if it throws. A request that fails is
+        /// one the editor repeats on the next keystroke; failing it as an error helps nobody and, for as long as
+        /// the document stays as it is, fails every one after it. Said once per distinct fault.</summary>
+        internal T Answer<T>(string request, T nothing, Func<T> body)
+        {
+            try
+            {
+                return body();
+            }
+            catch (Exception e) when (!(e is OperationCanceledException || e is OutOfMemoryException))
+            {
+                string message = $"The {request} request failed and was answered with nothing: {e.GetType().Name}: {e.Message}";
+                bool first;
+                lock (_requestFaults)
+                    first = _requestFaults.Add(message);
+                if (first)
+                    LogSink(message);
+                return nothing;
+            }
+        }
+
+        private readonly HashSet<string> _requestFaults = new HashSet<string>(StringComparer.Ordinal);
+
+        private LspProtocol.CompletionItem[] CompletionCore(LspProtocol.CompletionParams @params, CancellationToken ct)
         {
             var uri = @params.TextDocument.Uri;
             var analysis = EnsureAnalyzed(uri);
@@ -186,6 +222,11 @@ namespace Heddle.LanguageServer
 
         [JsonRpcMethod("textDocument/hover", UseSingleObjectParameterDeserialization = true)]
         public LspProtocol.Hover Hover(LspProtocol.HoverParams @params)
+        {
+            return Answer("hover", null, () => HoverCore(@params));
+        }
+
+        private LspProtocol.Hover HoverCore(LspProtocol.HoverParams @params)
         {
             var uri = @params.TextDocument.Uri;
             var analysis = EnsureAnalyzed(uri);
@@ -201,6 +242,11 @@ namespace Heddle.LanguageServer
 
         [JsonRpcMethod("textDocument/definition", UseSingleObjectParameterDeserialization = true)]
         public LspProtocol.Location Definition(LspProtocol.DefinitionParams @params)
+        {
+            return Answer("definition", null, () => DefinitionCore(@params));
+        }
+
+        private LspProtocol.Location DefinitionCore(LspProtocol.DefinitionParams @params)
         {
             var uri = @params.TextDocument.Uri;
             var analysis = EnsureAnalyzed(uri);
@@ -222,13 +268,14 @@ namespace Heddle.LanguageServer
         [JsonRpcMethod("textDocument/semanticTokens/full", UseSingleObjectParameterDeserialization = true)]
         public LspProtocol.SemanticTokens SemanticTokensFull(LspProtocol.SemanticTokensParams @params)
         {
-            var analysis = EnsureAnalyzed(@params.TextDocument.Uri);
-            return new LspProtocol.SemanticTokens(analysis == null
-                ? Array.Empty<int>()
-                : SemanticTokensBuilder.Build(analysis));
+            return Answer("semantic tokens", new LspProtocol.SemanticTokens(Array.Empty<int>()), () =>
+            {
+                var analysis = EnsureAnalyzed(@params.TextDocument.Uri);
+                return new LspProtocol.SemanticTokens(analysis == null
+                    ? Array.Empty<int>()
+                    : SemanticTokensBuilder.Build(analysis));
+            });
         }
-
-        // ---- Internals -----------------------------------------------------------------------------------------
 
         private void ScheduleDebounced(string uri)
         {
@@ -267,9 +314,19 @@ namespace Heddle.LanguageServer
         {
             if (_service == null || !_buffers.TryGetValue(uri, out var buffer))
                 return;
-            var analysis = _service.Analyze(UriToPath(uri), buffer.Text, buffer.Version);
-            var diagnostics = analysis.Diagnostics.Select(d => ToLspDiagnostic(analysis, d)).ToArray();
-            PublishDiagnostics(uri, buffer.Version, diagnostics);
+            try
+            {
+                var analysis = _service.Analyze(UriToPath(uri), buffer.Text, buffer.Version);
+                var diagnostics = analysis.Diagnostics.Select(d => ToLspDiagnostic(analysis, d)).ToArray();
+                PublishDiagnostics(uri, buffer.Version, diagnostics);
+            }
+            catch (Exception e) when (!(e is OperationCanceledException))
+            {
+                // This runs from notifications and from the debounce timer, where nobody receives an exception:
+                // unreported, the document would keep showing the diagnostics of a version that is gone.
+                LogSink($"Analysis of {uri} failed, so its diagnostics were cleared: {e.GetType().Name}: {e.Message}");
+                PublishDiagnostics(uri, buffer.Version, Array.Empty<LspProtocol.Diagnostic>());
+            }
         }
 
         private void PublishDiagnostics(string uri, int? version, LspProtocol.Diagnostic[] diagnostics)
@@ -318,6 +375,16 @@ namespace Heddle.LanguageServer
             return new LspProtocol.Range(new LspProtocol.Position(sl, sc), new LspProtocol.Position(el, ec));
         }
 
+        /// <summary>Forwards workspace-configuration warnings to the client's log. A configuration error keeps
+        /// the option's default and logs a message; it never becomes a diagnostic and never stops analysis.</summary>
+        private void LogConfigurationMessages(HeddleLanguageServiceOptions options)
+        {
+            if (options?.ConfigurationMessages == null)
+                return;
+            foreach (var message in options.ConfigurationMessages)
+                LogSink(message);
+        }
+
         private void LogSink(string message)
         {
             _rpc?.NotifyWithParameterObjectAsync("window/logMessage",
@@ -326,8 +393,7 @@ namespace Heddle.LanguageServer
 
         private static HeddleLanguageServiceOptions BuildOptions(string root, JsonElement? settings)
         {
-            // File wins over client settings (D18); v1 precedence: a present .heddle-lsp.json is authoritative,
-            // otherwise the forwarded client settings, otherwise a bare typeless workspace.
+            // Precedence: .heddle-lsp.json > client settings > bare workspace.
             var filePath = string.IsNullOrEmpty(root)
                 ? WorkspaceConfig.FileName
                 : Path.Combine(root, WorkspaceConfig.FileName);
@@ -356,7 +422,7 @@ namespace Heddle.LanguageServer
                 catch { return uri; }
             }
 
-            return uri; // untitled / non-file — analyzed typelessly
+            return uri;
         }
 
         internal static string PathToUri(string path)

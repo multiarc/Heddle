@@ -12,8 +12,6 @@ namespace Heddle.Language {
     public class ParseContext {
         private readonly int _offset;
 
-        //internal bool DefenitionsOnly { get; set; }
-
         private readonly bool _inDefintionContext;
 
         private readonly List<HeddleToken> _tokens = new List<HeddleToken>();
@@ -24,29 +22,34 @@ namespace Heddle.Language {
         
         public IEnumerable<ParseContext> SubContexts => _subContexts;
 
-        internal ParseContext(ParseContext parentContext = null, int offset = 0, bool provideLanguageFeatures = false) {
+        internal ParseContext(ParseContext parentContext = null, int offset = 0, bool provideLanguageFeatures = false)
+            : this(parentContext, offset, provideLanguageFeatures, true)
+        {
+        }
+
+        private ParseContext(ParseContext parentContext, int offset, bool provideLanguageFeatures, bool inheritDefinitions) {
             _inDefintionContext = (parentContext?.InDefinition ?? false) || (parentContext?._inDefintionContext ?? false);
             ProvideLanguageFeatures = provideLanguageFeatures || (parentContext?.ProvideLanguageFeatures ?? false);
             _offset = offset;
-            DefinitionsBlock = new DefinitionBlock(parentContext?.DefinitionsBlock);
-            OutputChains = new List<OutputChain>();
-            RawOutputItems = new List<RawOutputItem>();
-            SkippedTokens = new List<BlockPosition>();
-            DefaultChains = new List<OutputChain>();
+            DefinitionsBlock = new DefinitionBlock(inheritDefinitions ? parentContext?.DefinitionsBlock : null);
+            _outputChains = new List<OutputChain>();
+            _rawOutputItems = new List<RawOutputItem>();
+            _skippedTokens = new List<BlockPosition>();
+            _defaultChains = new List<OutputChain>();
             Errors = parentContext?.Errors ?? new List<HeddleCompileError>();
             Warnings = parentContext?.Warnings ?? new List<HeddleCompileWarning>();
             RegionFillCandidates = parentContext?.RegionFillCandidates ?? new List<RegionFillCandidate>();
+            ImporterSatisfiableErrors = parentContext?.ImporterSatisfiableErrors ??
+                                        new HashSet<HeddleCompileError>();
             ImportOrigin = parentContext?.ImportOrigin;
+            ImportSource = parentContext?.ImportSource;
         }
 
-        /// <summary>
-        /// The absolute (document-space) UTF-16 offset this context's tokens are keyed from — the phase 6 D2
-        /// span key for the scope map. Equal to the private <c>_offset</c>.
-        /// </summary>
+        /// <summary>The absolute document-space UTF-16 offset this context's tokens are keyed from.</summary>
         internal int AbsoluteOffset => _offset;
 
         /// <summary>
-        /// The phase 6 D25 import-provenance marker: non-null while this context (or an ancestor) is the parse
+        /// Import-provenance marker: non-null while this context (or an ancestor) is the parse
         /// of an imported/partial file. Inherited by child contexts through the ctor; <c>null</c> outside imports
         /// and always <c>null</c> unless <see cref="ProvideLanguageFeatures"/> is on. Diagnostics compiled under a
         /// context carrying this marker are re-anchored to the import site by the LSP facade.
@@ -54,7 +57,15 @@ namespace Heddle.Language {
         internal ImportOrigin ImportOrigin { get; set; }
 
         /// <summary>
-        /// Phase 7 D5: the stable identity of a caller-content context across isolation copies. Each
+        /// The <c>@&lt;&lt;</c> import whose text this context's positions are absolute in, or <c>null</c>
+        /// outside an import and whenever <see cref="ParserSettings.CaptureImportSource"/> is off. Inherited
+        /// by reference through the ctor, so a body or definition context nested inside an imported file
+        /// names the same file its enclosing chains do.
+        /// </summary>
+        internal ImportSource ImportSource { get; set; }
+
+        /// <summary>
+        /// The stable identity of a caller-content context across isolation copies. Each
         /// <c>EnterSubtemplate</c> creates one fresh root context per body; every isolation copy of it (parse-time
         /// <c>IsolateContextWithTree</c> or per-call-site <c>OutputItem</c> isolation) maps back to that root, so
         /// a <see cref="RegionFillCandidate"/> captured while parsing the body matches its call site's
@@ -66,69 +77,336 @@ namespace Heddle.Language {
         internal ParseContext OriginIdentity => IsolationOrigin ?? this;
 
         /// <summary>
-        /// Phase 7 D5: the root-shared region-fill candidate list (initialized the same shared-up-the-chain way
+        /// The root-shared region-fill candidate list (initialized the same shared-up-the-chain way
         /// as <see cref="Errors"/>), so a candidate captured in any sub-context is reachable from the compiler's
         /// call-site fill step without any sub-context sweep.
         /// </summary>
         internal List<RegionFillCandidate> RegionFillCandidates { get; }
 
         /// <summary>
-        /// Phase 7 D2/D3: the regions declared directly in this context (a component body), in declaration order,
+        /// The subset of <see cref="Errors"/> that names something this document does not itself declare and an
+        /// <b>importer</b> could have declared — today, a base definition that was not found. Shared up the chain
+        /// the same way <see cref="Errors"/> is.
+        /// <para>A file meant only to be imported is compiled on its own by the build tier, and a fragment that is
+        /// only well-formed inside an importer fails that pass. The engine never runs that pass in production — an
+        /// imported file only ever reaches the compiler already expanded into the document importing it — so a
+        /// caller that knows something imports the file can tell these errors from the ones the file owns whatever
+        /// its surroundings. Nothing here changes what the engine itself reports.</para>
+        /// </summary>
+        internal HashSet<HeddleCompileError> ImporterSatisfiableErrors { get; }
+
+        /// <summary>
+        /// The regions declared directly in this context (a component body), in declaration order,
         /// appended on the <c>EnterDef</c> store-success path only. Transferred to the enclosing component's
         /// <see cref="DefinitionItem.Regions"/> when its body context is attached at <c>ExitSubtemplate</c>.
         /// Per-context (never shared up the chain).
         /// </summary>
         internal List<RegionDeclaration> DeclaredRegions { get; } = new List<RegionDeclaration>();
 
-        private static ParseContext IsolateContextFrom(ParseContext context)
+        private List<OutputChain> _outputChains;
+        private List<RawOutputItem> _rawOutputItems;
+        private List<BlockPosition> _skippedTokens;
+        private PendingLists _pendingLists;
+
+        /// <summary>The raw items and skipped tokens an isolated context takes from its source, until they are
+        /// read. Raw items are only ever appended while a context is parsed; its skipped tokens are set once,
+        /// and cleared only on a context that nothing has been isolated from.</summary>
+        private sealed class PendingLists
         {
-            var newContext = new ParseContext(context, context._offset);// { DefenitionsOnly = context.DefenitionsOnly };
+            internal ParseContext Source;
+            internal int RawCount;
+            internal int SkippedCount;
+        }
+
+        private void MaterializeLists()
+        {
+            if (System.Threading.Volatile.Read(ref _pendingLists) == null)
+                return;
+            lock (LockObject)
+            {
+                var pending = _pendingLists;
+                if (pending == null)
+                    return;
+                pending.Source.MaterializeLists();
+                // What a host has removed from the source since is not there to be taken: the view gets what is
+                // left of the prefix it was promised rather than a fault for the part that is gone.
+                var raws = pending.Source._rawOutputItems;
+                var skipped = pending.Source._skippedTokens;
+                _rawOutputItems.InsertRange(0, raws.GetRange(0, Math.Min(pending.RawCount, raws.Count)));
+                _skippedTokens.InsertRange(0, skipped.GetRange(0, Math.Min(pending.SkippedCount, skipped.Count)));
+                // Published last: a reader that finds nothing pending takes the lists without the lock.
+                System.Threading.Volatile.Write(ref _pendingLists, null);
+            }
+        }
+        private List<OutputChain> _defaultChains;
+        private PendingChains _pendingChains;
+        private BlockPosition[] _parsedDefinitionPositions;
+        private long _parsedPositionsKeptAt;
+        private object _copyIdentity;
+
+        private static long _isolationStamp;
+
+        internal static long NextIsolationStamp() => System.Threading.Interlocked.Increment(ref _isolationStamp);
+
+        /// <summary>The stamp of the latest isolation taken. State written under it was seen by no isolation yet.</summary>
+        internal static long CurrentIsolationStamp => System.Threading.Interlocked.Read(ref _isolationStamp);
+
+        /// <summary>The stamp of the isolation being made. Read under <see cref="SharedLock"/>.</summary>
+        internal static long IsolatingAsOf => _isolatingAsOf;
+
+        internal static object SharedLock => LockObject;
+
+        /// <summary>What one isolation shares between everything it copies: each source context has one copy in
+        /// it, however many definitions and chains lead to it, and a copy is never copied again.</summary>
+        internal sealed class IsolationTree
+        {
+            internal readonly Dictionary<object, ParseContext> Copies = new Dictionary<object, ParseContext>();
+            internal readonly HashSet<ParseContext> Products = new HashSet<ParseContext>();
+            private Dictionary<object, object> _identities;
+
+            /// <summary>What stands for this tree's copy of <paramref name="source"/> before and after the copy
+            /// exists, so another tree that copies it keys on the same thing either way.</summary>
+            internal object IdentityOfCopy(object source)
+            {
+                if (_identities == null)
+                    _identities = new Dictionary<object, object>();
+                if (!_identities.TryGetValue(source, out var identity))
+                {
+                    identity = new object();
+                    _identities.Add(source, identity);
+                }
+
+                return identity;
+            }
+        }
+
+        /// <summary>A definition body's isolated copy that has not been asked for yet: a copy, within
+        /// <see cref="Tree"/>, of <see cref="Source"/> — or of another such copy, <see cref="Origin"/>, which is
+        /// then made first. Whichever it is, it is what an eager isolation would have copied at that moment.</summary>
+        internal sealed class DeferredIsolation
+        {
+            internal DeferredIsolation(ParseContext source, DeferredIsolation origin, long stamp, IsolationTree tree)
+            {
+                Source = source;
+                Origin = origin;
+                Stamp = stamp;
+                Tree = tree;
+            }
+
+            internal ParseContext Source { get; }
+            internal DeferredIsolation Origin { get; }
+            internal long Stamp { get; }
+            internal IsolationTree Tree { get; }
+
+            /// <summary>What stands for the copy, made or not, when another tree copies it in turn.</summary>
+            internal object Identity =>
+                Tree.IdentityOfCopy(Origin != null ? Origin.Identity : Source._copyIdentity ?? Source);
+
+            internal ParseContext Materialize()
+            {
+                var source = Origin != null ? Origin.Materialize() : Source;
+                lock (LockObject)
+                {
+                    var savedTree = _isolation;
+                    var savedStamp = _isolatingAsOf;
+                    _isolation = Tree;
+                    _isolatingAsOf = Stamp;
+                    try
+                    {
+                        return source.IsolateContext();
+                    }
+                    finally
+                    {
+                        _isolation = savedTree;
+                        _isolatingAsOf = savedStamp;
+                    }
+                }
+            }
+        }
+
+        /// <summary>The chains an isolated context would have copied from its source, not copied until somebody
+        /// reads them: the first <see cref="Count"/> output chains and <see cref="DefaultCount"/> default chains
+        /// the source held when it was isolated. Both lists only ever grow while a context is parsed.</summary>
+        private sealed class PendingChains
+        {
+            internal List<OutputChain> Chains;
+            internal List<OutputChain> Defaults;
+            internal int Count;
+            internal int DefaultCount;
+            internal long Stamp;
+            internal IsolationTree Tree;
+            internal bool Filling;
+        }
+
+        private void MaterializeChains()
+        {
+            if (System.Threading.Volatile.Read(ref _pendingChains) == null)
+                return;
+            lock (LockObject)
+            {
+                var pending = _pendingChains;
+                if (pending == null || pending.Filling)
+                    return;
+                pending.Filling = true;
+                var savedTree = _isolation;
+                var savedStamp = _isolatingAsOf;
+                _isolation = pending.Tree;
+                _isolatingAsOf = pending.Stamp;
+                try
+                {
+                    // As with the lists: a prefix a host has shortened since is taken as far as it still goes.
+                    for (int i = 0; i < pending.Count && i < pending.Chains.Count; i++)
+                        _outputChains.Add(new OutputChain(pending.Chains[i], this, null));
+                    for (int i = 0; i < pending.DefaultCount && i < pending.Defaults.Count; i++)
+                        _defaultChains.Add(new OutputChain(pending.Defaults[i], this, null));
+                }
+                finally
+                {
+                    _isolation = savedTree;
+                    _isolatingAsOf = savedStamp;
+                    // Published last: a reader that finds nothing pending takes the lists without the lock.
+                    System.Threading.Volatile.Write(ref _pendingChains, null);
+                }
+            }
+        }
+
+        /// <summary>Drops the output chains, read or not.</summary>
+        internal void ClearOutputChains()
+        {
+            var pending = _pendingChains;
+            if (pending != null)
+                pending.Count = 0;
+            _outputChains.Clear();
+        }
+
+        /// <summary>Replaces the default chains with a new list rather than refilling the old one, which a context
+        /// isolated from this one may still be waiting to read a prefix of.</summary>
+        internal void ReplaceDefaultChains(IEnumerable<OutputChain> chains)
+        {
+            MaterializeChains();
+            _defaultChains = new List<OutputChain>(chains);
+        }
+
+        /// <summary>Called before a compile first moves this context's positions: keeps where the parser put
+        /// them, for an isolated copy taken later.</summary>
+        internal void KeepParsedPositions()
+        {
+            if (_parsedDefinitionPositions != null)
+                return;
+            _parsedDefinitionPositions = DefinitionsBlock.Positions.ToArray();
+            _parsedPositionsKeptAt = CurrentIsolationStamp;
+        }
+
+        private static ParseContext IsolateContextFrom(ParseContext context, bool inheritDefinitions)
+        {
+            var newContext = new ParseContext(context, context._offset, false, inheritDefinitions);
             newContext.IsolationOrigin = context.OriginIdentity;
-            newContext.DefinitionsBlock.Positions.AddRange(context.DefinitionsBlock.Positions);
-            newContext.RawOutputItems.AddRange(context.RawOutputItems);
-            newContext.SkippedTokens.AddRange(context.SkippedTokens);
+            // What the copy takes from its source's lists is taken when the copy's own list is first read: the
+            // prefix the source held at this moment. A document's output chains each keep such a copy, and most
+            // of them are never asked for any of it.
+            context.MaterializeLists();
+            long asOf = _isolatingAsOf;
+            int rawCount = context._rawOutputItems.Count;
+            while (rawCount > 0 && context._rawOutputItems[rawCount - 1].CreatedAt >= asOf)
+                rawCount--;
+            newContext._pendingLists = new PendingLists
+            {
+                Source = context,
+                RawCount = rawCount,
+                SkippedCount = context._skippedTokens.Count
+            };
+            newContext.DefinitionsBlock.DeferPositions(() =>
+                context._parsedDefinitionPositions != null && asOf <= context._parsedPositionsKeptAt
+                    ? context._parsedDefinitionPositions
+                    : (IList<BlockPosition>) context.DefinitionsBlock.Positions,
+                context.DefinitionsBlock.Positions.Count);
             return newContext;
         }
 
         public ParseContext IsolateContextWithTree(string definitionName = null)
         {
+            return IsolateWithTree(definitionName, chainsOnDemand: false);
+        }
+
+        /// <summary>The snapshot an output chain keeps of the context it was written in. It is the same isolation,
+        /// with the chains written so far copied when somebody reads them rather than for every chain.</summary>
+        private ParseContext IsolateDefinitionsWithTree()
+        {
+            return IsolateWithTree(null, chainsOnDemand: true);
+        }
+
+        private ParseContext IsolateWithTree(string definitionName, bool chainsOnDemand)
+        {
             lock (LockObject)
             {
-                _isolatedSet = new Dictionary<ParseContext, ParseContext>();
-                _isolatedList = new HashSet<ParseContext>();
-                var result = IsolateContext(definitionName);
-                _isolatedSet = null;
-                _isolatedList = null;
-                return result;
+                var savedTree = _isolation;
+                var savedStamp = _isolatingAsOf;
+                _isolation = new IsolationTree();
+                _isolatingAsOf = NextIsolationStamp();
+                try
+                {
+                    var result = IsolateContext(definitionName, chainsOnDemand);
+                    if (ReadIsolationsAtOnce)
+                        result.ReadAll(new HashSet<ParseContext>());
+                    return result;
+                }
+                finally
+                {
+                    _isolation = savedTree;
+                    _isolatingAsOf = savedStamp;
+                }
             }
         }
 
-        internal ParseContext IsolateContext(string definitionName = null)
+        /// <summary>Makes every isolation taken on this thread read, at once, everything it would otherwise read
+        /// on demand. What an isolation shows must not depend on when it is read; a test compares the two.</summary>
+        [System.ThreadStatic]
+        internal static bool ReadIsolationsAtOnce;
+
+        private void ReadAll(HashSet<ParseContext> seen)
         {
-            var result = IsolateContextFrom(this);
-            //Check if this context already was isolated from other one in the call tree
-            if (_isolatedList.Contains(this))
+            if (!seen.Add(this))
+                return;
+            foreach (var chains in new[] { OutputChains, DefaultChains })
+            {
+                foreach (var chain in chains)
+                {
+                    if (chain.Chain == null)
+                        continue;
+                    foreach (var item in chain.Chain)
+                        item.Context?.ReadAll(seen);
+                }
+            }
+
+            MaterializeLists();
+            _ = DefinitionsBlock.Positions;
+            foreach (var pair in DefinitionsBlock.Entries())
+            {
+                for (var item = pair.Value; item != null; item = item.BaseDefinition)
+                    item.Context?.ReadAll(seen);
+            }
+        }
+
+        internal ParseContext IsolateContext(string definitionName = null, bool chainsOnDemand = false)
+        {
+            object sourceIdentity = _copyIdentity ?? this;
+            if (_isolation.Products.Contains(this))
             {
                 return this;
             }
-            //Prevent from stack overflow if child items could have the same context or same subsequent contexts
-            if (!_isolatedSet.ContainsKey(this))
+            if (_isolation.Copies.TryGetValue(sourceIdentity, out var known))
             {
-                _isolatedSet.Add(this, result);
-                _isolatedList.Add(result);
+                return known;
             }
-            //Return already isolated context instance
-            else
-            {
-                return _isolatedSet[this];
-            }
+            var result = IsolateContextFrom(this, inheritDefinitions: definitionName != null);
+            result._copyIdentity = _isolation.IdentityOfCopy(sourceIdentity);
+            _isolation.Copies.Add(sourceIdentity, result);
+            _isolation.Products.Add(result);
             if (definitionName != null)
             {
-                //DefinitionItem definition;
-                //if (DefinitionsBlock.Definitions.TryGetValue(definitionName, out definition) && definition.BaseDefinition != null)
-                if (DefinitionsBlock.Definitions.ContainsKey(definitionName))
+                if (DefinitionsBlock.TryGetAsOf(definitionName, _isolatingAsOf, out var named))
                 {
-                    var item = new DefinitionItem(DefinitionsBlock.Definitions[definitionName]);
+                    var item = new DefinitionItem(named.AsOf(_isolatingAsOf), _isolatingAsOf);
 
                     var newContext = item.Context.IsolateContext(definitionName);
 
@@ -137,24 +415,33 @@ namespace Heddle.Language {
                     {
                         item.BaseDefinition.Context = item.BaseDefinition.Context.IsolateContext(definitionName);
                     }
-                    result.DefinitionsBlock.Definitions[definitionName] = item;
+                    result.DefinitionsBlock.Set(definitionName, item, _isolatingAsOf);
                 }
             }
             else
             {
-                foreach (var definition in DefinitionsBlock.Definitions)
-                {
-                    var item = new DefinitionItem(definition.Value);
-                    item.Context = item.Context.IsolateContext();
-                    if (item.BaseDefinition != null)
-                    {
-                        item.BaseDefinition.Context = item.BaseDefinition.Context.IsolateContext();
-                    }
-                    result.DefinitionsBlock.Definitions[definition.Key] = item;
-                }
+                var positions = result.DefinitionsBlock;
+                result.DefinitionsBlock = DefinitionBlock.IsolatedFrom(DefinitionsBlock, _isolatingAsOf, _isolation);
+                result.DefinitionsBlock.TakePositionsOf(positions);
             }
-            result.OutputChains.AddRange(OutputChains.Select(chain => new OutputChain(chain, result, definitionName)));
-            result.DefaultChains.AddRange(DefaultChains.Select(chain => new OutputChain(chain, result, definitionName)));
+            if (chainsOnDemand)
+            {
+                result._pendingChains = new PendingChains
+                {
+                    Chains = _outputChains,
+                    Defaults = _defaultChains,
+                    Count = OutputChains.Count,
+                    DefaultCount = DefaultChains.Count,
+                    Stamp = _isolatingAsOf,
+                    Tree = _isolation
+                };
+                return result;
+            }
+            long stamp = _isolatingAsOf;
+            result.OutputChains.AddRange(OutputChains.Where(chain => chain.CreatedAt < stamp)
+                .Select(chain => new OutputChain(chain, result, definitionName)));
+            result.DefaultChains.AddRange(DefaultChains.Where(chain => chain.CreatedAt < stamp)
+                .Select(chain => new OutputChain(chain, result, definitionName)));
             return result;
         }
 
@@ -190,8 +477,6 @@ namespace Heddle.Language {
         internal DefinitionItem CreateDefinition(HeddleParser.DefContext context, out OutputChain chain) {
             if (context == null)
                 throw new ArgumentNullException(nameof(context));
-            // Phase 7 D1/D2: <:name> / <:name :: Type> — a public region declaration. The leading DELIM is a
-            // direct child of def only in the region alternative (the <child:base> DELIM lives inside def_base).
             if (context.DELIM() != null)
                 return CreateRegionDefinition(context, out chain);
             var defBase = context.def_base();
@@ -230,7 +515,6 @@ namespace Heddle.Language {
                     HasDefaultOutput = chain != null,
                     PropDeclarations = noBaseProps,
                     SlotTypeName = noBaseSlot,
-                    // Phase 7 D2: a plain <name> parsed inside a definition body is a private region.
                     IsRegion = InDefintionContext
                 };
             } else {
@@ -252,12 +536,9 @@ namespace Heddle.Language {
                 HeddleCompileError baseNotFound = null;
                 if (baseDefenition == null)
                 {
-                    // Phase 7 D5 (emit-then-retract): the base-not-found error keeps its exact text/position and
-                    // is emitted at parse into the shared Errors list, exactly as today. The error object is
-                    // captured below on the fill candidate so a compile-time public-region match can retract the
-                    // identical instance from BOTH downstream lists; a genuinely dangling <x:x> retracts nothing.
                     baseNotFound = $"Base definition {baseName} couldn't be found".ToError(GetAbsoluteBlockPosition(context));
                     Errors.Add(baseNotFound);
+                    ImporterSatisfiableErrors.Add(baseNotFound);
                 }
                 AddToken(defBase.ID(), HeddleTokenType.Id);
                 AddToken(context.DEF_ENDNAME(), HeddleTokenType.DefEndName);
@@ -293,10 +574,9 @@ namespace Heddle.Language {
                     SlotTypeName = baseSlot
                 };
 
-                // Phase 7 D5/D12: only an unresolved-base <x:x> (same name both sides) becomes a region-fill
-                // candidate. It is flagged so the listener never registers it into any DefinitionsBlock, and the
-                // captured error object makes the compile-time retract possible. A <x:y> with an unresolved base
-                // keeps today's plain error and is never a candidate.
+                // Only an unresolved-base <x:x> (same name both sides) becomes a region-fill candidate. It is flagged
+                // so the listener never registers it into any DefinitionsBlock, and the captured error object makes
+                // the compile-time retract possible. A <x:y> with an unresolved base keeps the plain error and is never a candidate.
                 if (baseNotFound != null && string.Equals(definitionName, baseName, StringComparison.Ordinal))
                 {
                     item.IsFillCandidate = true;
@@ -312,12 +592,7 @@ namespace Heddle.Language {
             }
         }
 
-        /// <summary>
-        /// Phase 7 D1/D2: builds the <see cref="DefinitionItem"/> for a public region declaration
-        /// (<c>&lt;:name&gt;</c> / <c>&lt;:name :: Type&gt;</c>). A region carries no prop list, no base, and no
-        /// default output chain; its model type is the in-header <c>def_region_type</c> or <c>object</c> when
-        /// omitted. A <c>&lt;:name&gt;</c> outside any definition body is a positioned id-less parse error (F6).
-        /// </summary>
+        /// <summary>Builds the <see cref="DefinitionItem"/> for a public region declaration (<c>&lt;:name&gt;</c> or <c>&lt;:name :: Type&gt;</c>).</summary>
         private DefinitionItem CreateRegionDefinition(HeddleParser.DefContext context, out OutputChain chain)
         {
             chain = null;
@@ -357,12 +632,7 @@ namespace Heddle.Language {
             };
         }
 
-        /// <summary>
-        /// Parses a definition header's prop list (phase 5). Builds the <see cref="PropDeclaration"/> list and
-        /// the slot type name, emitting the parse-time header diagnostics HED5015/HED5016/HED5017/HED5007 and
-        /// the editor tokens (D18). Base props are not flattened here — inheritance flattening is a compile-time
-        /// concern (the layout resolver).
-        /// </summary>
+        /// <summary>Parses the prop list and slot type, emitting diagnostics HED5015/HED5016/HED5017/HED5007.</summary>
         private (IReadOnlyList<PropDeclaration> props, string slotTypeName) ParseDefProps(
             HeddleParser.Def_propsContext defProps, string definitionName)
         {
@@ -433,8 +703,7 @@ namespace Heddle.Language {
                     defaultValue = ExpressionAstBuilder.DecodeDefaultLiteral(defaultCtx.def_literal(), this, out _);
                 }
 
-                if (string.Equals(name, "out", StringComparison.Ordinal) ||
-                    string.Equals(name, "this", StringComparison.Ordinal))
+                if (HeddleDiagnosticCatalog.PropFaults.IsReserved(name))
                 {
                     var fix = string.Equals(name, "out", StringComparison.Ordinal)
                         ? " Declare the slot parameter with 'out:: Type'."
@@ -464,7 +733,7 @@ namespace Heddle.Language {
             if (string.IsNullOrEmpty(baseName))
                 return null;
             if (DefenitionExists(baseName))
-                return DefinitionsBlock.Definitions[baseName];
+                return DefinitionsBlock.TryGet(baseName, out var found) ? found : throw new KeyNotFoundException(baseName);
             return null;
         }
 
@@ -514,7 +783,7 @@ namespace Heddle.Language {
                 }
             }
 
-            var result = new OutputChain(InDefintionContext ? this : IsolateContextWithTree())
+            var result = new OutputChain(InDefintionContext ? this : IsolateDefinitionsWithTree())
             {
                 Chain = CreateChain(context.chain()?.call()),
                 BlockPosition = GetBlockPosition(context)
@@ -555,7 +824,7 @@ namespace Heddle.Language {
                 throw new TemplateParseException("Raw block is strangely null".ToError(GetAbsoluteBlockPosition(context)));
             var text = raw.GetText();
 
-            // Phase 2 (post-2.0) WI1 — the '@@' literal-@ escape: the lexer re-types the two-char '@@' as
+            // The '@@' literal-@ escape: the lexer re-types the two-char '@@' as
             // RAW (AT_ESCAPE/SUB_AT_ESCAPE); it maps to a single literal '@' collapsed by ReplaceRawOutput.
             if (text == "@@")
             {
@@ -566,8 +835,7 @@ namespace Heddle.Language {
                 };
             }
 
-            var oneLineStyle = text.StartsWith("@:");
-            
+            var oneLineStyle = text.StartsWith("@:", StringComparison.Ordinal);
             if (oneLineStyle && text.Length < 2 || !oneLineStyle && text.Length < 4)
                 throw new TemplateParseException("Raw block is wrongly formatted".ToError(GetAbsoluteBlockPosition(context)));
             return new RawOutputItem
@@ -578,24 +846,52 @@ namespace Heddle.Language {
         }
 
         public bool DefenitionExists(string name) {
-            return DefinitionsBlock.Definitions.ContainsKey(name ?? string.Empty);
+            return DefinitionsBlock.Contains(name ?? string.Empty);
         }
 
         internal DefinitionItem CurrentDefenition { get; set; }
 
         internal OutputChain CurrentChain { get; set; }
 
-        public List<OutputChain> DefaultChains { get; }
+        public List<OutputChain> DefaultChains
+        {
+            get
+            {
+                MaterializeChains();
+                return _defaultChains;
+            }
+        }
 
         public List<HeddleCompileError> Errors { get; }
 
         public List<HeddleCompileWarning> Warnings { get; }
 
-        public List<OutputChain> OutputChains { get; }
+        public List<OutputChain> OutputChains
+        {
+            get
+            {
+                MaterializeChains();
+                return _outputChains;
+            }
+        }
 
-        public List<RawOutputItem> RawOutputItems { get; }
+        public List<RawOutputItem> RawOutputItems
+        {
+            get
+            {
+                MaterializeLists();
+                return _rawOutputItems;
+            }
+        }
 
-        public List<BlockPosition> SkippedTokens { get; }
+        public List<BlockPosition> SkippedTokens
+        {
+            get
+            {
+                MaterializeLists();
+                return _skippedTokens;
+            }
+        }
 
         internal bool InDefinition { get; set; }
 
@@ -659,7 +955,7 @@ namespace Heddle.Language {
         }
 
         /// <summary>
-        /// Reads the 5th <c>call</c> alternative (named arguments, phase 5 D4). Classifies the optional leading
+        /// Reads the 5th <c>call</c> alternative (named arguments). Classifies the optional leading
         /// positional <c>expr</c>: a pure <see cref="PathNode"/> (no target) maps to the member-path shape (bit
         /// identical to alternative 2); a <see cref="ThisNode"/> maps to the empty model parameter; anything
         /// else becomes a native expression. Returns <see cref="Alt5Info.IsAlt5"/> false when the call carries no
@@ -829,14 +1125,10 @@ namespace Heddle.Language {
             }
         }
 
-        #region Helpers
+        private static IsolationTree _isolation;
 
-        private static Dictionary<ParseContext, ParseContext> _isolatedSet;
-
-        private static HashSet<ParseContext> _isolatedList;
+        private static long _isolatingAsOf;
 
         private static readonly object LockObject = new object();
-
-        #endregion
     }
 }

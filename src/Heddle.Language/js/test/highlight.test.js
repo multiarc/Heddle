@@ -1,10 +1,9 @@
 "use strict";
 
 /*
- * WS2 regression fixtures: per-construct Ace token classification.
+ * Regression fixtures: per-construct Ace token classification.
  *
- * Each test tokenizes a v2 construct and asserts the produced Ace token class
- * (the §4 "Ace token class" column of docs/archive/ace-v2-migration-plan.md).
+ * Each test tokenizes a v2 construct and asserts the produced Ace token class.
  * Token types are of the form `<state-bucket>.<ace-class>` (e.g.
  * `heddle-call.constant.language`); `aceClass()` strips the leading bucket so
  * fixtures assert on the meaningful Ace scope.
@@ -49,7 +48,7 @@ function assertClass(text, value, expected) {
 }
 
 // ---------------------------------------------------------------------------
-// §4 native-expression literals & keywords
+// Native-expression literals & keywords
 // ---------------------------------------------------------------------------
 
 test("boolean/null literals -> constant.language", () => {
@@ -84,7 +83,7 @@ test("this keyword -> variable.language", () => {
 });
 
 // ---------------------------------------------------------------------------
-// §4 operators, brackets, comma
+// Operators, brackets, comma
 // ---------------------------------------------------------------------------
 
 test("single-char operators -> keyword.operator", () => {
@@ -113,7 +112,7 @@ test("member access dot -> punctuation.operator", () => {
 });
 
 // ---------------------------------------------------------------------------
-// §4 call names
+// Call names
 // ---------------------------------------------------------------------------
 
 test("function call name -> support.function", () => {
@@ -125,7 +124,7 @@ test("method call name -> support.function", () => {
 });
 
 // ---------------------------------------------------------------------------
-// §4 named arguments vs ternary colon
+// Named arguments vs ternary colon
 // ---------------------------------------------------------------------------
 
 test("named argument name -> variable.parameter, colon -> punctuation.operator", () => {
@@ -148,7 +147,7 @@ test("ternary colon (after ?) -> keyword.operator", () => {
 });
 
 // ---------------------------------------------------------------------------
-// §4 prop declaration surface (DEF_PROPS)
+// Prop declaration surface (DEF_PROPS)
 // ---------------------------------------------------------------------------
 
 test("prop-list open/close -> keyword.operator.paren", () => {
@@ -201,7 +200,7 @@ test("definition header `<name : base>` colon stays a header operator", () => {
 });
 
 // ---------------------------------------------------------------------------
-// §4 directives
+// Directives
 // ---------------------------------------------------------------------------
 
 test("@elif / @elseif -> keyword", () => {
@@ -244,8 +243,8 @@ test("@out(this.X)", () => {
 test("prop default expression: nested call + literals", () => {
     const toks = classified('@% <card(title: string = upper("x"))> {{ }} %@');
     // `upper` is a call in the default expression position; it is inside the
-    // prop list surface, still classified as a function name is not required by
-    // §4 here (DEF_PROPS default), but it must not be a default/text class.
+    // prop list surface; classifying it as a function name is not required here
+    // (DEF_PROPS default), but it must not be a default/text class.
     const upper = toks.find((t) => t.value === "upper");
     assert.ok(upper, "expected an `upper` token");
     assert.notStrictEqual(upper.aceClass, "text");
@@ -253,7 +252,7 @@ test("prop default expression: nested call + literals", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Coverage assertion (§7 WS2 DoD): no v2 token falls to a default/text class.
+// Coverage assertion: no v2 token falls to a default/text class.
 // ---------------------------------------------------------------------------
 
 test("coverage: no v2 token falls to a default/empty/text class", () => {
@@ -282,7 +281,7 @@ test("coverage: no v2 token falls to a default/empty/text class", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Phase 2 (post-2.0): the `@@` literal-@ escape (lexer AT_ESCAPE/SUB_AT_ESCAPE)
+// The `@@` literal-@ escape (lexer AT_ESCAPE/SUB_AT_ESCAPE)
 // ---------------------------------------------------------------------------
 
 test("@@ escape -> constant.character.escape (tmLanguage escaped-at parity)", () => {
@@ -325,7 +324,7 @@ test("@@ escape inside a {{ }} body (SUB_AT_ESCAPE mirror)", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Phase 7 (post-2.0): named content regions `<:name>` / `<:name :: Type>`
+// Named content regions `<:name>` / `<:name :: Type>`
 // ---------------------------------------------------------------------------
 
 test("region definition <:name>: visibility ':' + name classes", () => {

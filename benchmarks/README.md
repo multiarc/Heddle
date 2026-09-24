@@ -1,0 +1,296 @@
+# Cross-stack benchmarks — reproduce book
+
+One directory per ecosystem harness, plus two master runners (Windows and Linux) that run
+every gate and every measurement with the parameters the phase specs make normative.
+
+The specs are the source of truth; nothing in this file overrides them:
+
+| Ecosystem | Harness | Normative spec |
+|---|---|---|
+| .NET (anchor) | `benchmarks/dotnet` (BenchmarkDotNet) | [metrics-protocol.md](docs/metrics-protocol.md) |
+| Rust | `benchmarks/rust` (Criterion) | [rust-workload-ports.md](docs/rust-workload-ports.md) |
+| JVM | `benchmarks/jvm` (JMH) | [jvm-harness-and-jmh.md](docs/jvm-harness-and-jmh.md) |
+| JS | `benchmarks/js` (mitata) | [js-harness-and-run.md](docs/js-harness-and-run.md) |
+| Python | `benchmarks/python` (pyperf) | [python-harness.md](docs/python-harness.md) |
+| Go | `benchmarks/go` (testing + benchstat) | [go-harness-and-measurement.md](docs/go-harness-and-measurement.md) |
+| Linux cross-check | `benchmarks/linux-crosscheck` | [linux-harness-settings-and-validation.md](docs/linux-harness-settings-and-validation.md), [linux-environment-and-toolchains.md](docs/linux-environment-and-toolchains.md) |
+
+## Prerequisites (toolchain pins)
+
+| Toolchain | Pin | Notes |
+|---|---|---|
+| .NET SDK | the SDK of the protocol run, recorded in the run's environment block | suites target `net10.0`, `-c Release`; the harness also builds the engine's `Heddle.Build` precompile step, which needs a .NET 10 SDK |
+| Rust | rustc/cargo 1.97.1 | `rust-toolchain.toml` in `benchmarks/rust` |
+| JDK | Temurin 25 | `pom.xml` pins `maven.compiler.release=25`; on a JDK < 25 the runner passes `-Dmaven.compiler.release=23` |
+| Node.js | v24.x (major pin, amendment E18; was the exact v24.18.0) | `package.json` `engines: 24.x`; on a non-24 node the runner uses `npm ci --engine-strict=false` and records the delta |
+| CPython | 3.14.x (minor pin, amendment E19; was the exact 3.14.6) | harness venv at `benchmarks/python/.venv`; pyperf 2.10.0 + psutil 7.2.2 from `requirements.txt` |
+| Go | go1.26.x (1.26.5 asserted by `run-benchmarks.ps1`) | templ CLI v0.3.1020 via `go tool templ` |
+
+**Version deltas (SR-3 posture):** the Windows master runner *warns* on any delta from a pin
+and continues; a *measurement* run on a delta'd toolchain must record the delta in the run
+report's environment block (the Go harness is stricter: `run-benchmarks.ps1` hard-fails its
+own version asserts). The Linux side records deltas in `version-deltas.md`
+(`setup-toolchains.sh`).
+
+## The commands
+
+Run from the **repo root**:
+
+```powershell
+# Windows — FULL measurement (protocol machine, quiet, AC power, elevated shell for pyperf):
+powershell -ExecutionPolicy Bypass -File benchmarks\run-all.ps1
+
+# Windows — SMOKE (short functional pass, ~10–20 min; results carry NO measurement validity):
+powershell -ExecutionPolicy Bypass -File benchmarks\run-all.ps1 -Smoke
+```
+
+```bash
+# Linux (bare metal) — FULL measurement, one command (tunes, measures, untunes).
+# Needs the "Ubuntu — benchmark isolation" boot entry (see preconditions below):
+./benchmarks/run-all.sh --tune
+
+# Linux (bare metal) — same, without that boot entry: performance governors + boost off
+# are set here and restored on exit; the missing CPU isolation is a recorded delta:
+./benchmarks/run-all.sh --tune-no-isolation
+
+# Linux (bare metal) — FULL measurement on an already-tuned machine:
+./benchmarks/run-all.sh
+
+# Linux — SMOKE (short functional pass; no tuned state required, no measurement validity):
+./benchmarks/run-all.sh --smoke
+```
+
+**Two Linux runners, different jobs.** `benchmarks/run-all.sh` is the twin of the Windows runner
+(per-step logs, summary table, `--ecosystem` subsets, and `taskset` + `nice -n -20` standing in
+for the Windows High priority classes). `benchmarks/linux-crosscheck/` is the Phase 8 cross-check
+protocol — D2 no-priority posture, tuned-state pre-flight against a recorded session state,
+`validate.py` part-2 tables. **Anything published as a Linux cross-check goes through
+`linux-crosscheck/`**; see [its README](linux-crosscheck/README.md) for the full bare-metal order
+of operations (install, GRUB isolation entry, environment capture):
+
+```bash
+# Phase 8 cross-check, from benchmarks/linux-crosscheck/ — FULL measurement:
+sudo ./tune.sh && ./run-all.sh; ./untune.sh
+
+# Phase 8 cross-check, Linux/WSL — functional pass (no tuned state required; bypass is recorded):
+./run-all.sh --smoke --no-tune-check
+```
+
+### Windows runner options
+
+| Option | Effect |
+|---|---|
+| `-Smoke` | short functional flags everywhere (see table below) |
+| `-Ecosystem dotnet,rust,jvm,js,python,go` | subset (any combination; program order is preserved) |
+| `-OutDir <path>` | artifact/log destination (default `benchmarks\out\windows-run-<timestamp>`, git-ignored; the path must not contain spaces) |
+| `-Budget short\|baseline` | measurement budget **per engine**: `short` ~10 min each (default), `baseline` ~30 min each. A leg's total is its engine count times that, so the .NET leg is about 3x the others. Named `-Budget` because `$PROFILE` is a PowerShell automatic variable |
+| `-JsPasses <n>` | JS repeat passes per render track (default: the budget's — 18 short / 54 baseline; minimum 5, D13's verdict floor) |
+
+### Linux runner options
+
+| Option | Effect |
+|---|---|
+| `--smoke` | short functional flags everywhere (same shapes as `-Smoke`); also skips the bare-metal pre-flight, recorded in the log |
+| `--ecosystem dotnet,rust,jvm,js,python,go` | subset (any combination; program order is preserved) |
+| `--out-dir <path>` | artifact/log destination (default `benchmarks/out/linux-run-<timestamp>`, git-ignored) |
+| `--budget short\|baseline` | measurement budget per engine, exactly as `-Budget` |
+| `--js-passes <n>` | JS repeat passes per render track, exactly as `-JsPasses` |
+| `--tune` | run the committed `linux-crosscheck/tune.sh` under `sudo` before the run and `untune.sh` from an `EXIT` trap afterwards (so an aborted run still restores the machine). Those two scripts are invoked unmodified. Requires the isolation boot entry — `tune.sh` refuses without it |
+| `--tune-no-isolation` | tune what needs no reboot: `performance` governors, `cpufreq/boost=0`, `kernel.perf_event_max_sample_rate=1`. Every prior value is captured to `logs/tune-prior-state.txt` first and restored from an `EXIT` trap. The absent isolated SMT pair is recorded, the pre-flight accepts it, timed runs are not pinned, and pyperf falls back to `--affinity=4`. Mutually exclusive with `--tune` |
+| `--no-tune-check` | record a bypass of the bare-metal pre-flight (and of the WSL refusal) and measure anyway — the numbers are not publishable |
+| `--no-priority` | launch the JS and Go timed runs plain, matching the Phase 8 D2 posture |
+
+### Bare-metal preconditions (Linux, full measurement)
+
+Without `--smoke` the runner refuses to measure under WSL and pre-flights the machine state,
+aborting with instructions unless all of the following hold:
+
+* the *Ubuntu — benchmark isolation* GRUB entry is booted, so `/sys/devices/system/cpu/isolated`
+  equals the SMT sibling pair of the isolation core (read from the topology, never assumed).
+  Instantiate it from [linux-crosscheck/grub-isolation.cfg.example](linux-crosscheck/grub-isolation.cfg.example)
+  — read the pair with `cat /sys/devices/system/cpu/cpu4/topology/thread_siblings_list`, put
+  `isolcpus=<PAIR> nohz_full=<PAIR> rcu_nocbs=<PAIR>` on a **dedicated** entry (never on
+  `GRUB_CMDLINE_LINUX_DEFAULT`), `sudo update-grub`, reboot into it. Without this entry
+  `--tune` refuses by design; use `--tune-no-isolation` to measure anyway with the delta recorded;
+* every cpufreq policy reads `performance` and `/sys/devices/system/cpu/cpufreq/boost` reads `0`
+  — this is what `--tune` (i.e. `linux-crosscheck/tune.sh`) or `--tune-no-isolation` establishes;
+* quiet machine: no other builds, watchers, indexing editors or browsers for the duration;
+* root or passwordless `sudo`, so `nice -n -20` and pyperf's priority elevation actually apply
+  (missing privileges are recorded, not fatal — the run continues at default priority).
+
+## What a run does
+
+**Phase 1 — gates, all selected ecosystems, stop on first red** (same rule as
+`linux-crosscheck/run-all.sh`: a red gate is triaged before anything later runs):
+
+1. .NET: `gate` (every registered cell), `selftest` (the gate's own checks, including the
+   six-technique differential), `verify-corpus` (corpus freshness + verifier calibration). The v3
+   precompiled gate, `gate-precompiled`, is not a runner step — see the v3 verbs below
+2. Rust: `cargo run --release --bin gate`
+3. JVM: `mvnw -q clean verify` (gates wired into `verify`)
+4. JS: `npm ci`, `npm run selftest`, `npm run gate`
+5. Python: venv create/reuse + `pip install -r requirements.txt`, `python -m runner.selftest`, `python -m runner.gate_all`
+6. Go: `go test ./suites` (TestMain gates before anything can time)
+
+**Phase 2 — measurement**, in the anchor-first program order dotnet → rust → jvm → js →
+python → go. The runner prints the machine-state rules (protocol box, quiet machine, power/tuned
+state) before this phase; failures here are recorded and the run continues, with a nonzero
+overall exit at the end.
+
+| Ecosystem | Full mode (protocol shape) | Smoke mode |
+|---|---|---|
+| .NET | `bench-crossstack`, 8 suites, one `--filter *<Suite>*` run each, both fairness tracks, ShortRun + MemoryDiagnoser; then the `bench-techniques`, `bench-cold` and `bench-internal` sidebars | same, `--job Dry` |
+| Rust | `cargo bench --bench controlled --bench idiomatic --bench cold -- --noplot`, then `alloc_report` (alloc-count feature), then `summarize` (fails loudly, captured non-fatally, while `heddle-reference.toml` is `pending = true` — its Heddle rows are transcribed from a run kept outside the repository) | `cargo bench … -- --test` |
+| JVM | `java -jar target/benchmarks.jar -prof gc -rf json -rff <out>` — committed annotation regime (`@Fork(5)`, `@Warmup(1×2s)`, `@Measurement(5×1s)`); `baseline` adds `-wi 2 -i 17` | `-f 1 -wi 1 -i 1 -w 1s -r 1s -foe true` |
+| JS | `run.ps1` / `run.sh` per bench script (`--expose-gc --allow-natives-syntax`, priority posture per platform); the two render tracks run `-Repeat <passes>` and are aggregated by `bench/aggregate.mjs`, which emits the D13 `STABILITY:` verdict every run | the three scripts once via the launcher |
+| Python | five pyperf Runner scripts, `--affinity=<4 on Windows, isolated pair on Linux> -o <out>/python/<name>.json`, elevated shell / root (warned if not), then the separate `mem_tracemalloc.py` pass | pyperf `--debug-single-value`; memory `--reps 5` |
+| Go | `run-benchmarks.ps1` / `run-benchmarks.sh` (version asserts, templ freshness, vet, gates, prebuild, timed runs `-test.count=20 -test.benchtime=1s`, benchstat) | `-Count 1 -BenchTime 100ms` / `--count 1 --benchtime 100ms` |
+
+### The v3 precompiled-evidence verbs (run by hand, not by the runners)
+
+The runners' .NET leg is the cross-stack protocol above. The compiled-form tier's own evidence is
+three `benchmarks/dotnet` verbs run by hand from the repository root:
+
+| Verb | What it does | Notes |
+|---|---|---|
+| `gate-precompiled` | Requires every protocol workload to be precompiled and byte-equal to the runtime tier, then prints the materialisation trailer (artifact size, register + bind + first render per workload) | Prints the arm it ran as `SITE-TABLE: on` / `SITE-TABLE: off`. The generated site table is on by default; the off arm is the engine's `"Heddle.Precompiled.UseGeneratedSites"` `AppContext` switch set to `false` in a `runtimeconfig.json` passed to `dotnet exec --runtimeconfig <file> bin/Release/net10.0/Heddle.Benchmarks.Dotnet.dll gate-precompiled`. `dotnet exec` replaces the built runtimeconfig wholesale, so `<file>` is a copy of `bin/Release/net10.0/Heddle.Benchmarks.Dotnet.runtimeconfig.json` (its `Microsoft.NETCore.App` and `Microsoft.AspNetCore.App` framework entries included) with the switch added under `configProperties` |
+| `bench-techniques` | The technique tables: `TechniqueRuntimeBenchmarks` beside `TechniquePrecompiledBenchmarks` (table on) and `TechniquePrecompiledDataOnlyBenchmarks` (table off), 8 workloads × 3 sinks each | Both arms in one run; the runners also run this verb as a sidebar |
+| `bench-startup` | The cold-start row: `CompileHeddle` against `RegisterAndRenderCompiledForm` (table on) and its data-only twin, `ColdStart` 20 launches × 1 invocation | Carries its own job; `--job Dry` *adds* a job here rather than replacing it, so smoke it with `--filter` |
+
+```powershell
+dotnet run -c Release --project benchmarks/dotnet -- gate-precompiled
+dotnet run -c Release --project benchmarks/dotnet -- bench-techniques
+dotnet run -c Release --project benchmarks/dotnet -- bench-startup
+```
+
+### Measurement budget — `--budget short` (default) / `baseline`
+
+Each harness sets its own run lengths, so one selectable budget (amendment E6) sizes every leg the
+same way, and the unit it is measured in is **one engine** (amendments E13/E14):
+
+```bash
+./benchmarks/run-all.sh                    # --budget short    ~10 min per engine  (default)
+./benchmarks/run-all.sh --budget baseline   # ~30 min per engine: ~3x the capture samples
+```
+```powershell
+.\benchmarks\run-all.ps1 -Budget baseline   # same on Windows (-Budget, not -Profile: $PROFILE is reserved)
+```
+
+Every harness's **committed source/script default is the `short` shape**, so a bare invocation of
+any single harness is already the budgeted regime; `baseline` layers CLI overrides on top. Nothing
+changes about *what* is measured — only how many times.
+
+**The unit is one engine.** An *engine* is **16 cells** — eight workloads × two fairness tracks — and
+every engine in the program gets **~10 min at `short` and ~30 min at `baseline`**, whichever
+ecosystem it lives in. Five legs carry two engines each; .NET carries **six** (Heddle, Fluid, Scriban,
+DotLiquid, Handlebars.Net, Razor), so its leg is about three times the others *by construction*.
+Budgeting the leg instead would give each .NET engine a third of the sampling every other
+ecosystem's engines get, and the cross-engine comparison would rest on its worst-sampled rows.
+
+| Ecosystem | Knob | `short` (committed default) | `baseline` override |
+|---|---|---|---|
+| .NET | BenchmarkDotNet job | ShortRun + **`LaunchCount 3`** | `--launchCount 10` |
+| Rust | criterion | warm-up 5 s, measure 26 s, 100 samples | `--warm-up-time 10 --measurement-time 84` |
+| JVM | JMH annotations | `@Fork(5)`, `@Warmup(1×2s)`, `@Measurement(5×1s)` | `-f 5 -wi 2 -i 17` |
+| JS | aggregated passes | 38 passes per render track | 114 passes |
+| Python | pyperf | render 20 processes × 6 values × 1 warmup; cold-compile `--processes 7` | `--values 20 --warmups 2`; cold-compile at default 20 |
+| Go | `go test -count` | `28` | `--count 84` |
+
+The .NET leg also carries the techniques, cold and internal sidebars (Heddle-only cells at the same
+job shape), which belong to no engine's comparison share.
+
+.NET spends its budget on **launches**, and only on launches: the leg is overhead-bound (one process
+per benchmark case, plus JIT and `[MemoryDiagnoser]`), so wall clock is very nearly linear in
+`LaunchCount`, which makes the knob predictable, whereas raising the iteration counts runs through
+BenchmarkDotNet's pilot stage and does not. `LaunchCount 1` would sample the **within-process term
+only** — one process, one JIT, one heap layout — and never the cross-process term, which is the term
+worth paying for (JMH keeps its forks plural and JS spends its whole budget on independent processes
+for the same reason).
+
+The default job lives in the harness's configuration rather than in a `[SimpleJob]` attribute, for
+the same reason `--job Dry` means what it says: an attribute job cannot be *replaced* from the
+command line, only added to, so a smoke pass would run the full measurement as well as the dry one.
+
+**JS is a different mechanism, and deliberately so.** mitata exposes no per-cell time budget:
+`B.run()` builds its own options object and `run()` forwards only `throw`, so the `min_cpu_time`
+is unreachable without forking the library. JS therefore spends its budget on
+**independent processes** — `run.sh --repeat N`, then `bench/aggregate.mjs` publishes the median
+of the per-pass `avg` with the cross-pass `min … max` as dispersion. That buys the
+*cross-process* term a single-process harness never samples, which is the same thing JMH gets
+from forks and pyperf from its 20 workers. It also makes the Phase 4 D13 stability verdict
+automatic instead of opt-in: every run writes `stability-summary-<track>.md` with a
+`STABILITY:` line and exits non-zero on `failed`.
+
+**Priority posture (Linux twins).** Windows sets a High process priority class for the JS and Go
+timed runs (`start /high`, `PriorityClass = High`); `run-all.sh`, `js/run.sh` and
+`go/run-benchmarks.sh` approximate that with `taskset -c <isolated SMT pair>` + `nice -n -20`.
+The Phase 8 launchers under `linux-crosscheck/` deliberately do **not** (D2: the tune plus CPU
+isolation *is* the isolation), so numbers from the twins are not drop-in comparable with the
+published cross-check runs — record the delta in the run report's environment block, or pass
+`--no-priority` to match D2.
+
+## Where artifacts land
+
+Everything from one Windows run lands under the run's `-OutDir`
+(default `benchmarks\out\windows-run-<yyyyMMdd-HHmmss>`, git-ignored):
+
+```
+<OutDir>\
+  logs\<eco>-<step>.log     every step's full output (also echoed live)
+  logs\preamble.log         toolchain versions + pin-delta warnings
+  summary.txt               the per-step exit-code table
+  dotnet\                   copy of BenchmarkDotNet.Artifacts (results\*.md/csv/json + logs)
+  rust\criterion\           copy of target\criterion (estimates.json per benchmark)
+  jvm\jmh-result.json       JMH JSON (written there directly via -rff)
+  js\                       copy of benchmarks\js\artifacts (*.txt captures + *.json)
+  python\<name>.json        pyperf JSONs + memory.json (written there directly via -o)
+  go\                       copy of benchmarks\go\results (bench + benchstat outputs)
+```
+
+A Linux run's outputs land under `--out-dir` in exactly the same shape
+(default `benchmarks/out/linux-run-<yyyyMMdd-HHmmss>`, git-ignored), with `logs/tune.log` added
+when `--tune` is used. The Phase 8 cross-check tooling writes elsewhere:
+`benchmarks/linux-crosscheck/out/` (self-git-ignored).
+
+## Running one harness alone (manual per-ecosystem commands)
+
+All commands from the harness directory shown; gates first, always. Where the launcher differs
+per platform, the Windows form is given first and the Linux twin second.
+
+| Ecosystem | Directory | Gate | Measurement |
+|---|---|---|---|
+| .NET | `benchmarks/dotnet` | `dotnet run -c Release -- gate`, then `… -- selftest`, then `… -- verify-corpus`; the v3 gate `… -- gate-precompiled` | `dotnet run -c Release -- bench-crossstack --filter *<Suite>*` (8 suites), then `bench-techniques`, `bench-cold`, `bench-internal`; the v3 cold-start row `bench-startup` (`export-corpus` rewrites the goldens — never run it casually) |
+| Rust | `benchmarks/rust` | `cargo run --release --bin gate` | `cargo bench --bench controlled --bench idiomatic --bench cold -- --noplot`; `cargo run --release --features alloc-count --bin alloc_report`; `cargo run --release --bin summarize` |
+| JVM | `benchmarks/jvm` | `.\mvnw.cmd -q clean verify` / `./mvnw -q clean verify` (add `-Dmaven.compiler.release=23` on a JDK < 25) | `java -jar target/benchmarks.jar -prof gc -rf json -rff jmh-result.json` |
+| JS | `benchmarks/js` | `npm ci` + `npm run selftest` + `npm run gate` | `./run.ps1 bench/controlled.mjs` / `./run.sh bench/controlled.mjs` (also `idiomatic.mjs`, `cold-compile.mjs`); stability: `-Repeat 5` / `--repeat 5` |
+| Python | `benchmarks/python` | `python -m runner.selftest` + `python -m runner.gate_all` (venv python: `.venv\Scripts\python.exe` / `.venv/bin/python`) | `python bench_<name>.py --affinity=4 -o results/<name>.json` (×5, elevated shell / root); `python mem_tracemalloc.py -o results/memory.json` |
+| Go | `benchmarks/go` | `go test ./suites` | `./run-benchmarks.ps1` / `./run-benchmarks.sh` |
+
+## Publication
+
+Reports are assembled **outside this repository**: the repository carries the harness and no
+measurement. Throughout the harness contract, `<results>` is the results archive you keep elsewhere,
+and a run publishes as one immutable `<results>/<run-date>/` directory assembled by hand per
+[metrics-protocol.md](docs/metrics-protocol.md): the run's artifacts, the environment block, the
+two-track tables, the allocation labels/caveats, and the honest-reporting rules — the runners never
+write into it. A Linux cross-check report additionally goes through `linux-crosscheck/validate.py`
+(part 2 tables/verdicts) and the WI8 assembly step described in
+[linux-crosscheck/README.md](linux-crosscheck/README.md).
+
+**The tables themselves are generated, not transcribed.** Once the artifacts are in place,
+`report/consolidate.py` reads every harness's native output — BenchmarkDotNet CSV, Criterion
+`estimates.json`, JMH JSON, mitata JSON, pyperf JSON, benchstat text — and writes
+`consolidated-tables.md` into the run directory:
+
+```bash
+python benchmarks/report/consolidate.py <results>/<run-date>
+python benchmarks/report/consolidate.py --check <results>/<run-date>
+```
+
+`--check` re-derives the tables and diffs them against the stored file, so a report stays
+byte-reproducible from its artifacts and a stale table is a failing command rather than a silent
+error. The report's `index.md` is still hand-written — the narrative, the environment block, the
+findings and the caveat register are judgement, not extraction — and it links the generated tables
+rather than restating their numbers. The runners also invoke `consolidate.py` on the run's
+own output directory at the end of a non-smoke run (a non-fatal step), so a run directory arrives
+with its tables already generated; they never write outside it.

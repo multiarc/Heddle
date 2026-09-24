@@ -4,7 +4,7 @@
  * Shared Ace EditSession factory for the harness.
  *
  * Builds a real Ace `EditSession` wired to the Heddle highlight tokenizer,
- * used by both the beautify (WS4) and completions (WS6) helpers. Handing
+ * used by both the beautify and completions helpers. Handing
  * `setMode` a mode object that already exposes `getTokenizer()` keeps mode
  * installation fully synchronous (no `config.loadModule`).
  */

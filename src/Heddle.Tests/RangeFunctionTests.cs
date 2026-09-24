@@ -10,10 +10,10 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// The <c>range</c> step-validation split (phase 4 D2/D3): a statically-visible non-positive literal step
-    /// is a positioned HED4001 compile error (literal and sign-prefixed literal); a model-driven non-positive
-    /// step throws <see cref="TemplateProcessingException"/> at render with the same message; a host-replaced
-    /// <c>range</c> governs its own step rules and never triggers the built-in static check (R04).
+    /// The <c>range</c> step-validation: a statically-visible non-positive literal step is a positioned HED4001
+    /// compile error (literal and sign-prefixed literal); a model-driven non-positive step throws
+    /// <see cref="TemplateProcessingException"/> at render with the same message; a host-replaced <c>range</c>
+    /// governs its own step rules and never triggers the built-in static check (R04).
     /// </summary>
     public class RangeFunctionTests
     {

@@ -1,0 +1,4 @@
+{# Idiomatic Askama nav partial. One link row; the
+   innermost of the nested nav partials (Askama book: "Template syntax - Include" -
+   included templates have full access to the including scope, loop variables included). #}
+<li class="nav-link"><a href="{{ link.href }}">{{ link.label }}</a></li>

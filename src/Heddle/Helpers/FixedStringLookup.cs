@@ -3,8 +3,6 @@ namespace Heddle.Helpers
 {
     internal static class FixedStringLookup
     {
-
-        // Returns whether the match is found in the lookup table 
         internal static bool Contains(string[][] lookupTable, string value, bool ignoreCase)
         {
             int length = value.Length;
@@ -45,7 +43,6 @@ namespace Heddle.Helpers
                 {
                     return false;
                 }
-                // and move to next char
                 pos++;
             }
             return true;

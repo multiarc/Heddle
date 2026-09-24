@@ -1,88 +1,91 @@
 ﻿using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
+using Heddle.Language.Binding;
 using Heddle.Native;
 
 namespace Heddle.Helpers
 {
-    /// <summary>
-    /// Extends AttributeSet to perform more helper methods for Type reflection
-    /// </summary>
     internal class ReflectionHelper
     {
-        private static readonly Regex GenericExpression = new Regex
-            (@"^(?<main_type>[_a-zA-Z@][a-zA-Z0-9\.]*)<(?<generic_parameters>[_a-zA-Z@][a-zA-Z0-9\.\+\[\]]*)>$",
-                RegexOptions.Compiled | RegexOptions.Singleline);
-        
-        private static readonly Regex TupleExpression = new Regex
-        (@"^\((?<tuple_types>(?>\((?<c>)|[^()]+|\)(?<-c>))*(?(c)(?!)))\)$",
-            RegexOptions.Compiled | RegexOptions.Singleline);
-
-        private static readonly Regex ArrayExpression = new Regex
-        (@"^(?<main_type>[_a-zA-Z@][a-zA-Z0-9\.]*)(\[\])+$",
-            RegexOptions.Compiled | RegexOptions.Singleline);
-
         private static readonly Regex WhitespaceChars = new Regex(@"\s+", RegexOptions.Compiled | RegexOptions.Singleline);
 
         private readonly Type _innerType;
 
-        private static readonly Dictionary<string, Type> CSharpTypes;
+        /// <summary>
+        /// The two name maps, published as one immutable object. A reader must never see a half-built map: the old
+        /// shape assigned each field a fresh empty dictionary and then filled it, while readers looked them up without
+        /// the lock — so a concurrent `Register` made a valid template fail to resolve a type it had just resolved.
+        /// Both maps live here so a reader cannot observe a new short-name map against an old full-name one either.
+        /// </summary>
+        private sealed class NameMaps
+        {
+            public NameMaps(Dictionary<string, List<Type>> shortNames, Dictionary<string, List<Type>> fullNames,
+                int generation)
+            {
+                ShortNames = shortNames;
+                FullNames = fullNames;
+                Generation = generation;
+            }
 
-        private static Dictionary<string, List<Type>> _shortNames;
+            public Dictionary<string, List<Type>> ShortNames { get; }
 
-        private static Dictionary<string, List<Type>> _fullNames;
+            public Dictionary<string, List<Type>> FullNames { get; }
+
+            /// <summary>The assembly-set stamp these maps were built from; a newer stamp means they are stale.</summary>
+            public int Generation { get; }
+        }
+
+        private static NameMaps _maps = new NameMaps(
+            new Dictionary<string, List<Type>>(), new Dictionary<string, List<Type>>(), -1);
 
         static ReflectionHelper()
         {
-            CSharpTypes = new Dictionary<string, Type>(StringComparer.Ordinal)
-            {
-                {"bool", typeof(bool)},
-                {"byte", typeof(byte)},
-                {"sbyte", typeof(sbyte)},
-                {"char", typeof(char)},
-                {"decimal", typeof(decimal)},
-                {"double", typeof(double)},
-                {"float", typeof(float)},
-                {"int", typeof(int)},
-                {"uint", typeof(uint)},
-                {"long", typeof(long)},
-                {"ulong", typeof(ulong)},
-                {"object", typeof(object)},
-                {"short", typeof(short)},
-                {"ushort", typeof(ushort)},
-                {"string", typeof(string)},
-                {"dynamic", typeof(object)}
-            };
-
             Reconfigure();
         }
 
+        /// <summary>
+        /// Rebuilds the name maps from the current assembly set and publishes them in one write, so a concurrent
+        /// resolve sees either the whole old set or the whole new one.
+        /// </summary>
+        [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Enumerates the registered assemblies for name resolution; a trimmed publish keeps the types the host's DynamicallyAccessedMembers roots keep, and a type it removed is one no template could name.")]
         public static void Reconfigure()
         {
+            var shortNames = new Dictionary<string, List<Type>>();
+            var fullNames = new Dictionary<string, List<Type>>();
             var assemblies = AssemblyHelper.GetAssemblies();
+            var generation = AssemblyHelper.Generation;
             lock (assemblies)
             {
-                _shortNames = new Dictionary<string, List<Type>>();
-                _fullNames = new Dictionary<string, List<Type>>();
-
                 foreach (var type in assemblies.SelectMany(a =>
                 {
                     try
                     {
                         return a.GetTypes();
                     }
+                    catch (ReflectionTypeLoadException partial)
+                    {
+                        // One type whose base class or interface cannot load — a controller, when the
+                        // process does not run on the web framework — must not cost the assembly's other
+                        // types their names. The types that did load are all here; the rest are null.
+                        return partial.Types.Where(t => t != null);
+                    }
                     catch
                     {
                         return Enumerable.Empty<Type>();
                     }
-                }))
+                }).Where(HasLoadableDeclaringTypes))
                 {
                     string shortName;
                     if (type.IsNested)
                     {
+                        // Store both CLR metadata form (Outer+Nested) and dotted alias (Outer.Nested)
+                        // since the template lexer cannot accept '+'.
                         StringBuilder shortNameBuilder = new StringBuilder();
                         shortNameBuilder.Append(type.Name);
                         var parent = type.DeclaringType;
@@ -92,15 +95,61 @@ namespace Heddle.Helpers
                             parent = parent.IsNested ? parent.DeclaringType : null;
                         }
                         shortName = shortNameBuilder.ToString();
+
+                        var dottedAlias = shortName.Replace('+', '.');
+                        shortNames.AddOrUpdate(dottedAlias, () => new List<Type> {type}, l => l.Add(type));
+                        fullNames.AddOrUpdate(type.Namespace + "." + dottedAlias, () => new List<Type> {type}, l => l.Add(type));
                     }
                     else
                     {
                         shortName = type.Name;
                     }
-                    _shortNames.AddOrUpdate(shortName, () => new List<Type> {type}, l => l.Add(type));
-                    _fullNames.AddOrUpdate(type.Namespace + "." + shortName, () => new List<Type> {type}, l => l.Add(type));
+                    shortNames.AddOrUpdate(shortName, () => new List<Type> {type}, l => l.Add(type));
+                    fullNames.AddOrUpdate(type.Namespace + "." + shortName, () => new List<Type> {type}, l => l.Add(type));
                 }
             }
+
+            Volatile.Write(ref _maps, new NameMaps(shortNames, fullNames, generation));
+        }
+
+        /// <summary>A partial enumeration hands back a type nested in one that cannot load as if it were whole;
+        /// only asking for its declaring type faults. Such a type has no name a template could spell.</summary>
+        private static bool HasLoadableDeclaringTypes(Type type)
+        {
+            try
+            {
+                for (var parent = type; parent != null && parent.IsNested; parent = parent.DeclaringType)
+                {
+                }
+
+                return true;
+            }
+            catch (Exception ex) when (ex is System.IO.IOException || ex is TypeLoadException ||
+                ex is BadImageFormatException)
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// The name maps, rebuilt first if the assembly set has changed since they were built. Without this, an
+        /// assembly the host loads *after* the first type resolution was permanently invisible — so whether
+        /// <c>@model Some.Late.Type</c> resolved depended on whether an unrelated earlier compile had happened, which
+        /// is not a property any host can reason about.
+        /// </summary>
+        private static NameMaps CurrentMaps()
+        {
+            // Observe before comparing: the stamp only advances when something looks at the assembly set, so reading it
+            // without observing would leave a late-loaded assembly invisible until an unrelated call happened to look.
+            // This costs one AppDomain enumeration per type resolution — a compile-time path, never a render one.
+            AssemblyHelper.GetAssemblies();
+
+            var maps = Volatile.Read(ref _maps);
+            if (maps.Generation == AssemblyHelper.Generation)
+                return maps;
+
+            Reconfigure();
+            return Volatile.Read(ref _maps);
         }
 
         public ReflectionHelper(Type innerType)
@@ -127,6 +176,7 @@ namespace Heddle.Helpers
 
         public bool IsClass => _innerType.GetTypeInfo().IsClass;
 
+        [UnconditionalSuppressMessage("Trimming", "IL2080", Justification = "Reflection over a model type; model types reach the engine through [HeddleModelAssembly]/typeof parameters annotated DynamicallyAccessedMemberTypes.All, which keeps their members through a trimmed publish.")]
         public bool IsImplement(Type type)
         {
             if (type == null)
@@ -150,86 +200,65 @@ namespace Heddle.Helpers
             return IsType(value.GetType());
         }
 
-        private static Type ResolveCsharpType(string typeName)
+        /// <summary>
+        /// The <see cref="ITypeNameMaps"/> snapshot the ladder consumes: the two name maps published together,
+        /// plus the arm that belongs to the type universe rather than to the ladder — the assembly-qualified
+        /// spelling the CLR loader resolves for itself.
+        /// </summary>
+        private sealed class ReflectionNameMaps : ITypeNameMaps
         {
-            if (CSharpTypes.TryGetValue(typeName, out var result))
+            private readonly NameMaps _maps;
+
+            internal ReflectionNameMaps(NameMaps maps) => _maps = maps;
+
+            public bool TryGetByShortName(string key, out IReadOnlyList<Type> types)
             {
-                return result;
+                var found = _maps.ShortNames.TryGetValue(key, out var list);
+                types = list;
+                return found;
             }
-            return null;
+
+            public bool TryGetByFullName(string key, out IReadOnlyList<Type> types)
+            {
+                var found = _maps.FullNames.TryGetValue(key, out var list);
+                types = list;
+                return found;
+            }
+
+            /// <summary>The CLR's own resolution of an assembly-qualified spelling, over the assemblies the host
+            /// has loaded — a loader question, not a ladder one, which is why this arm is the seam's.</summary>
+            [UnconditionalSuppressMessage("Trimming", "IL2057", Justification = "Resolves an identity the engine recorded itself over registered/loaded assemblies; a trimmed publish resolves only what it kept, and a miss reads as unresolved (a diagnostic or gauntlet mismatch), never a crash.")]
+            public bool TryResolveAssemblyQualified(string spelling, out Type type)
+            {
+                type = Type.GetType(spelling, false);
+                if (type != null)
+                    return true;
+
+                // Templates spell nested types with dots (the lexer rejects '+'), but CLR metadata
+                // names use '+'. Retry with one more trailing dot converted to '+' per attempt
+                // (A.B.C.D → A.B.C+D → A.B+C+D → ...), stopping at the first hit.
+                var candidate = spelling.ToCharArray();
+                for (var i = spelling.IndexOf(',') - 1; type == null && i >= 0; i--)
+                {
+                    if (candidate[i] != '.')
+                        continue;
+                    candidate[i] = '+';
+                    type = Type.GetType(new string(candidate), false);
+                }
+
+                return type != null;
+            }
         }
 
-        private static Type ResolveSimpleType(string typeName, ICollection<string> imports)
+        private static InvalidOperationException ResolveSimpleError(string typeName, ICollection<string> imports,
+            bool ambiguous)
         {
-            if (typeName.Contains(","))
-            {
-                var result = Type.GetType(typeName, false);
-                if (result == null)
-                {
-                    throw new InvalidOperationException($"Couldn't resolve type <{typeName}> ({string.Join(", ", imports)})");
-                }
-                return result;
-            }
-            if (typeName.Contains("."))
-            {
-                if (_fullNames.TryGetValue(typeName, out var types))
-                {
-                    if (types.Count == 1)
-                    {
-                        return types[0];
-                    }
-                    foreach (var import in imports)
-                    {
-                        var fullName = import + "." + typeName;
-                        if (_fullNames.TryGetValue(fullName, out types))
-                        {
-                            if (types.Count == 1)
-                            {
-                                return types[0];
-                            }
-                            throw new InvalidOperationException(
-                                $"Couldn't resolve type <{fullName}> ({string.Join(", ", imports)}), the type name is ambigous");
-                        }
-                    }
-                    throw new InvalidOperationException(
-                        $"Couldn't resolve type <{typeName}> ({string.Join(", ", imports)}), the type name is ambigous");
-                }
-                foreach (var import in imports)
-                {
-                    var fullName = import + "." + typeName;
-                    if (_fullNames.TryGetValue(fullName, out types))
-                    {
-                        if (types.Count == 1)
-                        {
-                            return types[0];
-                        }
-                        throw new InvalidOperationException(
-                            $"Couldn't resolve type <{fullName}> ({string.Join(", ", imports)}), the type name is ambigous");
-                    }
-                }
-                throw new InvalidOperationException($"Couldn't resolve type <{typeName}> ({string.Join(", ", imports)})");
-            }
-            else
-            {
-                Type result = ResolveCsharpType(typeName);
-                if (result != null)
-                    return result;
-                if (_shortNames.TryGetValue(typeName, out var types))
-                {
-                    if (types.Count == 1)
-                    {
-                        return types[0];
-                    }
-                    result = types.FirstOrDefault(t => imports.Contains(t.Namespace));
-                    if (result == null)
-                    {
-                        throw new InvalidOperationException($"Couldn't resolve type <{typeName}> ({string.Join(", ", imports)})");
-                    }
-                    return result;
-                }
-                throw new InvalidOperationException($"Couldn't resolve type <{typeName}> ({string.Join(", ", imports)})");
-            }
+            return ambiguous
+                ? new InvalidOperationException(
+                    $"Couldn't resolve type <{typeName}> ({string.Join(", ", imports)}), the type name is ambigous")
+                : new InvalidOperationException($"Couldn't resolve type <{typeName}> ({string.Join(", ", imports)})");
         }
+
 
         /*public static PropertyInfo ResolveProperty(string propertyName, Type sourceType = null)
         {
@@ -273,64 +302,111 @@ namespace Heddle.Helpers
             return ResolveType(typeName, (ICollection<string>) imports);
         }
 
+        /// <summary>
+        /// Resolves a template-spelled type name using the shared <see cref="TypeSpelling"/> parser for grammar and
+        /// <see cref="ReflectionTypeLookup"/> for the reflection type universe. Maps parser faults back to
+        /// <see cref="InvalidOperationException"/> messages.
+        /// </summary>
         public static Type ResolveType(string typeName, ICollection<string> imports)
         {
             if (string.IsNullOrWhiteSpace(typeName))
                 throw new ArgumentException();
 
-            if (typeName.StartsWith("("))
-            {
-                var match = TupleExpression.Match(typeName);
-                if (match.Success)
-                {
-                    typeName = $"System.ValueTuple<{match.Groups["tuple_types"]}>";
-                    return ResolveGenericType(typeName, imports);
-                }
-            }
+            imports = imports ?? new string[0];
 
-            if (typeName.EndsWith("]"))
-            {
-                return ResolveArrayType(typeName, imports);
-            }
+            var lookup = new ReflectionTypeLookup(imports);
+            if (TypeSpelling.TryResolve(typeName, lookup, out var resolved, out var fault))
+                return resolved;
 
-            if (typeName.Contains("<"))
-            {
-                return ResolveGenericType(typeName, imports);
-            }
+            // The lookup's own resolution failures already carry the precise message (ambiguity, unresolved name);
+            // rethrowing it preserves them verbatim. A fault raised by the grammar itself has no such exception.
+            if (lookup.Failure != null)
+                throw lookup.Failure;
 
-            return ResolveSimpleType(typeName, imports ?? new string[0]);
+            throw ResolveError(typeName, imports, FaultReason(fault));
         }
 
-        private static Type ResolveGenericType(string typeName, ICollection<string> imports)
+        private static InvalidOperationException ResolveError(string typeName, ICollection<string> imports,
+            string reason)
         {
-            var match = GenericExpression.Match(typeName);
-            if (match.Success)
-            {
-                var importsArray = imports ?? new string[0];
-                var genericParameters = match.Groups["generic_parameters"].Value.Split(',');
-                Type modelType = ResolveSimpleType(match.Groups["main_type"].Value + "`" + genericParameters.Length,
-                    importsArray);
-                modelType = modelType.MakeGenericType(genericParameters
-                    .Select(parameter => ResolveType(parameter, importsArray)).ToArray());
-                {
-                    return modelType;
-                }
-            }
-
-            return ResolveSimpleType(typeName, imports ?? new string[0]);
+            return new InvalidOperationException(
+                $"Couldn't resolve type <{typeName}> ({string.Join(", ", imports)}), {reason}");
         }
 
-        private static Type ResolveArrayType(string typeName, ICollection<string> imports)
+        private static string FaultReason(TypeSpellingFault fault)
         {
-            var match = ArrayExpression.Match(typeName);
-            if (match.Success)
+            switch (fault)
             {
-                var importsArray = imports ?? new string[0];
-                var modelType = ResolveType(match.Groups["main_type"].Value, importsArray);
-                return modelType.MakeArrayType();
+                case TypeSpellingFault.ArityMismatch:
+                    return "the generic argument count does not match the type";
+                case TypeSpellingFault.Ambiguous:
+                    return "the type name is ambigous";
+                case TypeSpellingFault.Malformed:
+                    return "unbalanced angle brackets or an empty generic argument";
+                default:
+                    return "no such type";
             }
-            
-            return ResolveSimpleType(typeName, imports ?? new string[0]); 
+        }
+
+        /// <summary>
+        /// The reflection type universe as the spelling parser sees it. Simple-name resolution is the
+        /// <see cref="TypeNameIndex"/> ladder run over <see cref="ReflectionNameMaps"/>; its fault is turned into
+        /// this tier's exception here rather than thrown through the parser, so the parser stays exception-free.
+        /// </summary>
+        private sealed class ReflectionTypeLookup : ITypeLookup
+        {
+            private readonly ICollection<string> _imports;
+
+            /// <summary>The same imports the ladder indexes by position. Copied only when the caller handed over a
+            /// collection that is not already a list, so both readings see the one order.</summary>
+            private readonly IReadOnlyList<string> _importList;
+
+            internal ReflectionTypeLookup(ICollection<string> imports)
+            {
+                _imports = imports;
+                _importList = imports as IReadOnlyList<string> ?? new List<string>(imports);
+            }
+
+            /// <summary>The first resolution failure, so <see cref="ResolveType"/> can rethrow its exact message.</summary>
+            internal InvalidOperationException Failure { get; private set; }
+
+            public bool TryResolveSimple(string name, int backtickArity, out Type type,
+                out TypeSpellingFault fault)
+            {
+                // One read of the published snapshot per name: both maps must come from the same rebuild, or a
+                // resolve racing a Register can consult a new short-name map against an old full-name one.
+                if (TypeNameIndex.TryResolve(name, _importList, new ReflectionNameMaps(CurrentMaps()), out type,
+                        out fault))
+                    return true;
+
+                Failure = Failure ?? ResolveSimpleError(name, _imports, fault == TypeSpellingFault.Ambiguous);
+                return false;
+            }
+
+            [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "Resolves an identity the engine recorded itself over registered/loaded assemblies; a trimmed publish resolves only what it kept, and a miss reads as unresolved (a diagnostic or gauntlet mismatch), never a crash.")]
+            public Type MakeArray(Type elementType) => elementType.MakeArrayType();
+
+            [UnconditionalSuppressMessage("Trimming", "IL2055", Justification = "Resolves an identity the engine recorded itself over registered/loaded assemblies; a trimmed publish resolves only what it kept, and a miss reads as unresolved (a diagnostic or gauntlet mismatch), never a crash.")]
+            [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "Resolves an identity the engine recorded itself over registered/loaded assemblies; a trimmed publish resolves only what it kept, and a miss reads as unresolved (a diagnostic or gauntlet mismatch), never a crash.")]
+            public bool TryMakeGeneric(Type definition, IReadOnlyList<Type> arguments, out Type constructed)
+            {
+                constructed = null;
+                if (definition.GetGenericArguments().Length != arguments.Count)
+                    return false;
+
+                var array = new Type[arguments.Count];
+                for (var i = 0; i < arguments.Count; i++)
+                    array[i] = arguments[i];
+                constructed = definition.MakeGenericType(array);
+                return true;
+            }
+
+            [UnconditionalSuppressMessage("Trimming", "IL2057", Justification = "Resolves an identity the engine recorded itself over registered/loaded assemblies; a trimmed publish resolves only what it kept, and a miss reads as unresolved (a diagnostic or gauntlet mismatch), never a crash.")]
+            public bool TryGetValueTupleDefinition(int arity, out Type definition)
+            {
+                definition = Type.GetType("System.ValueTuple`" + arity, false);
+                return definition != null;
+            }
         }
     }
 }

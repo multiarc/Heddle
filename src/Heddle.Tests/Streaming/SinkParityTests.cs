@@ -12,7 +12,7 @@ using Xunit;
 namespace Heddle.Tests.Streaming
 {
     /// <summary>
-    /// Phase 8 WI3 — the three-sink parity property oracle over the runtime backend: every fixture rendered through
+    /// The three-sink parity property oracle over the runtime backend: every fixture rendered through
     /// {string, TextWriter, IBufferWriter&lt;byte&gt;} must be byte-identical (the byte sink UTF-8-normalized). Covers
     /// raw text, the Html profile (encode proxy), all five formatters, unicode/surrogate content, the chunked-tier
     /// large value, branches, lists, and streamed partials.
@@ -57,23 +57,14 @@ namespace Heddle.Tests.Streaming
         public static TheoryData<string, OutputProfile> Fixtures()
         {
             var data = new TheoryData<string, OutputProfile>();
-            // Raw text.
             data.Add("Hello @(Name)! Body=@(Body) Count=@(Count)", OutputProfile.Text);
-            // Html profile: encoded values through HtmlEncodedRenderer.
             data.Add("<p>@(Body)</p><b>@(Name)</b> n=@(Count)", OutputProfile.Html);
-            // Formatters with explicit formats/locale (Text).
             data.Add("i=@int(Count){{N0}} m=@money(Price){{en-US}} d=@date(When){{yyyy-MM-dd}} t=@time(When){{HH:mm:ss}} g=@guid(Id){{D}} s=@string(Name)", OutputProfile.Text);
-            // Formatters, default formats (Text).
             data.Add("i=@int(Count) d=@date(When) t=@time(When) g=@guid(Id)", OutputProfile.Text);
-            // Formatters under Html (encode-carrier bridge, guid raw).
             data.Add("i=@int(Count){{N0}} m=@money(Price){{en-US}} d=@date(When){{yyyy-MM-dd}} g=@guid(Id)", OutputProfile.Html);
-            // Unicode / mixed scripts / surrogate pairs.
             data.Add("Привет @(Name)! 😀 Café — @(Body) 中文 テスト", OutputProfile.Text);
-            // Branch set (root-level participants → root locals frame on every sink).
             data.Add("@if(Flag){{yes:@(Name)}}@else(){{no}} | @ifnot(Flag){{off}}", OutputProfile.Text);
-            // List over typed elements (member-path element access).
             data.Add("@list(Items){{[@(Text)|@if(On){{on}}@else(){{off}}]}}", OutputProfile.Text);
-            // List under Html (each element encoded through the proxy).
             data.Add("@list(Items){{<li>@(Text)</li>}}", OutputProfile.Html);
             return data;
         }
@@ -88,8 +79,7 @@ namespace Heddle.Tests.Streaming
         [Fact]
         public void LargeChunkedValue_ThreeSinksByteIdentical()
         {
-            // A dynamic value > 5 461 UTF-16 units drives the Utf8 sink into the chunked (Encoder.Convert) tier;
-            // a large static piece does too. Both must be byte-identical across sinks.
+            // Large values (>5461 UTF-16 units) trigger chunked encoding and must remain byte-identical across sinks.
             var big = new string('x', 20000);
             var model = new M { Name = big, Body = new string('Ω', 8000) };
             var doc = "START" + new string('.', 7000) + "@(Name)MID@(Body)END";
@@ -99,8 +89,7 @@ namespace Heddle.Tests.Streaming
         [Fact]
         public void StreamedPartial_ThreeSinksByteIdentical()
         {
-            // Proves @partial streams identically across sinks (D11): the parent's partial output interleaves through
-            // each sink in call order, byte-identical to the string path.
+            // Partial output must interleave byte-identically across sinks in call order.
             var dir = Path.Combine(Path.GetTempPath(), "heddle_sinkpartial_" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(dir);
             try

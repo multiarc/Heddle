@@ -1,0 +1,20 @@
+{{!-- idiomatic Handlebars implementation (Phase 4).
+     Patterns followed: https://handlebarsjs.com/guide/#simple-expressions,
+     https://handlebarsjs.com/guide/builtin-helpers.html (#if, #each),
+     https://handlebarsjs.com/guide/partials.html#partial-blocks (partial-block layout:
+     {{#> layout}} + {{> @partial-block}} at the body slot),
+     https://handlebarsjs.com/guide/partials.html (partials, partial contexts, partial parameters),
+     https://handlebarsjs.com/guide/installation/precompilation.html (precompiled execution). --}}
+{{#> layout}}
+        <div class="slider-wrapper theme-default">
+            <div id="slider" class="nivoSlider">
+            </div>
+            <div class="home-content">
+                <div>
+                    <a href="/products/gluten-free">
+                        <img src="/files/homepage/homebtmbanners/gluten-hp.jpg" width="984" border="0" />
+                    </a>
+                </div>
+            </div>
+        </div>
+{{/layout}}

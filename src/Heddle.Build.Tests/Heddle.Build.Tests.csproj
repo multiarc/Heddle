@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <IsPackable>false</IsPackable>
+    <SignAssembly>true</SignAssembly>
+    <AssemblyOriginatorKeyFile>..\..\heddle.snk</AssemblyOriginatorKeyFile>
+    <!-- xUnit v3 test projects are stand-alone executables that host their own runner. -->
+    <OutputType>Exe</OutputType>
+    <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
+    <NoWarn>$(NoWarn);xUnit1051</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="xunit.v3" Version="3.2.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Build ordering only: fixtures shell out to dotnet against these binaries, resolved at
+         runtime by MsBuildFixture from the configuration this assembly was built with. -->
+    <ProjectReference Include="..\Heddle.Build\Heddle.Build.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\Heddle.Tool\Heddle.Tool.csproj" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Compile-time reference: read built fixture artifacts back (row counts, keys). -->
+    <ProjectReference Include="..\Heddle\Heddle.csproj" />
+  </ItemGroup>
+
+  <!-- The test-class inventory gate: this suite's classes, checked in and set-equality asserted. -->
+  <Import Project="..\TestInventory\TestInventory.props" />
+
+</Project>

@@ -96,7 +96,7 @@ var HeddleLangHighlightRules = function (heddleMode) {
                 "heddle-sub.comment.start",
                 startPrefix + "heddle-comment"
             ),
-            // Phase 2 (post-2.0) — the literal-@ escape. `@@` renders a single `@`
+            // The literal-@ escape. `@@` renders a single `@`
             // (lexer AT_ESCAPE / SUB_AT_ESCAPE -> RAW). The negative lookahead is
             // the comment-adjacency guard: in `@@*…` the escape must NOT fire (the
             // second `@` begins a `@*…*@` comment), matching the grammar's
@@ -645,7 +645,7 @@ var HeddleLangHighlightRules = function (heddleMode) {
                 "heddle-def.keyword.operator.paren",
                 startPrefix + "heddle-def-props"
             ),
-            // Phase 7 (post-2.0) — the in-header region model type: `<:item :: Article>`.
+            // The in-header region model type: `<:item :: Article>`.
             // `::` (DEF_TYPE) inside the angle brackets only occurs on a region
             // header, and the identifier after it is a type, so it routes to a
             // dedicated state that classes the type as storage.type (same class
@@ -656,7 +656,7 @@ var HeddleLangHighlightRules = function (heddleMode) {
                 "heddle-def-name.keyword.operator",
                 startPrefix + "heddle-def-region-type"
             ),
-            // `:` — both the `<child:base>` inheritance delimiter and the phase 7
+            // `:` — both the `<child:base>` inheritance delimiter and the
             // region visibility marker `<:name>` (same operator class, matching
             // the tmLanguage's keyword.operator.inheritance.heddle for both).
             createNextRule(
@@ -671,7 +671,7 @@ var HeddleLangHighlightRules = function (heddleMode) {
             )
         ];
 
-        // Phase 7 (post-2.0) — the region model type between `::` and the closing
+        // The region model type between `::` and the closing
         // `>` of a `<:name :: Type>` header. Dotted names, generics and arrays
         // follow the same TYPE_ID surface as other type positions.
         rules[startPrefix + "heddle-def-region-type"] = [

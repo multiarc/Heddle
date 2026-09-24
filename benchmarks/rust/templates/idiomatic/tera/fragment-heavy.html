@@ -1,0 +1,18 @@
+{# Idiomatic Tera template per-row fragment dispatch. Patterns follow
+   the Tera docs (keats.github.io/tera): "Control structures - If" (if / elif / elif / else
+   chain over the precomputed kind booleans - common-denominator dispatch) and
+   "Include" (per-kind partial rendered with the current context, loop variable included);
+   default auto-escaping left on. #}
+<div class="panel">
+  {% for item in items %}
+    {% if item.is_tile %}
+      {% include "idiomatic/tera/shared/fragment-heavy-tile.html" %}
+    {% elif item.is_card %}
+      {% include "idiomatic/tera/shared/fragment-heavy-card.html" %}
+    {% elif item.is_media %}
+      {% include "idiomatic/tera/shared/fragment-heavy-media-row.html" %}
+    {% else %}
+      {% include "idiomatic/tera/shared/fragment-heavy-stat.html" %}
+    {% endif %}
+  {% endfor %}
+</div>

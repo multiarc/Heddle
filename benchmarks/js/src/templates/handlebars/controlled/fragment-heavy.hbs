@@ -1,0 +1,1 @@
+<div class="panel">{{#each items}}{{#if is_tile}}{{> tile this}}{{else if is_card}}{{> card this}}{{else if is_media}}{{> media_row this}}{{else}}{{> stat this}}{{/if}}{{/each}}</div>

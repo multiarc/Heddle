@@ -1,0 +1,13 @@
+{{## Idiomatic Scriban -- composed-page nav-link partial.
+
+     Patterns followed, from Scriban's own documentation:
+       language          https://github.com/scriban/scriban/blob/master/doc/language.md
+       builtins/html     https://github.com/scriban/scriban/blob/master/doc/builtins.md#html-functions
+       runtime/includes  https://github.com/scriban/scriban/blob/master/doc/runtime.md
+
+     Renders one nav link from the scope-shared loop variable `link`. Checked by the
+     functional verifier, not the byte gate. Note the multi-line comment delimiters: the
+     single-line form ends at the first newline, which would leave the doc URLs to parse as
+     expressions. ##}}
+
+<li class="nav-link"><a href="{{ link.href }}">{{ link.label }}</a></li>

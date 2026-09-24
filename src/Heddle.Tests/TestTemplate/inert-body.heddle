@@ -1,0 +1,6 @@
+<a>@raw(){{mid}}</a>
+<b>@(){{mid}}</b>
+<c>@raw(){{@profile(){{text}}}}</c>
+<d>@raw(){{}}</d>
+<e>@raw()</e>
+<f>@raw(){{[@()]}}</f>

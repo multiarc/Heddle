@@ -8,13 +8,9 @@ using Xunit;
 namespace Heddle.Tests
 {
     /// <summary>
-    /// <para>The phase 2 executable spec, written security-first (WI1): the profile x construct matrix
-    /// (M01-M15), the XSS corpus (X01-X12), and the encoding-pin rows (E01-E14). Every row asserts exact
-    /// output bytes; the E-rows pin the 1.x <c>WebUtility.HtmlEncode</c> baseline so the 2.0 encoder swap's
-    /// golden churn is measured, not discovered.</para>
-    /// <para>The default profile stays <see cref="OutputProfile.Text"/> in 1.x; <c>Html</c> behavior is
-    /// selected explicitly per row via <see cref="TemplateOptions.OutputProfile"/> or a <c>@profile()</c>
-    /// directive.</para>
+    /// Matrix (M01-M15), XSS corpus (X01-X12), and encoding pins (E01-E14); E-rows lock the 1.x
+    /// <c>WebUtility.HtmlEncode</c> baseline. Default profile is <see cref="OutputProfile.Text"/>; <c>Html</c>
+    /// is selected per row.
     /// </summary>
     public class OutputProfileEncodingTests
     {
@@ -45,8 +41,6 @@ namespace Heddle.Tests
         {
             return Compile(template, modelType, profile).Generate(model);
         }
-
-        // ---------------- Profile x construct matrix (M01-M15) ----------------
 
         [Fact]
         public void M01_UnnamedMemberPath()
@@ -166,8 +160,6 @@ namespace Heddle.Tests
             Assert.Equal("&lt;b&gt;x&lt;/b&gt;", Render("@(V):html()", m, typeof(VModel), OutputProfile.Html));
         }
 
-        // ---------------- XSS corpus (X01-X12) ----------------
-
         [Fact]
         public void X01_FlagshipDirectiveFlip()
         {
@@ -264,12 +256,8 @@ namespace Heddle.Tests
                 Render("@profile(){{text}}@(UserInput)", m, typeof(UserInputModel), OutputProfile.Html));
         }
 
-        // ---------------- Encoding-pin rows (E01-E14) ----------------
-
-        // Each row renders @(V) under Html and asserts the exact 1.x WebUtility.HtmlEncode bytes.
-        // Non-ASCII inputs use \u escapes so source encoding cannot perturb the pinned bytes; the
-        // E12/E13 control characters are supplied programmatically so line-ending normalization
-        // cannot touch them. See D11 for the 2.0 re-pin budget.
+        // Each row asserts exact 1.x WebUtility.HtmlEncode bytes. Non-ASCII use \u escapes and control
+        // characters are supplied programmatically to resist source encoding and line-ending normalization.
         [Theory]
         [InlineData("<", "&lt;")]                        // E01
         [InlineData(">", "&gt;")]                        // E02
@@ -289,7 +277,6 @@ namespace Heddle.Tests
         {
             var m = new VModel { V = input };
             Assert.Equal(expected, Render("@(V)", m, typeof(VModel), OutputProfile.Html));
-            // Cross-check the pinned bytes really are the WebUtility baseline the 2.0 swap re-pins.
             Assert.Equal(WebUtility.HtmlEncode(input), Render("@(V)", m, typeof(VModel), OutputProfile.Html));
         }
     }

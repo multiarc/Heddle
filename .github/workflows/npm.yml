@@ -1,11 +1,13 @@
 # Builds the custom Ace editor bundle (@multiarc/ace_heddle) and publishes it to the
 # public npm registry (npmjs.org) using npm Trusted Publishing (OIDC) — no NPM_TOKEN.
-#   - internal PRs   -> `npm stage publish` <package.json version>-beta.<run_number> (staged for review,
-#                       NOT publicly installable until a maintainer approves it)
-#   - tag vX.Y.Z     -> `npm publish` X.Y.Z (live release, dist-tag "latest")
+#   - pull requests            -> build only; nothing is published anywhere
+#   - tag vX.Y.Z (on main)     -> `npm publish` X.Y.Z, dist-tag "latest"
+#   - tag vX.Y.Z-beta.N        -> `npm publish` X.Y.Z-beta.N, dist-tag "beta" (likewise alpha, rc)
 #
-# Production is TAG-DRIVEN; merging to main does not publish. Fork PRs are skipped
-# (OIDC tokens aren't issued for forks).
+# Publishing is TAG-DRIVEN; the tag rules live in release-tag.yml. Merging to main does not publish.
+#
+# Building is a separate job from publishing: the build holds no publishing credentials, and
+# each publish starts from an artifact that is already known to have built cleanly.
 
 name: Heddle Ace (npm)
 
@@ -19,41 +21,70 @@ permissions:
   contents: read
 
 jobs:
-  publish:
-    # Run for tag pushes and same-repo PRs; skip (not fail) for fork PRs.
-    if: ${{ startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository) }}
+  build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write   # OIDC token for npm Trusted Publishing
     steps:
     - uses: actions/checkout@v7
     - name: Setup Node
       uses: actions/setup-node@v7
       with:
         node-version: 24
-        registry-url: https://registry.npmjs.org
-        scope: '@multiarc'
-    # Note: we deliberately do NOT upgrade npm here. The node-bundled npm ships its
-    # dependencies (including `sigstore`, used by the provenance path) intact; a global
-    # `npm install -g npm@latest` self-upgrade prunes those bundled deps and breaks
-    # provenance publishing with "Cannot find module 'sigstore'".
     - name: Build custom Ace bundle
       working-directory: src/Heddle.Language
       run: bash build_ace.sh
     - name: Stage package manifest with built bundle
       working-directory: src/Heddle.Language
       run: cp package.json ace_build/ace/build/package.json
-    - name: Stage pre-release package (PR)
-      if: ${{ github.event_name == 'pull_request' }}
-      working-directory: src/Heddle.Language/ace_build/ace/build
+    - uses: actions/upload-artifact@v7
+      with:
+        name: ace-bundle
+        path: src/Heddle.Language/ace_build/ace/build
+        if-no-files-found: error
+
+  # What this ref publishes, if anything: see release-tag.yml.
+  release-tag:
+    uses: ./.github/workflows/release-tag.yml
+    permissions:
+      contents: read
+
+  # The bundle this package ships is what the JS editor-artifact harness covers, and that harness
+  # runs in the Release suites. Gate the publish on it: a tag must not ship over a red suite.
+  release-tests:
+    needs: release-tag
+    if: ${{ needs.release-tag.outputs.is_tag == 'true' }}
+    uses: ./.github/workflows/tests-release.yml
+    permissions:
+      contents: read
+
+  publish-release:
+    needs: [ build, release-tag, release-tests ]
+    if: ${{ needs.release-tag.outputs.is_tag == 'true' }}
+    runs-on: ubuntu-latest
+    # Same environment as the nuget.org and Marketplace publishes: which refs may publish is one setting.
+    # This changes the OIDC subject claim to repo:<owner>/<repo>:environment:marketplace, so npm's
+    # Trusted Publishing policy must name this environment too.
+    environment: marketplace
+    permissions:
+      contents: read
+      id-token: write   # OIDC token for npm Trusted Publishing
+    steps:
+    - name: Setup Node
+      uses: actions/setup-node@v7
+      with:
+        node-version: 24
+        registry-url: https://registry.npmjs.org
+        scope: '@multiarc'
+    - uses: actions/download-artifact@v7
+      with:
+        name: ace-bundle
+        path: ace-bundle
+    # The dist-tag is explicit: a pre-release goes to alpha, beta or rc and never moves "latest"
+    # (npm also refuses to publish a pre-release version without --tag).
+    - name: Publish release package
+      working-directory: ace-bundle
+      env:
+        VERSION: ${{ needs.release-tag.outputs.version }}
+        CHANNEL: ${{ needs.release-tag.outputs.channel }}
       run: |
-        BASE_VERSION="$(node -p "require('./package.json').version")"
-        npm version --no-git-tag-version "${BASE_VERSION}-beta.${{ github.run_number }}"
-        npm stage publish --tag beta
-    - name: Publish release package (tag)
-      if: ${{ startsWith(github.ref, 'refs/tags/v') }}
-      working-directory: src/Heddle.Language/ace_build/ace/build
-      run: |
-        npm version --no-git-tag-version --allow-same-version "${GITHUB_REF_NAME#v}"
-        npm publish
+        npm version --no-git-tag-version --allow-same-version "$VERSION"
+        npm publish --tag "$CHANNEL"

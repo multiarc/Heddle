@@ -14,7 +14,7 @@ namespace Heddle
         CompileContext Context { get; }
 
         /// <summary>
-        /// Generates result string (invoke template helpers and render).
+        /// Renders the template with data, returning the result string.
         /// </summary>
         /// <param name="data">Input object</param>
         /// <param name="callerData"></param>

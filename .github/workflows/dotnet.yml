@@ -1,7 +1,8 @@
-# Build/test on every push and PR. Internal PRs publish beta prereleases to nuget.org.
-# Production releases are TAG-DRIVEN: push a `vX.Y.Z` tag and CI publishes that exact
-# version to nuget.org (as latest) and creates a GitHub Release. Merging to main does NOT
-# publish — it only builds/tests.
+# Build/test/pack on every push and PR. Pull requests and main never publish anything.
+# Publishing is TAG-DRIVEN (rules in release-tag.yml): a `vX.Y.Z` tag on main publishes that
+# exact version to nuget.org (as latest) and creates a GitHub Release; a `vX.Y.Z-alpha.N`,
+# `-beta.N` or `-rc.N` tag, from any branch, publishes a nuget.org pre-release and a GitHub
+# pre-release.
 # For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-net
 
 name: Heddle
@@ -18,6 +19,12 @@ on:
 permissions:
   contents: read
 
+# The build matrix includes windows-latest, where the default shell is pwsh. The test steps
+# below are bash, and a bash-only line there fails the step rather than running the tests.
+defaults:
+  run:
+    shell: bash
+
 jobs:
   build:
     strategy:
@@ -27,36 +34,46 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v7
+    # The tag resolver decides what every publishing job does, and nothing but a real tag push runs it.
+    # This drives it over a table of refs so its first execution is not a release.
+    - name: Self-test the release-tag resolver
+      run: .github/scripts/resolve-release-tag-selftest.sh
     - name: Setup .NET
       uses: actions/setup-dotnet@v6
       with:
-        dotnet-version: |
-          6.0.x
-          8.0.x
+        dotnet-version: 8.0.x
         global-json-file: global.json
     - name: Restore dependencies
       run: dotnet restore
     - name: Build
       run: dotnet build --no-restore -c Release
-    - name: Test
-      run: dotnet test -c Debug --no-restore
+    # Every leg goes through the same wrapper, which turns a skipped test into a failed one and calls
+    # out the platform's zero-tests-discovered exit. Each project is named explicitly: `dotnet test`
+    # under Microsoft.Testing.Platform takes --project or --solution, and a whole-solution run would
+    # report one aggregate result rather than one per suite, which is what makes a single suite going
+    # quiet visible. What each suite CONTAINS is gated inside the suite, by its checked-in
+    # src/<Suite>/test-classes.txt inventory; no test count is maintained here.
+    - name: Test engine suite (Debug)
+      run: .github/scripts/dotnet-test-guarded.sh src/Heddle.Tests/Heddle.Tests.csproj -c Debug --no-restore
+    - name: Test language services suite (Debug)
+      run: .github/scripts/dotnet-test-guarded.sh src/Heddle.LanguageServices.Tests/Heddle.LanguageServices.Tests.csproj -c Debug --no-restore
+    - name: Test tool suite (Debug)
+      run: .github/scripts/dotnet-test-guarded.sh src/Heddle.Tool.Tests/Heddle.Tool.Tests.csproj -c Debug --no-restore
+    - name: Test build suite (Debug)
+      run: .github/scripts/dotnet-test-guarded.sh src/Heddle.Build.Tests/Heddle.Build.Tests.csproj -c Debug --no-restore
 
-  # Internal (non-fork) pull requests publish a beta prerelease to nuget.org.
-  prerelease:
+  # Packs every package, so a pack failure shows up on the pull request rather than at release time.
+  # Nothing is uploaded or pushed; this job holds no credentials and runs for forks too.
+  pack:
     needs: build
-    if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
+    if: ${{ !startsWith(github.ref, 'refs/tags/') }}
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write   # OIDC token for nuget.org Trusted Publishing
     steps:
     - uses: actions/checkout@v7
     - name: Setup .NET
       uses: actions/setup-dotnet@v6
       with:
-        dotnet-version: |
-          6.0.x
-          8.0.x
+        dotnet-version: 8.0.x
         global-json-file: global.json
     - name: Restore dependencies
       run: dotnet restore
@@ -64,41 +81,82 @@ jobs:
     # .NET tools (PackAsTool + multiple RuntimeIdentifiers), so `dotnet pack` must publish each RID.
     # A RID-less `dotnet build` never produces those per-RID outputs, so `--no-build` fails with
     # MSB3030 (missing per-RID assemblies) / NETSDK1085. Let pack build+publish, like the release job.
-    - name: Pack beta packages
-      run: dotnet pack -c Release -o ${{ runner.temp }}/pkg --version-suffix "-beta.${{ github.run_number }}"
-    - name: NuGet login (OIDC -> short-lived API key)
-      uses: NuGet/login@v1
-      id: nuget-login
-      with:
-        user: ${{ secrets.NUGET_USER }}
-    - name: Push beta to nuget.org
-      run: dotnet nuget push "${{ runner.temp }}/pkg/*.nupkg" --api-key ${{ steps.nuget-login.outputs.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+    - name: Pack packages
+      run: dotnet pack -c Release -o ${{ runner.temp }}/pkg
 
-  # Production release: triggered by pushing a `vX.Y.Z` tag. Publishes that exact version
-  # (becomes "latest" on nuget.org automatically) and creates a GitHub Release.
-  release:
-    needs: build
-    if: ${{ startsWith(github.ref, 'refs/tags/v') }}
-    runs-on: ubuntu-latest
+  # What this ref publishes, if anything: see release-tag.yml.
+  release-tag:
+    uses: ./.github/workflows/release-tag.yml
     permissions:
-      contents: write   # create the GitHub Release
-      id-token: write   # OIDC token for nuget.org Trusted Publishing
+      contents: read
+
+  # The release gates. The Debug suites in `build` are not the whole contract: testing-standards.md
+  # requires the Release leg too, and the samples are the engine's end-to-end integration tests.
+  # Both used to run only in other workflows, which no publish awaited, so a tag could publish over
+  # a red Release suite or a broken sample. They run here only for a tag.
+  release-tests:
+    needs: release-tag
+    if: ${{ needs.release-tag.outputs.is_tag == 'true' }}
+    uses: ./.github/workflows/tests-release.yml
+    permissions:
+      contents: read
+
+  release-samples:
+    needs: release-tag
+    if: ${{ needs.release-tag.outputs.is_tag == 'true' }}
+    uses: ./.github/workflows/samples.yml
+    permissions:
+      contents: read
+
+  # Release or pre-release: triggered by pushing a release tag. Publishes that exact version
+  # (a release becomes "latest" on nuget.org, a suffixed version is a nuget.org pre-release)
+  # and creates the matching GitHub Release.
+  release-pack:
+    needs: [ build, release-tag, release-tests, release-samples ]
+    if: ${{ needs.release-tag.outputs.is_tag == 'true' }}
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v7
     - name: Setup .NET
       uses: actions/setup-dotnet@v6
       with:
-        dotnet-version: |
-          6.0.x
-          8.0.x
+        dotnet-version: 8.0.x
         global-json-file: global.json
-    - name: Resolve version from tag
-      id: ver
-      run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
     - name: Restore dependencies
       run: dotnet restore
     - name: Pack release packages
-      run: dotnet pack -c Release -p:Version=${{ steps.ver.outputs.version }} -o ${{ runner.temp }}/pkg
+      run: dotnet pack -c Release -p:Version=${{ needs.release-tag.outputs.version }} -o ${{ runner.temp }}/pkg
+    - uses: actions/upload-artifact@v7
+      with:
+        name: nupkg-release
+        # Both globs: `*.nupkg` does not match `*.snupkg`, and three libraries opt into IncludeSymbols.
+        # `dotnet nuget push` uploads a symbol package only when it sits beside its package, so a symbol
+        # package left out of the artifact never reaches the publishing runner and never ships.
+        path: |
+          ${{ runner.temp }}/pkg/*.nupkg
+          ${{ runner.temp }}/pkg/*.snupkg
+        if-no-files-found: error
+
+  release-publish:
+    needs: [ release-pack, release-tag ]
+    runs-on: ubuntu-latest
+    # Every job that ships bytes to a registry runs in one environment, so which refs may publish is a
+    # single setting rather than a rule implied three times. Note this changes the OIDC subject claim to
+    # repo:<owner>/<repo>:environment:marketplace, so nuget.org's Trusted Publishing policy must name
+    # this environment too.
+    environment: marketplace
+    permissions:
+      contents: write   # create the GitHub Release
+      id-token: write   # OIDC token for nuget.org Trusted Publishing
+    steps:
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v6
+      with:
+        dotnet-version: 8.0.x
+    - uses: actions/download-artifact@v7
+      with:
+        name: nupkg-release
+        path: ${{ runner.temp }}/pkg
     - name: NuGet login (OIDC -> short-lived API key)
       uses: NuGet/login@v1
       id: nuget-login
@@ -110,6 +168,13 @@ jobs:
     - name: Create GitHub Release
       env:
         GH_TOKEN: ${{ github.token }}
+        # This job never checks out, so gh has no git remote to read the repository from, and it does not
+        # fall back to GITHUB_REPOSITORY: without GH_REPO it fails with "no git remotes found" — after the
+        # packages above are already public and, with no --skip-duplicate, unrepublishable.
+        GH_REPO: ${{ github.repository }}
+        PRERELEASE: ${{ needs.release-tag.outputs.prerelease }}
       run: |
+        flags=()
+        if [ "$PRERELEASE" = "true" ]; then flags+=(--prerelease); fi
         gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 \
-          || gh release create "$GITHUB_REF_NAME" --verify-tag --generate-notes --title "$GITHUB_REF_NAME"
+          || gh release create "$GITHUB_REF_NAME" --verify-tag --generate-notes --title "$GITHUB_REF_NAME" "${flags[@]}"

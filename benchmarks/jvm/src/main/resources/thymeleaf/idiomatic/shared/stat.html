@@ -1,0 +1,11 @@
+<!--/*
+  Idiomatic Thymeleaf authoring — official doc citations:
+  https://www.thymeleaf.org/doc/tutorials/3.1/usingthymeleaf.html
+    §8.1 (defining fragments: th:fragment with arguments),
+    §12 (unescaped text: th:utext)
+*/-->
+<div class="stat" th:fragment="stat(item)">
+    <span class="stat-name" th:utext="${item.name}">stat name</span>
+    <span class="stat-value" th:utext="${item.value}">0</span>
+    <span class="stat-delta" th:utext="${item.delta}">0</span>
+</div>

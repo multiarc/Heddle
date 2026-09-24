@@ -1,0 +1,4 @@
+# Everything in the Go harness is ordinary text — no attribute pins needed. (The former
+# internal/model/data -text pin died with the embedded composed-page blobs: all literal
+# chrome moved into the template tier, and the nav model loads from the corpus fixture at
+# runtime.)

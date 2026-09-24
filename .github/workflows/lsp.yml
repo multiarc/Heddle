@@ -1,45 +1,41 @@
 # Builds and tests the Heddle language services (facade + LSP server), packs the version-pinned
 # per-RID dotnet tool, and packages the VS Code extension. Phase 6 (editor tooling / LSP).
+#
+# Marketplace publishing is TAG-DRIVEN, like the NuGet and npm workflows (rules in release-tag.yml):
+# a `vX.Y.Z` tag on main publishes every per-target VSIX to the Visual Studio Marketplace under the
+# `multiarc` publisher, and a `vX.Y.Z-alpha.N`, `-beta.N` or `-rc.N` tag publishes them as a
+# Marketplace pre-release. The Marketplace takes only a plain X.Y.Z, so BOTH releases and pre-releases
+# publish under the mapped number resolve-release-tag.sh documents rather than the tag's own version
+# (3.0.0-beta.2 -> 3.0.2002, and 3.0.0 -> 3.0.9999). Pull requests
+# and main build and package only. The credential is the VSCE_PAT secret on the `marketplace`
+# environment; see marketplace-publish for why it is a token and not OIDC.
 
 name: Heddle LSP
 
 on:
   push:
     branches: [ "main" ]
+    tags: [ "v*.*.*" ]
   pull_request:
     branches: [ "main" ]
 
 permissions:
   contents: read
 
+# The jobs below run on ubuntu-latest, where the default shell is bash already; the Release suites
+# run on Windows inside tests-release.yml, which sets its own default.
+defaults:
+  run:
+    shell: bash
+
 jobs:
-  test:
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-dotnet@v6
-        with:
-          # The multi-targeted test suite runs net6.0/net8.0/net10.0/net48; the runner image
-          # no longer ships the EOL .NET 6 (and may drop 8) runtime, so install them explicitly
-          # alongside the global.json SDK — otherwise the net6.0 test host aborts (NETCore.App 6 missing).
-          dotnet-version: |
-            6.0.x
-            8.0.x
-          global-json-file: global.json
-      - name: Build (Release)
-        run: dotnet build -c Release Heddle.sln
-      - name: Test engine suite
-        run: dotnet test src/Heddle.Tests/Heddle.Tests.csproj -c Release --no-build
-      - name: Test language services
-        run: dotnet test src/Heddle.LanguageServices.Tests/Heddle.LanguageServices.Tests.csproj -c Release --no-build
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-      - name: JS editor-artifact harness (highlight / beautify / completions)
-        working-directory: src/Heddle.Language
-        run: |
-          npm ci
-          npm test
+  # The Release leg of all four suites plus the JS harness. It lives in tests-release.yml because
+  # marketplace-publish and the NuGet/npm publishes all gate on it, and a job can only depend on a
+  # job in its own workflow.
+  release-tests:
+    uses: ./.github/workflows/tests-release.yml
+    permissions:
+      contents: read
 
   pack-tool:
     runs-on: ubuntu-latest
@@ -56,7 +52,7 @@ jobs:
       - name: Smoke — install and run --version
         run: |
           set -euo pipefail
-          dotnet tool install --global Heddle.LanguageServer --add-source ./nupkg --version 2.0.0 || true
+          dotnet tool install --global Heddle.LanguageServer --add-source ./nupkg --version 3.0.0 || true
           export PATH="$PATH:$HOME/.dotnet/tools"
           heddle-lsp --version
       - uses: actions/upload-artifact@v7
@@ -64,14 +60,28 @@ jobs:
           name: heddle-lsp-nupkg
           path: ./nupkg/*.nupkg
 
+  # What this ref publishes, if anything: see release-tag.yml. The VSIX build reads it too, because a
+  # tag stamps its version into the package.
+  release-tag:
+    uses: ./.github/workflows/release-tag.yml
+    permissions:
+      contents: read
+
   vsix:
+    needs: release-tag
     runs-on: ubuntu-latest
+    env:
+      IS_TAG: ${{ needs.release-tag.outputs.is_tag }}
+      PRERELEASE: ${{ needs.release-tag.outputs.prerelease }}
+      VERSION: ${{ needs.release-tag.outputs.version }}
+      VSIX_VERSION: ${{ needs.release-tag.outputs.vsix_version }}
     strategy:
+      fail-fast: false          # the seven targets are independent; one runner fault must not cancel six
       matrix:
         target: [win32-x64, win32-arm64, linux-x64, linux-arm64, alpine-x64, darwin-x64, darwin-arm64]
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
       - uses: actions/setup-node@v7
@@ -89,15 +99,105 @@ jobs:
             darwin-x64)  echo "rid=osx-x64" >> "$GITHUB_OUTPUT" ;;
             darwin-arm64) echo "rid=osx-arm64" >> "$GITHUB_OUTPUT" ;;
           esac
+      # On a tag, the bundled server reports the tagged version, and the extension's install hint names
+      # the tool version nuget.org actually carries for this tag. Stamped in the runner only.
       - name: Publish server (framework-dependent, R2R)
-        run: dotnet publish src/Heddle.LanguageServer/Heddle.LanguageServer.csproj -c Release -r ${{ steps.rid.outputs.rid }} --self-contained false -o editors/vscode/server -p:EnableToolR2R=true
+        run: |
+          version_args=()
+          if [ "$IS_TAG" = "true" ]; then version_args+=("-p:Version=$VERSION"); fi
+          dotnet publish src/Heddle.LanguageServer/Heddle.LanguageServer.csproj -c Release -r ${{ steps.rid.outputs.rid }} --self-contained false -o editors/vscode/server -p:EnableToolR2R=true "${version_args[@]}"
+      - name: Stamp extension version from the tag
+        if: ${{ env.IS_TAG == 'true' }}
+        working-directory: editors/vscode
+        run: |
+          npm version --no-git-tag-version --allow-same-version "$VSIX_VERSION"
+          sed -i -E "s/^const PINNED_VERSION = '[^']+';/const PINNED_VERSION = '$VERSION';/" src/extension.ts
+          grep -q "^const PINNED_VERSION = '$VERSION';" src/extension.ts
       - name: Package VSIX
         working-directory: editors/vscode
         run: |
+          pre_release_args=()
+          if [ "$PRERELEASE" = "true" ]; then pre_release_args+=(--pre-release); fi
           npm ci
           npm run copy-grammar
-          npx @vscode/vsce package --target ${{ matrix.target }}
+          npx @vscode/vsce package --target ${{ matrix.target }} "${pre_release_args[@]}"
+      # vsce refuses only a missing entry point; a bundle that is present but unusable installs cleanly
+      # and throws at activation. Unzipped outside any project, the shipped bundle is loaded against
+      # a stubbed host module, and the dependencies must ship inside it with their license texts.
+      - name: Verify VSIX contents
+        working-directory: editors/vscode
+        run: |
+          rm -rf "$RUNNER_TEMP/vsix-check"
+          unzip -q ./*.vsix -d "$RUNNER_TEMP/vsix-check"
+          node build/verify-vsix.js "$RUNNER_TEMP/vsix-check/extension"
       - uses: actions/upload-artifact@v7
         with:
           name: heddle-vsix-${{ matrix.target }}
           path: editors/vscode/*.vsix
+
+  # Production release of the extension: every per-target VSIX the matrix above built for this tag,
+  # published in one job. Packaging is separated from publishing exactly as in dotnet.yml: this job
+  # starts from artifacts that are already known to have built, and only this job sees the token.
+  #
+  # Why a token and not OIDC like the NuGet and npm jobs: the Marketplace's GitHub Trusted
+  # Publishing is still being built (microsoft/vsmarketplace#1422, staff 2026-09-14) and the Entra
+  # alternative needs an Azure subscription. VSCE_PAT is an Azure DevOps personal access token
+  # (organization "All accessible organizations", scope Marketplace: Manage) stored as a secret on
+  # the `marketplace` environment, so no other job can read it. When Trusted Publishing ships, this
+  # becomes `vsce publish --oidc` with `id-token: write` and the secret goes away.
+  marketplace-publish:
+    needs: [ release-tests, vsix, release-tag ]
+    if: ${{ needs.release-tag.outputs.is_tag == 'true' }}
+    runs-on: ubuntu-latest
+    environment: marketplace
+    permissions:
+      contents: read
+    # No dependency install scripts anywhere in this job, npx included: one can plant code in node_modules
+    # that the token-holding steps below then run.
+    env:
+      npm_config_ignore_scripts: 'true'
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - uses: actions/download-artifact@v7
+        with:
+          pattern: heddle-vsix-*
+          path: vsix
+          merge-multiple: true
+      # The download lands in $GITHUB_WORKSPACE/vsix, and the steps below run in editors/vscode, so
+      # the packages are named absolutely: a relative ../vsix resolved to editors/vsix, a directory
+      # nothing creates, and the publish failed with valid credentials. One row per target, or the
+      # glob silently under-publishes the extension.
+      - name: Check every target's package arrived
+        run: |
+          count=$(find "$GITHUB_WORKSPACE/vsix" -maxdepth 1 -name '*.vsix' | wc -l)
+          echo "found $count vsix package(s) in $GITHUB_WORKSPACE/vsix"
+          if [ "$count" -ne 7 ]; then
+            echo "::error::Expected 7 VSIX packages (one per target in the vsix matrix), found ${count}."
+            exit 1
+          fi
+      # vsce comes from the extension's own lock file, so the version that publishes is the one the
+      # VSIXs were packaged with. This job only publishes finished VSIXs; it neither bundles (esbuild) nor
+      # signs (vsce-sign) nor stores credentials (keytar), which is all their install scripts set up.
+      - name: Install vsce
+        working-directory: editors/vscode
+        run: npm ci --ignore-scripts
+      # verify-pat fails before any upload if the token is expired or is not a member of the publisher.
+      - name: Verify publisher access
+        working-directory: editors/vscode
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: npx @vscode/vsce verify-pat multiarc
+      # No --skip-duplicate: a release of an already-published version must fail loudly (dotnet.yml).
+      # The seven VSIXs share one version; the Marketplace lists them as one extension.
+      - name: Publish to the Visual Studio Marketplace
+        working-directory: editors/vscode
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+          PRERELEASE: ${{ needs.release-tag.outputs.prerelease }}
+        run: |
+          pre_release_args=()
+          if [ "$PRERELEASE" = "true" ]; then pre_release_args+=(--pre-release); fi
+          npx @vscode/vsce publish --packagePath "$GITHUB_WORKSPACE"/vsix/*.vsix "${pre_release_args[@]}"

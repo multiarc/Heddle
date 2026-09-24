@@ -11,6 +11,7 @@ namespace Heddle.Extensions {
     /// <para>Optional parameter is sub-template (fully inclusive)</para>
     /// </summary>
     [ExtensionName ("partial")]
+    [ChildTemplateHost]
     public class PartialExtension: AbstractExtension
     {
         protected HeddleTemplate InnerTemplate;
@@ -22,9 +23,7 @@ namespace Heddle.Extensions {
 
         public override void RenderData(in Scope scope)
         {
-            // Phase 8 D11: stream through the caller's renderer instead of materializing the partial's whole output as
-            // a string. The null third argument is callerData — the pre-phase two-argument Generate call also passed
-            // none, so this is argument-for-argument identical, and byte-identity is pinned by the golden corpus.
+            // Stream through caller's renderer instead of materializing. Argument signature matches Generate for byte-identity.
             InnerTemplate?.Render(scope.ModelData, scope.ChainedData, null, scope.Renderer);
         }
 
@@ -51,8 +50,8 @@ namespace Heddle.Extensions {
         {
             InnerTemplate = new HeddleTemplate();
 
-            // Phase 6 D25 (stamp site 3): partials AddRange the child compile's errors the same coordinate-foreign
-            // way imports do, so mark them with a shared origin at the @partial site for facade re-anchoring.
+            // Partials AddRange the child compile's errors, whose coordinates belong to the child template, so mark
+            // them with a shared origin at the @partial site for facade re-anchoring.
             bool markProvenance = newScope.Options.ProvideLanguageFeatures;
             int ceMark = markProvenance ? newScope.CompileErrors.Count : 0;
 

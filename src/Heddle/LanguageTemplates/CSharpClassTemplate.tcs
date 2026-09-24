@@ -6,9 +6,9 @@
 
 		@list(Methods)
 		{{
-		public static object ProcessData_@(ExtensionName)@(MethodNumber) (@(ModelType) model, @(ChainedType) chained, @(RootModelType) root)
+		public static object ProcessData_@(ExtensionName)@(MethodNumber) (@(ModelCSharpType) model, @(ChainedCSharpType) chained, @(RootModelCSharpType) root)
 		{
-			return @(Expression);
+			return unchecked(@(Expression));
 		}
 		}}
 	}
@@ -18,7 +18,7 @@
 @model(){{CSharpContext}}@\
 using System.Runtime.CompilerServices;
 using System.Reflection;
-@list(Namespaces) {{
+@list(CSharpNamespaces) {{
 	using @();
 }}
 @list(InternalsVisibleTo) {{

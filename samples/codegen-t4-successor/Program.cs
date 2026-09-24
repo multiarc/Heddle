@@ -4,12 +4,14 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using Heddle.Data;
+using Heddle.Precompiled;
 
 namespace Heddle.Samples.Codegen
 {
     // Sample 8 — Heddle as a build-time code/text generator (a T4 successor). templates/report.heddle is compiled
-    // at BUILD time by Heddle.Generator into a typed entry point; Program.cs calls it. The code generator itself
-    // (Heddle.Generator) is a build-time-only dependency — it is not present in the runtime output (asserted).
+    // at BUILD time by Heddle.Build (the out-of-process host) into a typed entry point; Program.cs calls it.
+    // The build host itself is a build-time-only dependency — it is not present in the runtime output (asserted).
     public sealed class BuildInfo
     {
         public string Project { get; set; }
@@ -25,19 +27,23 @@ namespace Heddle.Samples.Codegen
 
             var model = new BuildInfo { Project = "Heddle", Version = "2.0.0", Commit = "deadbeef" };
 
+            // The build pins Text + untrimmed directive lines for code generation; the typed entry
+            // validates ExpressionMode and TrimDirectiveLines against these process-wide defaults.
+            PrecompiledTemplates.DefaultOptions = new TemplateOptions { TrimDirectiveLines = false };
+
             // The generated typed entry point — no runtime parse or compile of the template.
             var rendered = global::Heddle.Generated.Templates_Report.Generate(model);
 
-            // Structural check: the code generator is a build-time tool, so its assembly must NOT ship at runtime.
+            // Structural check: the build host is a build-time tool, so its assemblies must NOT ship at runtime.
             var binDir = AppContext.BaseDirectory;
-            bool generatorPresent = File.Exists(Path.Combine(binDir, "Heddle.Generator.dll"));
-            bool languageGeneratorPresent = Directory.EnumerateFiles(binDir, "Heddle.Generator*.dll").Any();
+            bool generatorPresent = File.Exists(Path.Combine(binDir, "Heddle.Build.dll"));
+            bool languageGeneratorPresent = Directory.EnumerateFiles(binDir, "Heddle.Build*.dll").Any();
             bool enginePresent = File.Exists(Path.Combine(binDir, "Heddle.dll"));
             if (generatorPresent || languageGeneratorPresent)
-                throw new InvalidOperationException("STRUCTURAL FAIL: Heddle.Generator shipped in the runtime output.");
+                throw new InvalidOperationException("STRUCTURAL FAIL: Heddle.Build shipped in the runtime output.");
 
             var report = new StringBuilder();
-            report.Append("Heddle.Generator.dll (build-time code generator) present at runtime: ")
+            report.Append("Heddle.Build.dll (build-time host) present at runtime: ")
                   .Append(generatorPresent).Append('\n');
             report.Append("Heddle.dll (precompiled render runtime) present at runtime: ")
                   .Append(enginePresent).Append('\n');
@@ -61,15 +67,17 @@ namespace Heddle.Samples.Codegen
         // hashes) left out — the golden pins the STABLE shape of the generated code (a reviewed spec artifact).
         private static string SanitizedEntryPoint()
         {
-            // The generator emits under obj/…/generated when no explicit output path is set.
+            // The build host emits one Heddle.CompiledForm.g.cs under obj/ (artifact class plus one
+            // typed entry class per template).
             var searchRoot = SampleCapture.SampleRoot();
-            var file = Directory.EnumerateFiles(searchRoot, "Templates_Report.g.cs", SearchOption.AllDirectories)
-                .FirstOrDefault();
+            var file = Directory.EnumerateFiles(searchRoot, "Heddle.CompiledForm.g.cs", SearchOption.AllDirectories)
+                .OrderBy(f => f, StringComparer.Ordinal).FirstOrDefault();
             if (file == null)
                 return "// generated entry point not found on disk\n";
             var source = File.ReadAllText(file).Replace("\r\n", "\n");
-            // Drop any content-hash/version metadata lines so the golden is stable across builds.
-            source = Regex.Replace(source, @"(?m)^.*(ContentHash|contentHash|engineVersion|schemaVersion|Version =).*$\n?", string.Empty);
+            // Mask the engine version and every content digest so the golden is stable across builds.
+            source = Regex.Replace(source, @"\b\d+\.\d+\.\d+\b", "<version>");
+            source = Regex.Replace(source, @"[0-9a-f]{64}", "<digest>");
             return source;
         }
     }

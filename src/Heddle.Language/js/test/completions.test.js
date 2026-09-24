@@ -1,11 +1,10 @@
 "use strict";
 
 /*
- * WS9 smoke tests for the completions + snippets harness (feeds WS6).
+ * Smoke tests for the completions + snippets harness.
  *
  * Proves `mode/heddle_completions.js` and `snippets/heddle.snippets.js` load
- * and offer non-empty entries. Mode-specific "offered in the right context"
- * fixtures land in WS6.
+ * and offer non-empty entries.
  */
 
 const test = require("node:test");
@@ -94,7 +93,7 @@ test("v2 snippets exist with correct trigger names", () => {
     for (const expected of ["list", "if", "ifnot"]) {
         assert.ok(byName.has(expected), "expected retained snippet: " + expected);
     }
-    // New WS6 snippets.
+    // Newly added snippets.
     for (const expected of ["elif", "else", "for", "param", "prop", "slot"]) {
         assert.ok(byName.has(expected), "expected new snippet: " + expected);
     }
@@ -109,7 +108,7 @@ test("v2 snippets exist with correct trigger names", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Phase 7 (post-2.0): region-override completions (LSP RegionOverride parity).
+// Region-override completions (LSP RegionOverride parity).
 // ---------------------------------------------------------------------------
 
 const REGION_DOC = "@%<:header>{{H}}%@\n@%<:item :: Article>{{B}}%@\n@card(A){{@%<";

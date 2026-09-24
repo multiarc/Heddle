@@ -1,0 +1,23 @@
+# Heddle reference wall-time values for the `summarize` tool.
+#
+# Schema (normative):
+#   pending    = bool     # true while no run has been transcribed into this file
+#   source-run = string   # date of the run these values come from
+#   [workloads]           # workload id -> Heddle wall time in ns/render, transcribed once
+#   <workload-id> = <ns>  # from that run's report and reviewed in diff
+#
+# The repository carries no measurement: the rows are filled from a run kept outside the
+# repository (the `<results>/<run-date>/` archive, per benchmarks/docs/metrics-protocol.md), by
+# hand, from the .NET leg's BenchmarkDotNet `Mean` of `RenderHeddle` per workload converted to
+# ns/render (the only arithmetic applied). While `pending = true` the file carries the schema and
+# no values, and `summarize` fails loudly ("no published Heddle reference run exists yet") rather
+# than emit tables with fabricated Heddle numbers; the runners capture that failure non-fatally.
+# The run used must be one whose .NET anchor measured all eight workloads in the same session, on
+# the same machine and in the same tuned state as the Rust figures `summarize` compares against.
+# Suite mapping is pinned; do not re-derive it here — the mapping is the contract, not a
+# convenience.
+
+pending = true
+source-run = ""
+
+[workloads]

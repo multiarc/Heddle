@@ -1,0 +1,3 @@
+<h1>Mixed</h1>
+<p>Banner</p>
+<p>42.50</p>

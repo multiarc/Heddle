@@ -3,11 +3,8 @@ using System.Text;
 namespace Heddle.LanguageServices.Completion
 {
     /// <summary>
-    /// Repairs an in-progress buffer so the enclosing block parses (the engine's ANTLR parser is strict, but a
-    /// user typing <c>@(</c>, <c>@(x.</c>, <c>@(::</c> has an incomplete construct). A placeholder identifier is
-    /// inserted at the cursor and the parens opened in the innermost body are closed after it, so the surrounding
-    /// <c>@list(...){{ … }}</c> body still compiles and records its narrowed model type — the offset is unchanged,
-    /// so context detection and the scope-map query stay aligned with the cursor.
+    /// Repairs incomplete constructs by inserting a placeholder and closing unclosed parens,
+    /// so the enclosing scope remains compilable. Offset is preserved for context detection.
     /// </summary>
     internal static class CompletionText
     {
@@ -20,11 +17,7 @@ namespace Heddle.LanguageServices.Completion
             if (offset < 0) offset = 0;
             if (offset > text.Length) offset = text.Length;
 
-            // Phase 7 (WI5): a dangling region-override open — '<' (plus an optional partial name) inside a
-            // definition block ('@%' / after a previous '<…>{{…}}') with no header after it — breaks the whole
-            // parse and drops every definition from the analysis. Complete it with a placeholder fill
-            // ('_hcp_:_hcp_>{{x}}' — an unresolved-base override, which parses as a harmless fill candidate) so
-            // the region-override completion context still sees the document's definitions.
+            // Dangling region-override breaks parse and drops definitions; add placeholder fill to keep definitions visible.
             int wordStart = offset;
             while (wordStart > 0 && IsWordChar(text[wordStart - 1]))
                 wordStart--;
@@ -65,7 +58,43 @@ namespace Heddle.LanguageServices.Completion
                 insert.Append(')');
 
             var repaired = text.Substring(0, offset) + insert + text.Substring(offset);
-            return (repaired, offset);
+            return (repaired + BodyClosers(repaired), offset);
+        }
+
+        /// <summary>The closing braces of every body still open at the end of the text — a body is open for as
+        /// long as it is being typed, and an open one leaves the parser nothing to type its contents by. Counted
+        /// from the lexer's own mode stack, so braces in a string, a comment, a raw block or plain text count for
+        /// nothing, exactly as they do when the document is compiled.</summary>
+        private static string BodyClosers(string text)
+        {
+            var lexer = new Heddle.Language.HeddleLexer(new Antlr4.Runtime.AntlrInputStream(text));
+            lexer.RemoveErrorListeners();
+            try
+            {
+                while (lexer.NextToken().Type != Antlr4.Runtime.TokenConstants.EOF)
+                {
+                }
+            }
+            catch (System.InvalidOperationException)
+            {
+                // A closer with nothing open empties the lexer's mode stack and the next pop throws. The
+                // document cannot be tokenized, which the analysis reports; there is nothing to close here.
+                return string.Empty;
+            }
+
+            int open = lexer.CurrentMode == Heddle.Language.HeddleLexer.SUB_BLOCK ? 1 : 0;
+            foreach (int mode in lexer.ModeStack)
+            {
+                if (mode == Heddle.Language.HeddleLexer.SUB_BLOCK)
+                    open++;
+            }
+
+            if (open == 0)
+                return string.Empty;
+            var closers = new StringBuilder(open * 2);
+            for (int i = 0; i < open; i++)
+                closers.Append("}}");
+            return closers.ToString();
         }
 
         /// <summary>
@@ -149,7 +178,7 @@ namespace Heddle.LanguageServices.Completion
 
         private static bool IsWordChar(char c) => char.IsLetterOrDigit(c) || c == '_';
 
-        /// <summary>Phase 7 (WI5): true when the '&lt;' at <paramref name="ltIndex"/> sits at an override-anchor
+        /// <summary>True when the '&lt;' at <paramref name="ltIndex"/> sits at an override-anchor
         /// position of a definition block — directly after '@%' (the block open) or '}}' (a previous override's
         /// body close), whitespace allowed — so plain HTML tags in body text never trigger the repair.</summary>
         internal static bool PrecededByOverrideAnchor(string text, int ltIndex)

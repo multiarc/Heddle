@@ -1,7 +1,7 @@
 "use strict";
 
 /*
- * WS5 parse helper.
+ * Parse helper.
  *
  * Runs the real Heddle worker parse path (DocumentParser -> HeddleLexerExtended /
  * HeddleParserExtended -> HeddleErrorListener -> ParseContext) over a template

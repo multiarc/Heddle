@@ -1,10 +1,10 @@
-# Verifies that every commit in a pull request carries a matching
-# "Signed-off-by" trailer (Developer Certificate of Origin). This produces a
-# required status check ("DCO / dco") that branch protection can enforce.
+# Verifies that every commit in a pull request carries a matching "Signed-off-by"
+# trailer (Developer Certificate of Origin). It is a required status check ("DCO / dco")
+# that branch protection enforces on PRs, so no unsigned commit reaches main.
 #
-# Alternative: install the DCO GitHub App (https://github.com/apps/dco) which
-# provides the same check with zero maintenance. If you do, you can delete this
-# workflow and require the app's "DCO" check instead.
+# Pull requests publish nothing, so there is no deploy job for this to gate. Release and
+# pre-release tags are deliberately NOT gated: they are the maintainer's own, and a tag
+# push carries no pull request to check.
 
 name: DCO
 

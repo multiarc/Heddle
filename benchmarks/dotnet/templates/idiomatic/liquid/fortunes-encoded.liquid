@@ -1,0 +1,25 @@
+{%- comment -%}
+  Idiomatic Liquid -- fortunes-encoded.
+
+  Patterns followed, from the engines' own documentation:
+    Liquid language reference   https://shopify.github.io/liquid/
+    Fluid                       https://github.com/sebastienros/fluid#readme
+    DotLiquid                   http://dotliquidmarkup.org/
+
+  Authored the way the docs teach rather than to match the oracle byte-for-byte: readable
+  whitespace, Liquid's own control-flow tags, and the documented `escape` filter on untrusted
+  values. Checked by the functional verifier, not the byte gate.
+{%- endcomment -%}
+
+<!DOCTYPE html>
+<html>
+<head><title>Fortunes</title></head>
+<body>
+  <table>
+    <tr><th>id</th><th>message</th></tr>
+    {% for r in rows %}
+      <tr><td>{{ r.id }}</td><td>{{ r.message | escape }}</td></tr>
+    {% endfor %}
+  </table>
+</body>
+</html>

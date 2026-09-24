@@ -33,10 +33,10 @@ namespace Heddle.Extensions
 
             var parentData = scope.Parent();
             var format = GetInnerResult(parentData);
-            // Phase 8 D10: Guid ignores the provider (culture-insensitive by contract). Not [EncodeOutput] — the only
-            // migrated formatter that never runs under an encode proxy, so it takes the full fast path on every profile.
-            // Empty format ≡ "D"; an invalid specifier throws FormatException on every tier — behavior preserved.
-#if NET6_0_OR_GREATER
+            // Guid ignores the provider (culture-insensitive by contract). Not [EncodeOutput] — the only formatter
+            // that never runs under an encode proxy, so it takes the full fast path on every profile.
+            // Empty format ≡ "D"; an invalid specifier throws FormatException on every tier.
+#if NET8_0_OR_GREATER
             scope.Renderer.Render(guid, format, null);
 #else
             scope.Renderer.Render(guid.ToString(format));

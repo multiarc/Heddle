@@ -3,8 +3,7 @@ using System.Text.Json.Serialization;
 namespace Heddle.LanguageServer.Protocol
 {
     /// <summary>
-    /// The source-generated STJ context over the DTO subset (phase 6 D6): no reflection-metadata warm-up on the
-    /// first message. camelCase names, nulls omitted, non-strict unmapped-member handling.
+    /// Source-generated JSON context: avoids reflection metadata warm-up on the first message.
     /// </summary>
     [JsonSourceGenerationOptions(
         PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
